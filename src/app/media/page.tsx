@@ -12,7 +12,7 @@ export default async function MediaPage() {
   return (
     <MetaData pageTitle="Media Center">
       <Wrapper>
-        <div className="app__slide-wrapper">
+        <div className="app__slide-wrapper px-4 md:px-8 py-8">
           <MediaClient initialFiles={files || []} workspaceId={workspaceId} />
         </div>
       </Wrapper>

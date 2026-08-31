@@ -12,7 +12,12 @@ interface LandingPageRendererProps {
   previewMode?: boolean;
 }
 
-export default function LandingPageRenderer({ course, modules, lessons, previewMode = false }: LandingPageRendererProps) {
+export default function LandingPageRenderer({
+  course,
+  modules,
+  lessons,
+  previewMode = false,
+}: LandingPageRendererProps) {
   const [previewData, setPreviewData] = useState<any>(null);
 
   useEffect(() => {
@@ -25,7 +30,7 @@ export default function LandingPageRenderer({ course, modules, lessons, previewM
     };
 
     window.addEventListener('message', handleMessage);
-    
+
     // Notify parent frame that preview window is initialized and ready to receive updates
     if (window.parent && window.parent !== window) {
       window.parent.postMessage({ type: 'lms-preview-ready' }, '*');
@@ -42,35 +47,16 @@ export default function LandingPageRenderer({ course, modules, lessons, previewM
     activeTemplate = previewData?.template || course?.landing_page_settings?.template || 'clean_minimal';
   }
 
+  const shared = { course, modules, lessons, previewData };
+
   // Render the selected template
   switch (activeTemplate) {
     case 'bold_feature_rich':
-      return (
-        <TemplateBoldFeatureRich
-          course={course}
-          modules={modules}
-          lessons={lessons}
-          previewData={previewData}
-        />
-      );
+      return <TemplateBoldFeatureRich {...shared} />;
     case 'community_coaching':
-      return (
-        <TemplateCommunityCoaching
-          course={course}
-          modules={modules}
-          lessons={lessons}
-          previewData={previewData}
-        />
-      );
+      return <TemplateCommunityCoaching {...shared} />;
     case 'clean_minimal':
     default:
-      return (
-        <TemplateCleanMinimal
-          course={course}
-          modules={modules}
-          lessons={lessons}
-          previewData={previewData}
-        />
-      );
+      return <TemplateCleanMinimal {...shared} />;
   }
 }

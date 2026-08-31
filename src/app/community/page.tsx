@@ -2,19 +2,20 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { 
-  MessageSquare, Sparkles, Send, Plus, 
-  HelpCircle, Megaphone, ShieldAlert, Award, 
-  Bookmark, ChevronRight, X, Loader2, User, Search, Clock, ArrowRight, Home
+import {
+  MessageSquare, Send, Plus,
+  HelpCircle, Megaphone, ShieldCheck, Sparkles,
+  BookMarked, ChevronRight, X, Loader2, Search, Clock, ArrowRight, LifeBuoy, Bot
 } from 'lucide-react';
 import { createForumPost, getForumPosts, getPostDetails, addCommentToPost } from '@/app/actions/forum';
 
+// `id` is persisted to forum_posts.board (DB CHECK constraint) — do not change.
 const BOARDS = [
-  { id: 'Ask a Question', icon: HelpCircle, desc: 'Technical & setup queries' },
-  { id: 'Show and Tell Showcase', icon: Award, desc: 'Demonstrate custom solutions' },
-  { id: 'SA Business Tax & Continuity Strategy', icon: ShieldAlert, desc: 'SARS & local business compliance' },
-  { id: 'Feature Request Voting', icon: Megaphone, desc: 'Upvote future development targets' },
-  { id: 'Verified Automation Recipes', icon: Bookmark, desc: 'Tested CRM workflow setups' }
+  { id: 'Ask a Question', icon: HelpCircle, desc: 'Technical and setup questions' },
+  { id: 'Show and Tell Showcase', icon: Sparkles, desc: "Show what you've built" },
+  { id: 'SA Business Tax & Continuity Strategy', icon: ShieldCheck, desc: 'Tax and compliance for South African businesses' },
+  { id: 'Feature Request Voting', icon: Megaphone, desc: 'Suggest and vote on new features' },
+  { id: 'Verified Automation Recipes', icon: BookMarked, desc: 'Proven automation setups' }
 ];
 
 export default function PublicCommunityPage() {
@@ -22,8 +23,7 @@ export default function PublicCommunityPage() {
   const [posts, setPosts] = useState<any[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // Post Details Drawer
+
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [postDetails, setPostDetails] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -31,14 +31,12 @@ export default function PublicCommunityPage() {
   const [visitorCommentName, setVisitorCommentName] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
 
-  // New Post Form
   const [isCreatingPost, setIsCreatingPost] = useState(false);
   const [newPostTitle, setNewPostTitle] = useState('');
   const [newPostContent, setNewPostContent] = useState('');
   const [visitorPostName, setVisitorPostName] = useState('');
   const [submittingPost, setSubmittingPost] = useState(false);
 
-  // Fetch posts
   const fetchPosts = async () => {
     setLoadingPosts(true);
     try {
@@ -55,7 +53,6 @@ export default function PublicCommunityPage() {
     fetchPosts();
   }, [activeBoard]);
 
-  // Load post details
   const fetchPostDetails = async (id: string) => {
     setLoadingDetails(true);
     try {
@@ -83,9 +80,9 @@ export default function PublicCommunityPage() {
     setSubmittingPost(true);
     try {
       const res = await createForumPost(
-        activeBoard, 
-        newPostTitle, 
-        newPostContent, 
+        activeBoard,
+        newPostTitle,
+        newPostContent,
         visitorPostName || 'Anonymous Client'
       );
       if (res.success) {
@@ -112,8 +109,8 @@ export default function PublicCommunityPage() {
     setSubmittingComment(true);
     try {
       const res = await addCommentToPost(
-        selectedPostId, 
-        newComment, 
+        selectedPostId,
+        newComment,
         visitorCommentName || 'Anonymous Client'
       );
       if (res.success) {
@@ -128,295 +125,276 @@ export default function PublicCommunityPage() {
   };
 
   const filteredPosts = posts.filter(post => {
-    const titleMatch = post.title?.toLowerCase().includes(searchQuery.toLowerCase());
-    const contentMatch = post.content?.toLowerCase().includes(searchQuery.toLowerCase());
-    const authorMatch = post.author_name?.toLowerCase().includes(searchQuery.toLowerCase());
-    return titleMatch || contentMatch || authorMatch;
+    const q = searchQuery.toLowerCase();
+    return (
+      post.title?.toLowerCase().includes(q) ||
+      post.content?.toLowerCase().includes(q) ||
+      post.author_name?.toLowerCase().includes(q)
+    );
   });
 
-  return (
-    <div className="min-h-screen bg-[#04091a] text-white font-dm-sans relative overflow-x-hidden pb-16">
-      
-      {/* Background Ambience Accent Glows */}
-      <div className="absolute top-0 left-1/4 w-[400px] h-[400px] bg-primary/5 rounded-full blur-3xl -z-10" />
-      <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-purple-500/5 rounded-full blur-3xl -z-10" />
+  const initials = (name?: string) =>
+    (name || 'M').trim().split(/\s+/).filter(Boolean).slice(0, 2).map(s => s[0]?.toUpperCase()).join('') || 'M';
 
-      {/* Public Header Nav bar */}
-      <header className="border-b border-white/5 bg-[#060b1f]/60 backdrop-blur-md sticky top-0 z-[1000] px-4 md:px-8 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+  const inputCls =
+    'h-10 w-full rounded-lg border border-dash-border bg-white px-3 text-[13px] text-dash-text placeholder:text-dash-textMuted outline-none transition-colors focus:border-sky-500 focus:ring-4 focus:ring-sky-500/12';
+
+  return (
+    <div className="min-h-screen bg-dash-surface text-dash-text">
+
+      {/* Public header */}
+      <header className="sticky top-0 z-[1000] border-b border-dash-border bg-white/90 px-4 py-3 backdrop-blur md:px-8">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-primary to-purple-500 flex items-center justify-center font-bold text-white shrink-0 shadow-lg">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500 text-[13px] font-bold text-white">
               LM
             </div>
-            <span className="font-space-grotesk font-black text-sm tracking-tight uppercase">
-              LeadsMind <span className="text-primary">Public Hub</span>
+            <span className="text-[14px] font-semibold tracking-tight text-dash-text">
+              LeadsMind <span className="text-sky-600">Community</span>
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Link 
-              href="/articles" 
-              className="text-xs text-white/50 hover:text-white font-bold transition flex items-center gap-1 px-3 py-2 bg-white/5 rounded-lg border border-white/5"
+          <div className="flex items-center gap-2">
+            <Link
+              href="/articles"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-dash-border bg-white px-3 py-2 text-[12px] font-semibold text-dash-textMuted transition-colors hover:text-dash-text [&_svg]:size-3.5"
             >
-              <Home size={12} />
-              <span>Help Center</span>
+              <LifeBuoy /> Help center
             </Link>
-            
-            <Link 
-              href="/community/forums" 
-              className="text-xs text-primary font-black uppercase tracking-wider transition flex items-center gap-1 px-3.5 py-2 bg-primary/10 hover:bg-primary/20 border border-primary/20 rounded-lg shadow-sm"
+            <Link
+              href="/community/forums"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-sky-500 px-3.5 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-sky-600 [&_svg]:size-3.5"
             >
-              <span>Worker Console</span>
-              <ArrowRight size={12} />
+              Open dashboard <ArrowRight />
             </Link>
           </div>
         </div>
       </header>
 
-      {/* Main Body */}
-      <div className="max-w-7xl mx-auto px-4 md:px-8 pt-10 space-y-8">
-        
-        {/* Banner header block */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-[#080f28]/60 border border-white/5 p-6 sm:p-8 rounded-3xl shadow-xl">
+      <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 md:px-8">
+
+        {/* Page header */}
+        <div className="flex flex-col gap-4 border-b border-dash-border pb-6 md:flex-row md:items-end md:justify-between">
           <div className="space-y-1.5">
-            <span className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 animate-pulse" /> Community Engagement Platform
-            </span>
-            <h1 className="font-space-grotesk text-2xl sm:text-3xl font-black text-white uppercase tracking-tighter">
-              Public Discussion Board
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-600">
+              <span className="h-1 w-1 rounded-full bg-sky-500" />
+              Community
+            </div>
+            <h1 className="font-display text-[26px] font-semibold leading-tight tracking-[-0.02em] text-dash-text md:text-[30px]">
+              Community Forums
             </h1>
-            <p className="text-white/40 text-xs font-light max-w-2xl leading-relaxed">
-              Welcome to our open client matrix. Post setup questions, check local compliance answers, or search verified automation recipes.
+            <p className="max-w-2xl text-[13px] leading-relaxed text-dash-textMuted">
+              Ask questions, share what you&rsquo;ve built, and get help from other members.
             </p>
           </div>
-          
+
           <button
             onClick={() => setIsCreatingPost(true)}
-            className="bg-primary hover:bg-primary/95 text-white font-bold uppercase tracking-widest text-[10px] h-12 px-6 rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2 transition duration-150 active:scale-95 self-start md:self-center shrink-0"
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-sky-500 px-4 text-[13px] font-semibold text-white transition-colors hover:bg-sky-600 [&_svg]:size-4"
           >
-            <Plus size={16} /> Open New Thread
+            <Plus /> New discussion
           </button>
         </div>
 
-        {/* Content Matrix */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
-          {/* Left Panel: Category Board Selector */}
-          <div className="lg:col-span-4 space-y-4">
-            <div className="bg-[#080f28]/30 border border-white/5 rounded-3xl p-5 shadow-lg space-y-4">
-              <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest block">
-                Discussion Categories
-              </span>
-              <div className="space-y-1.5">
-                {BOARDS.map((board) => {
-                  const Icon = board.icon;
-                  const isActive = activeBoard === board.id;
-                  return (
-                    <button
-                      key={board.id}
-                      onClick={() => {
-                        setActiveBoard(board.id);
-                        setSelectedPostId(null);
-                      }}
-                      className={`w-full text-left p-3.5 rounded-2xl border transition flex items-start gap-3 group ${
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+
+          {/* Channel switcher */}
+          <nav className="lg:col-span-4 lg:sticky lg:top-20 lg:self-start">
+            <div className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-dash-textMuted/70">
+              Channels
+            </div>
+            <div className="space-y-0.5">
+              {BOARDS.map((board) => {
+                const Icon = board.icon;
+                const isActive = activeBoard === board.id;
+                return (
+                  <button
+                    key={board.id}
+                    onClick={() => {
+                      setActiveBoard(board.id);
+                      setSelectedPostId(null);
+                    }}
+                    className={`group flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-colors outline-none focus-visible:ring-4 focus-visible:ring-sky-500/20 ${
+                      isActive ? 'bg-sky-50 ring-1 ring-inset ring-sky-500/20' : 'hover:bg-white'
+                    }`}
+                  >
+                    <span
+                      className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors [&_svg]:size-4 ${
                         isActive
-                          ? 'bg-primary/10 border-primary/20 text-white shadow-sm'
-                          : 'bg-white/[0.01] border-white/5 text-white/50 hover:bg-white/[0.03] hover:border-white/10'
+                          ? 'border-sky-200 bg-white text-sky-600'
+                          : 'border-dash-border bg-white text-dash-textMuted group-hover:text-dash-text'
                       }`}
                     >
-                      <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${isActive ? 'text-primary' : 'text-white/30 group-hover:text-white/60'}`} />
-                      <div className="space-y-0.5">
-                        <span className="text-[11px] sm:text-xs font-bold block leading-tight">{board.id}</span>
-                        <span className="text-[9px] text-white/30 block font-light leading-tight">{board.desc}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+                      <Icon />
+                    </span>
+                    <span className="min-w-0 flex-1 space-y-0.5">
+                      <span className={`block text-[13px] font-semibold ${isActive ? 'text-sky-700' : 'text-dash-text'}`}>
+                        {board.id}
+                      </span>
+                      <span className="block text-[12px] leading-relaxed text-dash-textMuted">
+                        {board.desc}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-          </div>
+          </nav>
 
-          {/* Right Panel: Active stream */}
-          <div className="lg:col-span-8 space-y-6">
-            
-            {/* Search Filter & thread count */}
-            <div className="bg-[#080f28]/45 border border-white/5 rounded-2xl p-4 flex flex-col sm:flex-row items-center gap-4">
-              <div className="flex-1 flex items-center bg-[#020510] border border-white/10 rounded-xl px-4 py-2 w-full">
-                <Search className="w-4 h-4 text-white/20 mr-2 shrink-0" />
-                <input 
-                  type="text" 
-                  placeholder="Search topics, content, or author..." 
+          {/* Thread list */}
+          <div className="space-y-4 lg:col-span-8">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-dash-textMuted" />
+                <input
+                  type="text"
+                  placeholder="Search discussions…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-transparent border-none outline-none text-xs text-white placeholder:text-white/20 w-full font-bold focus:ring-0"
+                  className={inputCls + ' pl-9'}
                 />
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
-                  {filteredPosts.length} Threads
-                </span>
-              </div>
+              <span className="shrink-0 text-[12px] font-medium text-dash-textMuted">
+                {filteredPosts.length} {filteredPosts.length === 1 ? 'discussion' : 'discussions'}
+              </span>
             </div>
 
-            {/* List container */}
             {loadingPosts ? (
-              <div className="py-24 text-center flex flex-col items-center justify-center gap-3">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                <span className="text-xs text-white/40 uppercase tracking-widest font-black">Syncing discussion stream...</span>
+              <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dash-border bg-white py-20">
+                <Loader2 className="size-6 animate-spin text-sky-500 motion-reduce:animate-none" />
+                <span className="text-[12px] font-medium text-dash-textMuted">Loading discussions…</span>
               </div>
             ) : filteredPosts.length === 0 ? (
-              <div className="py-20 bg-[#080f28]/10 border border-dashed border-white/5 rounded-3xl flex flex-col items-center justify-center text-center p-6">
-                <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center mb-4 border border-white/5">
-                  <MessageSquare className="text-white/20" size={20} />
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-dash-border bg-white px-6 py-16 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-dash-border bg-white text-dash-textMuted [&_svg]:size-5">
+                  <MessageSquare />
                 </div>
-                <h4 className="text-white font-bold uppercase tracking-wider text-sm">No Conversations Found</h4>
-                <p className="text-white/30 text-[10px] uppercase tracking-widest mt-1 max-w-xs font-light">
-                  Be the first to open a thread inside this category channel!
+                <h4 className="mt-4 text-[14px] font-semibold text-dash-text">No discussions yet</h4>
+                <p className="mt-1 max-w-sm text-[12px] leading-relaxed text-dash-textMuted">
+                  Be the first to start a discussion in this channel.
                 </p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {filteredPosts.map((post) => (
-                  <div 
-                    key={post.id} 
-                    className="bg-[#080f28]/35 border border-white/5 rounded-3xl p-6 hover:border-primary/45 transition-all duration-300 shadow-lg"
+                  <button
+                    key={post.id}
+                    onClick={() => setSelectedPostId(post.id)}
+                    className="group block w-full rounded-2xl border border-dash-border bg-white p-5 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04),0_1px_3px_rgba(15,23,42,0.03)] transition-colors hover:border-slate-300"
                   >
-                    <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/10 to-purple-500/10 border border-white/10 flex items-center justify-center font-bold text-xs text-primary font-mono shrink-0">
-                          {post.author_name?.substring(0, 2)}
-                        </div>
-                        <div>
-                          <h5 className="text-xs font-bold text-white uppercase tracking-tight">
-                            @{post.author_name || 'Member'}
-                          </h5>
-                          <div className="flex items-center gap-2 text-white/30 text-[9px] font-semibold uppercase tracking-widest">
-                            <Clock size={10} className="text-primary" />
-                            <span>
-                              {new Date(post.created_at).toLocaleDateString('en-ZA', {
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </span>
-                          </div>
+                    <div className="mb-3 flex items-center gap-2.5">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sky-50 text-[11px] font-semibold text-sky-700 ring-1 ring-inset ring-sky-500/15">
+                        {initials(post.author_name)}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="truncate text-[12px] font-semibold text-dash-text">{post.author_name || 'Member'}</div>
+                        <div className="flex items-center gap-1 text-[11px] text-dash-textMuted">
+                          <Clock className="size-3" />
+                          {new Date(post.created_at).toLocaleDateString('en-ZA', {
+                            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                          })}
                         </div>
                       </div>
-                      
-                      <span className="text-[8px] font-black text-primary uppercase tracking-widest bg-primary/10 border border-primary/25 px-2 py-0.5 rounded-md self-start">
+                      <span className="ml-auto shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-inset ring-slate-500/20">
                         {post.board}
                       </span>
                     </div>
-
-                    <h4 className="text-sm font-bold text-white uppercase tracking-tight mb-3">
-                      {post.title}
-                    </h4>
-                    <p className="text-white/45 text-xs font-light line-clamp-3 mb-5 leading-relaxed">
-                      {post.content}
-                    </p>
-
-                    <div className="flex items-center justify-end pt-4 border-t border-white/[0.04]">
-                      <button
-                        onClick={() => setSelectedPostId(post.id)}
-                        className="h-10 bg-white/5 border border-white/10 hover:bg-primary hover:border-primary text-white rounded-xl px-5 text-[9px] font-black uppercase tracking-widest transition flex items-center gap-1.5"
-                      >
-                        <span>View thread replies</span>
-                        <ChevronRight size={14} />
-                      </button>
+                    <h3 className="text-[14px] font-semibold leading-snug text-dash-text">{post.title}</h3>
+                    <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-dash-textMuted">{post.content}</p>
+                    <div className="mt-3 inline-flex items-center gap-1 text-[12px] font-semibold text-sky-600">
+                      View discussion
+                      <ChevronRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
-
           </div>
         </div>
-
       </div>
 
-      {/* MODAL: Create Post */}
+      {/* Create discussion modal */}
       {isCreatingPost && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-[2050] flex items-center justify-center p-4 animate-fade-in font-dm-sans">
-          <div className="w-full max-w-lg bg-[#060b1f] border border-white/15 rounded-3xl overflow-hidden shadow-2xl animate-scale-up max-h-[90vh] overflow-y-auto">
-            <div className="p-5 border-b border-white/5 flex items-center justify-between bg-[#080f28]/60">
-              <div className="flex items-center gap-2">
-                <HelpCircle className="w-5 h-5 text-primary" />
-                <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-white">Create New Thread</h4>
-              </div>
+        <div className="fixed inset-0 z-[2050] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-dash-border bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-dash-border px-6 py-4">
+              <h4 className="text-[15px] font-semibold text-dash-text">Start a discussion</h4>
               <button
                 onClick={() => setIsCreatingPost(false)}
-                className="p-1.5 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-dash-textMuted transition-colors hover:bg-dash-surface hover:text-dash-text"
               >
-                <X className="w-4 h-4" />
+                <X className="size-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreatePost} className="p-6 space-y-4">
+            <form onSubmit={handleCreatePost} className="space-y-4 px-6 py-6">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider block">Target Channel Board</label>
-                <select
-                  value={activeBoard}
-                  onChange={(e) => setActiveBoard(e.target.value)}
-                  className="w-full py-2.5 px-3.5 bg-[#020510] border border-white/10 focus:border-primary/40 rounded-xl text-xs text-white focus:outline-none transition-colors"
-                >
-                  {BOARDS.map((b) => (
-                    <option key={b.id} value={b.id} className="bg-[#060b1f]">{b.id}</option>
-                  ))}
-                </select>
+                <label className="block text-[12px] font-semibold text-dash-text">Channel</label>
+                <div className="relative">
+                  <select
+                    value={activeBoard}
+                    onChange={(e) => setActiveBoard(e.target.value)}
+                    className="h-10 w-full appearance-none rounded-lg border border-dash-border bg-white px-3 pr-9 text-[13px] text-dash-text outline-none transition-colors focus:border-sky-500 focus:ring-4 focus:ring-sky-500/12"
+                  >
+                    {BOARDS.map((b) => (
+                      <option key={b.id} value={b.id}>{b.id}</option>
+                    ))}
+                  </select>
+                  <ChevronRight className="pointer-events-none absolute right-3 top-1/2 size-3.5 -translate-y-1/2 rotate-90 text-dash-textMuted" />
+                </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider block">Your Screen Name / Email</label>
+                <label className="block text-[12px] font-semibold text-dash-text">Your name</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. John Doe"
                   value={visitorPostName}
                   onChange={(e) => setVisitorPostName(e.target.value)}
-                  className="w-full py-2.5 px-3.5 bg-[#020510] border border-white/10 focus:border-primary/40 rounded-xl text-xs text-white focus:outline-none transition-colors"
+                  className={inputCls}
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider block">Discussion Topic Title</label>
+                <label className="block text-[12px] font-semibold text-dash-text">Title</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. How do I configure FNB statement mapping rules?"
+                  placeholder="What's your question or topic?"
                   value={newPostTitle}
                   onChange={(e) => setNewPostTitle(e.target.value)}
-                  className="w-full py-2.5 px-3.5 bg-[#020510] border border-white/10 focus:border-primary/40 rounded-xl text-xs text-white focus:outline-none transition-colors"
+                  className={inputCls}
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider block">Details & Context</label>
+                <label className="block text-[12px] font-semibold text-dash-text">Details</label>
                 <textarea
                   required
                   rows={5}
-                  placeholder="Explain your technical query, workflow configuration, or compliance case here. LENA Moderator will auto-respond if a verified guide matches."
+                  placeholder="Add any details that will help others understand and respond. If a help center article matches, an automated answer will be posted."
                   value={newPostContent}
                   onChange={(e) => setNewPostContent(e.target.value)}
-                  className="w-full py-2.5 px-3.5 bg-[#020510] border border-white/10 focus:border-primary/40 rounded-xl text-xs text-white focus:outline-none transition-colors resize-none leading-relaxed"
+                  className="w-full rounded-lg border border-dash-border bg-white px-3 py-2.5 text-[13px] leading-relaxed text-dash-text placeholder:text-dash-textMuted outline-none transition-colors focus:border-sky-500 focus:ring-4 focus:ring-sky-500/12"
                 />
               </div>
 
-              <div className="pt-2 flex items-center justify-end gap-3">
+              <div className="flex items-center justify-end gap-2 pt-1">
                 <button
                   type="button"
                   onClick={() => setIsCreatingPost(false)}
-                  className="py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-white text-[10px] font-bold uppercase tracking-widest transition"
+                  className="inline-flex h-10 items-center rounded-lg border border-dash-border bg-white px-4 text-[13px] font-semibold text-dash-text transition-colors hover:bg-dash-surface"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submittingPost}
-                  className="py-2.5 px-5 rounded-xl bg-primary hover:bg-primary/95 text-white text-[10px] font-black uppercase tracking-widest transition flex items-center gap-1.5"
+                  className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-sky-500 px-4 text-[13px] font-semibold text-white transition-colors hover:bg-sky-600 disabled:opacity-60 [&_svg]:size-4"
                 >
-                  {submittingPost && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>Publish Thread</span>
+                  {submittingPost && <Loader2 className="animate-spin" />}
+                  Post discussion
                 </button>
               </div>
             </form>
@@ -424,115 +402,112 @@ export default function PublicCommunityPage() {
         </div>
       )}
 
-      {/* DRAWER: Post Comments & Moderator Response Stream */}
+      {/* Thread detail drawer */}
       {selectedPostId && postDetails && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[2000] animate-fade-in flex justify-end font-dm-sans">
-          <div className="w-full max-w-xl bg-[#04091a] border-l border-white/10 h-full flex flex-col shadow-2xl animate-slide-in-right relative">
-            
-            {/* Drawer Header */}
-            <div className="p-5 border-b border-white/5 flex items-center justify-between bg-[#060b1f]">
-              <div className="space-y-1">
-                <span className="text-[8px] font-black text-primary uppercase tracking-widest px-2 py-0.5 rounded bg-primary/10 border border-primary/25">
+        <div className="fixed inset-0 z-[2000] flex justify-end bg-slate-900/40 backdrop-blur-sm">
+          <div className="flex h-full w-full max-w-xl flex-col border-l border-dash-border bg-white shadow-xl">
+            <div className="flex items-start justify-between gap-3 border-b border-dash-border px-6 py-4">
+              <div className="min-w-0 space-y-1">
+                <span className="inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-inset ring-slate-500/20">
                   {postDetails.post.board}
                 </span>
-                <h4 className="text-sm font-bold text-white tracking-tight leading-tight line-clamp-1">
-                  {postDetails.post.title}
-                </h4>
+                <h4 className="truncate text-[15px] font-semibold text-dash-text">{postDetails.post.title}</h4>
               </div>
               <button
                 onClick={() => setSelectedPostId(null)}
-                className="p-2 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-dash-textMuted transition-colors hover:bg-dash-surface hover:text-dash-text"
               >
-                <X className="w-4 h-4" />
+                <X className="size-4" />
               </button>
             </div>
 
-            {/* Scrollable comments stream */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
-              
-              {/* Original Post */}
-              <div className="p-5 bg-[#080f28]/45 border border-white/5 rounded-2xl space-y-3">
-                <div className="flex items-center justify-between text-[9px] text-white/45 border-b border-white/[0.04] pb-2">
-                  <span className="font-bold">@{postDetails.post.author_name}</span>
-                  <span>{new Date(postDetails.post.created_at).toLocaleString('en-ZA')}</span>
+            <div className="flex-1 space-y-5 overflow-y-auto px-6 py-6">
+              <div className="rounded-2xl border border-dash-border bg-dash-surface/50 p-4">
+                <div className="mb-2 flex items-center gap-2.5">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-50 text-[11px] font-semibold text-sky-700 ring-1 ring-inset ring-sky-500/15">
+                    {initials(postDetails.post.author_name)}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="text-[12px] font-semibold text-dash-text">{postDetails.post.author_name || 'Member'}</div>
+                    <div className="text-[11px] text-dash-textMuted">{new Date(postDetails.post.created_at).toLocaleString('en-ZA')}</div>
+                  </div>
+                  <span className="ml-auto text-[10px] font-semibold uppercase tracking-[0.1em] text-dash-textMuted">Original post</span>
                 </div>
-                <p className="text-xs sm:text-sm text-white/80 leading-relaxed font-light whitespace-pre-wrap">
-                  {postDetails.post.content}
-                </p>
+                <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-dash-text">{postDetails.post.content}</p>
               </div>
 
-              {/* Replies Divider */}
               <div className="flex items-center gap-3">
-                <div className="h-px bg-white/10 flex-1" />
-                <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">Replies Stream</span>
-                <div className="h-px bg-white/10 flex-1" />
+                <div className="h-px flex-1 bg-dash-border" />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-dash-textMuted">
+                  {postDetails.comments.length} {postDetails.comments.length === 1 ? 'reply' : 'replies'}
+                </span>
+                <div className="h-px flex-1 bg-dash-border" />
               </div>
 
-              {/* Comments Flow list */}
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {postDetails.comments.map((comment: any) => (
                   <div
                     key={comment.id}
-                    className={`p-5 rounded-2xl border transition leading-relaxed ${
-                      comment.is_lena
-                        ? 'bg-purple-500/5 border-purple-500/20 text-white/95 shadow-lg shadow-purple-500/5'
-                        : 'bg-white/[0.01] border-white/5 text-white/80'
+                    className={`rounded-2xl border p-4 ${
+                      comment.is_lena ? 'border-violet-200 bg-violet-50/60' : 'border-dash-border bg-white'
                     }`}
                   >
-                    <div className="flex items-center justify-between text-[9px] border-b border-white/[0.03] pb-2 mb-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
                       {comment.is_lena ? (
-                        <span className="font-black text-purple-400 flex items-center gap-1 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
-                          🤖 LENA AI Moderator
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700 ring-1 ring-inset ring-violet-600/20 [&_svg]:size-3">
+                          <Bot /> AI answer
                         </span>
                       ) : (
-                        <span className="font-bold text-white/45">@{comment.author_name}</span>
+                        <span className="inline-flex items-center gap-2 text-[12px] font-semibold text-dash-text">
+                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sky-50 text-[10px] font-semibold text-sky-700 ring-1 ring-inset ring-sky-500/15">
+                            {initials(comment.author_name)}
+                          </span>
+                          {comment.author_name || 'Member'}
+                        </span>
                       )}
-                      <span className="text-white/30">
+                      <span className="text-[11px] text-dash-textMuted">
                         {new Date(comment.created_at).toLocaleString('en-ZA')}
                       </span>
                     </div>
-                    <p className="text-xs font-light whitespace-pre-wrap leading-relaxed text-white/85">
-                      {comment.content}
-                    </p>
+                    <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-dash-text">{comment.content}</p>
                   </div>
                 ))}
+                {postDetails.comments.length === 0 && (
+                  <p className="py-4 text-center text-[12px] text-dash-textMuted">
+                    No replies yet — be the first to respond.
+                  </p>
+                )}
               </div>
-
             </div>
 
-            {/* Quick reply footer input */}
-            <form onSubmit={handleAddComment} className="p-4 border-t border-white/5 bg-[#060b1f] space-y-3">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  required
-                  placeholder="Your Name (e.g. Guest Customer)"
-                  value={visitorCommentName}
-                  onChange={(e) => setVisitorCommentName(e.target.value)}
-                  className="w-1/3 py-2.5 px-3 bg-[#020510] border border-white/10 focus:border-primary/45 rounded-xl text-xs text-white focus:outline-none transition-colors"
-                />
-                <input
-                  type="text"
-                  required
-                  placeholder="Type your discussion response..."
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  className="flex-1 py-2.5 px-3 bg-[#020510] border border-white/10 focus:border-primary/45 rounded-xl text-xs text-white focus:outline-none transition-colors"
-                />
-                <button
-                  type="submit"
-                  disabled={submittingComment}
-                  className="p-3 bg-primary hover:bg-primary/95 text-white rounded-xl transition duration-150 flex items-center justify-center shrink-0 disabled:opacity-50"
-                >
-                  {submittingComment ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : <Send className="w-4.5 h-4.5" />}
-                </button>
-              </div>
+            <form onSubmit={handleAddComment} className="flex gap-2 border-t border-dash-border px-4 py-3">
+              <input
+                type="text"
+                required
+                placeholder="Your name"
+                value={visitorCommentName}
+                onChange={(e) => setVisitorCommentName(e.target.value)}
+                className={inputCls + ' w-1/3'}
+              />
+              <input
+                type="text"
+                required
+                placeholder="Write a reply…"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                className={inputCls + ' flex-1'}
+              />
+              <button
+                type="submit"
+                disabled={submittingComment}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-500 text-white transition-colors hover:bg-sky-600 disabled:opacity-60"
+              >
+                {submittingComment ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+              </button>
             </form>
-
           </div>
         </div>
       )}
-
     </div>
   );
 }

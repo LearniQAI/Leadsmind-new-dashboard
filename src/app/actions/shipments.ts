@@ -270,6 +270,24 @@ export async function uploadBrandLogo(formData: FormData) {
       return { success: false, error: 'Failed to retrieve public URL' }
     }
 
+    // Surface this logo in the workspace-wide Media Center (public.media_files).
+    // Non-fatal: the logo is already uploaded and usable if this insert fails.
+    const { error: registerError } = await supabase.from('media_files').insert({
+      workspace_id: workspaceId,
+      name: file.name,
+      path: filePath,
+      type: 'file',
+      mime_type: file.type || 'application/octet-stream',
+      size: file.size,
+      metadata: {
+        uploaded_via: 'Courier tracking — brand logo',
+        source_feature: 'courier_brand_logo',
+      },
+    })
+    if (registerError) {
+      logger.error({ err: registerError, workspaceId }, 'shipments.brand_logo.media_files.register.failed')
+    }
+
     return { success: true, publicUrl: publicData.publicUrl }
   } catch (err: any) {
     logger.error({ err, workspaceId }, 'shipments.brand_logo.upload_action.failed')

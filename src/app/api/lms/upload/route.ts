@@ -51,6 +51,38 @@ export async function POST(req: NextRequest) {
       .from('media')
       .getPublicUrl(storagePath);
 
+    // Surface instructor-uploaded lesson content in the workspace-wide Media
+    // Center (it reads public.media_files). Only the `lms/*` prefixes are real
+    // course assets an admin would want to manage there — `student-assignments`
+    // (student homework) and `voicenotes` (chat) share this endpoint but are
+    // deliberately excluded. A failure here must not fail the upload itself:
+    // the object is already stored and the caller needs the URL back.
+    if (cleanPathPrefix.startsWith('lms/')) {
+      try {
+        const kind = cleanPathPrefix.slice('lms/'.length).split('/')[0] || 'file';
+        const kindLabel = kind.charAt(0).toUpperCase() + kind.slice(1);
+        const { error: registerErr } = await adminClient.from('media_files').insert({
+          workspace_id: workspaceId,
+          name: file.name,
+          path: storagePath,
+          type: 'file',
+          mime_type: file.type || 'application/octet-stream',
+          size: file.size,
+          created_by: userId,
+          metadata: {
+            uploaded_via: `Lesson content — ${kindLabel}`,
+            source_feature: 'lms_lesson_content',
+            path_prefix: cleanPathPrefix,
+          },
+        });
+        if (registerErr) {
+          logger.error({ err: registerErr, userId, storagePath }, 'lms.upload.media_files.register.failed');
+        }
+      } catch (registerErr) {
+        logger.error({ err: registerErr, userId, storagePath }, 'lms.upload.media_files.register.failed');
+      }
+    }
+
     return NextResponse.json({
       success: true,
       url: publicUrl,
