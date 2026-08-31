@@ -16,34 +16,79 @@ export async function POST(req: NextRequest) {
     const { workspaceId: workspace_id } = await requireLmsInstructor();
 
     const body = await req.json();
-    const { lesson_id } = body;
+    const { lesson_id, module_id } = body;
 
-    if (!lesson_id) {
-      return NextResponse.json({ error: 'Missing required parameter: lesson_id' }, { status: 400 });
+    if (!lesson_id && !module_id) {
+      return NextResponse.json({ error: 'Missing required parameter: lesson_id or module_id' }, { status: 400 });
     }
 
-    // 1. Fetch lesson context — scoped to the caller's real (session-resolved) workspace, never
-    // a client-supplied workspace_id, so a real OpenAI call can't be triggered against (and
-    // quiz questions can't be inserted into) another workspace's lesson.
-    const { data: lesson, error: lessonError } = await supabaseAdmin
-      .from('course_lessons')
-      .select('title, content')
-      .eq('id', lesson_id)
-      .eq('workspace_id', workspace_id)
-      .single();
+    // Three Deferred Items, Item 2 — module-scoped generation added alongside the existing
+    // lesson-scoped path (never both in one request; module_id takes it if both were somehow
+    // sent, but the real callers — QuizWorkbenchClient's two scopes — only ever send one).
+    // Real context for a module quiz is the COMBINED content of every lesson in that module,
+    // not just one, since the quiz is meant to cover the whole module — a single lesson's
+    // content would under-represent what the quiz is supposed to assess.
+    let title: string;
+    let content: string;
 
-    if (lessonError || !lesson) {
-      return NextResponse.json({ error: 'Lesson not found or failed to fetch context' }, { status: 404 });
+    if (module_id) {
+      // Fetch module + all its real lessons — scoped to the caller's real (session-resolved)
+      // workspace, same discipline as the lesson path below: a client-supplied workspace_id
+      // is never trusted, so a real OpenAI call/insert can't be aimed at another workspace.
+      const { data: courseModule, error: moduleError } = await supabaseAdmin
+        .from('course_modules')
+        .select('title')
+        .eq('id', module_id)
+        .eq('workspace_id', workspace_id)
+        .single();
+
+      if (moduleError || !courseModule) {
+        return NextResponse.json({ error: 'Module not found or failed to fetch context' }, { status: 404 });
+      }
+
+      const { data: lessons, error: lessonsError } = await supabaseAdmin
+        .from('course_lessons')
+        .select('title, content')
+        .eq('module_id', module_id)
+        .eq('workspace_id', workspace_id)
+        .order('position', { ascending: true });
+
+      if (lessonsError) throw lessonsError;
+
+      title = courseModule.title || 'General Module';
+      content = (lessons || [])
+        .map((l) => {
+          const lessonText = typeof l.content === 'string' ? l.content : JSON.stringify(l.content || '');
+          return `Lesson "${l.title}": ${lessonText}`;
+        })
+        .join('\n\n');
+    } else {
+      // 1. Fetch lesson context — scoped to the caller's real (session-resolved) workspace, never
+      // a client-supplied workspace_id, so a real OpenAI call can't be triggered against (and
+      // quiz questions can't be inserted into) another workspace's lesson.
+      const { data: lesson, error: lessonError } = await supabaseAdmin
+        .from('course_lessons')
+        .select('title, content')
+        .eq('id', lesson_id)
+        .eq('workspace_id', workspace_id)
+        .single();
+
+      if (lessonError || !lesson) {
+        return NextResponse.json({ error: 'Lesson not found or failed to fetch context' }, { status: 404 });
+      }
+
+      title = lesson.title || 'General Subject';
+      content = typeof lesson.content === 'string'
+        ? lesson.content
+        : JSON.stringify(lesson.content || 'No detailed content provided');
     }
 
-    const title = lesson.title || 'General Subject';
-    const content = typeof lesson.content === 'string' 
-      ? lesson.content 
-      : JSON.stringify(lesson.content || 'No detailed content provided');
-
-    // 2. Prepare OpenAI prompt
-    const prompt = `Generate exactly 5 multiple choice questions (MCQ) for a quiz evaluating a student's understanding of the lesson titled: "${title}".
-    Lesson Content details: "${content.substring(0, 1500)}".
+    // 2. Prepare OpenAI prompt — module scope gets a larger context window since it's the
+    // combined text of every lesson in the module, not just one.
+    const scopeLabel = module_id ? 'module' : 'lesson';
+    const contentLimit = module_id ? 6000 : 1500;
+    const prompt = `Generate exactly 5 multiple choice questions (MCQ) for a quiz evaluating a student's understanding of the ${scopeLabel} titled: "${title}".
+    ${scopeLabel === 'module' ? 'Combined content of every lesson in this module' : 'Lesson Content details'}: "${content.substring(0, contentLimit)}".
     
     You must output a raw valid JSON array of objects only. No markdown wrappers. Each object must have these exact keys:
     - "question_text": The question string.
@@ -148,9 +193,11 @@ export async function POST(req: NextRequest) {
       questionsJson = JSON.parse(cleanedJson);
     }
 
-    // 3. Save questions to DB
+    // 3. Save questions to DB — module_quiz_questions for a module quiz, quiz_questions for a
+    // lesson quiz (Step 1 schema decision from the Module-Level Quiz pass: separate tables,
+    // never a shared one).
     const insertPayload = questionsJson.map((q, idx) => ({
-      lesson_id,
+      ...(module_id ? { module_id } : { lesson_id }),
       workspace_id,
       question_type: 'mcq',
       question_text: q.question_text,
@@ -162,7 +209,7 @@ export async function POST(req: NextRequest) {
     }));
 
     const { data: createdQuestions, error: insertError } = await supabaseAdmin
-      .from('quiz_questions')
+      .from(module_id ? 'module_quiz_questions' : 'quiz_questions')
       .insert(insertPayload)
       .select();
 

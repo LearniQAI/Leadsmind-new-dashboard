@@ -347,16 +347,14 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
         const lessonJson = await lessonRes.json();
         if (lessonJson.error) throw new Error(lessonJson.error);
 
-        // AUDIT (Module-Level Quiz pass) — a real, pre-existing bug found and fixed here:
-        // this used to also call the legacy upsertQuiz() server action, writing a
-        // corresponding row into lms_quizzes on every save. Confirmed live that nothing
-        // real reads lms_quizzes for this lesson-quiz flow — getQuizById() only exists as
-        // a "does an lms_quizzes row happen to already exist" check that the real page
-        // (QuizWorkbenchPage) falls back past to course_lessons anyway when it doesn't, so
-        // that legacy row was pure dead weight populated on every single settings save,
-        // never read by anything. Removed rather than carried into the new module-quiz
-        // system (which never had it to begin with) — matches the standing instruction not
-        // to touch or resurrect the legacy lms_quizzes/lms_questions family.
+        // A real, pre-existing bug was found and fixed here during the Module-Level Quiz
+        // pass: this used to also call the legacy upsertQuiz() server action, writing a
+        // corresponding row into lms_quizzes on every save — dead weight nothing ever read.
+        // The whole legacy lms_quizzes/lms_questions/lms_quiz_submissions cluster (and
+        // getQuizById, its lookup here) was later removed entirely (Three Deferred Items,
+        // Item 3: confirmed dead, zero real callers, zero real rows) — QuizWorkbenchPage now
+        // resolves this page's `quiz` shape directly from course_lessons, no legacy lookup
+        // involved at all.
       }
 
       // Update settings (quiz_settings for a lesson quiz, module_quiz_settings for a module
@@ -393,7 +391,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          lesson_id: quiz.id,
+          ...(isModuleScope ? { module_id: moduleId } : { lesson_id: quiz.id }),
           workspace_id: course.workspace_id || quiz.workspace_id
         })
       });
@@ -526,21 +524,18 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
               </div>
             )}
 
-            {/* Module-Level Quiz pass: AI question generation (/api/ai/generate-questions)
-                is lesson_id-keyed and out of this pass's scope to extend — hidden for a
-                module quiz rather than silently generating questions against the wrong
-                lesson. Manual authoring (the actual Step 2 requirement) is unaffected. */}
-            {!isModuleScope && (
-              <button
-                type="button"
-                onClick={handleGenerateAiQuestions}
-                disabled={isGeneratingQuestions}
-                className="w-full bg-dash-accent/10 border border-dash-accent/20 hover:bg-dash-accent/20 text-dash-accent rounded-xl py-2 px-3 text-[10px] font-bold flex items-center justify-center gap-1 transition-all motion-reduce:transition-none disabled:opacity-50"
-              >
-                {isGeneratingQuestions ? <Loader2 size={12} className="animate-spin motion-reduce:animate-none" /> : <Sparkles size={12} />}
-                Generate with AI
-              </button>
-            )}
+            {/* Three Deferred Items, Item 2 — /api/ai/generate-questions now accepts module_id
+                too (combined content of every lesson in the module as its real context), so
+                this button is real for both scopes. */}
+            <button
+              type="button"
+              onClick={handleGenerateAiQuestions}
+              disabled={isGeneratingQuestions}
+              className="w-full bg-dash-accent/10 border border-dash-accent/20 hover:bg-dash-accent/20 text-dash-accent rounded-xl py-2 px-3 text-[10px] font-bold flex items-center justify-center gap-1 transition-all motion-reduce:transition-none disabled:opacity-50"
+            >
+              {isGeneratingQuestions ? <Loader2 size={12} className="animate-spin motion-reduce:animate-none" /> : <Sparkles size={12} />}
+              Generate with AI
+            </button>
 
             <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
               {questions.map((q, idx) => (

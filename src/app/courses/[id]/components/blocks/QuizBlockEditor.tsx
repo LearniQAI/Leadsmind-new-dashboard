@@ -13,11 +13,12 @@ interface QuizBlockEditorProps {
 }
 
 // quiz_questions/quiz_settings/quiz_attempts (the tables the live student quiz flow at
-// /student/courses/[id]/quiz/[quizId] actually reads — confirmed by re-auditing the real
-// route, not the older lms_quizzes/getLessonQuiz path some admin code still calls) are keyed
-// directly by lesson_id, not by a separate quiz block id. So this editor just opens the
-// existing Quiz Workbench for the block's own lesson — the same real questions/settings a
-// legacy single-lesson_type quiz would use, reused rather than duplicated.
+// /student/courses/[id]/quiz/[quizId] actually reads) are keyed directly by lesson_id, not by
+// a separate quiz block id — the legacy lms_quizzes/getLessonQuiz path this comment used to
+// mention was removed entirely (Three Deferred Items, Item 3: confirmed dead, zero real
+// callers, zero real rows). So this editor just opens the existing Quiz Workbench for the
+// block's own lesson — the same real questions/settings a legacy single-lesson_type quiz
+// would use, reused rather than duplicated.
 export default function QuizBlockEditor({ block, courseId }: QuizBlockEditorProps) {
   const router = useRouter();
   const [questionCount, setQuestionCount] = useState<number | null>(null);
