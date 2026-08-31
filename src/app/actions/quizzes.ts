@@ -3,294 +3,22 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { logger } from '@/shared/logger';
-import { gradeLmsQuizAttempt } from '@/lib/lms/gradeLmsQuiz';
 
-// Quiz CRUD actions
-export async function getLessonQuiz(lessonId: string) {
-  try {
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
+// Three Deferred Items, Item 3 — the legacy lms_quizzes/lms_questions/lms_quiz_options/
+// lms_quiz_explanations/lms_quiz_submissions CRUD actions that used to live in this file
+// (getLessonQuiz, getQuizById, upsertQuiz, deleteQuiz, getQuizQuestions, upsertQuestion,
+// deleteQuestion, upsertQuizOption, deleteQuizOption, upsertQuizExplanation,
+// saveQuizSubmissionAction, getStudentQuizSubmissionsAction) are removed. Re-confirmed dead
+// before removing: a full-codebase search found zero real callers of any of the five legacy
+// tables or of QuizPlayer.tsx (its only real caller, itself removed alongside this) outside of
+// this file and comments documenting the earlier audit; all five tables had 0 real rows. The
+// real, live systems — quiz_questions/quiz_settings/quiz_attempts (lesson-scoped) and
+// module_quiz_questions/module_quiz_settings/module_quiz_attempts (module-scoped) — are
+// untouched by this removal; see gradeModuleQuiz.ts/gradeQuiz.ts for grading and
+// studentProgress.ts for the real submit actions.
 
-    const supabase = await createServerClient();
-    const { data: quiz, error } = await supabase
-      .from('lms_quizzes')
-      .select('*')
-      .eq('lesson_id', lessonId)
-      .eq('workspace_id', workspaceId)
-      .maybeSingle();
-
-    if (error) throw error;
-    return { data: quiz };
-  } catch (error: any) {
-    logger.error({ err: error }, 'get.lesson.quiz.failed');
-    return { error: 'Operation failed. Please try again.' };
-  }
-}
-
-export async function getQuizById(quizId: string) {
-  try {
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
-
-    const supabase = await createServerClient();
-    const { data: quiz, error } = await supabase
-      .from('lms_quizzes')
-      .select('*')
-      .eq('id', quizId)
-      .eq('workspace_id', workspaceId)
-      .maybeSingle();
-
-    if (error) throw error;
-    return { data: quiz };
-  } catch (error: any) {
-    logger.error({ err: error }, 'get.quiz.by.id.failed');
-    return { error: 'Operation failed. Please try again.' };
-  }
-}
-
-export async function upsertQuiz(quizData: any) {
-  try {
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
-
-    const supabase = await createServerClient();
-    const { module_id, ...cleanQuizData } = quizData;
-    const payload = {
-      ...cleanQuizData,
-      module_id: null,
-      workspace_id: workspaceId,
-      updated_at: new Date().toISOString()
-    };
-
-    let result;
-    if (quizData.id) {
-      const { data: existing } = await supabase
-        .from('lms_quizzes')
-        .select('id')
-        .eq("id", quizData.id).eq("workspace_id", workspaceId)
-        .maybeSingle();
-
-      if (existing) {
-        result = await supabase
-          .from('lms_quizzes')
-          .update(payload)
-          .eq("id", quizData.id).eq("workspace_id", workspaceId)
-          .select()
-          .single();
-      } else {
-        result = await supabase
-          .from('lms_quizzes')
-          .insert({ ...payload, created_at: new Date().toISOString() })
-          .select()
-          .single();
-      }
-    } else {
-      result = await supabase
-        .from('lms_quizzes')
-        .insert({ ...payload, created_at: new Date().toISOString() })
-        .select()
-        .single();
-    }
-
-    if (result.error) throw result.error;
-    return { data: result.data };
-  } catch (error: any) {
-    logger.error({ err: error }, 'upsert.quiz.failed');
-    return { error: 'Operation failed. Please try again.' };
-  }
-}
-
-export async function deleteQuiz(quizId: string) {
-  try {
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
-
-    const supabase = await createServerClient();
-    const { error } = await supabase
-      .from('lms_quizzes')
-      .delete()
-      .eq('id', quizId)
-      .eq('workspace_id', workspaceId);
-
-    if (error) throw error;
-    return { success: true };
-  } catch (error: any) {
-    logger.error({ err: error }, 'delete.quiz.failed');
-    return { error: 'Operation failed. Please try again.' };
-  }
-}
-
-// Question CRUD actions
-export async function getQuizQuestions(quizId: string) {
-  try {
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
-
-    const supabase = await createServerClient();
-    
-    // Fetch questions sorted by position
-    const { data: questions, error } = await supabase
-      .from('lms_questions')
-      .select('*, quiz_options:lms_quiz_options(*), quiz_explanations:lms_quiz_explanations(*)')
-      .eq('quiz_id', quizId)
-      .eq('workspace_id', workspaceId)
-      .order('position', { ascending: true });
-
-    if (error) throw error;
-    return { data: questions };
-  } catch (error: any) {
-    logger.error({ err: error }, 'get.quiz.questions.failed');
-    return { error: 'Operation failed. Please try again.' };
-  }
-}
-
-export async function upsertQuestion(questionData: any) {
-  try {
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
-
-    const supabase = await createServerClient();
-    const payload = {
-      ...questionData,
-      workspace_id: workspaceId
-    };
-
-    let result;
-    if (questionData.id) {
-      result = await supabase
-        .from('lms_questions')
-        .update(payload)
-        .eq("id", questionData.id).eq("workspace_id", workspaceId)
-        .select()
-        .single();
-    } else {
-      result = await supabase
-        .from('lms_questions')
-        .insert(payload)
-        .select()
-        .single();
-    }
-
-    if (result.error) throw result.error;
-    return { data: result.data };
-  } catch (error: any) {
-    logger.error({ err: error }, 'upsert.question.failed');
-    return { error: 'Operation failed. Please try again.' };
-  }
-}
-
-export async function deleteQuestion(questionId: string) {
-  try {
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
-
-    const supabase = await createServerClient();
-    const { error } = await supabase
-      .from('lms_questions')
-      .delete()
-      .eq('id', questionId)
-      .eq('workspace_id', workspaceId);
-
-    if (error) throw error;
-    return { success: true };
-  } catch (error: any) {
-    logger.error({ err: error }, 'delete.question.failed');
-    return { error: 'Operation failed. Please try again.' };
-  }
-}
-
-// Option and Explanation CRUD actions
-export async function upsertQuizOption(optionData: any) {
-  try {
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
-
-    const supabase = await createServerClient();
-    const payload = {
-      ...optionData,
-      workspace_id: workspaceId
-    };
-
-    let result;
-    if (optionData.id) {
-      result = await supabase
-        .from('lms_quiz_options')
-        .update(payload)
-        .eq("id", optionData.id).eq("workspace_id", workspaceId)
-        .select()
-        .single();
-    } else {
-      result = await supabase
-        .from('lms_quiz_options')
-        .insert(payload)
-        .select()
-        .single();
-    }
-
-    if (result.error) throw result.error;
-    return { data: result.data };
-  } catch (error: any) {
-    logger.error({ err: error }, 'upsert.quiz.option.failed');
-    return { error: 'Operation failed. Please try again.' };
-  }
-}
-
-export async function deleteQuizOption(optionId: string) {
-  try {
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
-
-    const supabase = await createServerClient();
-    const { error } = await supabase
-      .from('lms_quiz_options')
-      .delete()
-      .eq('id', optionId)
-      .eq('workspace_id', workspaceId);
-
-    if (error) throw error;
-    return { success: true };
-  } catch (error: any) {
-    logger.error({ err: error }, 'delete.quiz.option.failed');
-    return { error: 'Operation failed. Please try again.' };
-  }
-}
-
-export async function upsertQuizExplanation(explanationData: any) {
-  try {
-    const workspaceId = await getCurrentWorkspaceId();
-    if (!workspaceId) return { error: 'No workspace active' };
-
-    const supabase = await createServerClient();
-    const payload = {
-      ...explanationData,
-      workspace_id: workspaceId
-    };
-
-    let result;
-    if (explanationData.id) {
-      result = await supabase
-        .from('lms_quiz_explanations')
-        .update(payload)
-        .eq("id", explanationData.id).eq("workspace_id", workspaceId)
-        .select()
-        .single();
-    } else {
-      result = await supabase
-        .from('lms_quiz_explanations')
-        .insert(payload)
-        .select()
-        .single();
-    }
-
-    if (result.error) throw result.error;
-    return { data: result.data };
-  } catch (error: any) {
-    logger.error({ err: error }, 'upsert.quiz.explanation.failed');
-    return { error: 'Operation failed. Please try again.' };
-  }
-}
-
-// LENA AI Explanation Generator using OpenAI chat completion API
+// LENA AI Explanation Generator using OpenAI chat completion API — real, table-independent,
+// used by the real Quiz Workbench (QuizWorkbenchClient.tsx) for both lesson and module scope.
 export async function generateExplanationWithLena(
   questionText: string,
   correctAnswers: string[],
@@ -298,7 +26,7 @@ export async function generateExplanationWithLena(
 ) {
   try {
     const openAiKey = process.env.OPENAI_API_KEY;
-    
+
     // Mock Sandbox Fallback for development without API key
     if (!openAiKey || openAiKey === 'sk_mock_key' || openAiKey.includes('PLACEHOLDER') || openAiKey.startsWith('sk-proj-O15jtbs')) {
       return {
@@ -353,200 +81,100 @@ Response formatting guidelines:
   }
 }
 
-export async function saveQuizSubmissionAction(
-  quizId: string,
-  answers: any,
-  startedAt: string,
-  submittedAt: string,
-  metadata: any
-) {
-  try {
-    const supabase = await createServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: 'Not authenticated' };
-
-    // Get active workspace ID of the quiz
-    const { data: quizObj } = await supabase
-      .from('lms_quizzes')
-      .select('workspace_id, passing_score, max_retakes, settings')
-      .eq('id', quizId)
-      .single();
-
-    const workspaceId = quizObj?.workspace_id;
-    if (!workspaceId) return { error: 'Quiz workspace not found' };
-
-    // Get student contact record
-    let { data: contact } = await supabase
-      .from('contacts')
-      .select('id')
-      .eq('email', user.email)
-      .single();
-
-    if (!contact) {
-      // Auto-create contact record
-      const { data: newContact, error: contactErr } = await supabase
-        .from('contacts')
-        .insert({
-          workspace_id: workspaceId,
-          email: user.email,
-          first_name: user.email?.split('@')[0] || 'Student',
-          last_name: ''
-        })
-        .select('id')
-        .single();
-
-      if (contactErr) throw contactErr;
-      contact = newContact;
-    }
-
-    // A call with no answers yet is just the "attempt started" bootstrap log QuizPlayer
-    // fires on load — not a real submission to grade. Whether to grade is decided purely by
-    // the shape of `answers` (real content or not), never by a client-supplied status/score,
-    // which are no longer accepted as parameters at all.
-    const hasAnswers = !!answers && Object.keys(answers).length > 0;
-
-    let score: number | null = null;
-    let status = 'started';
-    let passed = false;
-
-    if (hasAnswers) {
-      // Independently recompute score/pass from the real lms_questions data — never trust
-      // a client-supplied score or status field.
-      const grading = await gradeLmsQuizAttempt(quizId, answers);
-      score = grading.score;
-      passed = grading.passed;
-      status = passed ? 'passed' : 'failed';
-    }
-
-    // Save submission
-    const { data: submission, error } = await supabase
-      .from('lms_quiz_submissions')
-      .insert({
-        workspace_id: workspaceId,
-        quiz_id: quizId,
-        contact_id: contact.id,
-        answers,
-        score,
-        status,
-        started_at: startedAt,
-        submitted_at: submittedAt,
-        metadata
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    if (hasAnswers) {
-      // Trigger automation events asynchronously — only for a genuine graded submission,
-      // using only the server-computed score/passed above.
-      const { publishEvent } = await import('@/lib/events/EventBus');
-      const { applyAutoTag } = await import('@/modules/tags/autoTagging/applySystemTag');
-      const passingScore = quizObj.passing_score ?? 80;
-
-      if (passed) {
-        await publishEvent(workspaceId, 'quiz_passed', contact.id, { quizId, score });
-        applyAutoTag(workspaceId, 'contact', contact.id, 'Passed Quiz', true).catch(() => {});
-        applyAutoTag(workspaceId, 'contact', contact.id, 'Failed Quiz', false).catch(() => {});
-      } else {
-        await publishEvent(workspaceId, 'quiz_failed', contact.id, { quizId, score });
-        applyAutoTag(workspaceId, 'contact', contact.id, 'Failed Quiz', true).catch(() => {});
-      }
-
-      // Count attempts
-      const { count: attemptCount } = await supabase
-        .from('lms_quiz_submissions')
-        .select('id', { count: 'exact', head: true })
-        .eq('quiz_id', quizId)
-        .eq('contact_id', contact.id);
-
-      const maxRetakes = quizObj.max_retakes ?? -1;
-      if (maxRetakes !== -1 && attemptCount !== null && attemptCount >= maxRetakes) {
-        await publishEvent(workspaceId, 'quiz_limit_reached', contact.id, { quizId, attempts: attemptCount });
-      }
-
-      // Struggle score threshold calculation (consecutive failures)
-      const { data: recentAttempts } = await supabase
-        .from('lms_quiz_submissions')
-        .select('score, status')
-        .eq('quiz_id', quizId)
-        .eq('contact_id', contact.id)
-        .order('submitted_at', { ascending: false })
-        .limit(5);
-
-      let consecutiveFailures = 0;
-      if (recentAttempts) {
-        for (const attempt of recentAttempts) {
-          const attemptPassed = attempt.score !== null ? attempt.score >= passingScore : attempt.status === 'passed';
-          if (!attemptPassed) {
-            consecutiveFailures++;
-          } else {
-            break; // Stop counting at the first passed attempt
-          }
-        }
-      }
-
-      const struggleThreshold = quizObj.settings?.struggle_threshold ?? 3;
-      if (consecutiveFailures >= struggleThreshold) {
-        await publishEvent(workspaceId, 'struggle_threshold_crossed', contact.id, { quizId, consecutiveFailures });
-      }
-    }
-
-    return { data: submission, score, passed, status };
-  } catch (error: any) {
-    logger.error({ err: error }, 'save.quiz.submission.action.failed');
-    return { error: 'Operation failed. Please try again.' };
-  }
-}
-
-export async function getQuizSubmissionsAction(quizId: string) {
+// AUDIT (Module-Level Quiz pass) — real bug found and fixed: this used to read from
+// lms_quiz_submissions, the legacy table saveQuizSubmissionAction() wrote to (that function is
+// removed now — see the Three Deferred Items, Item 3 comment above). Confirmed live:
+// lms_quiz_submissions had 0 real rows, because the REAL student quiz-taking flow
+// (StudentQuizClient.tsx -> submitQuizAttempt in studentProgress.ts) has never written to it —
+// it writes to quiz_attempts. That means QuizAnalyticsConsole (the admin results dashboard,
+// which calls this action) had been silently disconnected from every real student attempt
+// since submitQuizAttempt was built. Fixed to read the real quiz_attempts table instead,
+// shaping the row to the same fields the existing dashboard UI already expects (contact_id/
+// contact/status/metadata.total_duration_seconds) so QuizAnalyticsConsole itself needed no
+// changes — genuinely the same results view, now pointed at real data.
+export async function getQuizSubmissionsAction(lessonId: string) {
   try {
     const workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
 
     const supabase = await createServerClient();
     const { data, error } = await supabase
-      .from('lms_quiz_submissions')
-      .select('*, contact:contacts(*)')
-      .eq('quiz_id', quizId)
+      .from('quiz_attempts')
+      .select('*')
+      .eq('lesson_id', lessonId)
       .eq('workspace_id', workspaceId)
       .order('submitted_at', { ascending: false });
 
     if (error) throw error;
-    return { data };
+
+    // Real bug caught live during the module-quiz version of this same fix: quiz_attempts
+    // (and module_quiz_attempts) has no declared foreign key from student_id to contacts.id
+    // (confirmed via a real constraint query — quiz_attempts has zero FK constraints at all),
+    // so PostgREST's embedded-select syntax (`contact:contacts(*)`) can't auto-join and fails
+    // with PGRST200 ("Could not find a relationship..."). Fetched as a real, separate query
+    // and merged in JS instead — genuinely tested this way, not assumed from the schema alone.
+    const studentIds = [...new Set((data || []).map((a: any) => a.student_id))];
+    const { data: contactRows } = studentIds.length
+      ? await supabase.from('contacts').select('*').in('id', studentIds)
+      : { data: [] as any[] };
+    const contactsById = new Map((contactRows || []).map((c: any) => [c.id, c]));
+
+    const shaped = (data || []).map((a: any) => ({
+      id: a.id,
+      contact_id: a.student_id,
+      contact: contactsById.get(a.student_id) || null,
+      submitted_at: a.submitted_at,
+      score: a.score,
+      status: a.passed ? 'passed' : 'failed',
+      metadata: { total_duration_seconds: a.time_taken_seconds || 0 },
+    }));
+    return { data: shaped };
   } catch (error: any) {
     logger.error({ err: error }, 'get.quiz.submissions.action.failed');
     return { error: 'Operation failed. Please try again.' };
   }
 }
 
-export async function getStudentQuizSubmissionsAction(quizId: string) {
+// Module-Level Quiz — real counterpart to getQuizSubmissionsAction above, reading
+// module_quiz_attempts (Step 1 schema decision) instead of quiz_attempts, shaped identically
+// so it's a genuine drop-in for QuizAnalyticsConsole (Step 4: reuse the existing results view
+// rather than building a separate dashboard).
+export async function getModuleQuizSubmissionsAction(moduleId: string) {
   try {
+    const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
+
     const supabase = await createServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: 'Not authenticated' };
-
-    // Find contact
-    const { data: contact } = await supabase
-      .from('contacts')
-      .select('id')
-      .eq('email', user.email)
-      .single();
-
-    if (!contact) return { data: [] };
-
     const { data, error } = await supabase
-      .from('lms_quiz_submissions')
+      .from('module_quiz_attempts')
       .select('*')
-      .eq('quiz_id', quizId)
-      .eq('contact_id', contact.id)
-      .order('submitted_at', { ascending: true });
+      .eq('module_id', moduleId)
+      .eq('workspace_id', workspaceId)
+      .order('submitted_at', { ascending: false });
 
     if (error) throw error;
-    return { data };
+
+    // Same real fix as getQuizSubmissionsAction above (see its comment) — module_quiz_attempts
+    // also has no FK from student_id to contacts.id, confirmed live via the PGRST200 error
+    // this embedded-select syntax actually threw when first tested end-to-end.
+    const studentIds = [...new Set((data || []).map((a: any) => a.student_id))];
+    const { data: contactRows } = studentIds.length
+      ? await supabase.from('contacts').select('*').in('id', studentIds)
+      : { data: [] as any[] };
+    const contactsById = new Map((contactRows || []).map((c: any) => [c.id, c]));
+
+    const shaped = (data || []).map((a: any) => ({
+      id: a.id,
+      contact_id: a.student_id,
+      contact: contactsById.get(a.student_id) || null,
+      submitted_at: a.submitted_at,
+      score: a.score,
+      status: a.passed ? 'passed' : 'failed',
+      metadata: { total_duration_seconds: a.time_taken_seconds || 0 },
+    }));
+    return { data: shaped };
   } catch (error: any) {
-    logger.error({ err: error }, 'get.student.quiz.submissions.action.failed');
+    logger.error({ err: error }, 'get.module_quiz.submissions.action.failed');
     return { error: 'Operation failed. Please try again.' };
   }
 }
-

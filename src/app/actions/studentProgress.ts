@@ -4,6 +4,8 @@ import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getUser } from '@/lib/auth';
 import { getOrCreateStudentContact } from './studentEnrollments';
 import { gradeQuizAttempt } from '@/lib/lms/gradeQuiz';
+import { gradeModuleQuizAttempt } from '@/lib/lms/gradeModuleQuiz';
+import { getModuleCompletionStatus } from '@/lib/lms/moduleCompletion';
 import { markLessonCompleteForContact } from '@/lib/lms/completeLesson';
 import { logger } from '@/shared/logger';
 
@@ -192,5 +194,71 @@ export async function submitQuizAttempt(payload: {
   } catch (err: any) {
     logger.error({ err, courseId: payload.courseId, lessonId: payload.lessonId }, 'student_progress.quiz_attempt.submit.failed');
     return { error: 'Failed to submit quiz attempt.' };
+  }
+}
+
+// Module-Level Quiz — the module-scoped counterpart to submitQuizAttempt above, same real
+// shape (resolve context -> grade server-side -> insert the real attempt row), against
+// module_quiz_questions/module_quiz_attempts per the Step 1 schema decision instead of the
+// lesson-scoped tables. Step 3 access-timing decision: a student can only submit after
+// completing every lesson in the module (getModuleCompletionStatus, backed by the same real
+// course_progress completion tracking every other completion path in this codebase uses) —
+// enforced here server-side, not just as a UI affordance, since a client-side-only gate could
+// be bypassed by calling this action directly.
+export async function submitModuleQuizAttempt(payload: {
+  courseId: string;
+  moduleId: string;
+  answers: any;
+}) {
+  try {
+    const ctx = await resolveCourseContext(payload.courseId);
+    if ('error' in ctx) return { error: ctx.error };
+    const { workspaceId, contactId } = ctx;
+
+    const completion = await getModuleCompletionStatus(contactId, payload.moduleId);
+    if (!completion.allComplete) {
+      return { error: 'Complete every lesson in this module before taking its quiz.' };
+    }
+
+    const adminClient = createAdminClient();
+
+    const { score, passed, rawScore, maxScore } = await gradeModuleQuizAttempt(payload.moduleId, payload.answers);
+
+    const { error: attemptErr } = await adminClient
+      .from('module_quiz_attempts')
+      .insert({
+        workspace_id: workspaceId,
+        module_id: payload.moduleId,
+        student_id: contactId,
+        score,
+        max_score: maxScore,
+        percentage: score,
+        passed,
+        answers: payload.answers
+      });
+
+    if (attemptErr) throw attemptErr;
+
+    return { success: true, score, passed, maxScore, rawScore };
+  } catch (err: any) {
+    logger.error({ err, courseId: payload.courseId, moduleId: payload.moduleId }, 'student_progress.module_quiz_attempt.submit.failed');
+    return { error: 'Failed to submit quiz attempt.' };
+  }
+}
+
+// Module-Level Quiz — real gate check the student-facing UI calls before even rendering the
+// quiz-taking screen (so a student sees a real "complete these lessons first" message rather
+// than an empty/broken quiz), backed by the same getModuleCompletionStatus the submit action
+// above enforces server-side.
+export async function getModuleQuizAccessStatus(courseId: string, moduleId: string) {
+  try {
+    const ctx = await resolveCourseContext(courseId);
+    if ('error' in ctx) return { error: ctx.error };
+
+    const completion = await getModuleCompletionStatus(ctx.contactId, moduleId);
+    return { data: completion };
+  } catch (err: any) {
+    logger.error({ err, courseId, moduleId }, 'student_progress.module_quiz_access.failed');
+    return { error: 'Operation failed. Please try again.' };
   }
 }

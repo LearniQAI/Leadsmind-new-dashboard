@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import Editor from "@monaco-editor/react";
-import QuizPlayer from "./QuizPlayer";
 import { Button } from "@/components/ui/button";
 import { 
   PlayCircle, BookOpen, Headphones, FileText, 
@@ -253,12 +252,18 @@ export default function SpecializedPlayer({
         );
 
       case "Quiz":
+        // Three Deferred Items, Item 3 — QuizPlayer.tsx (and the legacy lms_quizzes/
+        // lms_questions/lms_quiz_submissions tables it read/wrote) removed: confirmed dead,
+        // zero real callers, zero real rows in any of the three tables. This whole
+        // /courses/[id]/learn admin-preview player already keyed off `lesson.type` (a field
+        // real course_lessons rows don't have — the real column is `lesson_type`), so this
+        // case was already unreachable with real lesson data before this removal. Real quiz
+        // taking/authoring lives at /courses/[id]/quiz/[quizId] (lesson-scoped) and
+        // /courses/[id]/module-quiz/[moduleId] (module-scoped), both untouched by this.
         return (
-          <QuizPlayer 
-            lesson={lesson} 
-            onComplete={onComplete} 
-            isCompleting={isCompleting} 
-          />
+          <div className="bg-[#111d47]/20 border border-white/5 rounded-2xl p-6 max-w-xl mx-auto text-center space-y-2">
+            <p className="text-xs text-white/60">Quiz preview isn't available here.</p>
+          </div>
         );
 
       case "Assignment":
