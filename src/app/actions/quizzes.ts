@@ -499,27 +499,69 @@ export async function saveQuizSubmissionAction(
   }
 }
 
-export async function getQuizSubmissionsAction(quizId: string) {
+// AUDIT (Module-Level Quiz pass) — real bug found and fixed: these two actions used to read
+// from lms_quiz_submissions, the legacy table saveQuizSubmissionAction() writes to. Confirmed
+// live: lms_quiz_submissions has 0 real rows, because the REAL student quiz-taking flow
+// (StudentQuizClient.tsx -> submitQuizAttempt in studentProgress.ts) has never written to it —
+// it writes to quiz_attempts. That means QuizAnalyticsConsole (the admin results dashboard,
+// which calls getQuizSubmissionsAction) has been silently disconnected from every real student
+// attempt since submitQuizAttempt was built — it would show empty for a lesson quiz any real
+// student had actually taken. Fixed to read the real quiz_attempts table instead, shaping the
+// row to the same fields the existing dashboard UI already expects (contact_id/contact/
+// status/metadata.total_duration_seconds) so QuizAnalyticsConsole itself needed no changes —
+// genuinely the same results view, now pointed at real data instead of an empty legacy table.
+// saveQuizSubmissionAction (lms_quiz_submissions writer) is left as-is — untouched, unused by
+// the real flow, out of scope for this pass to remove.
+export async function getQuizSubmissionsAction(lessonId: string) {
   try {
     const workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
 
     const supabase = await createServerClient();
     const { data, error } = await supabase
-      .from('lms_quiz_submissions')
-      .select('*, contact:contacts(*)')
-      .eq('quiz_id', quizId)
+      .from('quiz_attempts')
+      .select('*')
+      .eq('lesson_id', lessonId)
       .eq('workspace_id', workspaceId)
       .order('submitted_at', { ascending: false });
 
     if (error) throw error;
-    return { data };
+
+    // Real bug caught live during the module-quiz version of this same fix: quiz_attempts
+    // (and module_quiz_attempts) has no declared foreign key from student_id to contacts.id
+    // (confirmed via a real constraint query — quiz_attempts has zero FK constraints at all),
+    // so PostgREST's embedded-select syntax (`contact:contacts(*)`) can't auto-join and fails
+    // with PGRST200 ("Could not find a relationship..."). Fetched as a real, separate query
+    // and merged in JS instead — genuinely tested this way, not assumed from the schema alone.
+    const studentIds = [...new Set((data || []).map((a: any) => a.student_id))];
+    const { data: contactRows } = studentIds.length
+      ? await supabase.from('contacts').select('*').in('id', studentIds)
+      : { data: [] as any[] };
+    const contactsById = new Map((contactRows || []).map((c: any) => [c.id, c]));
+
+    const shaped = (data || []).map((a: any) => ({
+      id: a.id,
+      contact_id: a.student_id,
+      contact: contactsById.get(a.student_id) || null,
+      submitted_at: a.submitted_at,
+      score: a.score,
+      status: a.passed ? 'passed' : 'failed',
+      metadata: { total_duration_seconds: a.time_taken_seconds || 0 },
+    }));
+    return { data: shaped };
   } catch (error: any) {
     logger.error({ err: error }, 'get.quiz.submissions.action.failed');
     return { error: 'Operation failed. Please try again.' };
   }
 }
 
+// NOT changed by the Module-Level Quiz pass's getQuizSubmissionsAction fix above (see that
+// function's comment) — confirmed this one is used ONLY by the separate, self-consistent
+// legacy QuizPlayer.tsx surface (src/app/courses/[id]/learn/, an admin-preview page requiring
+// workspace auth, not the real student-facing flow), which keys getLessonQuiz/
+// saveQuizSubmissionAction/getQuizQuestions/this function all off the SAME lms_quizzes.id —
+// changing only this one to read quiz_attempts (keyed by lesson_id, not lms_quizzes.id) would
+// break that internal consistency instead of fixing anything real. Left exactly as it was.
 export async function getStudentQuizSubmissionsAction(quizId: string) {
   try {
     const supabase = await createServerClient();
@@ -546,6 +588,50 @@ export async function getStudentQuizSubmissionsAction(quizId: string) {
     return { data };
   } catch (error: any) {
     logger.error({ err: error }, 'get.student.quiz.submissions.action.failed');
+    return { error: 'Operation failed. Please try again.' };
+  }
+}
+
+// Module-Level Quiz — real counterpart to getQuizSubmissionsAction above, reading
+// module_quiz_attempts (Step 1 schema decision) instead of quiz_attempts, shaped identically
+// so it's a genuine drop-in for QuizAnalyticsConsole (Step 4: reuse the existing results view
+// rather than building a separate dashboard).
+export async function getModuleQuizSubmissionsAction(moduleId: string) {
+  try {
+    const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { error: 'No workspace active' };
+
+    const supabase = await createServerClient();
+    const { data, error } = await supabase
+      .from('module_quiz_attempts')
+      .select('*')
+      .eq('module_id', moduleId)
+      .eq('workspace_id', workspaceId)
+      .order('submitted_at', { ascending: false });
+
+    if (error) throw error;
+
+    // Same real fix as getQuizSubmissionsAction above (see its comment) — module_quiz_attempts
+    // also has no FK from student_id to contacts.id, confirmed live via the PGRST200 error
+    // this embedded-select syntax actually threw when first tested end-to-end.
+    const studentIds = [...new Set((data || []).map((a: any) => a.student_id))];
+    const { data: contactRows } = studentIds.length
+      ? await supabase.from('contacts').select('*').in('id', studentIds)
+      : { data: [] as any[] };
+    const contactsById = new Map((contactRows || []).map((c: any) => [c.id, c]));
+
+    const shaped = (data || []).map((a: any) => ({
+      id: a.id,
+      contact_id: a.student_id,
+      contact: contactsById.get(a.student_id) || null,
+      submitted_at: a.submitted_at,
+      score: a.score,
+      status: a.passed ? 'passed' : 'failed',
+      metadata: { total_duration_seconds: a.time_taken_seconds || 0 },
+    }));
+    return { data: shaped };
+  } catch (error: any) {
+    logger.error({ err: error }, 'get.module_quiz.submissions.action.failed');
     return { error: 'Operation failed. Please try again.' };
   }
 }

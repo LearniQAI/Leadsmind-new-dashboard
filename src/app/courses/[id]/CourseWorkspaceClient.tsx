@@ -442,6 +442,7 @@ export default function CourseWorkspaceClient({
                 <ModuleCard
                   key={module.id}
                   moduleNumber={modules.findIndex((m) => m.id === module.id) + 1}
+                  courseId={currentCourse.id}
                   module={{
                     ...module,
                     lessons: (module.lessons || []).map(mapLessonForModal)

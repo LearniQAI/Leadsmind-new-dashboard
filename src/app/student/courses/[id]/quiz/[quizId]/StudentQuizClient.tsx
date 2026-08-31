@@ -6,7 +6,7 @@ import {
   BookOpen, ChevronRight, CheckCircle2, AlertTriangle, ArrowLeft, Loader2, Award, XCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { submitQuizAttempt } from '@/app/actions/studentProgress';
+import { submitQuizAttempt, submitModuleQuizAttempt } from '@/app/actions/studentProgress';
 import { Button } from '@/components/ui/button';
 
 interface StudentQuizClientProps {
@@ -16,16 +16,25 @@ interface StudentQuizClientProps {
   settings: any;
   attemptsCount: number;
   hasPassedRemedial: boolean;
+  /** Module-Level Quiz pass — when set, submits via submitModuleQuizAttempt against this
+   *  module instead of submitQuizAttempt against quiz.id as a lesson. Same real UI either
+   *  way (Step 3: reuse the existing quiz-taking flow, not a second parallel one). The AI
+   *  remedial path is lesson-scoped infrastructure (lms_remedial_assignments) with no module
+   *  equivalent — its buttons are hidden for a module quiz rather than pointed at a lessonId
+   *  that doesn't apply here. */
+  moduleId?: string;
 }
 
-export default function StudentQuizClient({ 
-  courseId, 
-  quiz, 
-  questions, 
+export default function StudentQuizClient({
+  courseId,
+  quiz,
+  questions,
   settings,
   attemptsCount,
-  hasPassedRemedial
+  hasPassedRemedial,
+  moduleId
 }: StudentQuizClientProps) {
+  const isModuleScope = !!moduleId;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -77,11 +86,9 @@ export default function StudentQuizClient({
     // Save attempt to DB — only the answers are sent; score/passed are computed server-side.
     startTransition(async () => {
       try {
-        const res = await submitQuizAttempt({
-          courseId,
-          lessonId: quiz.id,
-          answers
-        });
+        const res = isModuleScope
+          ? await submitModuleQuizAttempt({ courseId, moduleId: moduleId!, answers })
+          : await submitQuizAttempt({ courseId, lessonId: quiz.id, answers });
         if (res.error) toast.error(res.error);
         else {
           // Overwrite the optimistic local estimate with the server's authoritative result.
@@ -115,7 +122,7 @@ export default function StudentQuizClient({
   }
 
   const maxAttempts = settings?.max_attempts || 3;
-  const isLocked = attemptsCount >= maxAttempts && !hasPassedRemedial;
+  const isLocked = attemptsCount >= maxAttempts && !(isModuleScope || hasPassedRemedial);
 
   if (isLocked) {
     return (
@@ -127,20 +134,24 @@ export default function StudentQuizClient({
           <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest block">Lockout Status</span>
           <h2 className="text-2xl font-space-grotesk font-black uppercase text-white tracking-tight">Attempts Exceeded</h2>
           <p className="text-xs text-white/50 leading-relaxed max-w-md mx-auto">
-            You have used all {attemptsCount} of your allowed attempts for this assessment. 
-            To unlock the quiz, you must complete the AI-powered remedial learning path.
+            You have used all {attemptsCount} of your allowed attempts for this assessment.
+            {isModuleScope
+              ? " Contact your instructor to reset your attempts."
+              : " To unlock the quiz, you must complete the AI-powered remedial learning path."}
           </p>
         </div>
-        
-        <div className="pt-2">
-          <Button 
-            onClick={() => router.push(`/student/courses/${courseId}/remedial?lessonId=${quiz.id}`)}
-            className="w-full bg-primary hover:bg-primary/90 text-white h-11 rounded-xl uppercase tracking-wider text-[10px] font-black shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
-          >
-            Start AI Remedial Session 🤖
-          </Button>
-        </div>
-        
+
+        {!isModuleScope && (
+          <div className="pt-2">
+            <Button
+              onClick={() => router.push(`/student/courses/${courseId}/remedial?lessonId=${quiz.id}`)}
+              className="w-full bg-primary hover:bg-primary/90 text-white h-11 rounded-xl uppercase tracking-wider text-[10px] font-black shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
+            >
+              Start AI Remedial Session 🤖
+            </Button>
+          </div>
+        )}
+
         <div className="border-t border-white/5 pt-4">
           <Button 
             onClick={() => router.push(`/student/courses/${courseId}`)}
@@ -236,8 +247,8 @@ export default function StudentQuizClient({
         </div>
 
         <div className="flex flex-col gap-3">
-          {!passed && (
-            <Button 
+          {!passed && !isModuleScope && (
+            <Button
               onClick={() => router.push(`/student/courses/${courseId}/remedial?lessonId=${quiz.id}`)}
               className="w-full bg-primary hover:bg-primary/95 text-white h-11 rounded-xl uppercase tracking-wider text-[10px] font-black shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
             >

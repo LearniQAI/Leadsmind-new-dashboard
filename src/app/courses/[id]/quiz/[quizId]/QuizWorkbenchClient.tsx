@@ -10,9 +10,8 @@ import {
   Sparkles, CheckSquare, Settings, AlertTriangle, Save,
   Sliders, Layout, Eye
 } from "lucide-react";
-import { 
-  getQuizQuestions, upsertQuestion, deleteQuestion, 
-  generateExplanationWithLena, upsertQuiz 
+import {
+  generateExplanationWithLena
 } from "@/app/actions/quizzes";
 import Editor from "@monaco-editor/react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -22,9 +21,16 @@ import QuizAnalyticsConsole from "./QuizAnalyticsConsole";
 interface QuizWorkbenchClientProps {
   course: any;
   quiz: any;
+  /** Module-Level Quiz pass — when set, this same Workbench authors a quiz scoped to an
+   *  entire module (module_quiz_questions/module_quiz_settings, Step 1's schema decision)
+   *  instead of the lesson `quiz.id` — the real question-authoring UI below is unchanged
+   *  either way; only which API endpoints/payload keys get hit differs, isolated to the few
+   *  call sites below rather than a second, parallel component (Step 2's explicit ask). */
+  moduleId?: string;
 }
 
-export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClientProps) {
+export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWorkbenchClientProps) {
+  const isModuleScope = !!moduleId;
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"questions" | "settings" | "analytics">("questions");
 
@@ -91,7 +97,11 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
 
   const loadSettings = async () => {
     try {
-      const res = await fetch(`/api/lms/quiz/settings?lessonId=${quiz.id}`);
+      const res = await fetch(
+        isModuleScope
+          ? `/api/lms/module-quiz/settings?moduleId=${moduleId}`
+          : `/api/lms/quiz/settings?lessonId=${quiz.id}`
+      );
       const dataJson = await res.json();
       if (dataJson.data) {
         const s = dataJson.data;
@@ -110,7 +120,11 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
 
   const loadQuestions = async () => {
     try {
-      const res = await fetch(`/api/lms/quiz/questions?lessonId=${quiz.id}`);
+      const res = await fetch(
+        isModuleScope
+          ? `/api/lms/module-quiz/questions?moduleId=${moduleId}`
+          : `/api/lms/quiz/questions?lessonId=${quiz.id}`
+      );
       const dataJson = await res.json();
       if (dataJson.data) {
         setQuestions(dataJson.data);
@@ -254,14 +268,15 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
 
     startTransition(async () => {
       try {
-        const url = activeQuestion?.id ? `/api/lms/quiz/questions?id=${activeQuestion.id}` : '/api/lms/quiz/questions';
+        const base = isModuleScope ? '/api/lms/module-quiz/questions' : '/api/lms/quiz/questions';
+        const url = activeQuestion?.id ? `${base}?id=${activeQuestion.id}` : base;
         const method = activeQuestion?.id ? 'PATCH' : 'POST';
 
         const res = await fetch(url, {
           method,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            lesson_id: quiz.id,
+            ...(isModuleScope ? { module_id: moduleId } : { lesson_id: quiz.id }),
             workspace_id: course.workspace_id || quiz.workspace_id,
             question_type: qTypeMap[type] || 'mcq',
             question_text: questionText,
@@ -289,7 +304,8 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
 
   const handleDeleteQuestion = async (qId: string) => {
     try {
-      const res = await fetch(`/api/lms/quiz/questions?id=${qId}`, {
+      const base = isModuleScope ? '/api/lms/module-quiz/questions' : '/api/lms/quiz/questions';
+      const res = await fetch(`${base}?id=${qId}`, {
         method: 'DELETE'
       });
       const resData = await res.json();
@@ -304,55 +320,52 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
   };
 
   const handleSaveSettings = async () => {
-    if (!quizTitle.trim()) {
+    if (!isModuleScope && !quizTitle.trim()) {
       toast.error("Quiz title is required");
       return;
     }
     setIsSavingSettings(true);
     try {
-      // 1. Update course_lessons title and description
-      const lessonRes = await fetch(`/api/lms/lessons?id=${quiz.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: quizTitle,
-          content: {
-            ...(quiz.content || {}),
-            text: quizDesc
-          }
-        })
-      });
-      const lessonJson = await lessonRes.json();
-      if (lessonJson.error) throw new Error(lessonJson.error);
+      // Module-Level Quiz pass: a module quiz has no title/description of its own (it's an
+      // assessment FOR the module, shown as "{Module title} Quiz" everywhere rather than a
+      // separately-named entity) — so, unlike the lesson-quiz path, there is no
+      // course_lessons row to update here, and deliberately no equivalent of the legacy
+      // upsertQuiz()/lms_quizzes write either (see below).
+      if (!isModuleScope) {
+        // 1. Update course_lessons title and description
+        const lessonRes = await fetch(`/api/lms/lessons?id=${quiz.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: quizTitle,
+            content: {
+              ...(quiz.content || {}),
+              text: quizDesc
+            }
+          })
+        });
+        const lessonJson = await lessonRes.json();
+        if (lessonJson.error) throw new Error(lessonJson.error);
 
-      // 2. Update/insert lms_quizzes using the upsertQuiz server action
-      const upsertRes = await upsertQuiz({
-        id: quiz.id,
-        course_id: course.id,
-        module_id: quiz.module_id,
-        title: quizTitle,
-        description: quizDesc,
-        passing_score: passingScore,
-        time_limit_minutes: timeLimit,
-        max_retakes: maxRetakes,
-        is_required: isRequired,
-        settings: {
-          exceeded_behavior: exceededBehavior,
-          feedback_trigger: feedbackTrigger,
-          shuffle_options: shuffleOptions,
-          shuffle_questions: shuffleQuestions,
-          pool_count: poolCount,
-          require_pass_to_unlock: requirePass
-        }
-      });
-      if (upsertRes.error) throw new Error(upsertRes.error);
+        // AUDIT (Module-Level Quiz pass) — a real, pre-existing bug found and fixed here:
+        // this used to also call the legacy upsertQuiz() server action, writing a
+        // corresponding row into lms_quizzes on every save. Confirmed live that nothing
+        // real reads lms_quizzes for this lesson-quiz flow — getQuizById() only exists as
+        // a "does an lms_quizzes row happen to already exist" check that the real page
+        // (QuizWorkbenchPage) falls back past to course_lessons anyway when it doesn't, so
+        // that legacy row was pure dead weight populated on every single settings save,
+        // never read by anything. Removed rather than carried into the new module-quiz
+        // system (which never had it to begin with) — matches the standing instruction not
+        // to touch or resurrect the legacy lms_quizzes/lms_questions family.
+      }
 
-      // 3. Update quiz_settings via POST
-      const settingsRes = await fetch('/api/lms/quiz/settings', {
+      // Update settings (quiz_settings for a lesson quiz, module_quiz_settings for a module
+      // quiz — same shape, different table per the Step 1 schema decision).
+      const settingsRes = await fetch(isModuleScope ? '/api/lms/module-quiz/settings' : '/api/lms/quiz/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          lesson_id: quiz.id,
+          ...(isModuleScope ? { module_id: moduleId } : { lesson_id: quiz.id }),
           time_limit_minutes: timeLimit,
           max_attempts: maxRetakes,
           pass_percentage: passingScore,
@@ -513,15 +526,21 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={handleGenerateAiQuestions}
-              disabled={isGeneratingQuestions}
-              className="w-full bg-dash-accent/10 border border-dash-accent/20 hover:bg-dash-accent/20 text-dash-accent rounded-xl py-2 px-3 text-[10px] font-bold flex items-center justify-center gap-1 transition-all motion-reduce:transition-none disabled:opacity-50"
-            >
-              {isGeneratingQuestions ? <Loader2 size={12} className="animate-spin motion-reduce:animate-none" /> : <Sparkles size={12} />}
-              Generate with AI
-            </button>
+            {/* Module-Level Quiz pass: AI question generation (/api/ai/generate-questions)
+                is lesson_id-keyed and out of this pass's scope to extend — hidden for a
+                module quiz rather than silently generating questions against the wrong
+                lesson. Manual authoring (the actual Step 2 requirement) is unaffected. */}
+            {!isModuleScope && (
+              <button
+                type="button"
+                onClick={handleGenerateAiQuestions}
+                disabled={isGeneratingQuestions}
+                className="w-full bg-dash-accent/10 border border-dash-accent/20 hover:bg-dash-accent/20 text-dash-accent rounded-xl py-2 px-3 text-[10px] font-bold flex items-center justify-center gap-1 transition-all motion-reduce:transition-none disabled:opacity-50"
+              >
+                {isGeneratingQuestions ? <Loader2 size={12} className="animate-spin motion-reduce:animate-none" /> : <Sparkles size={12} />}
+                Generate with AI
+              </button>
+            )}
 
             <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
               {questions.map((q, idx) => (
@@ -921,26 +940,40 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
           </div>
 
           <div className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold !text-dash-textMuted block">Quiz Title</label>
-              <input
-                type="text"
-                value={quizTitle}
-                onChange={(e) => setQuizTitle(e.target.value)}
-                className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-primary transition-all motion-reduce:transition-none"
-              />
-            </div>
+            {/* Module-Level Quiz pass: a module quiz has no title/description of its own
+                (see handleSaveSettings) — shown as a read-only label instead of an editable
+                field a save would silently discard. */}
+            {isModuleScope ? (
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold !text-dash-textMuted block">Quiz Title</label>
+                <div className="w-full bg-dash-surface border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text">
+                  {quiz.title ? `${quiz.title} Quiz` : "Module Quiz"}
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold !text-dash-textMuted block">Quiz Title</label>
+                  <input
+                    type="text"
+                    value={quizTitle}
+                    onChange={(e) => setQuizTitle(e.target.value)}
+                    className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-primary transition-all motion-reduce:transition-none"
+                  />
+                </div>
 
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold !text-dash-textMuted block">Description (Optional)</label>
-              <textarea
-                value={quizDesc}
-                onChange={(e) => setQuizDesc(e.target.value)}
-                rows={3}
-                placeholder="Provide additional guidelines for this quiz..."
-                className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-primary transition-all motion-reduce:transition-none leading-relaxed"
-              />
-            </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold !text-dash-textMuted block">Description (Optional)</label>
+                  <textarea
+                    value={quizDesc}
+                    onChange={(e) => setQuizDesc(e.target.value)}
+                    rows={3}
+                    placeholder="Provide additional guidelines for this quiz..."
+                    className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-primary transition-all motion-reduce:transition-none leading-relaxed"
+                  />
+                </div>
+              </>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
@@ -1014,7 +1047,7 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
           </div>
         </div>
       ) : (
-        <QuizAnalyticsConsole quiz={quiz} course={course} questions={questions} />
+        <QuizAnalyticsConsole quiz={quiz} course={course} questions={questions} moduleId={moduleId} />
       )}
 
       {/* Global Overrides configurations Sheet overlay */}

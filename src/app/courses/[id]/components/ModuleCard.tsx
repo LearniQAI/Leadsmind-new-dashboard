@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ChevronDown,
   ChevronRight,
@@ -14,6 +15,7 @@ import {
   CheckCircle2,
   Droplet,
   Eye,
+  HelpCircle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -91,6 +93,8 @@ interface ModuleCardProps {
   /** 1-based position among ALL of this course's modules (not just the filtered/visible
    *  ones) — kept stable under search so a module doesn't get renumbered as filters change. */
   moduleNumber: number;
+  /** Module-Level Quiz pass — needed to route to /courses/{courseId}/module-quiz/{module.id}. */
+  courseId: string;
   siblingModules: { id: string; title: string }[];
   onEditModule: (module: any) => void;
   onDeleteModule: (moduleId: string) => void;
@@ -109,6 +113,7 @@ interface ModuleCardProps {
 export default function ModuleCard({
   module,
   moduleNumber,
+  courseId,
   siblingModules,
   onEditModule,
   onDeleteModule,
@@ -123,6 +128,7 @@ export default function ModuleCard({
   onViewLesson,
   onCreateAssignment,
 }: ModuleCardProps) {
+  const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const lessonCount = module.lessons?.length || 0;
@@ -208,6 +214,15 @@ export default function ModuleCard({
             <GraduationCap size={18} />
           </span>
         )}
+
+        <button
+          onClick={() => router.push(`/courses/${courseId}/module-quiz/${module.id}`)}
+          title="Module quiz"
+          aria-label="Module quiz"
+          className="hidden shrink-0 items-center gap-1.5 rounded-lg border border-dash-border px-3 py-1.5 text-[11px] font-semibold text-dash-textMuted transition-colors hover:border-sky-500/40 hover:bg-sky-50 hover:text-sky-600 sm:flex"
+        >
+          <HelpCircle size={13} /> Module Quiz
+        </button>
 
         <button
           onClick={() => onAddLesson(module.id)}
