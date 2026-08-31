@@ -118,7 +118,7 @@ export default function MarketplaceClient({
                 <button
                   onClick={() => {
                     if (course.price > 0) {
-                      router.push(`/student/checkout/${course.id}`);
+                      router.push(`/checkout/${course.id}`);
                     } else {
                       handleEnroll(course.id);
                     }

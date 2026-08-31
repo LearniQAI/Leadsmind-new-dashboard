@@ -8,21 +8,39 @@ import {
 import { toast } from 'sonner';
 import { enrollStudent } from '@/app/actions/studentEnrollments';
 import { createDirectCourseCheckoutSession } from '@/app/actions/courseCommerce';
+import { guestFreeEnroll, createGuestCourseCheckoutSession } from '@/app/actions/guestCheckout';
 import { Button } from '@/components/ui/button';
 
 interface CheckoutClientProps {
   course: any;
   user: any;
-  workspaceId: string;
-  contactId: string;
+  workspaceId: string | null;
+  contactId: string | null;
   isCapped: boolean;
+  /** Rendered for a logged-out visitor: collect name+email for free courses, Stripe guest mode for paid. */
+  isGuest?: boolean;
+  /** ?status= on return from Stripe hosted checkout ('pending' | 'canceled'). Guest paid flow only. */
+  postCheckoutStatus?: string | null;
 }
 
-export default function CheckoutClient({ course, user, workspaceId, contactId, isCapped }: CheckoutClientProps) {
+export default function CheckoutClient({
+  course,
+  user,
+  workspaceId,
+  contactId,
+  isCapped,
+  isGuest = false,
+  postCheckoutStatus = null,
+}: CheckoutClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [paymentMethod, setPaymentMethod] = useState<'payfast' | 'stripe'>('stripe');
   const [success, setSuccess] = useState(false);
+  // Guest-flow state
+  const [guestName, setGuestName] = useState('');
+  const [guestEmail, setGuestEmail] = useState('');
+  const [hp, setHp] = useState(''); // honeypot — real users never fill this
+  const [guestEmailSent, setGuestEmailSent] = useState<boolean | null>(null);
 
   // South African Rand approximation (1 USD ~ 18.5 ZAR)
   const priceZar = (course.price * 18.5).toFixed(2);
@@ -95,6 +113,88 @@ export default function CheckoutClient({ course, user, workspaceId, contactId, i
     });
   };
 
+  const handleGuestFree = () => {
+    startTransition(async () => {
+      try {
+        const res = await guestFreeEnroll({
+          courseId: course.id,
+          name: guestName,
+          email: guestEmail,
+          hp,
+        });
+        if ((res as any).error) {
+          toast.error((res as any).error);
+          return;
+        }
+        setGuestEmailSent(((res as any).emailSent ?? null) as boolean | null);
+        setSuccess(true);
+        if ((res as any).alreadyEnrolled) {
+          toast.success('You were already enrolled — check your email to sign in.');
+        } else {
+          toast.success('Enrolled! Check your email to set up your account.');
+        }
+      } catch {
+        toast.error('Failed to complete enrolment.');
+      }
+    });
+  };
+
+  const handleGuestPaid = () => {
+    startTransition(async () => {
+      try {
+        const res = await createGuestCourseCheckoutSession({ courseId: course.id, hp });
+        if ((res as any).error) {
+          toast.error((res as any).error);
+          return;
+        }
+        if ((res as any).url) {
+          window.location.href = (res as any).url;
+        } else {
+          toast.error('Failed to generate checkout session url.');
+        }
+      } catch {
+        toast.error('An error occurred starting checkout.');
+      }
+    });
+  };
+
+  // Hidden honeypot input reused by both guest sub-flows.
+  const honeypotField = (
+    <div aria-hidden="true" className="absolute left-[-9999px] top-[-9999px] h-0 w-0 overflow-hidden">
+      <label>
+        Do not fill this in
+        <input
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          value={hp}
+          onChange={(e) => setHp(e.target.value)}
+        />
+      </label>
+    </div>
+  );
+
+  // Guest returning from Stripe hosted checkout. This screen carries NO enrollment logic —
+  // arriving here is just navigation; the webhook is what actually enrolls.
+  if (isGuest && postCheckoutStatus === 'pending' && !success) {
+    return (
+      <div className="bg-[#080f28] border border-white/5 rounded-3xl p-12 text-center space-y-6 max-w-lg mx-auto shadow-2xl flex flex-col items-center justify-center py-20">
+        <div className="w-20 h-20 bg-primary/10 border border-primary/20 text-primary rounded-full flex items-center justify-center">
+          <CheckCircle2 size={40} />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-space-grotesk font-black uppercase text-white tracking-tight">Payment Received</h2>
+          <p className="text-xs text-white/50 leading-relaxed max-w-sm">
+            Thanks! Once your payment is confirmed by our payment provider, we'll email{' '}
+            <strong className="text-white">account setup instructions</strong> for{' '}
+            <strong className="text-white">"{course.title}"</strong> to the address you entered at checkout.
+            This usually happens within a minute.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // Case 1: Enrollment Closed Cap Gatekeeper
   if (isCapped) {
     return (
@@ -120,6 +220,32 @@ export default function CheckoutClient({ course, user, workspaceId, contactId, i
 
   // Case 2: Checkout Success Screen
   if (success) {
+    if (isGuest) {
+      return (
+        <div className="bg-[#080f28] border border-white/5 rounded-3xl p-12 text-center space-y-6 max-w-lg mx-auto shadow-2xl flex flex-col items-center justify-center py-20">
+          <div className="w-20 h-20 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center animate-bounce">
+            <CheckCircle2 size={40} />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-space-grotesk font-black uppercase text-white tracking-tight">You're Enrolled</h2>
+            <p className="text-xs text-white/50 leading-relaxed max-w-sm">
+              You're enrolled in <strong className="text-white">"{course.title}"</strong>.{' '}
+              {guestEmailSent === false ? (
+                <>We couldn't send your welcome email right now — you can sign in any time from the student login page using this email address.</>
+              ) : (
+                <>Check <strong className="text-white">{guestEmail}</strong> for a link to set up your account and start learning.</>
+              )}
+            </p>
+          </div>
+          <a
+            href="/auth/student/login"
+            className="text-[10px] font-black text-primary hover:text-primary-light uppercase tracking-wider"
+          >
+            Go to student login
+          </a>
+        </div>
+      );
+    }
     return (
       <div className="bg-[#080f28] border border-white/5 rounded-3xl p-12 text-center space-y-6 max-w-lg mx-auto shadow-2xl flex flex-col items-center justify-center py-20">
         <div className="w-20 h-20 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center animate-bounce">
@@ -143,6 +269,12 @@ export default function CheckoutClient({ course, user, workspaceId, contactId, i
   const isSubscriptionModel = course.pricing_model === 'subscription';
 
   return (
+    <div className="space-y-4">
+    {isGuest && postCheckoutStatus === 'canceled' && (
+      <div className="bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded-xl px-4 py-3 text-[11px] max-w-2xl mx-auto text-center">
+        Payment was cancelled — you have not been charged and no enrolment was created. You can try again below.
+      </div>
+    )}
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
       {/* Course Details Panel */}
       <div className="lg:col-span-5 bg-[#080f28] border border-white/5 rounded-2xl overflow-hidden shadow-xl space-y-6">
@@ -233,12 +365,37 @@ export default function CheckoutClient({ course, user, workspaceId, contactId, i
             <div className="space-y-1.5">
               <h4 className="text-base font-bold text-white uppercase tracking-wider">Free Access Entry</h4>
               <p className="text-xs text-white/40 max-w-sm mx-auto leading-relaxed">
-                This course is set to Free Access. You do not need to enter any payment credentials to enroll and begin learning.
+                {isGuest
+                  ? 'Enter your name and email to enrol. No password needed now — we’ll email you a link to set up your account.'
+                  : 'This course is set to Free Access. You do not need to enter any payment credentials to enroll and begin learning.'}
               </p>
             </div>
+
+            {isGuest && (
+              <div className="space-y-3 text-left max-w-sm mx-auto">
+                {honeypotField}
+                <input
+                  type="text"
+                  placeholder="Full name"
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
+                  autoComplete="name"
+                  className="w-full bg-[#111d47]/40 border border-white/10 rounded-xl h-11 px-4 text-xs text-white placeholder:text-white/30 outline-none focus:border-primary/50"
+                />
+                <input
+                  type="email"
+                  placeholder="you@example.com"
+                  value={guestEmail}
+                  onChange={(e) => setGuestEmail(e.target.value)}
+                  autoComplete="email"
+                  className="w-full bg-[#111d47]/40 border border-white/10 rounded-xl h-11 px-4 text-xs text-white placeholder:text-white/30 outline-none focus:border-primary/50"
+                />
+              </div>
+            )}
+
             <button
-              onClick={handleFreeEnrollment}
-              disabled={isPending}
+              onClick={isGuest ? handleGuestFree : handleFreeEnrollment}
+              disabled={isPending || (isGuest && (!guestName.trim() || !guestEmail.trim()))}
               className="w-full bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-12 flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-emerald-500/15 disabled:opacity-50"
             >
               {isPending ? (
@@ -252,6 +409,72 @@ export default function CheckoutClient({ course, user, workspaceId, contactId, i
           </div>
         ) : (
           /* Paid / Hybrid Checkout View */
+          <>
+          {isGuest ? (
+            /* Guest paid checkout — Stripe hosted (guest mode) only. Email is collected on
+               Stripe's own page, not here. Enrollment happens in the webhook, never on return. */
+            <div className="space-y-5 py-4">
+              {honeypotField}
+              <div className="border-b border-white/5 pb-4">
+                <h4 className="text-sm font-black font-space-grotesk uppercase tracking-wider text-white">Secure Checkout</h4>
+                <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest mt-1">
+                  You&apos;ll enter your email &amp; card details on Stripe&apos;s secure page
+                </p>
+              </div>
+              <div className="bg-[#0f2d4a]/20 border border-[#0f2d4a] rounded-xl p-4 flex items-start gap-3">
+                <ShieldCheck className="text-primary shrink-0 mt-0.5" size={16} />
+                <span className="text-[9px] text-white/50 block leading-relaxed">
+                  Redirecting to Stripe to pay{' '}
+                  <strong className="text-white">${course.price?.toFixed(2)} USD</strong>
+                  {isSubscriptionModel && <>/{course.subscription_interval || 'month'}</>}. After payment,
+                  we&apos;ll email account-setup instructions to the address you give Stripe.
+                </span>
+              </div>
+              <button
+                onClick={handleGuestPaid}
+                disabled={isPending}
+                className="w-full bg-primary hover:bg-primary/95 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-12 flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-primary/20 disabled:opacity-50"
+              >
+                {isPending ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin" /> Redirecting to Stripe...
+                  </>
+                ) : (
+                  'Continue to Secure Stripe Checkout'
+                )}
+              </button>
+              {isHybridModel && (
+                <div className="border-t border-white/5 pt-4 text-center space-y-3">
+                  <span className="text-[10px] text-white/40 block">Or start the free preview section first</span>
+                  <div className="space-y-3 text-left max-w-sm mx-auto">
+                    <input
+                      type="text"
+                      placeholder="Full name"
+                      value={guestName}
+                      onChange={(e) => setGuestName(e.target.value)}
+                      autoComplete="name"
+                      className="w-full bg-[#111d47]/40 border border-white/10 rounded-xl h-11 px-4 text-xs text-white placeholder:text-white/30 outline-none focus:border-primary/50"
+                    />
+                    <input
+                      type="email"
+                      placeholder="you@example.com"
+                      value={guestEmail}
+                      onChange={(e) => setGuestEmail(e.target.value)}
+                      autoComplete="email"
+                      className="w-full bg-[#111d47]/40 border border-white/10 rounded-xl h-11 px-4 text-xs text-white placeholder:text-white/30 outline-none focus:border-primary/50"
+                    />
+                  </div>
+                  <button
+                    onClick={handleGuestFree}
+                    disabled={isPending || !guestName.trim() || !guestEmail.trim()}
+                    className="text-[10px] font-black text-primary hover:text-primary-light uppercase tracking-wider outline-none disabled:opacity-40"
+                  >
+                    Enrol in Free Preview Mode
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
           <>
             <div className="border-b border-white/5 pb-4">
               <h4 className="text-sm font-black font-space-grotesk uppercase tracking-wider text-white">Payment Method</h4>
@@ -355,6 +578,8 @@ export default function CheckoutClient({ course, user, workspaceId, contactId, i
               </div>
             )}
           </>
+          )}
+          </>
         )}
 
         <div className="border-t border-white/5 pt-4 flex items-center justify-between text-white/30 text-[9px] font-bold uppercase tracking-widest">
@@ -362,6 +587,7 @@ export default function CheckoutClient({ course, user, workspaceId, contactId, i
           <span>Gateway: ACTIVE</span>
         </div>
       </div>
+    </div>
     </div>
   );
 }

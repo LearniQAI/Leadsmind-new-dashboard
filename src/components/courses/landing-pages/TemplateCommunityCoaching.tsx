@@ -79,7 +79,8 @@ export default function TemplateCommunityCoaching({ course, modules, lessons, pr
 
   const handleEnroll = () => {
     if (course?.id) {
-      router.push(`/student/checkout/${course.id}`);
+      // Public checkout — works for logged-out visitors (guest flow) and authenticated students.
+      router.push(`/checkout/${course.id}`);
     }
   };
 

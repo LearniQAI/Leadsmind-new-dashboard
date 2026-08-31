@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { createClient } from '@supabase/supabase-js';
 import { logger } from '@/shared/logger';
+import { handleGuestCheckoutSessionCompleted } from '@/lib/lms/guestEnrollment';
 
 const supabaseAdmin = createClient(
  process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -31,7 +32,13 @@ export async function POST(req: NextRequest) {
     // fall back to record-only" rather than assuming it's always populated.
     const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : null;
 
-    if (courseId && contactId) {
+    // Guest (logged-out) course checkout: session carries courseId + workspaceId but no
+    // contactId (we never had one). Enrollment + contact + account provisioning happen here,
+    // in this already-signature-verified handler, and ONLY because Stripe itself reported the
+    // session paid — never from the browser hitting the success_url. Idempotent.
+    if (courseId && workspaceId && !contactId) {
+      await handleGuestCheckoutSessionCompleted(session);
+    } else if (courseId && contactId) {
       const { data: existing } = await supabaseAdmin
         .from('enrollments')
         .select('id')
