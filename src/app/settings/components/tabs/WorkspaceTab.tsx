@@ -1,6 +1,6 @@
 "use client";
 import React from 'react';
-import { Globe, Copy, Check, CreditCard, Shield, Plus, Palette, ShieldCheck, RefreshCw } from 'lucide-react';
+import { Globe, Copy, Check, CreditCard, Shield, Plus, Palette } from 'lucide-react';
 import { useDashboardContext } from '@/components/layouts/DashboardProvider';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -20,14 +20,9 @@ interface WorkspaceTabProps {
   setTextColor: (color: string) => void;
   typography: string;
   setTypography: (font: string) => void;
-  customDomain: string;
-  setCustomDomain: (domain: string) => void;
-  sslStatus: string;
-  isVerifyingCname: boolean;
   onLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onFaviconUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSaveBranding: () => void;
-  onVerifyCname: () => void;
   fileInputRef: React.RefObject<HTMLInputElement>;
   faviconInputRef: React.RefObject<HTMLInputElement>;
 }
@@ -46,14 +41,9 @@ export default function WorkspaceTab({
   setTextColor,
   typography,
   setTypography,
-  customDomain,
-  setCustomDomain,
-  sslStatus,
-  isVerifyingCname,
   onLogoUpload,
   onFaviconUpload,
   onSaveBranding,
-  onVerifyCname,
   fileInputRef,
   faviconInputRef,
 }: WorkspaceTabProps) {
@@ -395,81 +385,14 @@ export default function WorkspaceTab({
               </button>
             </div>
 
-            <div className="bg-white border border-dash-border rounded-2xl p-8 space-y-6 shadow-sm">
-              <div className="flex items-center gap-3 border-b border-dash-border pb-3">
-                <div className="w-8 h-8 rounded-lg bg-dash-accent/15 flex items-center justify-center text-dash-accent">
-                  <ShieldCheck size={16} />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold !text-dash-text">Custom DNS domain</h4>
-                  <p className="text-[10px] !text-dash-textMuted">White-label your customer portal</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-[11px] font-bold !text-dash-textMuted">Custom domain URL</label>
-                  <input
-                    type="text"
-                    value={customDomain}
-                    onChange={(e) => setCustomDomain(e.target.value)}
-                    placeholder="e.g. portal.mybusiness.co.za"
-                    className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 !text-dash-text font-bold text-xs focus:border-dash-accent/50 outline-none placeholder:!text-dash-textMuted placeholder:font-normal"
-                  />
-                </div>
-
-                {customDomain && (
-                  <div className="bg-dash-surface border border-dash-border rounded-xl p-4 space-y-3">
-                    <span className="text-[10px] font-bold !text-dash-textMuted">Required DNS configuration</span>
-                    <p className="text-[11px] !text-dash-textMuted leading-relaxed">
-                      Access your DNS manager dashboard (GoDaddy, Cloudflare, etc.) and register the following record:
-                    </p>
-                    <div className="grid grid-cols-3 gap-2 text-[10px] font-mono p-2.5 bg-white rounded border border-dash-border">
-                      <div>
-                        <span className="block !text-dash-textMuted">Type</span>
-                        <span className="text-dash-accent font-bold">CNAME</span>
-                      </div>
-                      <div>
-                        <span className="block !text-dash-textMuted">Name / Subdomain</span>
-                        <span className="!text-dash-text font-bold">{customDomain.split('.')[0]}</span>
-                      </div>
-                      <div>
-                        <span className="block !text-dash-textMuted">Points to</span>
-                        <span className="!text-dash-text font-bold break-all">cname.leadsmind.io</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {customDomain && (
-                  <div className="flex items-center justify-between p-3.5 bg-dash-surface border border-dash-border rounded-xl">
-                    <div className="space-y-1">
-                      <span className="text-[11px] font-bold !text-dash-text block">SSL / CNAME status</span>
-                      <div className="flex items-center gap-1.5">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                          sslStatus === 'active'
-                            ? 'bg-green/10 text-green border border-green/20'
-                            : sslStatus === 'failed'
-                              ? 'bg-red/10 text-red border border-red/20'
-                              : 'bg-amber-50 text-amber-600 border border-amber-200'
-                        }`}>
-                          {sslStatus === 'active' ? 'Active / SSL provisioned' : sslStatus === 'failed' ? 'Failed / DNS error' : 'Pending verification'}
-                        </span>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={onVerifyCname}
-                      disabled={isVerifyingCname}
-                      className="flex items-center gap-2 bg-dash-accent/10 border border-dash-accent/20 text-dash-accent hover:bg-dash-accent/20 font-bold text-[9px] h-9 px-4 rounded-lg transition-all motion-reduce:transition-none"
-                    >
-                      <RefreshCw size={10} className={isVerifyingCname ? 'animate-spin motion-reduce:animate-none' : ''} />
-                      {isVerifyingCname ? 'Checking...' : 'Check DNS'}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
+            {/* Remove Orphaned Custom-Domain Code pass — the old "Custom DNS domain" card that
+                lived here (workspace_branding.custom_domain, a single free-text field with its
+                own CNAME check) is removed: nothing has read that column for actually serving a
+                course since the real domain_configurations-based system was built (Settings >
+                Domains, the DomainsTab/CustomDomainsTab already elsewhere on this page) — this
+                card let an admin see "Active / SSL provisioned" with zero real effect, which is
+                worse than not having it. Connecting a real, functioning custom domain is the
+                Domains tab now, not here. */}
           </div>
         )}
 
