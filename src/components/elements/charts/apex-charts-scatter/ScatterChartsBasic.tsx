@@ -40,7 +40,7 @@ const ScatterChartsBasic = () => {
       tickAmount: 10,
       labels: {
         formatter: function (val) {
-          return parseFloat(val).toFixed(1)
+          return parseFloat(String(val)).toFixed(1)
         }
       }
     },

@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { discoverAndSaveContacts } from '@/app/actions/contact-workspace';
-import { Users, Search, Linkedin, Mail, ShieldAlert, ShieldCheck, Shield, ChevronRight, Loader2 } from 'lucide-react';
+import { Users, Search, Mail, ShieldAlert, ShieldCheck, Shield, ChevronRight, Loader2 } from 'lucide-react';
+import { FaLinkedin as Linkedin } from 'react-icons/fa6';
 import Link from 'next/link';
 
 interface Contact {

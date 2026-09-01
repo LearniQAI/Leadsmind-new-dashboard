@@ -49,7 +49,7 @@ const ColumnChartsDistributed = () => {
       },
     },
     xaxis: {
-      categories: [
+      categories: ([
         ['John', 'Doe'],
         ['Joe', 'Smith'],
         ['Jake', 'Williams'],
@@ -58,7 +58,7 @@ const ColumnChartsDistributed = () => {
         ['Mary', 'Evans'],
         ['David', 'Wilson'],
         ['Lily', 'Roberts'],
-      ],
+      ] as unknown as string[]),
       labels: {
         style: {
           colors: '#6C5FFC',

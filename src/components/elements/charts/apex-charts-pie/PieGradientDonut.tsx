@@ -46,10 +46,10 @@ const PieGradientDonut = () => {
         },
         legend: {
           position: 'bottom',
+          fontSize: '12px',
+          fontFamily: "'Roboto', sans-serif",
           labels: {
             colors: '#7A7A7A',
-            fontSize: '12px',
-            fontFamily: "'Roboto', sans-serif",
           },
         }
       }

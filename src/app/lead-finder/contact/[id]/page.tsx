@@ -3,7 +3,8 @@ import Wrapper from '@/components/layouts/DefaultWrapper';
 import { getContactDetails, updateContactStatus } from '@/app/actions/contact-workspace';
 import { ContactCRMConnector } from '@/components/lead-finder/ContactCRMConnector';
 import { ContactTimeline } from '@/components/lead-finder/ContactTimeline';
-import { ArrowLeft, User, Building2, MapPin, Phone, Mail, Linkedin, Target, ShieldCheck, Shield, ShieldAlert, Lightbulb, Globe } from 'lucide-react';
+import { ArrowLeft, User, Building2, MapPin, Phone, Mail, Target, ShieldCheck, Shield, ShieldAlert, Lightbulb, Globe } from 'lucide-react';
+import { FaLinkedin as Linkedin } from 'react-icons/fa6';
 import Link from 'next/link';
 
 export default async function ContactWorkspacePage({ params }: { params: { id: string } }) {

@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Linkedin, Facebook, Instagram } from 'lucide-react';
+import { FaLinkedin as Linkedin, FaFacebook as Facebook, FaInstagram as Instagram } from 'react-icons/fa6';
 import { footerLinks } from './data';
 
 const socialLinks = [

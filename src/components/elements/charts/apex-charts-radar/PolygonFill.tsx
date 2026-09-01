@@ -57,7 +57,7 @@ const PolygonFill = () => {
     },
     yaxis: {
       labels: {
-        formatter: function (val: number, i: number) {
+        formatter: function (val: number, i: any) {
           if (i % 2 === 0) {
             return val.toString(); 
           } else {

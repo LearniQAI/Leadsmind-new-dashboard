@@ -45,7 +45,7 @@ const PieChartAudience = () => {
               color: "#34B53A",
               offsetY: 16,
               formatter: function (val) {
-                return val;
+                return String(val);
               },
             },
             total: {

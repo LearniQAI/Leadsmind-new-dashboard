@@ -99,8 +99,9 @@ const MixedChartsBasic = () => {
      const customLabels = [
       0, 7, 13, 20, 27, 34, 40, 47, 54, 60, 67,
      ];
-     return customLabels[index] !== undefined
-      ? customLabels[index].toString()
+     const i = index as unknown as number;
+     return customLabels[i] !== undefined
+      ? customLabels[i].toString()
       : "";
     },
     style: {
