@@ -9,14 +9,14 @@ export async function sendCalendarSMS(workspaceId: string, toPhone: string, mess
     // 1. Get the workspace's Twilio credentials
     const { data: workspace } = await supabase
       .from('workspaces')
-      .select('twilio_sid, twilio_token, twilio_sid_encrypted, twilio_token_encrypted, twilio_phone_number')
+      .select('twilio_sid, twilio_token, twilio_sid_encrypted, twilio_token_encrypted, twilio_number')
       .eq('id', workspaceId)
       .single();
 
     if (!workspace) return false;
 
     const { accountSid, authToken } = resolveWorkspaceTwilioCredentials(workspace);
-    const fromPhone = workspace.twilio_phone_number || process.env.TWILIO_PHONE_NUMBER;
+    const fromPhone = workspace.twilio_number || process.env.TWILIO_PHONE_NUMBER;
 
     // If they haven't configured Twilio, we just silently fail (no SMS sent)
     if (!accountSid || !authToken || !fromPhone) {

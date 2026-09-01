@@ -68,7 +68,7 @@ export async function createPipeline({ name, stages }: { name: string, stages: s
 
 /**
  * Deletes an entire pipeline. `pipeline_stages.pipeline_id` cascades
- * ON DELETE CASCADE (schema.sql), and each stage cascades to its
+ * ON DELETE CASCADE, and each stage cascades to its
  * `opportunities` the same way (see deleteStage) — so this one delete
  * removes the pipeline, all of its stages, and every deal inside them.
  * Restricted to admin/manager, same tier as deleteTask/deleteStage.
@@ -464,7 +464,7 @@ export async function updateStage(id: string, name: string) {
 
   const { error } = await supabase
     .from('pipeline_stages')
-    .update({ name, updated_at: new Date().toISOString() })
+    .update({ name })
     .eq("id", id).eq("workspace_id", workspaceId);
 
   if (error) {
@@ -575,8 +575,7 @@ export async function updatePipelineStages(pipelineId: string, stages: { id: str
       } else {
         const { error: updError } = await supabase.from('pipeline_stages').update({
           name: stage.name,
-          position: i,
-          updated_at: new Date().toISOString()
+          position: i
         }).eq("id", stage.id).eq("workspace_id", workspaceId);
         if (updError) throw updError;
       }

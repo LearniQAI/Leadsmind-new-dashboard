@@ -91,18 +91,19 @@ export async function fetchDashboardMetrics(
  const prevPipelineValue = (prevOpenOpps ?? []).reduce((s, o) => s + Number(o.value ?? 0), 0);
 
  // --- KPI: Course Enrollments ---
+ // enrollments has no workspace_id column — scope via the course (courses.workspace_id).
  const [{ count: enrollments }, { count: prevEnrollments }] = await Promise.all([
   supabase
    .from('enrollments')
-   .select('*', { count: 'exact', head: true })
-   .eq('workspace_id', workspaceId)
+   .select('id, courses!inner(workspace_id)', { count: 'exact', head: true })
+   .eq('courses.workspace_id', workspaceId)
    .gte('enrolled_at', startIso)
    .lte('enrolled_at', endIso)
    .then(r => ({ count: r.count ?? 0 })),
   supabase
    .from('enrollments')
-   .select('*', { count: 'exact', head: true })
-   .eq('workspace_id', workspaceId)
+   .select('id, courses!inner(workspace_id)', { count: 'exact', head: true })
+   .eq('courses.workspace_id', workspaceId)
    .gte('enrolled_at', prevStartIso)
    .lte('enrolled_at', prevEndIso)
    .then(r => ({ count: r.count ?? 0 })),

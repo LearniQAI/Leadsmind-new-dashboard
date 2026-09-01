@@ -74,7 +74,7 @@ export async function deleteWatchlist(id: string) {
   if (!user) throw new UnauthorizedError();
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) throw new ForbiddenError('No active workspace');
-  const { error } = await supabase.from('lead_watchlists').delete().eq("id", id).eq("workspace_id", workspaceId);
+  const { error } = await supabase.from('lead_watchlists').delete().eq("id", id).eq("user_id", user.id);
   if (error) {
     logger.error({ err: error, workspaceId, watchlistId: id }, 'watchlist_workspace.watchlist.delete.failed');
     return { success: false, error: 'Failed to delete watchlist.' };
@@ -89,7 +89,7 @@ export async function toggleWatchlistStatus(id: string, isActive: boolean) {
   if (!user) throw new UnauthorizedError();
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) throw new ForbiddenError('No active workspace');
-  const { error } = await supabase.from('lead_watchlists').update({ is_active: isActive }).eq("id", id).eq("workspace_id", workspaceId);
+  const { error } = await supabase.from('lead_watchlists').update({ is_active: isActive }).eq("id", id).eq("user_id", user.id);
   if (error) {
     logger.error({ err: error, workspaceId, watchlistId: id }, 'watchlist_workspace.status.toggle.failed');
     return { success: false, error: 'Failed to toggle watchlist status.' };
@@ -104,7 +104,7 @@ export async function markAlertRead(id: string) {
   if (!user) throw new UnauthorizedError();
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) throw new ForbiddenError('No active workspace');
-  await supabase.from('lead_alerts').update({ is_read: true }).eq("id", id).eq("workspace_id", workspaceId);
+  await supabase.from('lead_alerts').update({ is_read: true }).eq("id", id).eq("user_id", user.id);
   revalidatePath('/lead-finder/watchlists');
   return { success: true };
 }

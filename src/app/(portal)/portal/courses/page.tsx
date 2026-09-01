@@ -19,12 +19,12 @@ export default async function PortalCoursesPage() {
   const { contact, workspace } = session;
   const supabase = createAdminClient();
 
-  // Fetch course enrollments
+  // Fetch course enrollments. enrollments has no workspace_id — scope via the course.
   const { data: dbEnrollments } = await supabase
     .from('enrollments')
-    .select('*, courses(*)')
+    .select('*, courses!inner(*)')
     .eq('contact_id', contact.id)
-    .eq('workspace_id', workspace.id);
+    .eq('courses.workspace_id', workspace.id);
 
   const enrollments = dbEnrollments || [];
 

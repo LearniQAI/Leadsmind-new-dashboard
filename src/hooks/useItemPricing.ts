@@ -1,30 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 export function useItemPricing(workspaceId: string, contactId?: string) {
-  const [priceListId, setPriceListId] = useState<string | null>(null);
+  // Per-contact price-list assignment is UNBUILT: price_lists / price_list_items tables
+  // exist, but there is no column or link table assigning a price list to a contact
+  // (contacts has no price_list_id). The previous effect queried a nonexistent
+  // contacts.price_list_id and silently swallowed the error. Until an assignment mechanism
+  // exists, no per-contact price list is resolved and standard pricing is always used.
+  const [priceListId] = useState<string | null>(null);
   const supabase = createClient();
-
-  // Fetch the contact's assigned price list
-  useEffect(() => {
-    if (!contactId) return;
-
-    const fetchPriceList = async () => {
-      const { data, error } = await supabase
-        .from('contacts')
-        .select('price_list_id')
-        .eq('id', contactId)
-        .single();
-      
-      if (!error && data?.price_list_id) {
-        setPriceListId(data.price_list_id);
-      }
-    };
-
-    fetchPriceList();
-  }, [contactId, supabase]);
 
   /**
    * Returns the override price if found, otherwise returns null

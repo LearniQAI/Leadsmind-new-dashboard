@@ -65,17 +65,31 @@ export async function getContactDetails(contactId: string) {
     return { success: false, error: 'Failed to fetch contact details.' };
   }
 
-  const { data: notes } = await supabase
-    .from('contact_notes')
-    .select('*, auth_user:user_id(email)')
-    .eq('contact_id', contactId)
-    .order('created_at', { ascending: false });
+  // This file manages Lead Finder discovered contacts (lead_contacts) — notes/activities
+  // for a lead live in lead_notes / lead_activities keyed by result_id (the CRM
+  // contact_notes / contact_activities tables are a different feature, keyed by contacts.id
+  // with a created_by FK, and were never a valid target here).
+  const resultId = (contact as any)?.result_id ?? null;
 
-  const { data: activities } = await supabase
-    .from('contact_activities')
-    .select('*, auth_user:user_id(email)')
-    .eq('contact_id', contactId)
-    .order('created_at', { ascending: false });
+  // No FK from lead_notes/lead_activities.user_id into a PostgREST-embeddable table
+  // (it points at auth.users), so an `auth_user:user_id(email)` embed makes the whole
+  // query error out and return zero rows. Select plain columns — the timeline UI already
+  // falls back to "System" when no author email is present.
+  const { data: notes } = resultId
+    ? await supabase
+        .from('lead_notes')
+        .select('*')
+        .eq('result_id', resultId)
+        .order('created_at', { ascending: false })
+    : { data: [] as any[] };
+
+  const { data: activities } = resultId
+    ? await supabase
+        .from('lead_activities')
+        .select('*')
+        .eq('result_id', resultId)
+        .order('created_at', { ascending: false })
+    : { data: [] as any[] };
 
   return { 
     success: true, 
@@ -88,13 +102,20 @@ export async function getContactDetails(contactId: string) {
 }
 
 async function logActivity(supabase: any, contactId: string, userId: string, type: string, description: string, metadata: any = {}) {
-  await supabase.from('contact_activities').insert({
-    contact_id: contactId,
+  // contactId is a lead_contacts id — lead_activities is keyed by result_id.
+  const { data: lc } = await supabase.from('lead_contacts').select('result_id').eq('id', contactId).maybeSingle();
+  if (!lc?.result_id) {
+    logger.error({ contactId }, 'contact_workspace.log_activity.result_not_found');
+    return;
+  }
+  const { error } = await supabase.from('lead_activities').insert({
+    result_id: lc.result_id,
     user_id: userId,
     type,
     description,
     metadata
   });
+  if (error) logger.error({ err: error, contactId }, 'contact_workspace.log_activity.insert.failed');
 }
 
 export async function addContactNote(contactId: string, content: string) {
@@ -103,9 +124,15 @@ export async function addContactNote(contactId: string, content: string) {
   const userId = userData?.user?.id;
   if (!userId) return { success: false, error: 'Unauthorized' };
 
+  // contactId is a lead_contacts id — lead_notes is keyed by result_id.
+  const { data: lc } = await supabase.from('lead_contacts').select('result_id').eq('id', contactId).maybeSingle();
+  if (!lc?.result_id) {
+    return { success: false, error: 'Contact not found.' };
+  }
+
   const { error } = await supabase
-    .from('contact_notes')
-    .insert({ contact_id: contactId, user_id: userId, content });
+    .from('lead_notes')
+    .insert({ result_id: lc.result_id, user_id: userId, content });
 
   if (error) {
     logger.error({ err: error, contactId }, 'contact_workspace.note.add.failed');
@@ -127,7 +154,7 @@ export async function updateContactStatus(contactId: string, status: string) {
   const { error } = await supabase
     .from('lead_contacts')
     .update({ status })
-    .eq("id", contactId).eq("workspace_id", workspaceId);
+    .eq("id", contactId).eq("user_id", userId); // lead_contacts is scoped by user_id, not workspace_id
 
   if (error) {
     logger.error({ err: error, contactId, workspaceId }, 'contact_workspace.status.update.failed');
@@ -211,7 +238,7 @@ export async function assignContactToPipeline(contactId: string) {
     .update({ 
       status: 'Qualified' 
     })
-    .eq("id", contactId).eq("workspace_id", workspaceId);
+    .eq("id", contactId).eq("user_id", userId); // lead_contacts is scoped by user_id, not workspace_id
 
   if (error) logger.error({ err: error, contactId, workspaceId }, 'contact_workspace.pipeline_status.update.failed');
 

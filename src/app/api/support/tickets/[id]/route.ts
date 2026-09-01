@@ -92,11 +92,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       const agentId = data.assigned_to;
       let agentEmail = null;
       if (agentId) {
+        // users has no workspace_id; assigned_to already comes off the workspace-scoped ticket.
         const { data: u } = await supabaseAdmin
           .from('users')
           .select('email')
-          .eq("id", agentId).eq("workspace_id", workspaceId)
-          .single();
+          .eq("id", agentId)
+          .maybeSingle();
         if (u) agentEmail = u.email;
 
         // In-app notification

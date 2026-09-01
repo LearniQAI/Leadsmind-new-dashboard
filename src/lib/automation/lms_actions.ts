@@ -224,15 +224,18 @@ export async function lms_revoke_access(workspaceId: string, contactId: string, 
       await supabase
         .from("lms_bundle_enrollments")
         .update({
-          grace_period_expires_at: gracePeriodExpiresAt,
-          status: "suspended"
+          // lms_bundle_enrollments has no grace_period_expires_at column (unlike
+          // enrollments); expires_at is its access-cutoff column.
+          expires_at: gracePeriodExpiresAt,
+          status: "suspended",
+          metadata: { revoked_via: "automation", status_reason: "grace_period" }
         })
         .eq("bundle_id", bundleId)
         .eq("contact_id", contactId);
     } else {
       await supabase
         .from("lms_bundle_enrollments")
-        .update({ status: "revoked", grace_period_expires_at: null })
+        .update({ status: "revoked" })
         .eq("bundle_id", bundleId)
         .eq("contact_id", contactId);
 

@@ -16,7 +16,7 @@ export async function updateOrderStatus(orderId: string, status: string) {
 
   const { data, error } = await supabase
    .from('orders')
-   .update({ status, updated_at: new Date().toISOString() })
+   .update({ status }) // orders has no updated_at column
    .eq('id', orderId)
    .eq('workspace_id', workspaceId)
    .select()

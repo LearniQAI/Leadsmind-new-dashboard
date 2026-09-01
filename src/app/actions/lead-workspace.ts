@@ -26,17 +26,19 @@ export async function getLeadDetails(leadId: string) {
     return { success: false, error: 'Failed to fetch lead details.' };
   }
 
-  // Get Notes
+  // Get Notes — no FK from lead_notes.user_id to a PostgREST-embeddable table
+  // (it points at auth.users), so an `auth_user:user_id(email)` embed errors the
+  // whole query and yields zero rows. Select plain columns.
   const { data: notes } = await supabase
     .from('lead_notes')
-    .select('*, auth_user:user_id(email)')
+    .select('*')
     .eq('result_id', leadId)
     .order('created_at', { ascending: false });
 
   // Get Activities
   const { data: activities } = await supabase
     .from('lead_activities')
-    .select('*, auth_user:user_id(email)')
+    .select('*')
     .eq('result_id', leadId)
     .order('created_at', { ascending: false });
 
@@ -89,7 +91,7 @@ export async function updateLeadStatus(leadId: string, status: string) {
   const { error } = await supabase
     .from('lead_finder_results')
     .update({ qualification_status: status })
-    .eq("id", leadId).eq("workspace_id", workspaceId);
+    .eq("id", leadId).eq("user_id", userId);
 
   if (error) {
     logger.error({ err: error, leadId, workspaceId }, 'lead_workspace.status.update.failed');
@@ -129,12 +131,12 @@ export async function addLeadTag(leadId: string, tag: string) {
 
   const workspaceId = await getCurrentWorkspaceId();
   // Get current tags
-  const { data: lead } = await supabase.from('lead_finder_results').select('smart_tags').eq("id", leadId).eq("workspace_id", workspaceId).single();
+  const { data: lead } = await supabase.from('lead_finder_results').select('smart_tags').eq("id", leadId).eq("user_id", userId).single();
   const tags = lead?.smart_tags || [];
   
   if (!tags.includes(tag)) {
     const newTags = [...tags, tag];
-    await supabase.from('lead_finder_results').update({ smart_tags: newTags }).eq("id", leadId).eq("workspace_id", workspaceId);
+    await supabase.from('lead_finder_results').update({ smart_tags: newTags }).eq("id", leadId).eq("user_id", userId);
     await logActivity(supabase, leadId, userId, 'tag_added', `Added smart tag: ${tag}`, { tag });
   }
 
@@ -149,11 +151,11 @@ export async function removeLeadTag(leadId: string, tag: string) {
   if (!userId) return { success: false, error: 'Unauthorized' };
 
   const workspaceId = await getCurrentWorkspaceId();
-  const { data: lead } = await supabase.from('lead_finder_results').select('smart_tags').eq("id", leadId).eq("workspace_id", workspaceId).single();
+  const { data: lead } = await supabase.from('lead_finder_results').select('smart_tags').eq("id", leadId).eq("user_id", userId).single();
   const tags = lead?.smart_tags || [];
   
   const newTags = tags.filter((t: string) => t !== tag);
-  await supabase.from('lead_finder_results').update({ smart_tags: newTags }).eq("id", leadId).eq("workspace_id", workspaceId);
+  await supabase.from('lead_finder_results').update({ smart_tags: newTags }).eq("id", leadId).eq("user_id", userId);
   await logActivity(supabase, leadId, userId, 'tag_removed', `Removed smart tag: ${tag}`, { tag });
 
   revalidatePath(`/lead-finder/lead/${leadId}`);
@@ -238,7 +240,7 @@ export async function pushLeadToPipeline(leadId: string, pipelineId: string, sta
       status: 'added_to_crm',
       qualification_status: 'Contacted'
     })
-    .eq("id", leadId).eq("workspace_id", workspaceId);
+    .eq("id", leadId).eq("user_id", userId);
 
   if (updateError) logger.error({ err: updateError, leadId, workspaceId }, 'lead_workspace.crm_link_status.update.failed');
 

@@ -26,12 +26,14 @@ export async function GET(req: NextRequest) {
     const admin = createAdminClient();
     origin = await validateLenaEmbedOrigin(admin, req, session.workspaceId);
     if (!origin || origin !== session.origin) return respond({ error: 'Visitor session is not valid for this origin' }, null, { status: 403 });
-    const { data: conversation, error: convError } = await admin.from('lena_conversations').select('mode, agent_typing_until').eq('id', conversationId).eq('workspace_id', session.workspaceId).eq('visitor_id', session.visitorId).maybeSingle();
+    const { data: conversation, error: convError } = await admin.from('lena_conversations').select('mode').eq('id', conversationId).eq('workspace_id', session.workspaceId).eq('visitor_id', session.visitorId).maybeSingle();
     if (convError) throw convError;
     if (!conversation) return respond({ error: 'Conversation not found for this visitor session' }, origin, { status: 404 });
     const { data, error } = await admin.from('lena_messages').select('*').eq('conversation_id', conversationId).eq('workspace_id', session.workspaceId).order('created_at', { ascending: true });
     if (error) throw error;
-    return respond({ messages: data ?? [], isAgentTyping: !!conversation.agent_typing_until && new Date(conversation.agent_typing_until).getTime() > Date.now() }, origin);
+    // NOTE: lena_conversations has no agent_typing_until column — a live "agent is typing"
+    // indicator is unbuilt. Always report false rather than 500ing on a missing column.
+    return respond({ messages: data ?? [], isAgentTyping: false }, origin);
   } catch (err: any) {
     logger.error({ err }, 'lena.messages.get.failed');
     const clientError = toClientError(err);
