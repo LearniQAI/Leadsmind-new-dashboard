@@ -83,15 +83,14 @@ supabase/migrations/      298 SQL migration files — an older sequential
                            a newer dated scheme (202607xx/202608xx) doing RLS
                            hardening and newer features (segments, Paystack billing)
 docs/                     EMAIL_SMS_BRIDGE.md, SECURITY_REVIEW_LIVE_VERIFICATION.md,
-                           automation-audit.md
+                           automation-audit.md, schema-drift-audit.md,
+                           student-portal-audit.md, calendar.md, LIVE_TEST_CHECKLIST.md
 workers/, server/, libs/  Supporting background/worker code outside the Next.js app
 scripts/                  Operational/one-off scripts (e.g. run_queries.js)
 ```
 
-Note: the repo root also has some ad-hoc dev artifacts (`test-add-crm.ts`,
-`test-lms-db.ts`, `test-quiz-actions.ts`, `test-upsert.ts`, `calendar.md`,
-`scratch/`, `scratch_test/`) — leftover debug scripts, not part of the
-deployable app.
+Note: `scratch/` and `scratch_test/` hold ad-hoc dev/debug scripts — not part
+of the deployable app, and both are gitignored.
 
 ---
 
