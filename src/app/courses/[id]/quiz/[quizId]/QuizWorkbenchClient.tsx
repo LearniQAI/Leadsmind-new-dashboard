@@ -435,8 +435,8 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
             <ArrowLeft size={16} />
           </button>
           <div>
-            <span className="text-[10px] font-bold text-dash-accent uppercase tracking-wide">Quiz editor</span>
-            <h1 className="font-display text-2xl font-bold !text-dash-text mt-0.5 tracking-tight">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-dash-accent">Quiz editor</span>
+            <h1 className="font-display text-[26px] md:text-[30px] font-semibold leading-[1.1] tracking-[-0.02em] !text-dash-text mt-1">
               {isModuleScope ? (quiz.title ? `${quiz.title} Quiz` : "Module Quiz") : (quizTitle || "Untitled quiz")}
             </h1>
           </div>
@@ -473,25 +473,28 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
           
           {/* Question List Sidebar */}
           <div className="bg-white border border-dash-border p-5 rounded-2xl space-y-4 shadow-sm">
-            <div className="flex items-center justify-between border-b border-dash-border pb-3">
-              <span className="text-[11px] font-bold uppercase tracking-wide !text-dash-textMuted">Question list</span>
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between gap-3 border-b border-dash-border pb-3.5">
+              <div className="flex items-baseline gap-2 min-w-0">
+                <span className="text-[11px] font-bold uppercase tracking-[0.08em] !text-dash-textMuted">Question list</span>
+                <span className="text-[11px] font-semibold tabular-nums !text-dash-textMuted/70">{questions.length}</span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
                 {questions.length > 0 && (
                   <button
                     onClick={() => {
                       setIsBulkSelectMode(!isBulkSelectMode);
                       setSelectedQuestionIds([]);
                     }}
-                    className="text-[10.5px] font-semibold !text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none"
+                    className="h-8 px-2.5 rounded-lg text-[11px] font-semibold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface transition-colors motion-reduce:transition-none"
                   >
                     {isBulkSelectMode ? "Cancel" : "Select"}
                   </button>
                 )}
                 <button
                   onClick={handleNewQuestion}
-                  className="text-[10.5px] font-bold text-dash-accent hover:text-dash-accent/80 flex items-center gap-0.5 transition-colors motion-reduce:transition-none"
+                  className="h-8 px-3 rounded-lg bg-dash-accent text-white text-[11px] font-semibold flex items-center gap-1 shadow-sm shadow-dash-accent/25 hover:bg-dash-accent/90 active:scale-[0.97] motion-reduce:active:scale-100 transition-all motion-reduce:transition-none"
                 >
-                  <Plus size={12} /> Add
+                  <Plus size={13} /> Add
                 </button>
               </div>
             </div>
@@ -533,15 +536,19 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
               type="button"
               onClick={handleGenerateAiQuestions}
               disabled={isGeneratingQuestions}
-              className="w-full h-10 rounded-xl border border-sky-200 bg-sky-50/70 hover:bg-sky-100 text-sky-700 text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors motion-reduce:transition-none disabled:opacity-50"
+              className="group w-full h-11 rounded-xl border border-sky-200 bg-gradient-to-r from-sky-50 to-indigo-50 hover:from-sky-100 hover:to-indigo-100 text-sky-700 text-[11.5px] font-semibold flex items-center justify-center gap-2 transition-colors motion-reduce:transition-none disabled:opacity-50 shadow-sm shadow-sky-500/10"
             >
-              {isGeneratingQuestions ? <Loader2 size={13} className="animate-spin motion-reduce:animate-none" /> : <Sparkles size={13} />}
-              Generate with AI
+              <span className="w-6 h-6 rounded-lg bg-white border border-sky-200 flex items-center justify-center shrink-0 text-sky-600">
+                {isGeneratingQuestions ? <Loader2 size={13} className="animate-spin motion-reduce:animate-none" /> : <Sparkles size={13} />}
+              </span>
+              {isGeneratingQuestions ? "Generating questions…" : "Generate with AI"}
             </button>
 
             <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
               {questions.map((q, idx) => {
                 const typeLabel = QUESTION_TYPE_LABELS[q.question_type] || q.question_type;
+                const isActive = !isBulkSelectMode && activeQuestion?.id === q.id;
+                const isChecked = isBulkSelectMode && selectedQuestionIds.includes(q.id);
                 return (
                 <div
                   key={q.id}
@@ -556,25 +563,35 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
                       selectQuestion(q);
                     }
                   }}
-                  className={`p-3.5 rounded-xl text-xs cursor-pointer select-none border transition-all motion-reduce:transition-none space-y-2 ${
-                    !isBulkSelectMode && activeQuestion?.id === q.id
-                      ? "bg-dash-accent/10 border-dash-accent !text-dash-text"
-                      : isBulkSelectMode && selectedQuestionIds.includes(q.id)
-                        ? "bg-dash-accent/10 border-dash-accent !text-dash-text"
-                        : "bg-dash-surface border-transparent !text-dash-textMuted hover:bg-dash-border/40 hover:!text-dash-text"
+                  className={`group relative overflow-hidden p-3.5 pl-4 rounded-xl cursor-pointer select-none border transition-all motion-reduce:transition-none space-y-2.5 ${
+                    isActive || isChecked
+                      ? "bg-dash-accent/[0.07] border-dash-accent ring-1 ring-dash-accent/20 shadow-sm"
+                      : "bg-dash-surface border-dash-border hover:border-dash-border/80 hover:bg-white hover:shadow-sm"
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 truncate flex-1">
+                  <span
+                    className={`absolute left-0 top-0 bottom-0 w-1 transition-colors motion-reduce:transition-none ${
+                      isActive || isChecked ? "bg-dash-accent" : "bg-transparent group-hover:bg-dash-border"
+                    }`}
+                  />
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2 min-w-0 flex-1">
                       {isBulkSelectMode && (
                         <input
                           type="checkbox"
                           checked={selectedQuestionIds.includes(q.id)}
                           onChange={() => {}} // toggled on container div click
-                          className="accent-dash-accent h-3.5 w-3.5 rounded shrink-0"
+                          className="accent-dash-accent h-3.5 w-3.5 rounded shrink-0 mt-0.5"
                         />
                       )}
-                      <span className="truncate pr-2 font-semibold">Q{idx + 1}: {q.question_text || "Untitled question"}</span>
+                      <div className="min-w-0 flex-1">
+                        <span className={`text-[10px] font-bold tabular-nums ${isActive ? "text-dash-accent" : "!text-dash-textMuted"}`}>
+                          Q{idx + 1}
+                        </span>
+                        <p className="text-[12.5px] font-semibold leading-snug !text-dash-text line-clamp-2 mt-0.5">
+                          {q.question_text || "Untitled question"}
+                        </p>
+                      </div>
                     </div>
                     {!isBulkSelectMode && (
                       <button
@@ -582,17 +599,18 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
                           e.stopPropagation();
                           setQuestionToDelete(q);
                         }}
-                        className="text-dash-textMuted hover:text-red hover:bg-red/10 p-1 rounded-md shrink-0 transition-colors motion-reduce:transition-none"
+                        className="shrink-0 -mt-0.5 -mr-1 text-dash-textMuted/70 hover:text-red hover:bg-red/10 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-all motion-reduce:transition-none"
+                        title="Delete question"
                       >
-                        <Trash2 size={12} />
+                        <Trash2 size={13} />
                       </button>
                     )}
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[9.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-white border border-dash-border !text-dash-textMuted">
+                    <span className="text-[9px] font-bold uppercase tracking-[0.06em] px-2 py-0.5 rounded-full bg-white border border-dash-border !text-dash-textMuted">
                       {typeLabel}
                     </span>
-                    <span className="text-[9.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-white border border-dash-border !text-dash-textMuted">
+                    <span className="text-[9px] font-bold uppercase tracking-[0.06em] px-2 py-0.5 rounded-full bg-white border border-dash-border !text-dash-textMuted">
                       {q.points ?? 1} pt{(q.points ?? 1) === 1 ? "" : "s"}
                     </span>
                   </div>
@@ -644,7 +662,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
 
             {/* Question Text */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold !text-dash-textMuted block">Question title / prompt</label>
+              <label className="text-[11px] font-semibold !text-dash-textMuted block">Question title / prompt</label>
               <textarea
                 value={questionText}
                 onChange={(e) => setQuestionText(e.target.value)}
@@ -656,7 +674,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
 
             {/* Dynamic Options Render Block */}
             <div className="bg-dash-surface border border-dash-border rounded-xl p-4 space-y-4">
-              <span className="text-[10.5px] font-bold uppercase tracking-wide !text-dash-textMuted block">Answer configuration</span>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.1em] !text-dash-textMuted block">Answer configuration</span>
 
               {/* MCQ / TrueFalse — both use a real radio (single-correct-answer), not a
                   checkbox: the actual save/grade pipeline (handleSaveQuestion below,
@@ -904,7 +922,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
                 "Generate with AI" (Step 2): both are the same family of AI-assist control. */}
             <div className="space-y-2 border-t border-dash-border pt-5">
               <div className="flex items-center justify-between">
-                <label className="text-[10px] font-bold !text-dash-textMuted block">Pedagogical Explanation</label>
+                <label className="text-[11px] font-semibold !text-dash-textMuted block">Pedagogical Explanation</label>
                 <button
                   type="button"
                   onClick={handleLenaGenerate}
@@ -953,17 +971,18 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
         /* Advanced Settings Panel — same premium primitives/section-header language as the
            Questions tab (PropertyGroup section headers, SliderWithInput numeric steppers)
            instead of a plain form. */
-        <div className="bg-white border border-dash-border rounded-2xl p-6 max-w-2xl mx-auto space-y-1 shadow-sm">
-          <div className="flex items-center justify-between border-b border-dash-border pb-4 mb-2">
+        <div className="bg-white border border-dash-border rounded-2xl p-6 md:p-7 max-w-2xl mx-auto space-y-1 shadow-sm">
+          <div className="flex items-start justify-between gap-4 border-b border-dash-border pb-5 mb-4">
             <div>
-              <span className="text-[10.5px] font-bold uppercase tracking-wide !text-dash-textMuted">Configuration</span>
-              <h3 className="font-display text-lg font-bold !text-dash-text mt-0.5">Advanced settings</h3>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-dash-accent">Configuration</span>
+              <h2 className="font-display text-[22px] font-semibold tracking-[-0.01em] !text-dash-text mt-1.5">Advanced settings</h2>
+              <p className="text-[12px] leading-relaxed !text-dash-textMuted mt-1">Grading, pacing and completion rules for this quiz.</p>
             </div>
             <button
               onClick={() => setIsConfigPaneOpen(true)}
-              className="h-9 px-3.5 rounded-lg bg-dash-surface hover:bg-dash-border/60 !text-dash-text text-[10.5px] font-bold border border-dash-border flex items-center gap-1.5 transition-colors motion-reduce:transition-none"
+              className="h-9 px-3.5 shrink-0 rounded-lg bg-white hover:bg-dash-surface !text-dash-textMuted hover:!text-dash-text text-[11px] font-semibold border border-dash-border flex items-center gap-1.5 transition-colors motion-reduce:transition-none"
             >
-              <Sliders size={12} className="text-dash-accent" /> Global overrides
+              <Sliders size={12} /> Global overrides
             </button>
           </div>
 
@@ -973,7 +992,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
           <PropertyGroup title="Identity">
             {isModuleScope ? (
               <div className="space-y-1">
-                <label className="text-[10px] font-bold !text-dash-textMuted block">Quiz title</label>
+                <label className="text-[11px] font-semibold !text-dash-textMuted block">Quiz title</label>
                 <div className="w-full bg-dash-surface border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text">
                   {quiz.title ? `${quiz.title} Quiz` : "Module Quiz"}
                 </div>
@@ -981,7 +1000,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
             ) : (
               <>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold !text-dash-textMuted block">Quiz title</label>
+                  <label className="text-[11px] font-semibold !text-dash-textMuted block">Quiz title</label>
                   <input
                     type="text"
                     value={quizTitle}
@@ -991,7 +1010,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold !text-dash-textMuted block">Description (optional)</label>
+                  <label className="text-[11px] font-semibold !text-dash-textMuted block">Description (optional)</label>
                   <textarea
                     value={quizDesc}
                     onChange={(e) => setQuizDesc(e.target.value)}
@@ -1037,19 +1056,19 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
                 numeric
               />
 
-              <div className="flex items-center justify-between bg-dash-surface border border-dash-border rounded-xl p-4">
-                <div>
-                  <span className="text-xs font-bold !text-dash-text block">Required for completion</span>
-                  <span className="text-[10px] !text-dash-textMuted block mt-0.5">Students must pass to continue</span>
+              <div className="flex items-center justify-between gap-3 bg-dash-surface border border-dash-border rounded-xl p-4">
+                <div className="min-w-0">
+                  <span className="text-[12.5px] font-semibold !text-dash-text block">Required for completion</span>
+                  <span className="text-[11px] leading-relaxed !text-dash-textMuted block mt-0.5">Students must pass to continue</span>
                 </div>
                 <Switch
                   checked={isRequired}
                   onCheckedChange={setIsRequired}
-                  className="data-[state=checked]:bg-dash-accent"
+                  className="shrink-0 data-[state=checked]:bg-dash-accent data-[state=unchecked]:bg-dash-border"
                 />
               </div>
             </div>
-            <p className="text-[10px] !text-dash-textMuted -mt-1">Max retakes: -1 = unlimited. Time limit: 0 = no limit.</p>
+            <p className="text-[11px] leading-relaxed !text-dash-textMuted/90 -mt-1">Max retakes: <span className="font-medium">-1</span> = unlimited. Time limit: <span className="font-medium">0</span> = no limit.</p>
           </PropertyGroup>
 
           <div className="flex items-center justify-end border-t border-dash-border pt-5 mt-3">
@@ -1082,7 +1101,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
               <div className="w-11 h-11 rounded-xl bg-dash-accent/10 flex items-center justify-center text-dash-accent mb-3">
                 <Sliders size={18} />
               </div>
-              <SheetTitle className="font-display text-lg font-bold !text-dash-text">
+              <SheetTitle className="font-display text-[17px] font-semibold tracking-[-0.01em] !text-dash-text">
                 Global overrides
               </SheetTitle>
               <SheetDescription className="text-[11px] !text-dash-textMuted mt-0.5">
@@ -1157,7 +1176,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
                   <Switch
                     checked={shuffleQuestions}
                     onCheckedChange={setShuffleQuestions}
-                    className="data-[state=checked]:bg-dash-accent"
+                    className="shrink-0 data-[state=checked]:bg-dash-accent data-[state=unchecked]:bg-dash-border"
                   />
                 </div>
                 <div className="flex items-center justify-between bg-dash-surface border border-dash-border rounded-xl p-4">
@@ -1168,7 +1187,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
                   <Switch
                     checked={shuffleOptions}
                     onCheckedChange={setShuffleOptions}
-                    className="data-[state=checked]:bg-dash-accent"
+                    className="shrink-0 data-[state=checked]:bg-dash-accent data-[state=unchecked]:bg-dash-border"
                   />
                 </div>
 
@@ -1193,7 +1212,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
                   <Switch
                     checked={requirePass}
                     onCheckedChange={setRequirePass}
-                    className="data-[state=checked]:bg-dash-accent"
+                    className="shrink-0 data-[state=checked]:bg-dash-accent data-[state=unchecked]:bg-dash-border"
                   />
                 </div>
               </PropertyGroup>

@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 const BLOCK_TYPES = [
   'video', 'audio', 'reading', 'rich_text', 'quiz', 'assignment',
-  'flashcards', 'download', 'slides', 'embed', 'live_session'
+  'flashcards', 'download', 'slides', 'embed', 'live_session', 'html_code'
 ];
 
 // Real per-type completion default (Phase C) — every block type gets a completion condition
@@ -26,7 +26,11 @@ const DEFAULT_COMPLETION_RULE: Record<string, { rule: string; threshold: number 
   rich_text: { rule: 'none', threshold: null },
   download: { rule: 'none', threshold: null },
   embed: { rule: 'none', threshold: null },
-  live_session: { rule: 'none', threshold: null }
+  live_session: { rule: 'none', threshold: null },
+  // Generic non-interactive HTML — auto-satisfied on render, same as rich_text. The pasted
+  // markup can't be meaningfully "completed", and requiring an explicit click would just be
+  // a fake gate.
+  html_code: { rule: 'none', threshold: null }
 };
 
 export async function GET(req: NextRequest) {

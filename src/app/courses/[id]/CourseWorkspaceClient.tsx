@@ -425,7 +425,7 @@ export default function CourseWorkspaceClient({
               <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-5 border border-dash-border">
                 <Layers className="w-8 h-8 !text-dash-textMuted" />
               </div>
-              <h3 className="text-lg font-bold !text-dash-textMuted">
+              <h3 className="text-[15px] font-semibold !text-dash-textMuted">
                 No Modules Found
               </h3>
               <Button

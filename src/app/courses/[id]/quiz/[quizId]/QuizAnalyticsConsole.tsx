@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   Download, RefreshCw, BarChart2, TrendingUp, TrendingDown,
-  Minus, Clock, Info, ShieldCheck, XCircle, ChevronRight, X
+  Minus, Clock, ClipboardList, ShieldCheck, XCircle, ChevronRight, X
 } from "lucide-react";
 import { getQuizSubmissionsAction, getModuleQuizSubmissionsAction } from "@/app/actions/quizzes";
 
@@ -192,63 +192,68 @@ export default function QuizAnalyticsConsole({ quiz, course, questions, moduleId
     <div className="space-y-6">
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white border border-dash-border p-5 rounded-2xl flex items-center justify-between shadow-sm">
-          <div>
-            <span className="text-[10px] font-bold !text-dash-textMuted block">Total Attempts</span>
-            <span className="text-2xl font-bold !text-dash-text mt-1 block">{submissions.length}</span>
-          </div>
-          <BarChart2 className="text-primary opacity-60" size={24} />
-        </div>
-        <div className="bg-white border border-dash-border p-5 rounded-2xl flex items-center justify-between shadow-sm">
-          <div>
-            <span className="text-[10px] font-bold !text-dash-textMuted block">Unique Students</span>
-            <span className="text-2xl font-bold !text-dash-text mt-1 block">{studentIds.length}</span>
-          </div>
-          <BarChart2 className="text-dash-accent opacity-60" size={24} />
-        </div>
-        <div className="bg-white border border-dash-border p-5 rounded-2xl flex items-center justify-between shadow-sm">
-          <div>
-            <span className="text-[10px] font-bold !text-dash-textMuted block">Average Group Speed</span>
-            <span className="text-2xl font-bold !text-dash-text mt-1 block">
-              {groupAverageDuration > 0 ? formatDuration(groupAverageDuration) : "N/A"}
+        {([
+          { label: "Total Attempts", value: String(submissions.length), Icon: BarChart2, tint: "text-primary bg-primary/10" },
+          { label: "Unique Students", value: String(studentIds.length), Icon: BarChart2, tint: "text-dash-accent bg-dash-accent/10" },
+          { label: "Average Group Speed", value: groupAverageDuration > 0 ? formatDuration(groupAverageDuration) : "N/A", Icon: Clock, tint: "text-purple bg-purple/10" },
+        ] as const).map(({ label, value, Icon, tint }) => (
+          <div key={label} className="bg-white border border-dash-border p-5 rounded-2xl shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.08em] !text-dash-textMuted">{label}</span>
+              <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${tint}`}>
+                <Icon size={16} />
+              </span>
+            </div>
+            <span className="text-[28px] font-semibold tracking-[-0.02em] tabular-nums !text-dash-text mt-3 block leading-none">
+              {value}
             </span>
           </div>
-          <Clock className="text-purple opacity-60" size={24} />
-        </div>
+        ))}
       </div>
 
       {/* Export Toolbar */}
-      <div className="flex items-center justify-between bg-white border border-dash-border p-4 rounded-xl shadow-sm">
-        <span className="text-[10px] font-bold !text-dash-textMuted">Reports Extraction</span>
-        <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-dash-border p-4 rounded-2xl shadow-sm">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.08em] !text-dash-textMuted">Reports Extraction</span>
+        <div className="flex flex-wrap gap-2">
           <Button
             onClick={exportToCSV}
-            className="bg-dash-surface hover:bg-dash-border/60 !text-dash-text rounded-lg text-[9px] font-bold h-8 px-3 border border-dash-border transition-colors motion-reduce:transition-none"
+            className="bg-white hover:bg-dash-surface !text-dash-textMuted hover:!text-dash-text rounded-lg text-[11px] font-semibold h-9 px-3.5 border border-dash-border flex items-center gap-1.5 transition-colors motion-reduce:transition-none"
           >
-            <Download size={11} className="mr-1.5" /> CSV Array
+            <Download size={13} /> CSV Array
           </Button>
           <Button
             onClick={exportToSETA}
-            className="bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg text-[9px] font-bold h-8 px-3 border border-purple-200 transition-colors motion-reduce:transition-none"
+            className="bg-white hover:bg-dash-surface !text-dash-textMuted hover:!text-dash-text rounded-lg text-[11px] font-semibold h-9 px-3.5 border border-dash-border flex items-center gap-1.5 transition-colors motion-reduce:transition-none"
           >
-            <Download size={11} className="mr-1.5" /> SETA Compliance
+            <ShieldCheck size={13} className="text-purple" /> SETA Compliance
           </Button>
         </div>
       </div>
 
       {/* Student List */}
       <div className="bg-white border border-dash-border rounded-2xl overflow-hidden shadow-sm">
-        <div className="px-6 py-4 border-b border-dash-border flex items-center justify-between">
-          <span className="text-[10px] font-bold !text-dash-text">Assessor Review Console</span>
-          <button onClick={loadSubmissions} className="text-[10px] font-bold text-primary flex items-center gap-1">
-            <RefreshCw size={10} /> Reload
+        <div className="px-6 py-4 border-b border-dash-border flex items-center justify-between gap-3">
+          <div>
+            <span className="text-[13px] font-bold !text-dash-text block">Assessor Review Console</span>
+            <span className="text-[11px] !text-dash-textMuted block mt-0.5">Per-student attempts, trends and diagnostics</span>
+          </div>
+          <button
+            onClick={loadSubmissions}
+            className="h-8 px-2.5 rounded-lg text-[11px] font-semibold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface flex items-center gap-1.5 transition-colors motion-reduce:transition-none shrink-0"
+          >
+            <RefreshCw size={12} /> Reload
           </button>
         </div>
 
         {studentIds.length === 0 ? (
-          <div className="py-12 text-center">
-            <Info className="mx-auto !text-dash-textMuted opacity-60 mb-2" size={24} />
-            <span className="text-[10.5px] italic !text-dash-textMuted block">No students have attempted this quiz yet.</span>
+          <div className="flex flex-col items-center justify-center text-center py-16 px-4">
+            <div className="w-14 h-14 rounded-2xl bg-dash-surface border border-dash-border flex items-center justify-center mb-4">
+              <ClipboardList className="!text-dash-textMuted" size={22} />
+            </div>
+            <p className="text-[13px] font-semibold !text-dash-text">No attempts yet</p>
+            <p className="text-[12px] leading-relaxed !text-dash-textMuted mt-1 max-w-[260px]">
+              Once students start taking this quiz, their scores and review details will appear here.
+            </p>
           </div>
         ) : (
           <div className="divide-y divide-dash-border">
