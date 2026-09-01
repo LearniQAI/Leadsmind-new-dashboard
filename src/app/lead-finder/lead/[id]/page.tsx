@@ -5,7 +5,8 @@ import { LeadQualificationPanel } from '@/components/lead-finder/LeadQualificati
 import { LeadTagManager } from '@/components/lead-finder/LeadTagManager';
 import { LeadCRMConnector } from '@/components/lead-finder/LeadCRMConnector';
 import { ContactDiscoveryPanel } from '@/components/lead-finder/ContactDiscoveryPanel';
-import { ArrowLeft, Building2, MapPin, Phone, Globe, Star, Users, Linkedin, Facebook, Activity, Lightbulb } from 'lucide-react';
+import { ArrowLeft, Building2, MapPin, Phone, Globe, Star, Users, Activity, Lightbulb } from 'lucide-react';
+import { FaLinkedin as Linkedin, FaFacebook as Facebook } from 'react-icons/fa6';
 import Link from 'next/link';
 
 export default async function LeadWorkspacePage({ params }: { params: { id: string } }) {

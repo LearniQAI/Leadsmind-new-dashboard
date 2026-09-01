@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Brain, Sparkles, TrendingUp, AlertTriangle, ShieldCheck, HelpCircle, Linkedin, Building, CheckCircle2, Loader2 } from 'lucide-react';
+import { Brain, Sparkles, TrendingUp, AlertTriangle, ShieldCheck, HelpCircle, Building, CheckCircle2, Loader2 } from 'lucide-react';
+import { FaLinkedin as Linkedin } from 'react-icons/fa6';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 

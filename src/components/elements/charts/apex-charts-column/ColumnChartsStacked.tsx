@@ -47,10 +47,10 @@ const ColumnChartsStacked = () => {
           position: 'bottom',
           offsetX: -10,
           offsetY: 0,
+          fontSize: '12px',
+          fontFamily: "'Roboto', sans-serif",
           labels: {
             colors: '#7A7A7A',
-            fontSize: '12px',
-            fontFamily: "'Roboto', sans-serif",
           },
         }
       }

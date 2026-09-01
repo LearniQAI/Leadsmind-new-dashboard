@@ -82,7 +82,7 @@ const TimelineDistributed = () => {
     dataLabels: {
       enabled: true, //test sur les barres
       formatter: function (val, obj) {
-        return obj.w.config.series[obj.seriesIndex].data[obj.dataPointIndex].x;
+        return (obj.w.config.series[obj.seriesIndex] as any).data[obj.dataPointIndex].x;
       },
       style: {
         fontSize: "14px",

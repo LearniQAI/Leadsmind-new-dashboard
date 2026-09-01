@@ -2,7 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Building2, MapPin, Phone, Globe, Star, Users, Plus, Check, Search, Linkedin, Facebook, Activity } from 'lucide-react';
+import { Building2, MapPin, Phone, Globe, Star, Users, Plus, Check, Search, Activity } from 'lucide-react';
+import { FaLinkedin as Linkedin, FaFacebook as Facebook } from 'react-icons/fa6';
 import { addLeadsToCRM } from '@/app/actions/lead-finder';
 import { toast } from 'sonner';
 

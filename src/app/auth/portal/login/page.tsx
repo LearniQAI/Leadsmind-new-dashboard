@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useTransition } from 'react';
-import { Mail, Phone, Lock, Loader2, Sparkles, ShieldCheck, Chrome } from 'lucide-react';
+import { Mail, Phone, Lock, Loader2, Sparkles, ShieldCheck } from 'lucide-react';
+import { FaChrome as Chrome } from 'react-icons/fa6';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 
