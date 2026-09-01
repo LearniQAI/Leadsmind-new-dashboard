@@ -34,6 +34,7 @@ import DownloadBlockEditor from "./blocks/DownloadBlockEditor";
 import EmbedBlockEditor from "./blocks/EmbedBlockEditor";
 import LiveSessionBlockEditor from "./blocks/LiveSessionBlockEditor";
 import RichTextBlockEditor from "./blocks/RichTextBlockEditor";
+import HtmlCodeBlockEditor from "./blocks/HtmlCodeBlockEditor";
 import {
   TextInput,
   TextArea,
@@ -69,6 +70,8 @@ function renderBlockTypeEditor(
       return <DownloadBlockEditor block={block} onChange={onChange} />;
     case "embed":
       return <EmbedBlockEditor block={block} onChange={onChange} />;
+    case "html_code":
+      return <HtmlCodeBlockEditor block={block} onChange={onChange} />;
     case "live_session":
       return <LiveSessionBlockEditor block={block} onChange={onChange} />;
     default:

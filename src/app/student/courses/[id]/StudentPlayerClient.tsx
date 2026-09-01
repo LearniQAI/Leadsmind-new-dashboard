@@ -21,6 +21,7 @@ import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
 import { VoiceNotePlayer } from '@/components/common/VoiceNotePlayer';
 import ReadingModal from './components/ReadingModal';
 import { isSafeEmbedUrl } from '@/lib/security/isSafeEmbedUrl';
+import { SandboxedHtml } from '@/components/lms/SandboxedHtml';
 import { getCourseTheme } from '@/lib/courses/courseThemeTokens';
 
 function getEmbeddablePdfUrl(url: string): string {
@@ -771,13 +772,37 @@ export default function StudentPlayerClient({
                             lowBandwidthMode={lowBandwidthMode}
                           />
                         )}
-                        {block.type === 'audio' && block.file_url && (
+                        {block.type === 'audio' && block.content?.mode === 'embed' && block.content?.embed_html && (
+                          <div className="space-y-3">
+                            <SandboxedHtml
+                              html={block.content.embed_html}
+                              className="h-[180px] overflow-hidden rounded-xl border border-dash-border bg-dash-surface"
+                              title="Audio embed"
+                            />
+                            {!completedBlockIds.has(block.id) && (
+                              <button
+                                onClick={() => markBlockComplete(block.id, { opened: true })}
+                                className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-dash-border bg-white px-4 text-[12px] font-semibold !text-dash-text transition-colors hover:bg-dash-surface"
+                              >
+                                Mark as listened
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        {block.type === 'audio' && block.content?.mode !== 'embed' && block.file_url && (
                           <VoiceNotePlayer
                             audioUrl={block.file_url}
                             waveformBars={block.content?.waveform_bars}
                             theme="light"
                             isAlreadyCompleted={completedBlockIds.has(block.id)}
                             onWatchedThreshold={(pct) => markBlockComplete(block.id, { percentage: pct })}
+                          />
+                        )}
+                        {block.type === 'html_code' && block.content?.html && (
+                          <SandboxedHtml
+                            html={block.content.html}
+                            className="h-[420px] overflow-hidden rounded-xl border border-dash-border bg-white"
+                            title="Embedded content"
                           />
                         )}
                         {(block.type === 'reading' || block.type === 'slides') && block.file_url && (

@@ -5,7 +5,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea
 import { toast } from "sonner";
 import {
   GripVertical, Plus, Trash2, Video, Headphones, FileText, Type,
-  CheckSquare, FileEdit, Layers, Download, Presentation, Code2, Radio
+  CheckSquare, FileEdit, Layers, Download, Presentation, Code2, Radio, FileCode2
 } from "lucide-react";
 
 export interface ContentBlock {
@@ -31,15 +31,18 @@ const BLOCK_TYPE_META: Record<string, { label: string; icon: any; color: string 
   download: { label: "Downloadable resource", icon: Download, color: "bg-slate-500" },
   slides: { label: "Presentation slides", icon: Presentation, color: "bg-blue-500" },
   embed: { label: "External embed", icon: Code2, color: "bg-purple-500" },
-  live_session: { label: "Live session link", icon: Radio, color: "bg-cyan-500" }
+  live_session: { label: "Live session link", icon: Radio, color: "bg-cyan-500" },
+  html_code: { label: "HTML code", icon: FileCode2, color: "bg-slate-600" }
 };
 
 // Phase E, Step 4: the "Add block" menu is grouped into these 3 categories (matching the
-// reference exactly) instead of one long flat list of 11 items.
+// reference exactly) instead of one long flat list. BLOCK_TYPE_META / BLOCK_TYPE_GROUPS are
+// the single source of truth for which block types exist in the UI — add a new type here
+// (and to the API BLOCK_TYPES + the DB check constraint), never a hardcoded count elsewhere.
 const BLOCK_TYPE_GROUPS: { label: string; types: string[] }[] = [
   { label: "Core formats", types: ["video", "audio", "reading", "rich_text"] },
   { label: "Assessment & practice", types: ["quiz", "assignment", "flashcards"] },
-  { label: "Extras", types: ["download", "slides", "embed", "live_session"] }
+  { label: "Extras", types: ["download", "slides", "embed", "live_session", "html_code"] }
 ];
 
 const BLOCK_TYPE_ORDER = BLOCK_TYPE_GROUPS.flatMap((g) => g.types);
