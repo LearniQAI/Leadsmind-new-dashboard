@@ -41,6 +41,7 @@ export default function CheckoutClient({
   const [guestEmail, setGuestEmail] = useState('');
   const [hp, setHp] = useState(''); // honeypot — real users never fill this
   const [guestEmailSent, setGuestEmailSent] = useState<boolean | null>(null);
+  const [guestAlreadyEnrolled, setGuestAlreadyEnrolled] = useState(false);
 
   // South African Rand approximation (1 USD ~ 18.5 ZAR)
   const priceZar = (course.price * 18.5).toFixed(2);
@@ -126,9 +127,11 @@ export default function CheckoutClient({
           toast.error((res as any).error);
           return;
         }
-        setGuestEmailSent(((res as any).emailSent ?? null) as boolean | null);
+        const alreadyEnrolled = Boolean((res as any).alreadyEnrolled);
+        setGuestAlreadyEnrolled(alreadyEnrolled);
+        setGuestEmailSent(alreadyEnrolled ? null : (((res as any).emailSent ?? null) as boolean | null));
         setSuccess(true);
-        if ((res as any).alreadyEnrolled) {
+        if (alreadyEnrolled) {
           toast.success('You were already enrolled — check your email to sign in.');
         } else {
           toast.success('Enrolled! Check your email to set up your account.');
@@ -230,7 +233,9 @@ export default function CheckoutClient({
             <h2 className="text-2xl font-space-grotesk font-black uppercase text-white tracking-tight">You're Enrolled</h2>
             <p className="text-xs text-white/50 leading-relaxed max-w-sm">
               You're enrolled in <strong className="text-white">"{course.title}"</strong>.{' '}
-              {guestEmailSent === false ? (
+              {guestAlreadyEnrolled ? (
+                <>You were already enrolled in this course — sign in any time from the student login page using this email address.</>
+              ) : guestEmailSent === false ? (
                 <>We couldn't send your welcome email right now — you can sign in any time from the student login page using this email address.</>
               ) : (
                 <>Check <strong className="text-white">{guestEmail}</strong> for a link to set up your account and start learning.</>

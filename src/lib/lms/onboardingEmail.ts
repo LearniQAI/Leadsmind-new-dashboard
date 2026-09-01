@@ -120,13 +120,15 @@ export async function sendCourseOnboardingEmail(opts: {
         emailConfig?.fromEmail ||
         process.env.RESEND_FROM_EMAIL ||
         'support@leadsmind.io',
-      account_setup_url: accountSetupUrl || `${appUrl()}/auth/student/login`,
     };
+    if (accountSetupUrl) {
+      vars.account_setup_url = accountSetupUrl;
+    }
 
     let bodyTemplate = course.onboarding_email_body || DEFAULT_BODY;
     // Guest enrollment: append the account-setup CTA unless the workspace's custom template
     // already references it explicitly.
-    if (accountSetupUrl && !bodyTemplate.includes('{{account_setup_url}}')) {
+    if (accountSetupUrl && !/\{\{\s*account_setup_url\s*\}\}/i.test(bodyTemplate)) {
       bodyTemplate += ACCOUNT_SETUP_BLOCK;
     }
 

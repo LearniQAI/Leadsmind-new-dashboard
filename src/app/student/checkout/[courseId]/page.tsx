@@ -15,6 +15,9 @@ interface CheckoutPageProps {
  * both the authenticated and guest cases.
  */
 export default function LegacyCheckoutRedirect({ params, searchParams }: CheckoutPageProps) {
-  const status = typeof searchParams?.status === 'string' ? `?status=${searchParams.status}` : '';
+  const status =
+    typeof searchParams?.status === 'string'
+      ? `?status=${encodeURIComponent(searchParams.status)}`
+      : '';
   redirect(`/checkout/${params.courseId}${status}`);
 }

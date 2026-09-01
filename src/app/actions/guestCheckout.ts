@@ -190,7 +190,7 @@ export async function createGuestCourseCheckoutSession(input: GuestPaidInput) {
   }
 
   const ip = clientIp();
-  if (!checkRateLimit(`guest-paid-checkout:ip:${ip}`, 8, 60_000)) {
+  if (!checkRateLimit(`guest-paid-checkout:ip:${ip}`, 5, 60_000)) {
     return { error: 'Too many attempts. Please try again in a minute.' };
   }
 
@@ -254,10 +254,12 @@ export async function createGuestCourseCheckoutSession(input: GuestPaidInput) {
         },
       ],
       metadata: {
-        courseId: course.id,
-        workspaceId,
-        pricingModel: course.pricing_model,
-        subscriptionInterval: course.subscription_interval || null,
+        courseId: String(course.id),
+        workspaceId: String(workspaceId),
+        pricingModel: String(course.pricing_model),
+        ...(course.subscription_interval
+          ? { subscriptionInterval: String(course.subscription_interval) }
+          : {}),
         guest: 'true',
       },
       // NOTE: reaching this URL is just navigation, NOT proof of payment. No enrollment logic
