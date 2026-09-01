@@ -14,15 +14,6 @@ export interface IOfficeLoan {
  bankImg?: StaticImageData;
 }
 
-// Define an interface for the biomattrics attendance
-export interface IBiomattricsAttendance {
- id: string;
- employee: string;
- inTime: string;
- outTime: string;
- employeeImg?: StaticImageData;
-}
-
 // Define an interface for the Training
 export interface ITraining {
  id: number;

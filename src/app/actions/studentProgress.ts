@@ -281,8 +281,8 @@ export async function getModuleQuizAccessStatus(courseId: string, moduleId: stri
  *
  * Root-cause of the two stacked bugs this replaces (old inline query in student/page.tsx):
  *   1. it selected a `score_pct` column that does not exist on the live table (real column is
- *      `percentage`; `score_pct` only lives in the stale, unused src/supabase/lms_schema.sql),
- *      so the select errored and the result was always null.
+ *      `percentage`; `score_pct` was never a real column, only an artifact of a since-deleted
+ *      stale schema file), so the select errored and the result was always null.
  *   2. it filtered `student_id` by the auth user id, but attempts are written with the
  *      contact id — the two never matched.
  * Module-quiz passes were also never counted at all.

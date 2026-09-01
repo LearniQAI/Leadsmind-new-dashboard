@@ -68,7 +68,7 @@ export async function createPipeline({ name, stages }: { name: string, stages: s
 
 /**
  * Deletes an entire pipeline. `pipeline_stages.pipeline_id` cascades
- * ON DELETE CASCADE (schema.sql), and each stage cascades to its
+ * ON DELETE CASCADE, and each stage cascades to its
  * `opportunities` the same way (see deleteStage) — so this one delete
  * removes the pipeline, all of its stages, and every deal inside them.
  * Restricted to admin/manager, same tier as deleteTask/deleteStage.

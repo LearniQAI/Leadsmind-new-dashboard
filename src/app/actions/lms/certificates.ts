@@ -32,24 +32,3 @@ export async function getAdminCertificates() {
     return { success: false, error: 'Failed to load certificates.' };
   }
 }
-
-export async function saveCertificateTemplate(courseId: string, templateId: string) {
-  try {
-    const { workspaceId } = await requireWorkspaceAccess();
-    const supabase = await createServerClient();
-
-    const { data, error } = await supabase
-      .from('courses')
-      .update({ certificate_template_id: templateId })
-      .eq('id', courseId)
-      .eq('workspace_id', workspaceId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { success: true, data };
-  } catch (error: any) {
-    logger.error({ err: error, courseId }, 'lms.certificates.save_template_failed');
-    return { success: false, error: 'Failed to save certificate template.' };
-  }
-}
