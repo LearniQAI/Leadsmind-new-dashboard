@@ -12,6 +12,15 @@ Access your student portal here: {{portal_url}}
 
 If you have any questions, contact us at {{admin_support_email}}.`;
 
+// Appended (outside the admin-authored template) only for guest enrollments, so a visitor who
+// checked out without an account gets a real way to sign in and track progress. Kept separate
+// from DEFAULT_BODY so existing custom templates don't need editing to include it.
+const ACCOUNT_SETUP_BLOCK = `
+
+--
+Set up your account to log back in any time and track your progress:
+{{account_setup_url}}`;
+
 const ACCESS_DESCRIPTIONS: Record<string, string> = {
   full: 'full',
   preview: 'preview',
@@ -78,8 +87,10 @@ export async function sendCourseOnboardingEmail(opts: {
   contactId: string;
   workspaceId: string;
   accessType?: string | null;
+  /** When set (guest enrollment), an account-setup / magic login link is appended to the email. */
+  accountSetupUrl?: string | null;
 }): Promise<{ sent: boolean; reason?: string }> {
-  const { courseId, contactId, workspaceId, accessType } = opts;
+  const { courseId, contactId, workspaceId, accessType, accountSetupUrl } = opts;
   try {
     const admin = createAdminClient();
 
@@ -110,9 +121,19 @@ export async function sendCourseOnboardingEmail(opts: {
         process.env.RESEND_FROM_EMAIL ||
         'support@leadsmind.io',
     };
+    if (accountSetupUrl) {
+      vars.account_setup_url = accountSetupUrl;
+    }
+
+    let bodyTemplate = course.onboarding_email_body || DEFAULT_BODY;
+    // Guest enrollment: append the account-setup CTA unless the workspace's custom template
+    // already references it explicitly.
+    if (accountSetupUrl && !/\{\{\s*account_setup_url\s*\}\}/i.test(bodyTemplate)) {
+      bodyTemplate += ACCOUNT_SETUP_BLOCK;
+    }
 
     const subject = render(course.onboarding_email_subject || DEFAULT_SUBJECT, vars).text;
-    const { text, html } = render(course.onboarding_email_body || DEFAULT_BODY, vars);
+    const { text, html } = render(bodyTemplate, vars);
 
     await sendEmail({
       to: contact.email,

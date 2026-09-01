@@ -120,6 +120,9 @@ export async function updateSession(request: NextRequest) {
    request.nextUrl.pathname === '/terms' ||
    request.nextUrl.pathname === '/refund' ||
    request.nextUrl.pathname.startsWith('/unauthenticated') ||
+   // Public, guest-capable course checkout (src/app/checkout/[courseId]). The page itself
+   // decides authed-vs-guest; it must be reachable logged-out so landing-page "Enrol" converts.
+   request.nextUrl.pathname.startsWith('/checkout') ||
    request.nextUrl.pathname.startsWith('/public/forms') ||
    request.nextUrl.pathname.startsWith('/public/events') ||
    request.nextUrl.pathname.startsWith('/public/unsubscribe') ||
