@@ -269,15 +269,19 @@ export async function logSearchClick(logId: string, articleId: string) {
 export async function submitHelpFeedback(articleId: string, isHelpful: boolean) {
   try {
     const supabase = await createServerClient();
-    const wsId = await getCurrentWorkspaceId();
-    const { data: current } = await supabase.from('help_articles').select('helpful_yes, helpful_no').eq("id", articleId).eq("workspace_id", wsId).eq('workspace_id', wsId).single();
+    // help_articles is a global catalog — no workspace_id column. Scope by article id only.
+    const { data: current } = await supabase
+      .from('help_articles')
+      .select('helpful_yes, helpful_no')
+      .eq('id', articleId)
+      .single();
     if (!current) throw new NotFoundError('Help article');
 
-    const updates = isHelpful 
+    const updates = isHelpful
       ? { helpful_yes: (current.helpful_yes || 0) + 1 }
       : { helpful_no: (current.helpful_no || 0) + 1 };
 
-    const { error } = await supabase.from('help_articles').update(updates).eq("id", articleId).eq("workspace_id", wsId);
+    const { error } = await supabase.from('help_articles').update(updates).eq('id', articleId);
     if (error) throw error;
 
     return { success: true };

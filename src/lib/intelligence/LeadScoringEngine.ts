@@ -185,15 +185,9 @@ export const LeadScoringEngine = {
 
       syncContactTagsToRelational(workspaceId, contactId, newTags).catch(() => {});
 
-      // Check and update crm_contacts if it exists
-      await supabase
-        .from('crm_contacts')
-        .update({
-          lead_score: finalScore,
-          lead_score_explanation: finalExplanation,
-          tags: newTags
-        })
-        .eq("id", contactId).eq("workspace_id", workspaceId);
+      // (Removed a redundant update against crm_contacts — that table has no
+      // lead_score / lead_score_explanation / tags columns; the real score fields live on
+      // contacts, updated just above.)
 
       logger.info({ contactId, finalScore, scoreAdjustment }, 'lead_scoring_engine.score.updated');
     } catch (err: any) {

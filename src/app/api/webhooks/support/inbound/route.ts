@@ -145,11 +145,13 @@ export async function POST(req: Request) {
       await supabaseAdmin.from('ticket_attachments').insert(uploadedAttachments);
     }
 
-    // Update Ticket Timestamp
+    // A customer reply should resurface a ticket that was parked waiting on them.
+    // (support_tickets has no updated_at column to bump; mirrors the portal reply path.)
     await supabaseAdmin
       .from('support_tickets')
-      .update({ updated_at: new Date().toISOString() })
-      .eq('id', ticketId);
+      .update({ status: 'open' })
+      .eq('id', ticketId)
+      .eq('status', 'waiting_client');
 
     // 1. Log contact activity on CRM timeline
     try {

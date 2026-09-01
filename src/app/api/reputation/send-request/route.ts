@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { requireWorkspaceRole } from '@/lib/api/workspaceAuth'
 import { sendEmail } from '@/lib/email'
 import { sendSMS } from '@/lib/sms'
+import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials'
 import { MetaAdapter } from '@/lib/meta/MetaAdapter'
 import { toClientError } from '@/shared/errors/AppError'
 import { logger } from '@/shared/logger'
@@ -76,17 +77,21 @@ export async function POST(req: NextRequest) {
     let sent = 0
     let failed = 0
 
-    // Fetch Twilio config for SMS/WhatsApp
+    // Fetch Twilio config for SMS/WhatsApp — credentials live on the `workspaces`
+    // row (encrypted, with legacy plaintext fallback), same as every other Twilio
+    // caller. The old `automations.settings` lookup hit a non-existent table, so
+    // SMS/WhatsApp campaign sends silently used no workspace credentials.
     const { data: wsCreds } = await adminClient
-      .from('automations')
-      .select('settings')
-      .eq('workspace_id', workspaceId)
+      .from('workspaces')
+      .select('twilio_sid, twilio_token, twilio_sid_encrypted, twilio_token_encrypted, twilio_number')
+      .eq('id', workspaceId)
       .maybeSingle()
 
+    const { accountSid, authToken } = resolveWorkspaceTwilioCredentials(wsCreds)
     const twilioConfig = {
-      accountSid: wsCreds?.settings?.twilio_sid || null,
-      authToken: wsCreds?.settings?.twilio_token || null,
-      fromNumber: wsCreds?.settings?.twilio_number || process.env.TWILIO_PHONE_NUMBER
+      accountSid: accountSid || null,
+      authToken: authToken || null,
+      fromNumber: wsCreds?.twilio_number || process.env.TWILIO_PHONE_NUMBER
     }
 
     for (const contact of contacts) {

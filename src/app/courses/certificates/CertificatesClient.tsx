@@ -25,6 +25,7 @@ interface CertificatesClientProps {
 
 function recipientOf(c: any): string {
   return (
+    c.student_name_snapshot ||
     c.student_name ||
     [c.students?.first_name, c.students?.last_name].filter(Boolean).join(" ") ||
     c.students?.email ||
@@ -35,7 +36,14 @@ function recipientOf(c: any): string {
 }
 
 function courseOf(c: any): string {
-  return c.courses?.name || c.courses?.title || c.course_title || c.course_name || "—";
+  return (
+    c.course_title_snapshot ||
+    c.courses?.name ||
+    c.courses?.title ||
+    c.course_title ||
+    c.course_name ||
+    "—"
+  );
 }
 
 function dateOf(c: any): string | null {
@@ -43,7 +51,7 @@ function dateOf(c: any): string | null {
 }
 
 function codeOf(c: any): string {
-  return c.verification_code || c.certificate_number || c.code || c.id || "—";
+  return c.validation_id || c.verification_code || c.certificate_number || c.code || c.id || "—";
 }
 
 function fmtDate(d: string | null): string {

@@ -44,7 +44,7 @@ export async function executeLMSAction(
           const { error } = await supabaseAdmin
             .from('enrollments')
             .insert({
-              workspace_id: workspaceId,
+              // enrollments has no workspace_id column (derived via course_id -> courses)
               contact_id: contactId,
               course_id: courseId,
               access_type: 'full',
@@ -79,7 +79,7 @@ export async function executeLMSAction(
           const { error } = await supabaseAdmin
             .from('enrollments')
             .insert({
-              workspace_id: workspaceId,
+              // enrollments has no workspace_id column (derived via course_id -> courses)
               contact_id: contactId,
               course_id: courseId,
               access_type: 'partial',

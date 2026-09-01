@@ -519,7 +519,7 @@ export async function getWorkspaceApiKey() {
   const { data, error } = await supabase
    .from('workspaces')
    .select('api_key')
-  .eq("id", workspaceId).eq("workspace_id", workspaceId)
+   .eq("id", workspaceId)
    .single();
 
   if (error) throw error;

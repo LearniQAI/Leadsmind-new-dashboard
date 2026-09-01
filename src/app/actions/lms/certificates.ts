@@ -10,15 +10,18 @@ export async function getAdminCertificates() {
     const { workspaceId } = await requireWorkspaceAccess();
     const supabase = await createServerClient();
 
-    // Fetch all certificates issued in this workspace, joining student and course details
+    // Fetch all certificates issued in this workspace. Persisted certificate rows
+    // live in `course_certificates` (id, contact_id, course_id, workspace_id,
+    // validation_id, student_name_snapshot, course_title_snapshot, issued_at).
+    // `courses` exposes `title` (not `name`); the row snapshots keep the page
+    // correct even if the course or contact is later deleted.
     const { data, error } = await supabase
-      .from('certificates')
-      .select('*, courses(name), students:contacts(first_name, last_name, email)')
+      .from('course_certificates')
+      .select('*, courses(title), students:contacts(first_name, last_name, email)')
       .eq('workspace_id', workspaceId)
       .order('issued_at', { ascending: false });
 
     if (error) {
-      // If the table doesn't exist yet or is malformed, return an empty array gracefully to prevent the UI crash
       logger.warn({ err: error, workspaceId }, 'lms.certificates.fetch_warning');
       return { success: true, data: [] };
     }

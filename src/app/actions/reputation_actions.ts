@@ -5,6 +5,7 @@ import { getCurrentWorkspaceId, requireWorkspaceAccess } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { sendEmail } from '@/lib/email';
 import { sendSMS } from '@/lib/sms';
+import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 import { logger } from '@/shared/logger';
 import { headers } from 'next/headers';
 import { checkRateLimit } from '@/lib/security/rateLimit';
@@ -353,29 +354,25 @@ export async function sendReviewRequest(contactId: string, channel: 'email' | 's
       const messageText = `Hi ${contactName}, how was your experience with ${workspaceName}? We would love to hear your feedback. Please rate us here: ${feedbackUrl}`;
       const to = channel === 'whatsapp' ? `whatsapp:${contact.phone}` : contact.phone;
       
-      // Fetch workspace Twilio config if available.
-      // NOTE: the `automations` table referenced here does not exist in the
-      // live database (confirmed via the linked project's schema — this
-      // query would error every time, caught by this function's outer
-      // catch, silently falling through to "Failed to send review request"
-      // for every sms/whatsapp attempt). This means the RLS-policy part of
-      // this item's required fix is currently moot — there's no table to
-      // add a policy to. Flagging as a genuine pre-existing functional gap,
-      // not fixed here (creating a new table is a schema/feature change
-      // beyond the scope of this security pass, same call made for
-      // tasks.ts's task_attachments and analytics.ts's conversion_events).
+      // Workspace Twilio credentials live on the `workspaces` row (encrypted
+      // columns, with legacy plaintext fallback) — the same source every other
+      // Twilio caller in this codebase uses. The old `automations.settings`
+      // lookup here targeted a table that does not exist, so every sms/whatsapp
+      // review request silently failed.
       const { data: wsCreds } = await supabase
-        .from('automations')
-        .select('settings')
-        .eq('workspace_id', workspaceId)
+        .from('workspaces')
+        .select('twilio_sid, twilio_token, twilio_sid_encrypted, twilio_token_encrypted, twilio_number')
+        .eq('id', workspaceId)
         .maybeSingle();
 
+      const { accountSid, authToken } = resolveWorkspaceTwilioCredentials(wsCreds);
+      const twilioNumber = wsCreds?.twilio_number || process.env.TWILIO_PHONE_NUMBER;
       const config = {
-        accountSid: wsCreds?.settings?.twilio_sid || null,
-        authToken: wsCreds?.settings?.twilio_token || null,
-        fromNumber: channel === 'whatsapp' 
-          ? `whatsapp:${wsCreds?.settings?.twilio_number || process.env.TWILIO_PHONE_NUMBER}`
-          : (wsCreds?.settings?.twilio_number || process.env.TWILIO_PHONE_NUMBER)
+        accountSid: accountSid || null,
+        authToken: authToken || null,
+        fromNumber: channel === 'whatsapp'
+          ? `whatsapp:${twilioNumber}`
+          : twilioNumber
       };
 
       await sendSMS({

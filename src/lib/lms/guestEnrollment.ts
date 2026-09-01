@@ -160,7 +160,7 @@ export async function insertEnrollmentIfAbsent(
   const row: Record<string, any> = {
     course_id: courseId,
     contact_id: contactId,
-    workspace_id: params.workspaceId || null,
+    // enrollments has no workspace_id column — workspace derives via course_id -> courses.
     status: 'active',
     active: true,
     payment_status: params.paymentStatus,

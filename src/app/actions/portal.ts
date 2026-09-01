@@ -397,7 +397,7 @@ export async function replyToSupportTicket(ticketId: string, message: string, at
   // 4. Reset ticket status to open if it was waiting_client
   await adminClient
     .from('support_tickets')
-    .update({ status: 'open', updated_at: new Date().toISOString() })
+    .update({ status: 'open' }) // support_tickets has no updated_at column
     .eq('id', ticketId)
     .eq('status', 'waiting_client');
 

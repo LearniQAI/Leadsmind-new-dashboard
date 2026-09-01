@@ -97,7 +97,9 @@ export async function POST(req: NextRequest) {
           .insert({
             course_id: courseId,
             contact_id: contactId,
-            workspace_id: workspaceId || null,
+            // enrollments has no workspace_id column — workspace is derived via
+            // course_id -> courses.workspace_id. The telemetry emits below still use the
+            // workspaceId from the session metadata directly.
             payment_status: 'paid',
             access_type: accessType,
             subscription_interval: pricingModel === 'subscription' ? subscriptionInterval : null,
@@ -173,17 +175,23 @@ export async function POST(req: NextRequest) {
       logger.error({ err: cancelErr, subscriptionId }, 'webhook.payments.subscription_cancel.failed');
     }
 
-    // Hook telemetry triggers
+    // Hook telemetry triggers. enrollments has no workspace_id — resolve it via the course.
     const { data: enrollData } = await supabaseAdmin
       .from('enrollments')
-      .select('workspace_id, contact_id, course_id')
+      .select('contact_id, course_id')
       .eq('metadata->>stripe_subscription_id', subscriptionId)
       .maybeSingle();
 
     if (enrollData) {
+      const { data: courseRow } = await supabaseAdmin
+        .from('courses')
+        .select('workspace_id')
+        .eq('id', enrollData.course_id)
+        .maybeSingle();
+
       const { emitLMSEvent } = await import('../../../../../libs/core/src/events/lms-event-bus');
       await emitLMSEvent('payment.failed', {
-        workspaceId: enrollData.workspace_id,
+        workspaceId: courseRow?.workspace_id,
         contactId: enrollData.contact_id,
         courseId: enrollData.course_id
       });

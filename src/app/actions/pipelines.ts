@@ -464,7 +464,7 @@ export async function updateStage(id: string, name: string) {
 
   const { error } = await supabase
     .from('pipeline_stages')
-    .update({ name, updated_at: new Date().toISOString() })
+    .update({ name })
     .eq("id", id).eq("workspace_id", workspaceId);
 
   if (error) {
@@ -575,8 +575,7 @@ export async function updatePipelineStages(pipelineId: string, stages: { id: str
       } else {
         const { error: updError } = await supabase.from('pipeline_stages').update({
           name: stage.name,
-          position: i,
-          updated_at: new Date().toISOString()
+          position: i
         }).eq("id", stage.id).eq("workspace_id", workspaceId);
         if (updError) throw updError;
       }

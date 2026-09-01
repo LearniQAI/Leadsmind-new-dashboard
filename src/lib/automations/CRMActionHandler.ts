@@ -90,7 +90,7 @@ export const CRMActionHandler = {
         contact_id: contactId,
         title: config.title || 'Workflow CRM Task',
         description: config.description || 'Automatically created by LeadsMind workflow',
-        priority: config.priority || 'normal',
+        // contact_tasks has no priority column
         status: 'todo',
         due_date: config.dueDate || new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0] // Default 2 days out
       })
@@ -273,7 +273,7 @@ export const CRMActionHandler = {
         contact_id: contactId,
         title: `⏰ Follow-up Reminder: ${config.title || 'Contact'}`,
         description: config.description || 'Reminder created automatically from workflow steps.',
-        priority: 'high',
+        // contact_tasks has no priority column
         status: 'todo',
         due_date: new Date(Date.now() + 86400000).toISOString().split('T')[0] // Tomorrow
       })
@@ -298,7 +298,7 @@ export const CRMActionHandler = {
     // Fetch workspace settings
     const { data: workspace } = await supabase
      .from("workspaces")
-     .select("twilio_sid, twilio_token, twilio_sid_encrypted, twilio_token_encrypted, twilio_number, name, whatsapp_transcript_enabled")
+     .select("twilio_sid, twilio_token, twilio_sid_encrypted, twilio_token_encrypted, twilio_number, name")
      .eq("id", workspaceId)
      .single();
 
@@ -353,7 +353,8 @@ export const CRMActionHandler = {
 
     // Message 3: Transcript Context
     const transcript = config.transcript || config.original_text || '';
-    const sendTranscript = config.sendTranscript !== false && workspace?.whatsapp_transcript_enabled !== false;
+    // workspaces has no whatsapp_transcript_enabled column — governed by config only.
+    const sendTranscript = config.sendTranscript !== false;
 
     if (sendTranscript && transcript) {
       await new Promise(r => setTimeout(r, 600));

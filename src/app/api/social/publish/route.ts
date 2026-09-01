@@ -102,14 +102,15 @@ export async function POST(req: NextRequest) {
           results[platform] = { success: true, postId: publishData.id }
         }
 
-        // Save to social_posts table
+        // Save to social_posts table (real columns: platforms[], media_urls[],
+        // external_post_ids jsonb — not the singular names used before).
         await supabase.from('social_posts').insert({
           workspace_id: workspaceId,
-          platform,
+          platforms: [platform],
           content: message,
-          image_url: imageUrl || null,
+          media_urls: imageUrl ? [imageUrl] : [],
           published_at: new Date().toISOString(),
-          external_post_id: results[platform]?.postId || null,
+          external_post_ids: results[platform]?.postId ? { [platform]: results[platform].postId } : {},
           status: 'published'
         }).then(() => {})
 

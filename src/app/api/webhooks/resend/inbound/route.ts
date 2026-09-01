@@ -250,11 +250,12 @@ export async function POST(req: NextRequest) {
       if (dbMessageId) {
          await supabaseAdmin.from('messages').update({
             status: smsStatus,
-            error_message: smsError,
+            // messages has no error_message column — fold the failure reason into bridge_metadata
             bridge_metadata: {
                 resend_message_id: messageId,
                 sender_email: from,
-                twilio_sid: smsSid || undefined
+                twilio_sid: smsSid || undefined,
+                error_message: smsError || undefined
             }
          }).eq('id', dbMessageId);
       }

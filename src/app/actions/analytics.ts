@@ -42,7 +42,7 @@ export async function getWorkspaceUsage() {
  const supabase = await createServerClient();
  const [{ count: contacts }, { count: automations }, { count: websites }, { data: ws }] = await Promise.all([
   supabase.from('contacts').select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId),
-  supabase.from('automations').select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId),
+  supabase.from('workflows').select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId),
   supabase.from('websites').select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId),
   supabase.from('workspaces').select('plan_tier').eq('id', workspaceId).maybeSingle(),
  ]);

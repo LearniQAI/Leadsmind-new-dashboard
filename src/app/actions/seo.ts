@@ -186,12 +186,15 @@ export async function addTrackedKeyword(keyword: string, targetUrl?: string) {
 
 export async function deleteTrackedKeyword(id: string) {
   try {
+    // seo_tracked_keywords is scoped by project_id, not workspace_id.
+    const projectRes = await getSeoProject();
+    if (projectRes.error) return { error: projectRes.error };
+    if (!projectRes.data) return { error: 'Please configure your SEO Domain first.' };
     const supabase = await createServerClient();
-    const workspaceId = await getActiveWorkspaceId();
     const { error } = await supabase
       .from('seo_tracked_keywords')
       .delete()
-      .eq("id", id).eq("workspace_id", workspaceId);
+      .eq("id", id).eq("project_id", projectRes.data.id);
 
     if (error) throw error;
 
@@ -227,12 +230,15 @@ export async function getContentPipeline() {
 
 export async function updatePipelineStatus(id: string, status: 'Idea' | 'Research' | 'Approved' | 'Outlined' | 'Writing' | 'Review' | 'Scheduled' | 'Published' | 'Indexing' | 'ranking_11_50') {
   try {
+    // seo_content_pipeline is scoped by project_id, not workspace_id.
+    const projectRes = await getSeoProject();
+    if (projectRes.error) return { error: projectRes.error };
+    if (!projectRes.data) return { error: 'Please configure your SEO Domain first.' };
     const supabase = await createServerClient();
-    const workspaceId = await getActiveWorkspaceId();
     const { data, error } = await supabase
       .from('seo_content_pipeline')
       .update({ status })
-      .eq("id", id).eq("workspace_id", workspaceId)
+      .eq("id", id).eq("project_id", projectRes.data.id)
       .select()
       .single();
 
@@ -282,12 +288,15 @@ export async function addPipelineItem(keyword: string, status: 'Idea' | 'Researc
 
 export async function updatePipelineItemCost(id: string, cost: number) {
   try {
+    // seo_content_pipeline is scoped by project_id, not workspace_id.
+    const projectRes = await getSeoProject();
+    if (projectRes.error) return { error: projectRes.error };
+    if (!projectRes.data) return { error: 'Please configure your SEO Domain first.' };
     const supabase = await createServerClient();
-    const workspaceId = await getActiveWorkspaceId();
     const { data, error } = await supabase
       .from('seo_content_pipeline')
       .update({ cost })
-      .eq("id", id).eq("workspace_id", workspaceId)
+      .eq("id", id).eq("project_id", projectRes.data.id)
       .select()
       .single();
 
@@ -353,12 +362,15 @@ export async function getRevenueAttributionMetrics() {
 
 export async function deletePipelineItem(id: string) {
   try {
+    // seo_content_pipeline is scoped by project_id, not workspace_id.
+    const projectRes = await getSeoProject();
+    if (projectRes.error) return { error: projectRes.error };
+    if (!projectRes.data) return { error: 'Please configure your SEO Domain first.' };
     const supabase = await createServerClient();
-    const workspaceId = await getActiveWorkspaceId();
     const { error } = await supabase
       .from('seo_content_pipeline')
       .delete()
-      .eq("id", id).eq("workspace_id", workspaceId);
+      .eq("id", id).eq("project_id", projectRes.data.id);
 
     if (error) throw error;
 

@@ -65,12 +65,13 @@ export default async function PortalDashboard() {
   const overdueAlertEnabled = invoiceSettings.enable_overdue_alert_banner ?? false;
 
 
-  // 2. Fetch Course Enrollments & Progress for this contact
+  // 2. Fetch Course Enrollments & Progress for this contact.
+  // enrollments has no workspace_id — scope via the course (courses.workspace_id).
   const { data: dbEnrollments } = await supabase
     .from('enrollments')
-    .select('*, courses(*)')
+    .select('*, courses!inner(*)')
     .eq('contact_id', contact.id)
-    .eq('workspace_id', workspace.id);
+    .eq('courses.workspace_id', workspace.id);
 
   const enrollments = dbEnrollments || [];
   
