@@ -27,6 +27,14 @@ export interface AssignmentStatusItem {
   gradedAt: string | null;
 }
 
+export interface CertificateItem {
+  id: string;
+  courseId: string;
+  courseTitle: string;
+  validationId: string;
+  issuedAt: string;
+}
+
 const uniq = <T,>(a: T[]): T[] => Array.from(new Set(a));
 
 /**
@@ -40,16 +48,20 @@ const uniq = <T,>(a: T[]): T[] => Array.from(new Set(a));
  * a live title/course link.
  */
 export async function getStudentResults(): Promise<{
-  data: { quizHistory: QuizHistoryItem[]; assignments: AssignmentStatusItem[] };
+  data: {
+    quizHistory: QuizHistoryItem[];
+    assignments: AssignmentStatusItem[];
+    certificates: CertificateItem[];
+  };
 }> {
-  const empty = { data: { quizHistory: [], assignments: [] } };
+  const empty = { data: { quizHistory: [], assignments: [], certificates: [] } };
   try {
     const contactIds = await getStudentContactIds();
     if (contactIds.length === 0) return empty;
 
     const db = createAdminClient();
 
-    const [laRes, maRes, asRes] = await Promise.all([
+    const [laRes, maRes, asRes, certRes] = await Promise.all([
       db.from('quiz_attempts')
         .select('id, lesson_id, percentage, score, passed, submitted_at')
         .in('student_id', contactIds),
@@ -59,11 +71,16 @@ export async function getStudentResults(): Promise<{
       db.from('lms_assignment_submissions')
         .select('id, lesson_id, course_id, grade_status, feedback_comments, submitted_at, graded_at')
         .in('contact_id', contactIds),
+      db.from('course_certificates')
+        .select('id, course_id, validation_id, issued_at, course_title_snapshot')
+        .in('contact_id', contactIds)
+        .order('issued_at', { ascending: false }),
     ]);
 
     const lessonAttempts = laRes.data || [];
     const moduleAttempts = maRes.data || [];
     const assignmentRows = asRes.data || [];
+    const certRows = certRes.data || [];
 
     const lessonIds = uniq(
       [...lessonAttempts.map((a: any) => a.lesson_id), ...assignmentRows.map((a: any) => a.lesson_id)].filter(Boolean)
@@ -144,7 +161,16 @@ export async function getStudentResults(): Promise<{
       })
       .sort((x, y) => new Date(y.submittedAt).getTime() - new Date(x.submittedAt).getTime());
 
-    return { data: { quizHistory, assignments } };
+    const certificates: CertificateItem[] = certRows.map((r: any): CertificateItem => ({
+      id: r.id,
+      courseId: r.course_id,
+      // the stored snapshot is the authoritative display title for an issued certificate
+      courseTitle: r.course_title_snapshot || 'Course',
+      validationId: r.validation_id,
+      issuedAt: r.issued_at,
+    }));
+
+    return { data: { quizHistory, assignments, certificates } };
   } catch (err) {
     logger.error({ err }, 'student_results.fetch.failed');
     return empty;
