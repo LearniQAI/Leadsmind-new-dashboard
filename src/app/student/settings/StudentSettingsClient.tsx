@@ -62,8 +62,14 @@ export default function StudentSettingsClient({ settings }: Props) {
 
   const savePassword = () =>
     startSavePw(async () => {
-      if (newPw.length < 8) return toast.error('New password must be at least 8 characters.');
-      if (newPw !== confPw) return toast.error("New passwords don't match.");
+      if (newPw.length < 8) {
+        toast.error('New password must be at least 8 characters.');
+        return;
+      }
+      if (newPw !== confPw) {
+        toast.error("New passwords don't match.");
+        return;
+      }
       const res = await updatePassword({
         currentPassword: curPw,
         newPassword: newPw,
