@@ -41,7 +41,7 @@ export async function GET(
     // 3. Verify Course Completion Status
     const [lessonsRes, progressRes, contactRes] = await Promise.all([
       adminClient.from('course_lessons').select('id').eq('course_id', courseId),
-      adminClient.from('course_progress').select('lesson_id').eq('contact_id', contactId).eq('course_id', courseId),
+      adminClient.from('course_progress').select('lesson_id').eq('contact_id', contactId).eq('course_id', courseId).not('completed_at', 'is', null),
       adminClient.from('contacts').select('first_name, last_name, email').eq('id', contactId).single()
     ]);
 

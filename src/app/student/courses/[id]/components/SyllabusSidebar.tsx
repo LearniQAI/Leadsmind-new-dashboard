@@ -1,5 +1,5 @@
 import React from 'react';
-import { Lock, Play, Download, CheckCircle2, Clock, Gauge } from 'lucide-react';
+import { Lock, Play, Download, CheckCircle2, Clock, Gauge, HelpCircle } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { getCourseTheme } from '@/lib/courses/courseThemeTokens';
 
@@ -184,6 +184,56 @@ export default function SyllabusSidebar({
                     No lessons in this module
                   </span>
                 )}
+
+                {/* Module-level quiz entry point — only for modules that actually have one
+                    configured. Locked until every lesson in the module is complete, mirroring
+                    getModuleCompletionStatus() (the same all-lessons-complete rule the
+                    module-quiz page enforces server-side) and the locked-lesson visual above. */}
+                {mod.has_module_quiz && (() => {
+                  const allLessonsDone =
+                    moduleLessons.length === 0 ||
+                    moduleLessons.every((l: any) => completedLessonIds.includes(l.id));
+                  const inner = (
+                    <>
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        {allLessonsDone ? (
+                          <HelpCircle size={14} className="shrink-0" style={{ color: accent }} />
+                        ) : (
+                          <Lock size={14} className="shrink-0 !text-dash-textMuted" />
+                        )}
+                        <span
+                          className={`truncate text-[13px] ${
+                            allLessonsDone ? 'font-semibold !text-dash-text' : '!text-dash-textMuted'
+                          }`}
+                        >
+                          Module quiz
+                        </span>
+                      </span>
+                      <span className="text-[10px] uppercase !text-dash-textMuted/70">
+                        {allLessonsDone ? 'Quiz' : 'Locked'}
+                      </span>
+                    </>
+                  );
+                  const base =
+                    'mt-1 flex w-full items-center justify-between gap-3 rounded-xl border border-dashed px-3 py-2.5 text-left transition-colors';
+                  return allLessonsDone ? (
+                    <a
+                      href={`/student/courses/${course.id}/module-quiz/${mod.id}`}
+                      className={`${base} border-dash-border hover:bg-white`}
+                      style={{ borderColor: `${accent}55` }}
+                    >
+                      {inner}
+                    </a>
+                  ) : (
+                    <div
+                      aria-disabled="true"
+                      title="Complete every lesson in this module to unlock its quiz"
+                      className={`${base} cursor-not-allowed border-dash-border opacity-45`}
+                    >
+                      {inner}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           );

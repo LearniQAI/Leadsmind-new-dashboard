@@ -1,130 +1,111 @@
-﻿import Link from 'next/link';
-import { ChevronRight, BookOpen } from 'lucide-react';
-import { createServerClient } from '@/lib/supabase/server';
-import { getCurrentProfile, getCurrentWorkspaceId } from '@/lib/auth';
-
-type EnrollmentRow = {
-  course_id: string;
-  courses: {
-    id: string;
-    name: string;
-    description?: string | null;
-  } | null;
-};
-
-type LessonRow = {
-  id: string;
-  title: string;
-  order: number;
-  module_id: string;
-  modules: { id: string; title: string; order: number; course_id: string } | null;
-};
-
-type CompletionRow = { lesson_id: string };
+import Link from 'next/link';
+import { ArrowRight, BookOpen, Play } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 
 /**
  * "Continue learning" banner for the student dashboard.
- * Per Nelly's PRD Section 4.
+ *
+ * Rebuilt against the real schema. The previous version queried `student_portal_assignments`,
+ * `lessons`/`modules`, `lesson_completions` and `courses.name` — none of which exist on the
+ * live schema — so an early `return null` always fired and the banner never rendered.
+ *
+ * It now takes the already-fetched enrolment list from the dashboard (the same
+ * getEnrolledCoursesWithProgress() result the "My courses" grid uses — no second query, no
+ * new progress math) and surfaces the single course to jump back into.
+ *
+ * Selection (see pickContinueLearningCourse):
+ *   1. Among enrolments with progressPercentage < 100, pick the most recently active one,
+ *      ranked by `enrollments.last_active_at` (written by the player heartbeat; defaults to
+ *      enrolled_at, so this naturally falls back to "most recently enrolled" when the student
+ *      has no real activity yet).
+ *   2. If every enrolled course is already 100% complete, or the student has no enrolments,
+ *      render nothing — the dashboard header already has an "Explore catalog" CTA and the
+ *      "My courses" section already handles the empty state, so a second prompt is just noise.
+ *
+ * Continue button → /student/courses/[id] (same page as "My courses" → Start/Resume). When a
+ * real last_lesson_id exists it passes ?restore=true&lessonId=&t= so StudentPlayerClient
+ * opens that lesson and (for video lessons) seeks to last_position_seconds. With no
+ * last_lesson_id the player opens at the first lesson — it has no independent
+ * "resume at first incomplete lesson" logic to defer to.
  */
-export default async function ContinueLearningBanner() {
-  const profile = await getCurrentProfile();
-  if (!profile) return null;
-  const workspaceId = await getCurrentWorkspaceId();
-  const supabase = await createServerClient();
-  const userId = profile.id;
 
-  const { data: enrollment } = await supabase
-    .from('student_portal_assignments')
-    .select('course_id, courses(id, name, description)')
-    .eq('student_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle<EnrollmentRow>();
+export interface ContinueLearningCourse {
+  id: string;
+  title: string;
+  description?: string | null;
+  totalLessons: number;
+  completedLessons: number;
+  progressPercentage: number;
+  lastActiveAt?: string | null;
+  lastLessonId?: string | null;
+  lastPositionSeconds?: number | null;
+  enrolledAt?: string | null;
+}
 
-  if (!enrollment?.courses) return null;
-  const course = enrollment.courses;
-  const courseId = course.id;
+export function pickContinueLearningCourse<T extends ContinueLearningCourse>(
+  courses: T[] | null | undefined
+): T | null {
+  if (!courses || courses.length === 0) return null;
 
-  const { data: lessons } = await supabase
-    .from('lessons')
-    .select('id, title, order, module_id, modules!inner(id, title, order, course_id)')
-    .eq('modules.course_id', courseId)
-    .order('order', { ascending: true })
-    .returns<LessonRow[]>();
+  const incomplete = courses.filter((c) => (c.progressPercentage ?? 0) < 100);
+  if (incomplete.length === 0) return null;
 
-  if (!lessons || lessons.length === 0) return null;
+  return [...incomplete].sort((a, b) => {
+    const ta = new Date(a.lastActiveAt || a.enrolledAt || 0).getTime();
+    const tb = new Date(b.lastActiveAt || b.enrolledAt || 0).getTime();
+    return tb - ta;
+  })[0];
+}
 
-  const moduleOrder = new Map<string, number>();
-  lessons.forEach((l) => {
-    if (l.modules) moduleOrder.set(l.modules.id, l.modules.order);
-  });
-  const sortedLessons = [...lessons].sort((a, b) => {
-    const aMod = a.modules ? moduleOrder.get(a.modules.id) ?? 0 : 0;
-    const bMod = b.modules ? moduleOrder.get(b.modules.id) ?? 0 : 0;
-    if (aMod !== bMod) return (aMod ?? 0) - (bMod ?? 0);
-    return (a.order ?? 0) - (b.order ?? 0);
-  });
+export default function ContinueLearningBanner({
+  courses,
+}: {
+  courses: ContinueLearningCourse[];
+}) {
+  const course = pickContinueLearningCourse(courses);
+  if (!course) return null;
 
-  const { data: completions } = await supabase
-    .from('lesson_completions')
-    .select('lesson_id')
-    .eq('user_id', userId)
-    .eq('course_id', courseId)
-    .returns<CompletionRow[]>();
+  const pct = course.progressPercentage || 0;
+  const started = pct > 0 || (course.completedLessons ?? 0) > 0 || !!course.lastLessonId;
 
-  const completedIds = new Set((completions ?? []).map((c) => c.lesson_id));
-  const nextLesson =
-    sortedLessons.find((l) => !completedIds.has(l.id)) ?? sortedLessons[0];
-
-  const completedCount = sortedLessons.filter((l) => completedIds.has(l.id)).length;
-  const totalCount = sortedLessons.length;
-  const pct = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
+  const href = course.lastLessonId
+    ? `/student/courses/${course.id}?restore=true&lessonId=${course.lastLessonId}&t=${course.lastPositionSeconds || 0}`
+    : `/student/courses/${course.id}`;
 
   return (
     <Link
-      href={'/student/courses/' + courseId + '?lesson=' + nextLesson.id}
-      className="block group"
+      href={href}
+      className="group block rounded-2xl border border-dash-border bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-transform duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 md:p-6"
     >
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0A0F3D] to-[#1a237e] p-6 sm:p-8 shadow-lg hover:shadow-xl transition-shadow">
-        <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
-        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-blue-200 mb-2">
-              <BookOpen size={14} aria-hidden />
-              Continue Learning
-            </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white truncate mb-1">
-              {course.name}
-            </h2>
-            <p className="text-sm text-blue-100/80 mb-4">
-              {nextLesson.modules?.title ? nextLesson.modules.title + ' . ' : ''}
-              {nextLesson.title}
-            </p>
-            <div className="flex items-center gap-3">
-              <div
-                className="flex-1 h-1.5 bg-white/20 rounded-full overflow-hidden max-w-xs"
-                role="progressbar"
-                aria-valuenow={pct}
-                aria-valuemin={0}
-                aria-valuemax={100}
-              >
-                <div
-                  className="h-full bg-blue-400 rounded-full transition-all"
-                  style={{ width: pct + '%' }}
-                />
-              </div>
-              <span className="text-xs font-semibold text-blue-100">
-                {pct}% . {completedCount}/{totalCount}
-              </span>
-            </div>
-          </div>
-          <div className="flex-shrink-0">
-            <span className="inline-flex items-center gap-2 bg-white text-[#0A0F3D] px-6 py-3 rounded-xl font-semibold text-sm group-hover:bg-blue-50 transition-colors">
-              {pct === 0 ? 'Start Course' : 'Continue'}
-              <ChevronRight size={16} className="group-hover:translate-x-0.5 transition-transform" aria-hidden />
+      <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+        <div className="flex min-w-0 items-start gap-4">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-dash-accent/10 !text-dash-accent ring-1 ring-inset ring-dash-accent/15 [&_svg]:size-5">
+            <BookOpen />
+          </span>
+          <div className="min-w-0 space-y-2">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.16em] !text-dash-accent">
+              {started ? 'Continue learning' : 'Start learning'}
             </span>
+            <h2 className="line-clamp-1 font-display text-[18px] font-semibold tracking-[-0.01em] !text-dash-text">
+              {course.title}
+            </h2>
+            <div className="max-w-xs space-y-1.5">
+              <div className="flex items-center justify-between text-[12px] font-medium !text-dash-textMuted">
+                <span>
+                  {course.completedLessons ?? 0}/{course.totalLessons} lessons
+                </span>
+                <span className="font-semibold !text-dash-text">{pct}%</span>
+              </div>
+              <Progress value={pct} className="h-1.5 bg-dash-surface" />
+            </div>
           </div>
         </div>
+
+        <span className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-dash-accent px-5 text-[12px] font-semibold text-white transition-colors group-hover:bg-dash-accent/90 [&_svg]:size-3.5">
+          <Play className="fill-current" />
+          {started ? 'Resume' : 'Start'}
+          <ArrowRight className="transition-transform group-hover:translate-x-0.5 motion-reduce:group-hover:translate-x-0" />
+        </span>
       </div>
     </Link>
   );

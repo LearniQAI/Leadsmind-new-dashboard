@@ -32,14 +32,14 @@ export async function getModuleCompletionStatus(
     return { totalLessons: 0, completedLessons: 0, allComplete: true };
   }
 
-  // A course_progress row's mere existence for (contact_id, lesson_id) means "complete" —
-  // confirmed via markLessonCompleteForContact (completeLesson.ts), which short-circuits on
-  // an existing row and only ever inserts once, at real completion time. No separate
-  // in-progress/partial row state exists to filter out.
+  // A completion is a course_progress row WITH completed_at set. The player heartbeat also
+  // writes completed_at:null rows purely to remember a video's playback position; those are
+  // not completions and must not unlock the module quiz.
   const { data: progress } = await adminClient
     .from('course_progress')
     .select('lesson_id')
     .eq('contact_id', contactId)
+    .not('completed_at', 'is', null)
     .in('lesson_id', lessonIds);
 
   const completedLessons = new Set((progress || []).map((p) => p.lesson_id)).size;

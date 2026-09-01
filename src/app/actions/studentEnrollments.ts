@@ -7,6 +7,21 @@ import { logger } from '@/shared/logger';
 import { isEnrolmentActive } from '@/lib/lms/enrolment';
 
 /**
+ * Every `contacts.id` matching the logged-in user's email, across all workspaces — the same
+ * cross-workspace identity resolution getEnrolledCoursesWithProgress()/getStudentQuizStats()
+ * use for the student dashboard (a student can hold a contact in more than one workspace and
+ * the /student area has no single active-workspace scoping for its aggregates). Read-only:
+ * unlike getOrCreateStudentContact it never creates a row.
+ */
+export async function getStudentContactIds(): Promise<string[]> {
+  const user = await getUser();
+  if (!user?.email) return [];
+  const adminClient = createAdminClient();
+  const { data } = await adminClient.from('contacts').select('id').eq('email', user.email);
+  return (data || []).map((c: any) => c.id);
+}
+
+/**
  * Resolves the contact_id for the currently logged-in user email.
  * If no contact exists, it auto-creates one in the current active workspace.
  */
@@ -303,6 +318,9 @@ export async function getEnrolledCoursesWithProgress() {
         enrolled_at,
         status,
         active,
+        last_active_at,
+        last_lesson_id,
+        last_position_seconds,
         course:courses (
           id,
           title,
@@ -320,10 +338,14 @@ export async function getEnrolledCoursesWithProgress() {
     // Deactivated enrolments must drop off the student's dashboard, not just the roster.
     const enrollments = (enrollmentsRaw || []).filter((e: any) => isEnrolmentActive(e));
 
-    // 2. Fetch all progress logs for these contacts using admin client to bypass RLS
+    // 2. Fetch real lesson COMPLETIONS for these contacts (admin client bypasses RLS).
+    // completed_at IS NOT NULL is load-bearing: the player heartbeat also writes
+    // course_progress rows with completed_at:null purely to remember a video's playback
+    // position — those must never count toward progress %.
     const { data: progressLogs, error: progressError } = await adminClient
       .from('course_progress')
       .select('course_id, lesson_id')
+      .not('completed_at', 'is', null)
       .in('contact_id', contactIds);
 
     if (progressError) throw progressError;
@@ -358,6 +380,14 @@ export async function getEnrolledCoursesWithProgress() {
           enrollmentId: e.id,
           enrolledAt: e.enrolled_at,
           status: e.status,
+          // Real "last activity" signal written by the player heartbeat
+          // (PATCH /api/enrolments/:id/activity). last_active_at defaults to enrolled_at
+          // on enrolment and is bumped on every heartbeat, so ranking by it degrades
+          // gracefully to "most recently enrolled" for a student with no activity yet.
+          // last_lesson_id / last_position_seconds drive the player's ?restore= resume.
+          lastActiveAt: e.last_active_at || e.enrolled_at,
+          lastLessonId: e.last_lesson_id || null,
+          lastPositionSeconds: e.last_position_seconds || 0,
           id: c.id,
           title: c.title,
           description: c.description,

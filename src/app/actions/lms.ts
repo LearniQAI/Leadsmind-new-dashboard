@@ -749,11 +749,13 @@ export async function getCourseAnalytics(courseId: string) {
 
     if (lessonsError) throw lessonsError;
 
-    // 4. Fetch progress logs
+    // 4. Fetch real lesson completions (completed_at set). completed_at:null rows are the
+    // player heartbeat remembering video playback position, not completions.
     const { data: progress, error: progressError } = await adminClient
       .from('course_progress')
       .select('contact_id, lesson_id')
-      .eq('course_id', courseId);
+      .eq('course_id', courseId)
+      .not('completed_at', 'is', null);
 
     if (progressError) throw progressError;
 

@@ -19,14 +19,20 @@ export async function markLessonCompleteForContact(
   try {
     const adminClient = createAdminClient();
 
+    // A course_progress row can already exist for this (contact, lesson) pair WITHOUT the
+    // lesson being complete: the player heartbeat (PATCH /api/enrolments/:id/activity) inserts
+    // a position-tracking row with completed_at:null the first time a video lesson is played.
+    // Only a row with completed_at SET means "really complete" — that's the fast-path return.
+    // A completed_at:null row must still fall through the completion gate below and then be
+    // upgraded (completed_at -> now()), not treated as already done.
     const { data: existing } = await adminClient
       .from('course_progress')
-      .select('id')
+      .select('id, completed_at')
       .eq('contact_id', contactId)
       .eq('lesson_id', lessonId)
       .maybeSingle();
 
-    if (existing) {
+    if (existing?.completed_at) {
       return { success: true };
     }
 
@@ -90,14 +96,23 @@ export async function markLessonCompleteForContact(
       }
     }
 
-    const { error } = await adminClient
-      .from('course_progress')
-      .insert({
-        workspace_id: workspaceId,
-        contact_id: contactId,
-        course_id: courseId,
-        lesson_id: lessonId
-      });
+    // No row yet -> insert one (completed_at defaults to now()). A completed_at:null
+    // position-tracking row already exists -> upgrade it in place to a real completion,
+    // preserving its progress_seconds. The unique index on (contact_id, lesson_id) means an
+    // insert here would otherwise conflict.
+    const { error } = existing
+      ? await adminClient
+          .from('course_progress')
+          .update({ completed_at: new Date().toISOString() })
+          .eq('id', existing.id)
+      : await adminClient
+          .from('course_progress')
+          .insert({
+            workspace_id: workspaceId,
+            contact_id: contactId,
+            course_id: courseId,
+            lesson_id: lessonId
+          });
 
     if (error) throw error;
 
@@ -122,6 +137,7 @@ export async function markLessonCompleteForContact(
           .select('lesson_id')
           .eq('contact_id', contactId)
           .eq('course_id', courseId)
+          .not('completed_at', 'is', null)
           .in('lesson_id', (moduleLessons || []).map((l) => l.id));
 
         if (completedLessons && completedLessons.length === moduleLessons?.length) {
@@ -138,7 +154,8 @@ export async function markLessonCompleteForContact(
         .from('course_progress')
         .select('lesson_id')
         .eq('contact_id', contactId)
-        .eq('course_id', courseId);
+        .eq('course_id', courseId)
+        .not('completed_at', 'is', null);
 
       if (allCompletedCourseLessons && allCompletedCourseLessons.length === allCourseLessons?.length) {
         await publishEvent(workspaceId, 'course_completed', contactId, { courseId });
@@ -156,7 +173,8 @@ export async function markLessonCompleteForContact(
       .from('course_progress')
       .select('lesson_id')
       .eq('contact_id', contactId)
-      .eq('course_id', courseId);
+      .eq('course_id', courseId)
+      .not('completed_at', 'is', null);
 
     const total = allLessons?.length || 0;
     const completed = allCompleted?.length || 0;

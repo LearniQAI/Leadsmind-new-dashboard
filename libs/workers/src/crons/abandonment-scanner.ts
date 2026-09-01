@@ -48,7 +48,7 @@ export async function scanForAbandonment() {
       // 2. Fetch total lessons vs completed lessons
       const [lessonsRes, progressRes] = await Promise.all([
         supabaseAdmin.from('course_lessons').select('id, lesson_type').eq('course_id', enrollment.course_id),
-        supabaseAdmin.from('course_progress').select('lesson_id').eq('contact_id', enrollment.contact_id).eq('course_id', enrollment.course_id)
+        supabaseAdmin.from('course_progress').select('lesson_id').eq('contact_id', enrollment.contact_id).eq('course_id', enrollment.course_id).not('completed_at', 'is', null)
       ]);
 
       const lessons = lessonsRes.data || [];
