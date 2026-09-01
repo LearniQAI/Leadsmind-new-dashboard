@@ -120,6 +120,9 @@ export async function updateSession(request: NextRequest) {
    request.nextUrl.pathname === '/terms' ||
    request.nextUrl.pathname === '/refund' ||
    request.nextUrl.pathname.startsWith('/unauthenticated') ||
+   // Public certificate verification (src/app/certificates/verify/[id]) — anyone holding the
+   // validation id printed on a certificate must be able to confirm it without an account.
+   request.nextUrl.pathname.startsWith('/certificates/verify') ||
    // Public, guest-capable course checkout (src/app/checkout/[courseId]). The page itself
    // decides authed-vs-guest; it must be reachable logged-out so landing-page "Enrol" converts.
    request.nextUrl.pathname.startsWith('/checkout') ||

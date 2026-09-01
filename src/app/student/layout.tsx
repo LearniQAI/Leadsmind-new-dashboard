@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-  BookOpen, LayoutDashboard, LogOut, ArrowLeftRight, Trophy, Settings
+  BookOpen, LayoutDashboard, LogOut, ArrowLeftRight, Trophy, Settings, Layers
 } from 'lucide-react';
 import { requireAuth } from '@/lib/auth';
 
@@ -35,6 +35,9 @@ export default async function StudentLayout({ children }: StudentLayoutProps) {
           </Link>
           <Link href="/student/results" className="flex items-center gap-3 px-4 py-3 rounded-xl text-[13px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface transition-all motion-reduce:transition-none">
             <Trophy size={16} className="!text-dash-accent" /> My Results
+          </Link>
+          <Link href="/student/flashcards" className="flex items-center gap-3 px-4 py-3 rounded-xl text-[13px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface transition-all motion-reduce:transition-none">
+            <Layers size={16} className="!text-dash-accent" /> Flashcards
           </Link>
           <Link href="/student/marketplace" className="flex items-center gap-3 px-4 py-3 rounded-xl text-[13px] font-bold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface transition-all motion-reduce:transition-none">
             <BookOpen size={16} className="!text-dash-accent" /> Course Catalog

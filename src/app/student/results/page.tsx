@@ -12,6 +12,9 @@ import {
   Clock3,
   MessageSquareText,
   BookOpen,
+  Award,
+  ShieldCheck,
+  Download,
 } from 'lucide-react';
 import { getEnrolledCoursesWithProgress } from '@/app/actions/studentEnrollments';
 import { getStudentResults } from '@/app/actions/studentResults';
@@ -67,7 +70,7 @@ export default async function StudentResultsPage() {
   ]);
 
   const courses = enrolledRes.data || [];
-  const { quizHistory, assignments } = resultsRes.data;
+  const { quizHistory, assignments, certificates } = resultsRes.data;
   const quizStats = quizStatsRes.data;
   const completedCourses = courses.filter((c: any) => (c.progressPercentage || 0) >= 100).length;
 
@@ -210,6 +213,59 @@ export default async function StudentResultsPage() {
               description="Enrol from the catalog to start building your results."
               actionLabel="Browse catalog"
               actionHref="/student/marketplace"
+            />
+          </DashCard>
+        )}
+      </section>
+
+      {/* Certificates */}
+      <section className="space-y-4">
+        <SectionHead
+          title="Certificates"
+          meta={certificates.length > 0 ? `${certificates.length} earned` : undefined}
+        />
+        {certificates.length > 0 ? (
+          <DashCard padding="none" interactive={false}>
+            <div className="divide-y divide-dash-border">
+              {certificates.map((cert) => (
+                <div key={cert.id} className="flex items-center gap-4 px-5 py-4">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 ring-1 ring-inset ring-amber-500/15 [&_svg]:size-4">
+                    <Award />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[13px] font-semibold !text-dash-text">
+                      {cert.courseTitle}
+                    </div>
+                    <div className="truncate text-[11.5px] !text-dash-textMuted">
+                      Issued {fmtDate(cert.issuedAt)} ·{' '}
+                      <span className="font-mono tracking-tight">{cert.validationId}</span>
+                    </div>
+                  </div>
+                  <Link
+                    href={`/certificates/verify/${cert.validationId}`}
+                    target="_blank"
+                    className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-dash-border px-2.5 py-1.5 text-[11px] font-semibold !text-dash-textMuted transition-colors hover:bg-dash-surface hover:!text-dash-text [&_svg]:size-3"
+                  >
+                    <ShieldCheck /> Verify
+                  </Link>
+                  <a
+                    href={`/api/student/courses/${cert.courseId}/certificate`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-dash-accent px-2.5 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-dash-accent/90 [&_svg]:size-3"
+                  >
+                    <Download /> Download
+                  </a>
+                </div>
+              ))}
+            </div>
+          </DashCard>
+        ) : (
+          <DashCard padding="default" interactive={false} className="border-dashed">
+            <DashEmptyState
+              icon={Award}
+              title="No certificates yet"
+              description="Finish every lesson and pass every quiz in a course to earn a verifiable certificate."
             />
           </DashCard>
         )}
