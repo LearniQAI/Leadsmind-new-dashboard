@@ -53,7 +53,10 @@ export default function TemplateCleanMinimal({ course, modules, lessons, preview
   // Stripe Connect checkout. Known gap (out of scope this pass): the checkout page calls
   // requireAuth(), so a logged-out visitor is bounced to sign-in before paying.
   const handleEnroll = () => {
-    if (course?.id) router.push(`/student/checkout/${course.id}`);
+    if (course?.id) {
+      // Public checkout — works for logged-out visitors (guest flow) and authenticated students.
+      router.push(`/checkout/${course.id}`);
+    }
   };
 
   const curriculumSummary = [

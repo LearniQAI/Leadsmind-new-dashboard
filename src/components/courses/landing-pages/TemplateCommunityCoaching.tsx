@@ -74,7 +74,10 @@ export default function TemplateCommunityCoaching({ course, modules, lessons, pr
   // Real enrollment flow — see note in TemplateCleanMinimal. requireAuth() gate for
   // logged-out visitors is a known, out-of-scope gap for this pass.
   const handleEnroll = () => {
-    if (course?.id) router.push(`/student/checkout/${course.id}`);
+    if (course?.id) {
+      // Public checkout — works for logged-out visitors (guest flow) and authenticated students.
+      router.push(`/checkout/${course.id}`);
+    }
   };
 
   return (

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { createClient } from '@supabase/supabase-js';
 import { logger } from '@/shared/logger';
+import { handleGuestCheckoutSessionCompleted } from '@/lib/lms/guestEnrollment';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -36,7 +37,12 @@ export async function POST(req: NextRequest) {
     const session = event.data.object;
     const { courseId, contactId, workspaceId, pricingModel, subscriptionInterval } = session.metadata || {};
 
-    if (courseId && contactId) {
+    // Guest (logged-out) course checkout — no contactId in metadata. Contact + enrollment +
+    // account provisioning are done here, gated on Stripe's own session.payment_status, in this
+    // signature-verified handler only. Never from the success_url redirect. Idempotent.
+    if (courseId && workspaceId && !contactId) {
+      await handleGuestCheckoutSessionCompleted(session);
+    } else if (courseId && contactId) {
       // 1. Fetch course details to check for drip scheduling modules
       const { data: modules } = await supabaseAdmin
         .from('course_modules')
