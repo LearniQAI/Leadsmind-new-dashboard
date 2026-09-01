@@ -44,7 +44,8 @@ export default async function PortalCoursesPage() {
     const { data: completedRecords } = await supabase
       .from('course_progress')
       .select('id, course_id, lesson_id')
-      .eq('contact_id', contact.id);
+      .eq('contact_id', contact.id)
+      .not('completed_at', 'is', null);
     
     (completedRecords || []).forEach((r: any) => {
       completedCountMap.set(r.course_id, (completedCountMap.get(r.course_id) || 0) + 1);

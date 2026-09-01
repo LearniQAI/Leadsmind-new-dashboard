@@ -11,8 +11,7 @@ import {
 } from 'lucide-react';
 import { getCurrentProfile } from '@/lib/auth';
 import { getEnrolledCoursesWithProgress } from '@/app/actions/studentEnrollments';
-import { createServerClient } from '@/lib/supabase/server';
-import { getCurrentWorkspaceId } from '@/lib/auth';
+import { getStudentQuizStats } from '@/app/actions/studentProgress';
 import { Progress } from '@/components/ui/progress';
 import { DashCard, DashButton, DashEmptyState } from '@/components/dashboard-ui';
 import ContinueLearningBanner from '@/components/lms/ContinueLearningBanner';
@@ -30,21 +29,12 @@ export default async function StudentDashboardPage() {
         )
       : 0;
 
-  const supabase = await createServerClient();
-  await getCurrentWorkspaceId();
-  const { data: quizAttempts } = await supabase
-    .from('quiz_attempts')
-    .select('score_pct, passed')
-    .eq('student_id', profile?.id || '');
-
-  const totalQuizzes = quizAttempts?.length || 0;
-  const passedQuizzes = quizAttempts?.filter((q) => q.passed)?.length || 0;
-
-  let averageScore = 0;
-  if (totalQuizzes > 0) {
-    const totalScore = quizAttempts?.reduce((sum, q) => sum + Number(q.score_pct || 0), 0) || 0;
-    averageScore = Math.round(totalScore / totalQuizzes);
-  }
+  // Combined lesson-level + module-level quiz stats for the current student, keyed on the
+  // resolved contact id(s) — not the auth user id. See getStudentQuizStats for the full
+  // root-cause of the two stacked bugs this replaces.
+  const { data: quizStats } = await getStudentQuizStats();
+  const passedQuizzes = quizStats.quizzesPassed;
+  const averageScore = quizStats.avgQuizScore;
 
   // Name can arrive duplicated (first === last); show it once.
   const first = (profile?.firstName || '').trim();
@@ -103,7 +93,7 @@ export default async function StudentDashboardPage() {
         </DashButton>
       </header>
 
-      <ContinueLearningBanner />
+      <ContinueLearningBanner courses={courses} />
 
       {/* Metrics */}
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">

@@ -83,7 +83,8 @@ export async function markLessonIncomplete(courseId: string, lessonId: string) {
       .from('course_progress')
       .select('lesson_id')
       .eq('contact_id', contactId)
-      .eq('course_id', courseId);
+      .eq('course_id', courseId)
+      .not('completed_at', 'is', null);
 
     const total = allLessons?.length || 0;
     const completed = allCompleted?.length || 0;
@@ -106,11 +107,14 @@ export async function getCompletedLessons(courseId: string) {
     const { contactId } = ctx;
 
     const adminClient = createAdminClient();
+    // Only real completions — a completed_at:null row is just the heartbeat remembering a
+    // video's playback position, not a finished lesson.
     const { data: progressList, error } = await adminClient
       .from('course_progress')
       .select('lesson_id')
       .eq('contact_id', contactId)
-      .eq('course_id', courseId);
+      .eq('course_id', courseId)
+      .not('completed_at', 'is', null);
 
     if (error) throw error;
     return { data: (progressList || []).map((p: any) => p.lesson_id) };
@@ -260,5 +264,94 @@ export async function getModuleQuizAccessStatus(courseId: string, moduleId: stri
   } catch (err: any) {
     logger.error({ err, courseId, moduleId }, 'student_progress.module_quiz_access.failed');
     return { error: 'Operation failed. Please try again.' };
+  }
+}
+
+/**
+ * Aggregate quiz stats for the current student's dashboard cards ("Quizzes passed",
+ * "Avg. quiz score").
+ *
+ * Resolves every `contacts` row for the logged-in user's email (a student can hold a contact
+ * in more than one workspace) exactly the way getEnrolledCoursesWithProgress does, then reads
+ * BOTH real attempt tables:
+ *   - quiz_attempts         (lesson-level quizzes)   — student_id = contact id
+ *   - module_quiz_attempts  (module-level quizzes)   — student_id = contact id
+ * Both share the same shape: a real `passed` boolean and a 0-100 `percentage`. The dashboard
+ * numbers are a genuine combined view over the two, not two separate stats.
+ *
+ * Root-cause of the two stacked bugs this replaces (old inline query in student/page.tsx):
+ *   1. it selected a `score_pct` column that does not exist on the live table (real column is
+ *      `percentage`; `score_pct` only lives in the stale, unused src/supabase/lms_schema.sql),
+ *      so the select errored and the result was always null.
+ *   2. it filtered `student_id` by the auth user id, but attempts are written with the
+ *      contact id — the two never matched.
+ * Module-quiz passes were also never counted at all.
+ *
+ * Definitions:
+ *   - quizzesPassed: number of DISTINCT quizzes (a lesson quiz or a module quiz) the student
+ *     has passed at least once — retaking an already-passed quiz does not inflate it.
+ *   - avgQuizScore: mean `percentage` across every attempt (passed or failed), matching the
+ *     original card's "average score" intent — a failed attempt is a real data point and
+ *     drags the average down; it just never counts as a pass.
+ */
+export async function getStudentQuizStats(): Promise<{
+  data: { quizzesPassed: number; avgQuizScore: number; totalAttempts: number };
+}> {
+  const empty = { data: { quizzesPassed: 0, avgQuizScore: 0, totalAttempts: 0 } };
+  try {
+    const user = await getUser();
+    if (!user?.email) return empty;
+
+    const adminClient = createAdminClient();
+
+    const { data: contacts } = await adminClient
+      .from('contacts')
+      .select('id')
+      .eq('email', user.email);
+
+    const contactIds = (contacts || []).map((c: any) => c.id);
+    if (contactIds.length === 0) return empty;
+
+    const [lessonRes, moduleRes] = await Promise.all([
+      adminClient
+        .from('quiz_attempts')
+        .select('lesson_id, percentage, passed')
+        .in('student_id', contactIds),
+      adminClient
+        .from('module_quiz_attempts')
+        .select('module_id, percentage, passed')
+        .in('student_id', contactIds),
+    ]);
+
+    if (lessonRes.error) throw lessonRes.error;
+    if (moduleRes.error) throw moduleRes.error;
+
+    const lessonAttempts = lessonRes.data || [];
+    const moduleAttempts = moduleRes.data || [];
+    const allAttempts = [...lessonAttempts, ...moduleAttempts];
+    const totalAttempts = allAttempts.length;
+
+    const passedQuizKeys = new Set<string>();
+    for (const a of lessonAttempts) {
+      if (a.passed && a.lesson_id) passedQuizKeys.add(`lesson:${a.lesson_id}`);
+    }
+    for (const a of moduleAttempts) {
+      if (a.passed && a.module_id) passedQuizKeys.add(`module:${a.module_id}`);
+    }
+
+    const avgQuizScore =
+      totalAttempts > 0
+        ? Math.round(
+            allAttempts.reduce((sum: number, a: any) => sum + Number(a.percentage || 0), 0) /
+              totalAttempts
+          )
+        : 0;
+
+    return {
+      data: { quizzesPassed: passedQuizKeys.size, avgQuizScore, totalAttempts },
+    };
+  } catch (err: any) {
+    logger.error({ err }, 'student_progress.quiz_stats.fetch.failed');
+    return empty;
   }
 }
