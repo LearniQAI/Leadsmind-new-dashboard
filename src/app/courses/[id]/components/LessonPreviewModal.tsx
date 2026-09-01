@@ -15,6 +15,7 @@ import {
 import VideoPlayer from "@/app/student/courses/[id]/components/VideoPlayer";
 import { VoiceNotePlayer } from "@/components/common/VoiceNotePlayer";
 import { sanitizeRichTextHtml } from "@/lib/security/sanitizeHtml";
+import { SandboxedHtml } from "@/components/lms/SandboxedHtml";
 
 interface LessonPreviewModalProps {
   lessonId: string;
@@ -211,7 +212,14 @@ export default function LessonPreviewModal({
                 {block.type === "video" && block.file_url && (
                   <VideoPlayer videoUrl={block.file_url} onComplete={() => {}} isAlreadyCompleted lowBandwidthMode={false} />
                 )}
-                {block.type === "audio" && block.file_url && (
+                {block.type === "audio" && block.content?.mode === "embed" && block.content?.embed_html && (
+                  <SandboxedHtml
+                    html={block.content.embed_html}
+                    className="h-[180px] overflow-hidden rounded-xl border border-dash-border bg-dash-surface"
+                    title="Audio embed"
+                  />
+                )}
+                {block.type === "audio" && block.content?.mode !== "embed" && block.file_url && (
                   <VoiceNotePlayer
                     audioUrl={block.file_url}
                     waveformBars={block.content?.waveform_bars}
@@ -255,6 +263,13 @@ export default function LessonPreviewModal({
                   <div className="truncate font-mono text-[12px] !text-dash-textMuted">
                     {block.content.embed_url}
                   </div>
+                )}
+                {block.type === "html_code" && block.content?.html && (
+                  <SandboxedHtml
+                    html={block.content.html}
+                    className="h-[360px] overflow-hidden rounded-xl border border-dash-border bg-white"
+                    title="HTML block preview"
+                  />
                 )}
                 {block.type === "live_session" && block.file_url && (
                   <a

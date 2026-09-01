@@ -20,11 +20,9 @@ import {
   Plus,
   Trash2,
   AlertTriangle,
-  Settings,
   Sparkles,
   AlertCircle,
 } from "lucide-react";
-import { getLessonQuiz, upsertQuiz } from "@/app/actions/quizzes";
 import ContentBlockList, { ContentBlock } from "./ContentBlockList";
 import VideoBlockEditor from "./blocks/VideoBlockEditor";
 import AudioBlockEditor from "./blocks/AudioBlockEditor";
@@ -36,6 +34,7 @@ import DownloadBlockEditor from "./blocks/DownloadBlockEditor";
 import EmbedBlockEditor from "./blocks/EmbedBlockEditor";
 import LiveSessionBlockEditor from "./blocks/LiveSessionBlockEditor";
 import RichTextBlockEditor from "./blocks/RichTextBlockEditor";
+import HtmlCodeBlockEditor from "./blocks/HtmlCodeBlockEditor";
 import {
   TextInput,
   TextArea,
@@ -71,6 +70,8 @@ function renderBlockTypeEditor(
       return <DownloadBlockEditor block={block} onChange={onChange} />;
     case "embed":
       return <EmbedBlockEditor block={block} onChange={onChange} />;
+    case "html_code":
+      return <HtmlCodeBlockEditor block={block} onChange={onChange} />;
     case "live_session":
       return <LiveSessionBlockEditor block={block} onChange={onChange} />;
     default:
@@ -189,8 +190,6 @@ export default function LessonCreatorModal({
   const [uploadingType, setUploadingType] = useState<string | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
-  const [quizId, setQuizId] = useState<string | null>(null);
-  const [isLoadingQuiz, setIsLoadingQuiz] = useState(false);
   const [isRegeneratingSummary, setIsRegeneratingSummary] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
 
@@ -238,34 +237,6 @@ export default function LessonCreatorModal({
     }
   };
 
-  const fetchOrCreateQuiz = async (lesId: string, lesTitle: string) => {
-    setIsLoadingQuiz(true);
-    const res = await getLessonQuiz(lesId);
-    if (res.error) {
-      console.error("Quiz lookup failed:", res.error);
-      toast.error(`Quiz lookup failed: ${res.error}`);
-    }
-    if (res.data) {
-      setQuizId(res.data.id);
-    } else {
-      const quizRes = await upsertQuiz({
-        lesson_id: lesId,
-        title: lesTitle || "Lesson Quiz",
-        passing_score: 80,
-        course_id: courseId,
-        module_id: moduleId,
-      });
-      if (quizRes.error) {
-        console.error("Quiz creation failed:", quizRes.error);
-        toast.error(`Failed to initialize quiz: ${quizRes.error}`);
-      }
-      if (quizRes.data) {
-        setQuizId(quizRes.data.id);
-      }
-    }
-    setIsLoadingQuiz(false);
-  };
-
   useEffect(() => {
     setSummaryError(null);
     if (editingLesson) {
@@ -295,9 +266,11 @@ export default function LessonCreatorModal({
       setScormVersion(meta.scormVersion || "scorm12");
       setStartTime(meta.startTime || "");
 
-      if (editingLesson.type === "Quiz") {
-        fetchOrCreateQuiz(editingLesson.id, editingLesson.title || "");
-      }
+      // Three Deferred Items, Item 3 — the "Quiz" lesson-type branch here (fetchOrCreateQuiz,
+      // reading/writing the legacy lms_quizzes table) was removed: confirmed unreachable via
+      // the real, live edit flow. CourseWorkspaceClient's onEditLesson intercepts
+      // les.type === "Quiz" and routes straight to the real Quiz Workbench before this modal
+      // ever opens, so editingLesson.type could never actually be "Quiz" here.
 
       setStep(2);
     } else {
@@ -315,7 +288,6 @@ export default function LessonCreatorModal({
       setStarterCode("");
       setScormVersion("scorm12");
       setStartTime("");
-      setQuizId(null);
       setStep(1);
     }
   }, [editingLesson, isOpen]);
@@ -617,50 +589,6 @@ export default function LessonCreatorModal({
                         </div>
                       ))}
                     </div>
-                  )}
-                </Panel>
-              )}
-
-              {type === "Quiz" && (
-                <Panel label="Quiz">
-                  {editingLesson ? (
-                    isLoadingQuiz ? (
-                      <div className="flex items-center justify-center gap-2 py-6 text-[12px] text-dash-textMuted">
-                        <Loader2 className="size-3.5 animate-spin" /> Loading quiz…
-                      </div>
-                    ) : quizId ? (
-                      <div className="space-y-3 rounded-xl border border-dashed border-dash-border bg-white px-4 py-5 text-center">
-                        <div className="space-y-1">
-                          <h4 className="text-[13px] font-semibold text-dash-text">
-                            Quiz ready to configure
-                          </h4>
-                          <p className="mx-auto max-w-sm text-[12px] leading-relaxed text-dash-textMuted">
-                            Build questions, passing scores, time limits and AI explanations in the
-                            Quiz Workbench.
-                          </p>
-                        </div>
-                        <PrimaryButton
-                          type="button"
-                          onClick={() => {
-                            onClose();
-                            router.push(`/courses/${courseId}/quiz/${quizId}`);
-                          }}
-                          className="mx-auto"
-                        >
-                          <Settings size={14} /> Open Quiz Workbench
-                        </PrimaryButton>
-                      </div>
-                    ) : (
-                      <Notice tone="rose">
-                        <AlertTriangle />
-                        Failed to initialise the quiz record.
-                      </Notice>
-                    )
-                  ) : (
-                    <Notice>
-                      <AlertTriangle />
-                      Save the lesson first, then build quiz questions.
-                    </Notice>
                   )}
                 </Panel>
               )}

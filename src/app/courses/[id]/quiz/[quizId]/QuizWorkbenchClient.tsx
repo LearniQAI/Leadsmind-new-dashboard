@@ -5,26 +5,45 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { 
-  ArrowLeft, Plus, Trash2, HelpCircle, Loader2, 
-  Sparkles, CheckSquare, Settings, AlertTriangle, Save,
+import {
+  ArrowLeft, Plus, Trash2, HelpCircle, Loader2,
+  Sparkles, AlertTriangle, Save,
   Sliders, Layout, Eye
 } from "lucide-react";
-import { 
-  getQuizQuestions, upsertQuestion, deleteQuestion, 
-  generateExplanationWithLena, upsertQuiz 
+import {
+  generateExplanationWithLena
 } from "@/app/actions/quizzes";
 import Editor from "@monaco-editor/react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import QuizAnalyticsConsole from "./QuizAnalyticsConsole";
+import { PropertyGroup, SliderWithInput, PropertySelect } from "@/components/builder/inspector/primitives";
+
+// Real db question_type values -> a short, readable badge label for the question-list sidebar.
+const QUESTION_TYPE_LABELS: Record<string, string> = {
+  mcq: "MCQ",
+  true_false: "True/False",
+  short_answer: "Short answer",
+  matching: "Matching",
+  ordering: "Ordering",
+  fill_blank: "Fill blank",
+  code: "Code",
+  file_upload: "File upload",
+};
 
 interface QuizWorkbenchClientProps {
   course: any;
   quiz: any;
+  /** Module-Level Quiz pass — when set, this same Workbench authors a quiz scoped to an
+   *  entire module (module_quiz_questions/module_quiz_settings, Step 1's schema decision)
+   *  instead of the lesson `quiz.id` — the real question-authoring UI below is unchanged
+   *  either way; only which API endpoints/payload keys get hit differs, isolated to the few
+   *  call sites below rather than a second, parallel component (Step 2's explicit ask). */
+  moduleId?: string;
 }
 
-export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClientProps) {
+export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWorkbenchClientProps) {
+  const isModuleScope = !!moduleId;
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"questions" | "settings" | "analytics">("questions");
 
@@ -91,7 +110,11 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
 
   const loadSettings = async () => {
     try {
-      const res = await fetch(`/api/lms/quiz/settings?lessonId=${quiz.id}`);
+      const res = await fetch(
+        isModuleScope
+          ? `/api/lms/module-quiz/settings?moduleId=${moduleId}`
+          : `/api/lms/quiz/settings?lessonId=${quiz.id}`
+      );
       const dataJson = await res.json();
       if (dataJson.data) {
         const s = dataJson.data;
@@ -110,7 +133,11 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
 
   const loadQuestions = async () => {
     try {
-      const res = await fetch(`/api/lms/quiz/questions?lessonId=${quiz.id}`);
+      const res = await fetch(
+        isModuleScope
+          ? `/api/lms/module-quiz/questions?moduleId=${moduleId}`
+          : `/api/lms/quiz/questions?lessonId=${quiz.id}`
+      );
       const dataJson = await res.json();
       if (dataJson.data) {
         setQuestions(dataJson.data);
@@ -254,14 +281,15 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
 
     startTransition(async () => {
       try {
-        const url = activeQuestion?.id ? `/api/lms/quiz/questions?id=${activeQuestion.id}` : '/api/lms/quiz/questions';
+        const base = isModuleScope ? '/api/lms/module-quiz/questions' : '/api/lms/quiz/questions';
+        const url = activeQuestion?.id ? `${base}?id=${activeQuestion.id}` : base;
         const method = activeQuestion?.id ? 'PATCH' : 'POST';
 
         const res = await fetch(url, {
           method,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            lesson_id: quiz.id,
+            ...(isModuleScope ? { module_id: moduleId } : { lesson_id: quiz.id }),
             workspace_id: course.workspace_id || quiz.workspace_id,
             question_type: qTypeMap[type] || 'mcq',
             question_text: questionText,
@@ -289,7 +317,8 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
 
   const handleDeleteQuestion = async (qId: string) => {
     try {
-      const res = await fetch(`/api/lms/quiz/questions?id=${qId}`, {
+      const base = isModuleScope ? '/api/lms/module-quiz/questions' : '/api/lms/quiz/questions';
+      const res = await fetch(`${base}?id=${qId}`, {
         method: 'DELETE'
       });
       const resData = await res.json();
@@ -304,55 +333,50 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
   };
 
   const handleSaveSettings = async () => {
-    if (!quizTitle.trim()) {
+    if (!isModuleScope && !quizTitle.trim()) {
       toast.error("Quiz title is required");
       return;
     }
     setIsSavingSettings(true);
     try {
-      // 1. Update course_lessons title and description
-      const lessonRes = await fetch(`/api/lms/lessons?id=${quiz.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: quizTitle,
-          content: {
-            ...(quiz.content || {}),
-            text: quizDesc
-          }
-        })
-      });
-      const lessonJson = await lessonRes.json();
-      if (lessonJson.error) throw new Error(lessonJson.error);
+      // Module-Level Quiz pass: a module quiz has no title/description of its own (it's an
+      // assessment FOR the module, shown as "{Module title} Quiz" everywhere rather than a
+      // separately-named entity) — so, unlike the lesson-quiz path, there is no
+      // course_lessons row to update here, and deliberately no equivalent of the legacy
+      // upsertQuiz()/lms_quizzes write either (see below).
+      if (!isModuleScope) {
+        // 1. Update course_lessons title and description
+        const lessonRes = await fetch(`/api/lms/lessons?id=${quiz.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: quizTitle,
+            content: {
+              ...(quiz.content || {}),
+              text: quizDesc
+            }
+          })
+        });
+        const lessonJson = await lessonRes.json();
+        if (lessonJson.error) throw new Error(lessonJson.error);
 
-      // 2. Update/insert lms_quizzes using the upsertQuiz server action
-      const upsertRes = await upsertQuiz({
-        id: quiz.id,
-        course_id: course.id,
-        module_id: quiz.module_id,
-        title: quizTitle,
-        description: quizDesc,
-        passing_score: passingScore,
-        time_limit_minutes: timeLimit,
-        max_retakes: maxRetakes,
-        is_required: isRequired,
-        settings: {
-          exceeded_behavior: exceededBehavior,
-          feedback_trigger: feedbackTrigger,
-          shuffle_options: shuffleOptions,
-          shuffle_questions: shuffleQuestions,
-          pool_count: poolCount,
-          require_pass_to_unlock: requirePass
-        }
-      });
-      if (upsertRes.error) throw new Error(upsertRes.error);
+        // A real, pre-existing bug was found and fixed here during the Module-Level Quiz
+        // pass: this used to also call the legacy upsertQuiz() server action, writing a
+        // corresponding row into lms_quizzes on every save — dead weight nothing ever read.
+        // The whole legacy lms_quizzes/lms_questions/lms_quiz_submissions cluster (and
+        // getQuizById, its lookup here) was later removed entirely (Three Deferred Items,
+        // Item 3: confirmed dead, zero real callers, zero real rows) — QuizWorkbenchPage now
+        // resolves this page's `quiz` shape directly from course_lessons, no legacy lookup
+        // involved at all.
+      }
 
-      // 3. Update quiz_settings via POST
-      const settingsRes = await fetch('/api/lms/quiz/settings', {
+      // Update settings (quiz_settings for a lesson quiz, module_quiz_settings for a module
+      // quiz — same shape, different table per the Step 1 schema decision).
+      const settingsRes = await fetch(isModuleScope ? '/api/lms/module-quiz/settings' : '/api/lms/quiz/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          lesson_id: quiz.id,
+          ...(isModuleScope ? { module_id: moduleId } : { lesson_id: quiz.id }),
           time_limit_minutes: timeLimit,
           max_attempts: maxRetakes,
           pass_percentage: passingScore,
@@ -380,7 +404,7 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          lesson_id: quiz.id,
+          ...(isModuleScope ? { module_id: moduleId } : { lesson_id: quiz.id }),
           workspace_id: course.workspace_id || quiz.workspace_id
         })
       });
@@ -411,47 +435,34 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
             <ArrowLeft size={16} />
           </button>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-dash-accent">Quiz editor</span>
-            </div>
-            <h1 className="text-xl font-bold !text-dash-text mt-1">
-              {quizTitle || "Untitled quiz"}
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-dash-accent">Quiz editor</span>
+            <h1 className="font-display text-[26px] md:text-[30px] font-semibold leading-[1.1] tracking-[-0.02em] !text-dash-text mt-1">
+              {isModuleScope ? (quiz.title ? `${quiz.title} Quiz` : "Module Quiz") : (quizTitle || "Untitled quiz")}
             </h1>
           </div>
         </div>
 
-        {/* Tabs switcher */}
-        <div className="flex items-center bg-dash-surface border border-dash-border rounded-xl p-1 shrink-0">
-          <button
-            onClick={() => setActiveTab("questions")}
-            className={`px-4 py-2 rounded-lg text-[10px] font-bold transition-all motion-reduce:transition-none flex items-center gap-1.5 ${
-              activeTab === "questions"
-                ? "bg-dash-accent text-white"
-                : "!text-dash-textMuted hover:!text-dash-text"
-            }`}
-          >
-            <Layout size={12} /> Questions ({questions.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("settings")}
-            className={`px-4 py-2 rounded-lg text-[10px] font-bold transition-all motion-reduce:transition-none flex items-center gap-1.5 ${
-              activeTab === "settings"
-                ? "bg-dash-accent text-white"
-                : "!text-dash-textMuted hover:!text-dash-text"
-            }`}
-          >
-            <Sliders size={12} /> Advanced settings
-          </button>
-          <button
-            onClick={() => setActiveTab("analytics")}
-            className={`px-4 py-2 rounded-lg text-[10px] font-bold transition-all motion-reduce:transition-none flex items-center gap-1.5 ${
-              activeTab === "analytics"
-                ? "bg-dash-accent text-white"
-                : "!text-dash-textMuted hover:!text-dash-text"
-            }`}
-          >
-            <Eye size={12} /> Analytics & attempts
-          </button>
+        {/* Tabs switcher — same premium segmented-pill pattern established across the
+            settings-panel/curriculum redesign work: bg-dash-surface track, active tab a real
+            white card with a shadow, not a flat accent fill. */}
+        <div className="flex items-center bg-dash-surface border border-dash-border rounded-xl p-1 shrink-0 gap-0.5">
+          {([
+            { id: "questions", label: `Questions (${questions.length})`, icon: Layout },
+            { id: "settings", label: "Advanced settings", icon: Sliders },
+            { id: "analytics", label: "Analytics & attempts", icon: Eye },
+          ] as const).map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={`px-4 h-9 rounded-lg text-[11px] font-semibold transition-all motion-reduce:transition-none flex items-center gap-1.5 ${
+                activeTab === id
+                  ? "bg-white !text-dash-text shadow-sm border border-dash-border"
+                  : "!text-dash-textMuted hover:!text-dash-text"
+              }`}
+            >
+              <Icon size={13} /> {label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -461,26 +472,29 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 items-start">
           
           {/* Question List Sidebar */}
-          <div className="bg-white border border-dash-border p-4 rounded-2xl space-y-4 shadow-sm">
-            <div className="flex items-center justify-between border-b border-dash-border pb-2">
-              <span className="text-[10px] font-bold !text-dash-text">Question list</span>
-              <div className="flex items-center gap-3">
+          <div className="bg-white border border-dash-border p-5 rounded-2xl space-y-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3 border-b border-dash-border pb-3.5">
+              <div className="flex items-baseline gap-2 min-w-0">
+                <span className="text-[11px] font-bold uppercase tracking-[0.08em] !text-dash-textMuted">Question list</span>
+                <span className="text-[11px] font-semibold tabular-nums !text-dash-textMuted/70">{questions.length}</span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
                 {questions.length > 0 && (
                   <button
                     onClick={() => {
                       setIsBulkSelectMode(!isBulkSelectMode);
                       setSelectedQuestionIds([]);
                     }}
-                    className="text-[10px] font-bold !text-dash-textMuted hover:!text-dash-text"
+                    className="h-8 px-2.5 rounded-lg text-[11px] font-semibold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface transition-colors motion-reduce:transition-none"
                   >
                     {isBulkSelectMode ? "Cancel" : "Select"}
                   </button>
                 )}
                 <button
                   onClick={handleNewQuestion}
-                  className="text-[10px] font-bold text-dash-accent hover:text-dash-accent/80 flex items-center gap-0.5"
+                  className="h-8 px-3 rounded-lg bg-dash-accent text-white text-[11px] font-semibold flex items-center gap-1 shadow-sm shadow-dash-accent/25 hover:bg-dash-accent/90 active:scale-[0.97] motion-reduce:active:scale-100 transition-all motion-reduce:transition-none"
                 >
-                  <Plus size={12} /> Add
+                  <Plus size={13} /> Add
                 </button>
               </div>
             </div>
@@ -513,18 +527,29 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
               </div>
             )}
 
+            {/* Three Deferred Items, Item 2 — /api/ai/generate-questions now accepts module_id
+                too (combined content of every lesson in the module as its real context), so
+                this button is real for both scopes. Sky-blue LENA/AI treatment, matching the
+                established brand pattern for AI actions elsewhere (ModuleCreatorModal's
+                "Generate with LENA" card) — not an arbitrary new lavender tone. */}
             <button
               type="button"
               onClick={handleGenerateAiQuestions}
               disabled={isGeneratingQuestions}
-              className="w-full bg-dash-accent/10 border border-dash-accent/20 hover:bg-dash-accent/20 text-dash-accent rounded-xl py-2 px-3 text-[10px] font-bold flex items-center justify-center gap-1 transition-all motion-reduce:transition-none disabled:opacity-50"
+              className="group w-full h-11 rounded-xl border border-sky-200 bg-gradient-to-r from-sky-50 to-indigo-50 hover:from-sky-100 hover:to-indigo-100 text-sky-700 text-[11.5px] font-semibold flex items-center justify-center gap-2 transition-colors motion-reduce:transition-none disabled:opacity-50 shadow-sm shadow-sky-500/10"
             >
-              {isGeneratingQuestions ? <Loader2 size={12} className="animate-spin motion-reduce:animate-none" /> : <Sparkles size={12} />}
-              Generate with AI
+              <span className="w-6 h-6 rounded-lg bg-white border border-sky-200 flex items-center justify-center shrink-0 text-sky-600">
+                {isGeneratingQuestions ? <Loader2 size={13} className="animate-spin motion-reduce:animate-none" /> : <Sparkles size={13} />}
+              </span>
+              {isGeneratingQuestions ? "Generating questions…" : "Generate with AI"}
             </button>
 
             <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
-              {questions.map((q, idx) => (
+              {questions.map((q, idx) => {
+                const typeLabel = QUESTION_TYPE_LABELS[q.question_type] || q.question_type;
+                const isActive = !isBulkSelectMode && activeQuestion?.id === q.id;
+                const isChecked = isBulkSelectMode && selectedQuestionIds.includes(q.id);
+                return (
                 <div
                   key={q.id}
                   onClick={() => {
@@ -538,119 +563,149 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                       selectQuestion(q);
                     }
                   }}
-                  className={`p-3.5 rounded-xl text-xs cursor-pointer select-none border transition-all motion-reduce:transition-none flex items-center justify-between gap-3 ${
-                    !isBulkSelectMode && activeQuestion?.id === q.id
-                      ? "bg-dash-accent/10 border-dash-accent !text-dash-text"
-                      : isBulkSelectMode && selectedQuestionIds.includes(q.id)
-                        ? "bg-dash-accent/10 border-dash-accent !text-dash-text"
-                        : "bg-dash-surface border-transparent !text-dash-textMuted hover:bg-dash-border/40 hover:!text-dash-text"
+                  className={`group relative overflow-hidden p-3.5 pl-4 rounded-xl cursor-pointer select-none border transition-all motion-reduce:transition-none space-y-2.5 ${
+                    isActive || isChecked
+                      ? "bg-dash-accent/[0.07] border-dash-accent ring-1 ring-dash-accent/20 shadow-sm"
+                      : "bg-dash-surface border-dash-border hover:border-dash-border/80 hover:bg-white hover:shadow-sm"
                   }`}
                 >
-                  <div className="flex items-center gap-2 truncate flex-1">
-                    {isBulkSelectMode && (
-                      <input
-                        type="checkbox"
-                        checked={selectedQuestionIds.includes(q.id)}
-                        onChange={() => {}} // toggled on container div click
-                        className="accent-dash-accent h-3.5 w-3.5 rounded shrink-0"
-                      />
+                  <span
+                    className={`absolute left-0 top-0 bottom-0 w-1 transition-colors motion-reduce:transition-none ${
+                      isActive || isChecked ? "bg-dash-accent" : "bg-transparent group-hover:bg-dash-border"
+                    }`}
+                  />
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2 min-w-0 flex-1">
+                      {isBulkSelectMode && (
+                        <input
+                          type="checkbox"
+                          checked={selectedQuestionIds.includes(q.id)}
+                          onChange={() => {}} // toggled on container div click
+                          className="accent-dash-accent h-3.5 w-3.5 rounded shrink-0 mt-0.5"
+                        />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <span className={`text-[10px] font-bold tabular-nums ${isActive ? "text-dash-accent" : "!text-dash-textMuted"}`}>
+                          Q{idx + 1}
+                        </span>
+                        <p className="text-[12.5px] font-semibold leading-snug !text-dash-text line-clamp-2 mt-0.5">
+                          {q.question_text || "Untitled question"}
+                        </p>
+                      </div>
+                    </div>
+                    {!isBulkSelectMode && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setQuestionToDelete(q);
+                        }}
+                        className="shrink-0 -mt-0.5 -mr-1 text-dash-textMuted/70 hover:text-red hover:bg-red/10 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-all motion-reduce:transition-none"
+                        title="Delete question"
+                      >
+                        <Trash2 size={13} />
+                      </button>
                     )}
-                    <span className="truncate pr-2 font-medium">Q{idx + 1}: {q.question_text || "Untitled question"}</span>
                   </div>
-                  {!isBulkSelectMode && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setQuestionToDelete(q);
-                      }}
-                      className="text-red-600 hover:text-red-700 p-0.5 shrink-0"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] font-bold uppercase tracking-[0.06em] px-2 py-0.5 rounded-full bg-white border border-dash-border !text-dash-textMuted">
+                      {typeLabel}
+                    </span>
+                    <span className="text-[9px] font-bold uppercase tracking-[0.06em] px-2 py-0.5 rounded-full bg-white border border-dash-border !text-dash-textMuted">
+                      {q.points ?? 1} pt{(q.points ?? 1) === 1 ? "" : "s"}
+                    </span>
+                  </div>
                 </div>
-              ))}
+                );
+              })}
               {questions.length === 0 && (
-                <span className="text-[10.5px] italic !text-dash-textMuted block text-center py-6 bg-dash-surface rounded-xl border border-dashed border-dash-border">
-                  No questions created yet.
-                </span>
+                <div className="flex flex-col items-center justify-center text-center py-8 bg-dash-surface rounded-xl border border-dash-border">
+                  <div className="w-10 h-10 rounded-full bg-white border border-dash-border flex items-center justify-center mb-2.5">
+                    <HelpCircle size={16} className="!text-dash-textMuted" />
+                  </div>
+                  <p className="text-[11.5px] font-semibold !text-dash-text">No questions yet</p>
+                  <p className="text-[10.5px] !text-dash-textMuted mt-0.5 max-w-[180px]">
+                    Add one manually or generate a set with AI.
+                  </p>
+                </div>
               )}
             </div>
           </div>
 
           {/* Editor Workbench */}
-          <div className="bg-white border border-dash-border rounded-2xl p-6 space-y-5 shadow-sm">
+          <div className="bg-white border border-dash-border rounded-2xl p-6 space-y-6 shadow-sm">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-[9px] font-bold !text-dash-textMuted block">Question type</label>
-                <select
-                  value={type}
-                  onChange={(e) => setType(e.target.value)}
-                  className="w-full bg-white border border-dash-border rounded-xl px-3 py-2.5 text-xs !text-dash-text focus:border-dash-accent outline-none"
-                >
-                  <option value="multiple_choice">Multiple choice (MCQ)</option>
-                  <option value="true_false">True / False</option>
-                  <option value="short_answer">Short answer</option>
-                  <option value="matching">Matching pairs</option>
-                  <option value="ordering">Ordering lists</option>
-                  <option value="fill_in_blank">Fill in the blank</option>
-                  <option value="code_challenge">Code challenge</option>
-                  <option value="file_upload">File upload rubric</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[9px] font-bold !text-dash-textMuted block">Points value</label>
-                <input
-                  type="number"
-                  value={points}
-                  onChange={(e) => setPoints(parseInt(e.target.value) || 1)}
-                  className="w-full bg-white border border-dash-border rounded-xl px-3 py-2.5 text-xs !text-dash-text outline-none"
-                />
-              </div>
+              <PropertySelect
+                label="Question type"
+                value={type}
+                onChange={setType}
+                options={[
+                  { value: "multiple_choice", label: "Multiple choice (MCQ)" },
+                  { value: "true_false", label: "True / False" },
+                  { value: "short_answer", label: "Short answer" },
+                  { value: "matching", label: "Matching pairs" },
+                  { value: "ordering", label: "Ordering lists" },
+                  { value: "fill_in_blank", label: "Fill in the blank" },
+                  { value: "code_challenge", label: "Code challenge" },
+                  { value: "file_upload", label: "File upload rubric" },
+                ]}
+              />
+              <SliderWithInput
+                label="Points value"
+                value={points}
+                onChange={(val) => setPoints(Number(val))}
+                min={1}
+                max={20}
+                unit=""
+                numeric
+              />
             </div>
 
             {/* Question Text */}
             <div className="space-y-1.5">
-              <label className="text-[9px] font-bold !text-dash-textMuted block">Question title / prompt</label>
+              <label className="text-[11px] font-semibold !text-dash-textMuted block">Question title / prompt</label>
               <textarea
                 value={questionText}
                 onChange={(e) => setQuestionText(e.target.value)}
                 rows={2}
                 placeholder="e.g. Which keyword is used to define block-scoped variables in JS?"
-                className="w-full bg-white border border-dash-border rounded-xl px-3 py-2 text-xs !text-dash-text placeholder:!text-dash-textMuted/60 outline-none focus:border-dash-accent"
+                className="w-full bg-white border border-dash-border rounded-xl px-3.5 py-3 text-xs !text-dash-text placeholder:!text-dash-textMuted/60 outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none leading-relaxed"
               />
             </div>
 
             {/* Dynamic Options Render Block */}
             <div className="bg-dash-surface border border-dash-border rounded-xl p-4 space-y-4">
-              <span className="text-[10px] font-bold text-dash-accent block">Answer configuration</span>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.1em] !text-dash-textMuted block">Answer configuration</span>
 
-              {/* MCQ / TrueFalse */}
+              {/* MCQ / TrueFalse — both use a real radio (single-correct-answer), not a
+                  checkbox: the actual save/grade pipeline (handleSaveQuestion below,
+                  gradeQuizAttempt/gradeModuleQuizAttempt) only ever persists ONE
+                  correct_option_index regardless of how many boxes were checked, so a
+                  checkbox previously implied multi-select support that never functioned —
+                  this is a real correctness fix, not a behavior change (the same single
+                  correct-answer semantics already existed, just mislabeled). */}
               {(type === "multiple_choice" || type === "true_false") && (
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   {optionsList.map((opt, idx) => (
-                    <div 
-                      key={idx} 
-                      className={`flex items-center gap-3 p-3 rounded-lg border transition-all duration-300 ${
-                        opt.is_correct 
-                          ? "bg-green/10 border-green/30 text-green"
-                          : "bg-dash-surface border-dash-border !text-dash-textMuted"
+                    <div
+                      key={idx}
+                      className={`flex items-center gap-3 p-3 rounded-lg border transition-all motion-reduce:transition-none ${
+                        opt.is_correct
+                          ? "bg-green/10 border-green/30"
+                          : "bg-white border-dash-border"
                       }`}
                     >
-                      <input 
-                        type={type === "true_false" ? "radio" : "checkbox"}
+                      <input
+                        type="radio"
+                        name="correct-option"
                         checked={opt.is_correct}
                         onChange={() => {
-                          const updated = optionsList.map((o, i) => ({
-                            ...o,
-                            is_correct: type === "true_false" ? i === idx : (i === idx ? !o.is_correct : o.is_correct)
-                          }));
+                          const updated = optionsList.map((o, i) => ({ ...o, is_correct: i === idx }));
                           setOptionsList(updated);
                         }}
-                        className="h-4 w-4 accent-emerald-500"
+                        className="h-4 w-4 accent-green shrink-0"
                       />
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={opt.text}
                         disabled={type === "true_false"}
                         onChange={(e) => {
@@ -658,28 +713,35 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                           updated[idx].text = e.target.value;
                           setOptionsList(updated);
                         }}
-                        className="flex-1 bg-transparent border-none outline-none text-xs !text-dash-text"
+                        className="flex-1 bg-transparent border-none outline-none text-xs !text-dash-text disabled:!text-dash-textMuted"
                       />
-                      <span className="text-[9px] font-mono shrink-0">
-                        {opt.is_correct ? "✓ Correct" : "Incorrect"}
+                      <span
+                        className={`text-[9.5px] font-bold uppercase tracking-wide px-2 py-1 rounded-full shrink-0 ${
+                          opt.is_correct
+                            ? "bg-green/15 text-green"
+                            : "bg-dash-surface !text-dash-textMuted border border-dash-border"
+                        }`}
+                      >
+                        {opt.is_correct ? "Correct" : "Incorrect"}
                       </span>
                       {type === "multiple_choice" && (
                         <button
                           onClick={() => setOptionsList(optionsList.filter((_, i) => i !== idx))}
-                          className="text-red hover:text-red/80 p-0.5 shrink-0"
+                          className="text-dash-textMuted hover:text-red hover:bg-red/10 p-1.5 rounded-md shrink-0 transition-colors motion-reduce:transition-none"
                         >
-                          <Trash2 size={12} />
+                          <Trash2 size={13} />
                         </button>
                       )}
                     </div>
                   ))}
                   {type === "multiple_choice" && (
-                    <Button
+                    <button
+                      type="button"
                       onClick={() => setOptionsList([...optionsList, { text: `New Option`, is_correct: false }])}
-                      className="h-8 bg-dash-surface border border-dash-border hover:bg-dash-border/60 !text-dash-text rounded-lg text-[10px] font-bold"
+                      className="h-9 w-full bg-white border border-dash-border hover:bg-dash-surface !text-dash-text rounded-lg text-[10.5px] font-bold transition-colors motion-reduce:transition-none flex items-center justify-center gap-1"
                     >
-                      + Add Option Choice
-                    </Button>
+                      <Plus size={12} /> Add Option Choice
+                    </button>
                   )}
                 </div>
               )}
@@ -737,7 +799,7 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                       <button onClick={() => setMatchingPairs(matchingPairs.filter((_, i) => i !== idx))} className="text-red shrink-0"><Trash2 size={12} /></button>
                     </div>
                   ))}
-                  <Button onClick={() => setMatchingPairs([...matchingPairs, { left: "", right: "" }])} className="h-8 bg-dash-surface !text-dash-text rounded-lg text-[10px] font-bold">+ Add Pair</Button>
+                  <Button onClick={() => setMatchingPairs([...matchingPairs, { left: "", right: "" }])} className="h-9 bg-white border border-dash-border hover:bg-dash-surface !text-dash-text rounded-lg text-[10.5px] font-bold transition-colors motion-reduce:transition-none">+ Add Pair</Button>
                 </div>
               )}
 
@@ -761,7 +823,7 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                       <button onClick={() => setOrderingItems(orderingItems.filter((_, i) => i !== idx))} className="text-red shrink-0"><Trash2 size={12} /></button>
                     </div>
                   ))}
-                  <Button onClick={() => setOrderingItems([...orderingItems, ""])} className="h-8 bg-dash-surface !text-dash-text rounded-lg text-[10px] font-bold">+ Add Item</Button>
+                  <Button onClick={() => setOrderingItems([...orderingItems, ""])} className="h-9 bg-white border border-dash-border hover:bg-dash-surface !text-dash-text rounded-lg text-[10.5px] font-bold transition-colors motion-reduce:transition-none">+ Add Item</Button>
                 </div>
               )}
 
@@ -816,7 +878,7 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                       <button onClick={() => setCodeAssertions(codeAssertions.filter((_, i) => i !== idx))} className="text-red shrink-0"><Trash2 size={12} /></button>
                     </div>
                   ))}
-                  <Button onClick={() => setCodeAssertions([...codeAssertions, { input: "", expected: "" }])} className="h-8 bg-dash-surface !text-dash-text rounded-lg text-[10px] font-bold">+ Add Assertion</Button>
+                  <Button onClick={() => setCodeAssertions([...codeAssertions, { input: "", expected: "" }])} className="h-9 bg-white border border-dash-border hover:bg-dash-surface !text-dash-text rounded-lg text-[10.5px] font-bold transition-colors motion-reduce:transition-none">+ Add Assertion</Button>
                 </div>
               )}
 
@@ -851,28 +913,29 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                       <button onClick={() => setRubrics(rubrics.filter((_, i) => i !== idx))} className="text-red shrink-0"><Trash2 size={12} /></button>
                     </div>
                   ))}
-                  <Button onClick={() => setRubrics([...rubrics, { criteria: "", max_points: 5 }])} className="h-8 bg-dash-surface !text-dash-text rounded-lg text-[10px] font-bold">+ Add Rubric Item</Button>
+                  <Button onClick={() => setRubrics([...rubrics, { criteria: "", max_points: 5 }])} className="h-9 bg-white border border-dash-border hover:bg-dash-surface !text-dash-text rounded-lg text-[10.5px] font-bold transition-colors motion-reduce:transition-none">+ Add Rubric Item</Button>
                 </div>
               )}
             </div>
 
-            {/* Explanation Block with LENA */}
-            <div className="space-y-2 border-t border-dash-border pt-4">
+            {/* Explanation Block with LENA — same sky-blue AI-action treatment as
+                "Generate with AI" (Step 2): both are the same family of AI-assist control. */}
+            <div className="space-y-2 border-t border-dash-border pt-5">
               <div className="flex items-center justify-between">
-                <label className="text-[9px] font-bold !text-dash-textMuted block">Pedagogical Explanation</label>
+                <label className="text-[11px] font-semibold !text-dash-textMuted block">Pedagogical Explanation</label>
                 <button
                   type="button"
                   onClick={handleLenaGenerate}
                   disabled={isGenerating}
-                  className="text-[10px] font-bold text-primary flex items-center gap-1 hover:opacity-80 transition-all motion-reduce:transition-none disabled:opacity-50"
+                  className="h-7 px-2.5 rounded-lg border border-sky-200 bg-sky-50/70 hover:bg-sky-100 text-sky-700 text-[10.5px] font-semibold flex items-center gap-1.5 transition-colors motion-reduce:transition-none disabled:opacity-50"
                 >
                   {isGenerating ? (
                     <>
-                      <Loader2 size={12} className="animate-spin motion-reduce:animate-none" /> Customising Context...
+                      <Loader2 size={12} className="animate-spin motion-reduce:animate-none" /> Customising context...
                     </>
                   ) : (
                     <>
-                      <Sparkles size={12} /> Generate explanation with LENA
+                      <Sparkles size={12} /> Generate with LENA
                     </>
                   )}
                 </button>
@@ -882,16 +945,16 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
                 onChange={(e) => setExplanation(e.target.value)}
                 rows={3}
                 placeholder="Pedagogical rationale displayed to student after answering..."
-                className="w-full bg-white border border-dash-border rounded-xl px-3 py-2 text-xs !text-dash-text outline-none focus:border-primary font-mono leading-relaxed"
+                className="w-full bg-white border border-dash-border rounded-xl px-3.5 py-3 text-xs !text-dash-text outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none leading-relaxed"
               />
             </div>
 
             {/* Action button */}
-            <div className="flex items-center justify-end gap-3 border-t border-dash-border pt-4 shrink-0">
+            <div className="flex items-center justify-end gap-3 border-t border-dash-border pt-5 shrink-0">
               <Button
                 onClick={handleSaveQuestion}
                 disabled={isPending}
-                className="h-11 bg-primary hover:bg-primary/90 text-white rounded-xl text-[10px] font-bold px-6 shadow-lg shadow-primary/20 transition-colors motion-reduce:transition-none"
+                className="h-11 bg-primary hover:bg-primary/90 text-white rounded-xl text-[11px] font-bold px-6 shadow-lg shadow-primary/20 transition-colors motion-reduce:transition-none"
               >
                 {isPending ? (
                   <>
@@ -905,286 +968,271 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
           </div>
         </div>
       ) : activeTab === "settings" ? (
-        /* Advanced Settings Panel */
-        <div className="bg-white border border-dash-border rounded-2xl p-6 max-w-2xl mx-auto space-y-6 shadow-sm">
-          <div className="flex items-center justify-between border-b border-dash-border pb-3">
-            <div className="flex items-center gap-2">
-              <Sliders className="text-primary" size={18} />
-              <h3 className="text-sm font-bold !text-dash-text">Advanced Configuration Settings</h3>
+        /* Advanced Settings Panel — same premium primitives/section-header language as the
+           Questions tab (PropertyGroup section headers, SliderWithInput numeric steppers)
+           instead of a plain form. */
+        <div className="bg-white border border-dash-border rounded-2xl p-6 md:p-7 max-w-2xl mx-auto space-y-1 shadow-sm">
+          <div className="flex items-start justify-between gap-4 border-b border-dash-border pb-5 mb-4">
+            <div>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-dash-accent">Configuration</span>
+              <h2 className="font-display text-[22px] font-semibold tracking-[-0.01em] !text-dash-text mt-1.5">Advanced settings</h2>
+              <p className="text-[12px] leading-relaxed !text-dash-textMuted mt-1">Grading, pacing and completion rules for this quiz.</p>
             </div>
-            <Button
+            <button
               onClick={() => setIsConfigPaneOpen(true)}
-              className="bg-dash-surface hover:bg-dash-border/60 !text-dash-text rounded-lg text-[9px] font-bold h-8 px-3 border border-dash-border flex items-center gap-1 transition-colors motion-reduce:transition-none"
+              className="h-9 px-3.5 shrink-0 rounded-lg bg-white hover:bg-dash-surface !text-dash-textMuted hover:!text-dash-text text-[11px] font-semibold border border-dash-border flex items-center gap-1.5 transition-colors motion-reduce:transition-none"
             >
-              <Sliders size={12} className="text-primary" /> Global Overrides Pane
-            </Button>
+              <Sliders size={12} /> Global overrides
+            </button>
           </div>
 
-          <div className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold !text-dash-textMuted block">Quiz Title</label>
-              <input
-                type="text"
-                value={quizTitle}
-                onChange={(e) => setQuizTitle(e.target.value)}
-                className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-primary transition-all motion-reduce:transition-none"
-              />
-            </div>
+          {/* Module-Level Quiz pass: a module quiz has no title/description of its own
+              (see handleSaveSettings) — shown as a read-only label instead of an editable
+              field a save would silently discard. */}
+          <PropertyGroup title="Identity">
+            {isModuleScope ? (
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold !text-dash-textMuted block">Quiz title</label>
+                <div className="w-full bg-dash-surface border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text">
+                  {quiz.title ? `${quiz.title} Quiz` : "Module Quiz"}
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold !text-dash-textMuted block">Quiz title</label>
+                  <input
+                    type="text"
+                    value={quizTitle}
+                    onChange={(e) => setQuizTitle(e.target.value)}
+                    className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none"
+                  />
+                </div>
 
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold !text-dash-textMuted block">Description (Optional)</label>
-              <textarea
-                value={quizDesc}
-                onChange={(e) => setQuizDesc(e.target.value)}
-                rows={3}
-                placeholder="Provide additional guidelines for this quiz..."
-                className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-primary transition-all motion-reduce:transition-none leading-relaxed"
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold !text-dash-textMuted block">Description (optional)</label>
+                  <textarea
+                    value={quizDesc}
+                    onChange={(e) => setQuizDesc(e.target.value)}
+                    rows={3}
+                    placeholder="Provide additional guidelines for this quiz..."
+                    className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none leading-relaxed"
+                  />
+                </div>
+              </>
+            )}
+          </PropertyGroup>
+
+          <PropertyGroup title="Grading & pacing">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <SliderWithInput
+                label="Passing score"
+                value={passingScore}
+                onChange={(val) => setPassingScore(Number(val))}
+                min={0}
+                max={100}
+                unit="%"
+                numeric
+              />
+              <SliderWithInput
+                label="Time limit"
+                value={timeLimit}
+                onChange={(val) => setTimeLimit(Number(val))}
+                min={0}
+                max={180}
+                unit=" min"
+                numeric
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold !text-dash-textMuted block">Passing Score (%)</label>
-                <input
-                  type="number"
-                  value={passingScore}
-                  onChange={(e) => setPassingScore(parseInt(e.target.value) || 80)}
-                  min={0}
-                  max={100}
-                  className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none"
-                />
-              </div>
+              <SliderWithInput
+                label="Max retakes"
+                value={maxRetakes}
+                onChange={(val) => setMaxRetakes(Number(val))}
+                min={-1}
+                max={20}
+                unit=""
+                numeric
+              />
 
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold !text-dash-textMuted block">Time Limit (Minutes)</label>
-                <input
-                  type="number"
-                  value={timeLimit}
-                  onChange={(e) => setTimeLimit(parseInt(e.target.value) || 0)}
-                  min={0}
-                  placeholder="0 = No limit"
-                  className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold !text-dash-textMuted block">Max Retakes</label>
-                <input
-                  type="number"
-                  value={maxRetakes}
-                  onChange={(e) => setMaxRetakes(parseInt(e.target.value) || -1)}
-                  min={-1}
-                  placeholder="-1 = Unlimited"
-                  className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none"
-                />
-              </div>
-
-              <div className="flex items-center justify-between bg-dash-surface border border-dash-border rounded-xl p-4 mt-2">
-                <div>
-                  <span className="text-xs font-bold !text-dash-text block">Required for Course Completion</span>
-                  <span className="text-[10px] !text-dash-textMuted block mt-0.5">Students must pass this quiz to continue</span>
+              <div className="flex items-center justify-between gap-3 bg-dash-surface border border-dash-border rounded-xl p-4">
+                <div className="min-w-0">
+                  <span className="text-[12.5px] font-semibold !text-dash-text block">Required for completion</span>
+                  <span className="text-[11px] leading-relaxed !text-dash-textMuted block mt-0.5">Students must pass to continue</span>
                 </div>
                 <Switch
                   checked={isRequired}
                   onCheckedChange={setIsRequired}
-                  className="data-[state=checked]:bg-primary"
+                  className="shrink-0 data-[state=checked]:bg-dash-accent data-[state=unchecked]:bg-dash-border"
                 />
               </div>
             </div>
-          </div>
+            <p className="text-[11px] leading-relaxed !text-dash-textMuted/90 -mt-1">Max retakes: <span className="font-medium">-1</span> = unlimited. Time limit: <span className="font-medium">0</span> = no limit.</p>
+          </PropertyGroup>
 
-          <div className="flex items-center justify-end border-t border-dash-border pt-4">
+          <div className="flex items-center justify-end border-t border-dash-border pt-5 mt-3">
             <Button
               onClick={handleSaveSettings}
               disabled={isSavingSettings}
-              className="bg-primary hover:bg-primary/90 text-white rounded-xl text-[10px] font-bold h-11 px-6 shadow-lg shadow-primary/20 flex items-center gap-1.5 transition-colors motion-reduce:transition-none"
+              className="bg-primary hover:bg-primary/90 text-white rounded-xl text-[11px] font-bold h-11 px-6 shadow-lg shadow-primary/20 flex items-center gap-1.5 transition-colors motion-reduce:transition-none"
             >
               {isSavingSettings ? (
                 <>
-                  <Loader2 className="animate-spin motion-reduce:animate-none" size={14} /> Saving Settings...
+                  <Loader2 className="animate-spin motion-reduce:animate-none" size={14} /> Saving settings...
                 </>
               ) : (
                 <>
-                  <Save size={14} /> Save Advanced Settings
+                  <Save size={14} /> Save advanced settings
                 </>
               )}
             </Button>
           </div>
         </div>
       ) : (
-        <QuizAnalyticsConsole quiz={quiz} course={course} questions={questions} />
+        <QuizAnalyticsConsole quiz={quiz} course={course} questions={questions} moduleId={moduleId} />
       )}
 
       {/* Global Overrides configurations Sheet overlay */}
       <Sheet open={isConfigPaneOpen} onOpenChange={setIsConfigPaneOpen}>
-        <SheetContent className="w-[400px] bg-white border-l border-dash-border p-0 overflow-y-auto max-h-screen">
+        <SheetContent className="w-[420px] bg-white border-l border-dash-border p-0 overflow-y-auto max-h-screen">
           <div className="flex flex-col h-full">
-            <SheetHeader className="p-8 border-b border-dash-border bg-dash-surface">
-              <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mb-4">
-                <Sliders size={20} />
+            <SheetHeader className="p-6 border-b border-dash-border">
+              <div className="w-11 h-11 rounded-xl bg-dash-accent/10 flex items-center justify-center text-dash-accent mb-3">
+                <Sliders size={18} />
               </div>
-              <SheetTitle className="text-[20px] font-bold !text-dash-text">
-                Global <span className="text-primary">Overrides</span>
+              <SheetTitle className="font-display text-[17px] font-semibold tracking-[-0.01em] !text-dash-text">
+                Global overrides
               </SheetTitle>
-              <SheetDescription className="text-[10px] !text-dash-textMuted font-mono mt-1">
-                LMS Engine Behavioral Rules
+              <SheetDescription className="text-[11px] !text-dash-textMuted mt-0.5">
+                Fine-grained behavior rules for this quiz.
               </SheetDescription>
             </SheetHeader>
 
-            <div className="flex-1 p-8 space-y-6">
-              {/* Pass grade threshold slider percentage */}
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <label className="text-[10px] font-bold !text-dash-textMuted block">Passing Score Threshold</label>
-                  <span className="text-xs font-mono font-bold text-primary">{passingScore}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
+            <div className="flex-1 px-6 py-2">
+              <PropertyGroup title="Grading">
+                <SliderWithInput
+                  label="Passing score threshold"
                   value={passingScore}
-                  onChange={(e) => setPassingScore(parseInt(e.target.value))}
-                  className="w-full h-1.5 bg-dash-surface rounded-lg appearance-none cursor-pointer accent-primary"
+                  onChange={(val) => setPassingScore(Number(val))}
+                  min={0}
+                  max={100}
+                  unit="%"
+                  numeric
                 />
-              </div>
 
-              {/* Attempt limits selector numeric counters */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold !text-dash-textMuted block">Attempt Limits (Max Retakes)</label>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setMaxRetakes(Math.max(-1, maxRetakes - 1))}
-                    className="w-8 h-8 rounded-lg bg-dash-surface border border-dash-border flex items-center justify-center !text-dash-textMuted hover:bg-dash-border/60 hover:!text-dash-text"
-                  >
-                    -
-                  </button>
-                  <span className="text-xs font-mono font-bold !text-dash-text min-w-[40px] text-center">
-                    {maxRetakes === -1 ? "∞" : maxRetakes}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setMaxRetakes(maxRetakes === -1 ? 1 : maxRetakes + 1)}
-                    className="w-8 h-8 rounded-lg bg-dash-surface border border-dash-border flex items-center justify-center !text-dash-textMuted hover:bg-dash-border/60 hover:!text-dash-text"
-                  >
-                    +
-                  </button>
-                </div>
-                <span className="text-[9px] !text-dash-textMuted block mt-1">-1 represents unlimited attempts.</span>
-              </div>
+                <SliderWithInput
+                  label="Attempt limit (max retakes)"
+                  value={maxRetakes}
+                  onChange={(val) => setMaxRetakes(Number(val))}
+                  min={-1}
+                  max={20}
+                  unit=""
+                  numeric
+                />
+                <p className="text-[10px] !text-dash-textMuted -mt-2">-1 represents unlimited attempts.</p>
 
-              {/* Exceeded threshold event behaviors */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold !text-dash-textMuted block">Exceeded Threshold Behavior</label>
-                <select
+                <PropertySelect
+                  label="Exceeded-threshold behavior"
                   value={exceededBehavior}
-                  onChange={(e) => setExceededBehavior(e.target.value as any)}
-                  className="w-full bg-white border border-dash-border rounded-xl px-3 py-2.5 text-xs !text-dash-text outline-none focus:border-primary"
-                >
-                  <option value="lock">Lock (Require instructor manual unlock)</option>
-                  <option value="remedial">Trigger Remedial Lesson Path</option>
-                </select>
-              </div>
+                  onChange={(val) => setExceededBehavior(val as any)}
+                  options={[
+                    { value: "lock", label: "Lock (instructor manual unlock)" },
+                    { value: "remedial", label: "Trigger remedial lesson path" },
+                  ]}
+                />
+              </PropertyGroup>
 
-              {/* Feedback execution triggers */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold !text-dash-textMuted block">Feedback Execution Trigger</label>
-                <select
+              <PropertyGroup title="Feedback & timing">
+                <PropertySelect
+                  label="Feedback execution trigger"
                   value={feedbackTrigger}
-                  onChange={(e) => setFeedbackTrigger(e.target.value as any)}
-                  className="w-full bg-white border border-dash-border rounded-xl px-3 py-2.5 text-xs !text-dash-text outline-none focus:border-primary"
-                >
-                  <option value="immediate">Immediate Rationale</option>
-                  <option value="post-submission">Post-submission Details</option>
-                  <option value="hidden">Exam Mode (Permanently Hidden)</option>
-                </select>
-              </div>
+                  onChange={(val) => setFeedbackTrigger(val as any)}
+                  options={[
+                    { value: "immediate", label: "Immediate rationale" },
+                    { value: "post-submission", label: "Post-submission details" },
+                    { value: "hidden", label: "Exam mode (permanently hidden)" },
+                  ]}
+                />
 
-              {/* Shuffle toggles */}
-              <div className="space-y-3">
+                <SliderWithInput
+                  label="Count-down timer"
+                  value={timeLimit}
+                  onChange={(val) => setTimeLimit(Number(val))}
+                  min={0}
+                  max={180}
+                  unit=" min"
+                  numeric
+                />
+                <p className="text-[10px] !text-dash-textMuted -mt-2">0 = no limit. Triggers a 5-minute warning before submission.</p>
+              </PropertyGroup>
+
+              <PropertyGroup title="Randomization">
                 <div className="flex items-center justify-between bg-dash-surface border border-dash-border rounded-xl p-4">
                   <div>
-                    <span className="text-xs font-bold !text-dash-text block">Shuffle Questions</span>
+                    <span className="text-xs font-bold !text-dash-text block">Shuffle questions</span>
                     <span className="text-[10px] !text-dash-textMuted block mt-0.5">Randomize question order</span>
                   </div>
                   <Switch
                     checked={shuffleQuestions}
                     onCheckedChange={setShuffleQuestions}
-                    className="data-[state=checked]:bg-primary"
+                    className="shrink-0 data-[state=checked]:bg-dash-accent data-[state=unchecked]:bg-dash-border"
                   />
                 </div>
                 <div className="flex items-center justify-between bg-dash-surface border border-dash-border rounded-xl p-4">
                   <div>
-                    <span className="text-xs font-bold !text-dash-text block">Shuffle Options</span>
+                    <span className="text-xs font-bold !text-dash-text block">Shuffle options</span>
                     <span className="text-[10px] !text-dash-textMuted block mt-0.5">Randomize option ordering</span>
                   </div>
                   <Switch
                     checked={shuffleOptions}
                     onCheckedChange={setShuffleOptions}
-                    className="data-[state=checked]:bg-primary"
+                    className="shrink-0 data-[state=checked]:bg-dash-accent data-[state=unchecked]:bg-dash-border"
                   />
                 </div>
-              </div>
 
-              {/* Question Pool Drawing counts */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold !text-dash-textMuted block">Question Drawing Pool Count</label>
-                <input
-                  type="number"
+                <SliderWithInput
+                  label="Question drawing pool"
                   value={poolCount}
-                  onChange={(e) => setPoolCount(parseInt(e.target.value) || 0)}
+                  onChange={(val) => setPoolCount(Number(val))}
                   min={0}
-                  placeholder="0 = Draw all questions"
-                  className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-primary"
+                  max={100}
+                  unit=""
+                  numeric
                 />
-                <span className="text-[9px] !text-dash-textMuted block mt-1">If non-zero, draws a random subset of questions.</span>
-              </div>
+                <p className="text-[10px] !text-dash-textMuted -mt-2">0 = draw all questions; otherwise draws a random subset.</p>
+              </PropertyGroup>
 
-              {/* Count-down timers */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold !text-dash-textMuted block">Count-down Timer (Minutes)</label>
-                <input
-                  type="number"
-                  value={timeLimit}
-                  onChange={(e) => setTimeLimit(parseInt(e.target.value) || 0)}
-                  min={0}
-                  placeholder="0 = No limit"
-                  className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-primary"
-                />
-                <span className="text-[9px] !text-dash-textMuted block mt-1">Triggers a flashing 5-minute warning prompt before submission.</span>
-              </div>
-
-              {/* Require pass to unlock next lesson */}
-              <div className="flex items-center justify-between bg-dash-surface border border-dash-border rounded-xl p-4">
-                <div>
-                  <span className="text-xs font-bold !text-dash-text block">Require Pass to Unlock Next Lesson</span>
-                  <span className="text-[10px] !text-dash-textMuted block mt-0.5">Blocks progression unless passing grade is met</span>
+              <PropertyGroup title="Progression" defaultOpen={true}>
+                <div className="flex items-center justify-between bg-dash-surface border border-dash-border rounded-xl p-4">
+                  <div>
+                    <span className="text-xs font-bold !text-dash-text block">Require pass to unlock next lesson</span>
+                    <span className="text-[10px] !text-dash-textMuted block mt-0.5">Blocks progression unless passing grade is met</span>
+                  </div>
+                  <Switch
+                    checked={requirePass}
+                    onCheckedChange={setRequirePass}
+                    className="shrink-0 data-[state=checked]:bg-dash-accent data-[state=unchecked]:bg-dash-border"
+                  />
                 </div>
-                <Switch
-                  checked={requirePass}
-                  onCheckedChange={setRequirePass}
-                  className="data-[state=checked]:bg-primary"
-                />
-              </div>
+              </PropertyGroup>
             </div>
 
-            <div className="p-8 border-t border-dash-border bg-dash-surface grid grid-cols-2 gap-4 shrink-0">
+            <div className="p-6 border-t border-dash-border bg-dash-surface grid grid-cols-2 gap-3 shrink-0">
               <button
                 onClick={() => setIsConfigPaneOpen(false)}
-                className="h-11 rounded-xl bg-white border border-dash-border !text-dash-text hover:bg-dash-border/60 text-xs font-bold transition-all motion-reduce:transition-none"
+                className="h-11 rounded-xl bg-white border border-dash-border !text-dash-text hover:bg-dash-border/60 text-xs font-bold transition-colors motion-reduce:transition-none"
               >
-                Close Overrides
+                Close
               </button>
               <button
                 onClick={() => {
                   handleSaveSettings();
                   setIsConfigPaneOpen(false);
                 }}
-                className="h-11 rounded-xl bg-primary text-white hover:bg-primary/90 text-xs font-bold transition-all motion-reduce:transition-none shadow-lg shadow-primary/20"
+                className="h-11 rounded-xl bg-primary text-white hover:bg-primary/90 text-xs font-bold transition-colors motion-reduce:transition-none shadow-lg shadow-primary/20"
               >
-                Save & Apply
+                Save & apply
               </button>
             </div>
           </div>
@@ -1251,8 +1299,13 @@ export default function QuizWorkbenchClient({ course, quiz }: QuizWorkbenchClien
               onClick={async () => {
                 setIsBulkDeleteConfirmOpen(false);
                 try {
+                  // Real bug found and fixed during the premium redesign pass: this always
+                  // hit the lesson-quiz delete endpoint regardless of scope — bulk-deleting
+                  // questions from a module quiz would silently no-op (deleting nonexistent
+                  // rows from the wrong table) rather than actually removing them.
                   const ids = selectedQuestionIds.join(',');
-                  const res = await fetch(`/api/lms/quiz/questions?id=${ids}`, {
+                  const base = isModuleScope ? '/api/lms/module-quiz/questions' : '/api/lms/quiz/questions';
+                  const res = await fetch(`${base}?id=${ids}`, {
                     method: 'DELETE'
                   });
                   const resData = await res.json();

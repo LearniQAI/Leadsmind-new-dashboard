@@ -21,6 +21,7 @@ import FlashcardsBlockEditor from '@/app/courses/[id]/components/blocks/Flashcar
 import DownloadBlockEditor from '@/app/courses/[id]/components/blocks/DownloadBlockEditor';
 import EmbedBlockEditor from '@/app/courses/[id]/components/blocks/EmbedBlockEditor';
 import LiveSessionBlockEditor from '@/app/courses/[id]/components/blocks/LiveSessionBlockEditor';
+import HtmlCodeBlockEditor from '@/app/courses/[id]/components/blocks/HtmlCodeBlockEditor';
 import { useLessonBuilder } from '../LessonBuilderContext';
 
 function renderEditor(block: any, courseId: string | null, onChange: (patch: any) => void) {
@@ -35,6 +36,7 @@ function renderEditor(block: any, courseId: string | null, onChange: (patch: any
     case 'flashcards': return <FlashcardsBlockEditor block={block} onChange={onChange} />;
     case 'download': return <DownloadBlockEditor block={block} onChange={onChange} />;
     case 'embed': return <EmbedBlockEditor block={block} onChange={onChange} />;
+    case 'html_code': return <HtmlCodeBlockEditor block={block} onChange={onChange} />;
     case 'live_session': return <LiveSessionBlockEditor block={block} onChange={onChange} />;
     default: return null;
   }

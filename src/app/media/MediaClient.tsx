@@ -1,36 +1,58 @@
-// @ts-nocheck
 'use client';
 
-import React, { useState } from 'react';
-import { 
-  File, 
-  Image as ImageIcon, 
-  Video, 
-  MoreVertical, 
-  Download, 
-  Trash2, 
+import React, { useMemo, useRef, useState } from 'react';
+import {
+  File as FileIcon,
+  Image as ImageIcon,
+  Video,
+  Download,
+  Trash2,
   Upload,
   Search,
-  Grid,
+  LayoutGrid,
   List as ListIcon,
   FolderOpen,
-  Copy
+  Link2,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 import { createClient } from '@/lib/supabase/client';
 
-export default function MediaClient({ initialFiles, workspaceId }: { initialFiles: any[], workspaceId: string }) {
+type MediaFile = {
+  id: string;
+  name: string;
+  path: string;
+  mime_type?: string | null;
+  size?: number | null;
+  metadata?: { uploaded_via?: string; content?: string; isDraft?: boolean } | null;
+};
+
+const FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'image', label: 'Images' },
+  { id: 'video', label: 'Videos' },
+  { id: 'document', label: 'Documents' },
+] as const;
+
+export default function MediaClient({
+  initialFiles,
+  workspaceId,
+}: {
+  initialFiles: MediaFile[];
+  workspaceId: string;
+}) {
   const [view, setView] = useState<'grid' | 'list'>('grid');
-  const [files, setFiles] = useState(initialFiles);
+  const [files, setFiles] = useState<MediaFile[]>(initialFiles);
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<(typeof FILTERS)[number]['id']>('all');
+  const [isDragging, setIsDragging] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
-  const getFileIcon = (type: string) => {
-    if (type.includes('image')) return <ImageIcon className="text-blue-400" />;
-    if (type.includes('video')) return <Video className="text-purple-400" />;
-    return <File className="text-gray-400" />;
+  const fileIcon = (type: string) => {
+    if (type.includes('image')) return <ImageIcon className="text-sky-500" />;
+    if (type.includes('video')) return <Video className="text-violet-500" />;
+    return <FileIcon className="text-dash-textMuted" />;
   };
 
   const formatFileSize = (bytes: number) => {
@@ -41,22 +63,19 @@ export default function MediaClient({ initialFiles, workspaceId }: { initialFile
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const publicUrl = (path: string) =>
+    path.startsWith('http') ? path : supabase.storage.from('media').getPublicUrl(path).data.publicUrl;
+
+  const uploadFile = async (file: File) => {
     if (!file || !workspaceId) return;
-    
+
     const filePath = `${workspaceId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
 
     toast.promise(
       async () => {
-        // 1. Upload to Supabase Storage
-        const { error: uploadError } = await supabase.storage
-          .from('media')
-          .upload(filePath, file);
-          
+        const { error: uploadError } = await supabase.storage.from('media').upload(filePath, file);
         if (uploadError) throw uploadError;
 
-        // 2. Register file in database
         const { data: dbData, error: dbError } = await supabase
           .from('media_files')
           .insert({
@@ -65,23 +84,39 @@ export default function MediaClient({ initialFiles, workspaceId }: { initialFile
             path: filePath,
             type: 'file',
             mime_type: file.type || 'application/octet-stream',
-            size: file.size
+            size: file.size,
+            metadata: {
+              uploaded_via: 'Media Center — direct upload',
+              source_feature: 'media_center',
+            },
           })
           .select()
           .single();
-          
+
         if (dbError) throw dbError;
-        
-        // 3. Update local state
-        setFiles(prev => [dbData, ...prev]);
+
+        setFiles((prev) => [dbData as MediaFile, ...prev]);
         return dbData;
       },
       {
-        loading: 'Deploying asset to neural storage...',
-        success: 'Asset initialized successfully!',
-        error: (err) => `Deployment failed: ${err.message}`,
+        loading: 'Uploading…',
+        success: 'File uploaded',
+        error: (err) => `Upload failed: ${err.message}`,
       }
     );
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) uploadFile(file);
+    e.target.value = '';
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const dropped = Array.from(e.dataTransfer.files || []);
+    dropped.forEach((f) => uploadFile(f));
   };
 
   const handleDelete = async (fileId: string, path: string) => {
@@ -92,17 +127,17 @@ export default function MediaClient({ initialFiles, workspaceId }: { initialFile
           await supabase.storage.from('media').remove([path]);
         }
         await supabase.from('media_files').delete().eq('id', fileId).eq('workspace_id', workspaceId);
-        setFiles(prev => prev.filter(f => f.id !== fileId));
+        setFiles((prev) => prev.filter((f) => f.id !== fileId));
       },
       {
-        loading: 'Deleting file...',
-        success: 'File deleted successfully',
-        error: 'Failed to delete file'
+        loading: 'Deleting file…',
+        success: 'File deleted',
+        error: 'Failed to delete file',
       }
     );
   };
 
-  const handleDownload = async (file: any) => {
+  const handleDownload = async (file: MediaFile) => {
     try {
       if (file.path.startsWith('draft://')) {
         const content = file.metadata?.content || '';
@@ -118,15 +153,14 @@ export default function MediaClient({ initialFiles, workspaceId }: { initialFile
         return;
       }
 
-      const url = file.path.startsWith('http') ? file.path : supabase.storage.from('media').getPublicUrl(file.path).data.publicUrl;
-      // Fetch as blob to force download instead of opening in new tab
+      const url = publicUrl(file.path);
       const res = await fetch(url);
       if (!res.ok) throw new Error('Network error');
       const blob = await res.blob();
       const objectUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = objectUrl;
-      link.download = name;
+      link.download = file.name;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -136,155 +170,265 @@ export default function MediaClient({ initialFiles, workspaceId }: { initialFile
     }
   };
 
+  const copyLink = (file: MediaFile) => {
+    if (file.path.startsWith('draft://')) {
+      toast.error('Drafts do not have a public link');
+      return;
+    }
+    navigator.clipboard.writeText(publicUrl(file.path));
+    toast.success('Link copied');
+  };
+
+  const visibleFiles = useMemo(() => {
+    return files.filter((f) => {
+      const mime = (f.mime_type || '').toLowerCase();
+      const matchesFilter =
+        filter === 'all' ||
+        (filter === 'image' && mime.includes('image')) ||
+        (filter === 'video' && mime.includes('video')) ||
+        (filter === 'document' && !mime.includes('image') && !mime.includes('video'));
+      const matchesQuery =
+        !query.trim() ||
+        f.name.toLowerCase().includes(query.toLowerCase()) ||
+        (f.metadata?.uploaded_via || '').toLowerCase().includes(query.toLowerCase());
+      return matchesFilter && matchesQuery;
+    });
+  }, [files, filter, query]);
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Media Center</h2>
-          <p className="text-white/40 text-sm font-medium">Manage and deploy your digital assets across the LeadsMind network.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <input 
-            type="file" 
-            id="media-upload" 
-            className="hidden" 
-            onChange={handleUpload}
-          />
-          <div className="flex bg-white/5 border border-white/10 rounded-xl p-1">
-            <button 
-              onClick={() => setView('grid')}
-              className={`p-2 rounded-lg transition-all ${view === 'grid' ? 'bg-primary text-white' : 'text-white/40 hover:text-white'}`}
-            >
-              <Grid size={18} />
-            </button>
-            <button 
-              onClick={() => setView('list')}
-              className={`p-2 rounded-lg transition-all ${view === 'list' ? 'bg-primary text-white' : 'text-white/40 hover:text-white'}`}
-            >
-              <ListIcon size={18} />
-            </button>
-          </div>
-          <Button 
-            onClick={() => document.getElementById('media-upload').click()}
-            className="bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest text-[10px] h-12 px-8 rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2"
-          >
-            <Upload size={16} /> Upload Asset
-          </Button>
-        </div>
-      </div>
+    <div
+      className="mx-auto max-w-6xl space-y-6"
+      onDragOver={(e) => {
+        e.preventDefault();
+        setIsDragging(true);
+      }}
+      onDragLeave={() => setIsDragging(false)}
+      onDrop={handleDrop}
+    >
+      <input ref={inputRef} type="file" className="hidden" onChange={handleInputChange} />
 
-      <div className="flex items-center gap-4 bg-white/[0.02] border border-white/5 p-4 rounded-2xl">
-        <div className="flex-1 flex items-center bg-white/5 border border-white/10 rounded-xl px-4 py-2">
-          <Search className="w-4 h-4 text-white/20 mr-2" />
-          <input 
-            type="text" 
-            placeholder="Search assets by name or type..." 
-            className="bg-transparent border-none outline-none text-xs text-white placeholder:text-white/20 w-full"
-          />
+      {/* Page header */}
+      <div className="flex flex-col gap-4 border-b border-dash-border pb-6 md:flex-row md:items-end md:justify-between">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-600">
+            <span className="h-1 w-1 rounded-full bg-sky-500" />
+            Workspace
+          </div>
+          <h1 className="font-display text-[26px] font-semibold leading-tight tracking-[-0.02em] text-dash-text md:text-[30px]">
+            Media Center
+          </h1>
+          <p className="max-w-2xl text-[13px] leading-relaxed text-dash-textMuted">
+            All files uploaded across your workspace, in one place.
+          </p>
         </div>
+
         <div className="flex items-center gap-2">
-          <Badge className="bg-white/5 border-white/10 text-white/40 hover:text-white cursor-pointer px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest">Images</Badge>
-          <Badge className="bg-white/5 border-white/10 text-white/40 hover:text-white cursor-pointer px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest">Videos</Badge>
-          <Badge className="bg-white/5 border-white/10 text-white/40 hover:text-white cursor-pointer px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest">Documents</Badge>
+          <div className="flex rounded-lg border border-dash-border bg-white p-0.5">
+            <button
+              onClick={() => setView('grid')}
+              className={`flex h-8 w-8 items-center justify-center rounded-md transition-colors [&_svg]:size-4 ${
+                view === 'grid' ? 'bg-sky-50 text-sky-600' : 'text-dash-textMuted hover:text-dash-text'
+              }`}
+              aria-label="Grid view"
+            >
+              <LayoutGrid />
+            </button>
+            <button
+              onClick={() => setView('list')}
+              className={`flex h-8 w-8 items-center justify-center rounded-md transition-colors [&_svg]:size-4 ${
+                view === 'list' ? 'bg-sky-50 text-sky-600' : 'text-dash-textMuted hover:text-dash-text'
+              }`}
+              aria-label="List view"
+            >
+              <ListIcon />
+            </button>
+          </div>
+          <button
+            onClick={() => inputRef.current?.click()}
+            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg bg-sky-500 px-4 text-[13px] font-semibold text-white transition-colors hover:bg-sky-600 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky-500/25 [&_svg]:size-4"
+          >
+            <Upload /> Upload file
+          </button>
         </div>
       </div>
 
-      {files.length === 0 ? (
-        <div className="py-32 flex flex-col items-center justify-center text-center bg-[#0b0b1a] border-2 border-dashed border-white/10 rounded-[40px] group">
-          <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform border border-white/10">
-            <FolderOpen size={32} className="text-white/20" />
-          </div>
-          <h3 className="text-xl font-black text-white/40 uppercase tracking-widest">Storage Empty</h3>
-          <p className="text-white/20 text-xs font-bold mt-2 uppercase tracking-widest">Your neural asset repository is offline.</p>
+      {/* Search + filters */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-dash-textMuted" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search files…"
+            className="h-10 w-full rounded-lg border border-dash-border bg-white pl-9 pr-3 text-[13px] text-dash-text placeholder:text-dash-textMuted outline-none transition-colors focus:border-sky-500 focus:ring-4 focus:ring-sky-500/12"
+          />
         </div>
-      ) : (
-        <div className={view === 'grid' ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xxl:grid-cols-5 gap-6" : "space-y-4"}>
-          {files.map((file) => (
-            <div 
-              key={file.id} 
-              className={`bg-[#0b0b1a] border border-white/10 rounded-3xl overflow-hidden group hover:border-primary/50 transition-all duration-500 shadow-xl ${view === 'list' ? 'flex items-center p-4 gap-6' : ''}`}
+        <div className="flex items-center gap-1.5">
+          {FILTERS.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              className={`rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-colors ${
+                filter === f.id
+                  ? 'bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-500/20'
+                  : 'text-dash-textMuted hover:bg-dash-surface hover:text-dash-text'
+              }`}
             >
-              {view === 'grid' ? (
-                <div className="aspect-square bg-white/5 flex items-center justify-center relative overflow-hidden">
-                  {(file.mime_type || '').includes('image') ? (
-                    <img src={file.path.startsWith('http') ? file.path : (file.path.startsWith('draft://') ? '' : supabase.storage.from('media').getPublicUrl(file.path).data.publicUrl)} alt={file.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                  ) : (
-                    <div className="p-8">
-                      {getFileIcon(file.mime_type || '')}
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Dropzone / content */}
+      {files.length === 0 ? (
+        <button
+          onClick={() => inputRef.current?.click()}
+          className={`flex w-full flex-col items-center justify-center rounded-2xl border border-dashed px-6 py-20 text-center transition-colors ${
+            isDragging ? 'border-sky-400 bg-sky-50/60' : 'border-dash-border bg-dash-surface/40 hover:border-slate-300'
+          }`}
+        >
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-dash-border bg-white text-dash-textMuted [&_svg]:size-5">
+            <FolderOpen />
+          </div>
+          <h3 className="mt-4 text-[14px] font-semibold text-dash-text">No files yet</h3>
+          <p className="mt-1 max-w-sm text-[12px] leading-relaxed text-dash-textMuted">
+            Drag a file here, or click to upload. Files added from anywhere else in your
+            workspace &mdash; course content, cover images, branding &mdash; also show up here.
+          </p>
+        </button>
+      ) : (
+        <>
+          {/* Compact drop bar above populated content */}
+          <button
+            onClick={() => inputRef.current?.click()}
+            className={`flex w-full items-center justify-center gap-2 rounded-xl border border-dashed py-3 text-[12px] font-semibold transition-colors [&_svg]:size-4 ${
+              isDragging
+                ? 'border-sky-400 bg-sky-50/60 text-sky-700'
+                : 'border-dash-border bg-dash-surface/40 text-dash-textMuted hover:border-slate-300 hover:text-dash-text'
+            }`}
+          >
+            <Upload /> {isDragging ? 'Drop to upload' : 'Drag files here or click to upload'}
+          </button>
+
+          {visibleFiles.length === 0 ? (
+            <p className="py-16 text-center text-[13px] text-dash-textMuted">No files match your search.</p>
+          ) : view === 'grid' ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {visibleFiles.map((file) => (
+                <div
+                  key={file.id}
+                  className="group overflow-hidden rounded-2xl border border-dash-border bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_1px_3px_rgba(15,23,42,0.03)] transition-colors hover:border-slate-300"
+                >
+                  <div className="relative flex aspect-[4/3] items-center justify-center bg-dash-surface">
+                    {(file.mime_type || '').includes('image') && !file.path.startsWith('draft://') ? (
+                      <img
+                        src={publicUrl(file.path)}
+                        alt={file.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="[&_svg]:size-8">{fileIcon(file.mime_type || '')}</div>
+                    )}
+                    <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-slate-900/50 opacity-0 transition-opacity group-hover:opacity-100">
+                      <button
+                        onClick={() => copyLink(file)}
+                        className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/95 text-dash-text transition-colors hover:bg-white [&_svg]:size-4"
+                        title="Copy link"
+                      >
+                        <Link2 />
+                      </button>
+                      <button
+                        onClick={() => handleDownload(file)}
+                        className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/95 text-dash-text transition-colors hover:bg-white [&_svg]:size-4"
+                        title="Download"
+                      >
+                        <Download />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(file.id, file.path)}
+                        className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/95 text-rose-600 transition-colors hover:bg-white [&_svg]:size-4"
+                        title="Delete"
+                      >
+                        <Trash2 />
+                      </button>
                     </div>
-                  )}
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                    <button 
-                      onClick={() => {
-                        if (file.path.startsWith('draft://')) {
-                          toast.error('Drafts do not have a public URL');
-                          return;
-                        }
-                        const url = file.path.startsWith('http') ? file.path : supabase.storage.from('media').getPublicUrl(file.path).data.publicUrl;
-                        navigator.clipboard.writeText(url);
-                        toast.success('Asset URL copied to clipboard!');
-                      }}
-                      className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-emerald-500 transition-colors text-white"
-                      title="Copy Public URL"
+                  </div>
+
+                  <div className="p-4">
+                    <h4 className="truncate text-[13px] font-semibold text-dash-text" title={file.name}>
+                      {file.name}
+                    </h4>
+                    {file.metadata?.uploaded_via && (
+                      <p className="mt-0.5 truncate text-[11px] font-medium text-sky-600" title={file.metadata.uploaded_via}>
+                        {file.metadata.uploaded_via}
+                      </p>
+                    )}
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-[11px] text-dash-textMuted">{formatFileSize(file.size || 0)}</span>
+                      <span className="rounded bg-dash-surface px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-dash-textMuted">
+                        {(file.mime_type || '').split('/')[1] || 'file'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-2xl border border-dash-border bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_1px_3px_rgba(15,23,42,0.03)]">
+              {visibleFiles.map((file, i) => (
+                <div
+                  key={file.id}
+                  className={`flex items-center gap-4 px-4 py-3 transition-colors hover:bg-dash-surface/60 ${
+                    i > 0 ? 'border-t border-dash-border' : ''
+                  }`}
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-dash-border bg-dash-surface [&_svg]:size-4">
+                    {fileIcon(file.mime_type || '')}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="truncate text-[13px] font-semibold text-dash-text" title={file.name}>
+                      {file.name}
+                    </h4>
+                    <div className="flex items-center gap-2 text-[11px] text-dash-textMuted">
+                      <span>{formatFileSize(file.size || 0)}</span>
+                      {file.metadata?.uploaded_via && (
+                        <>
+                          <span className="text-dash-border">•</span>
+                          <span className="truncate font-medium text-sky-600">{file.metadata.uploaded_via}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button
+                      onClick={() => copyLink(file)}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-dash-textMuted transition-colors hover:bg-white hover:text-dash-text [&_svg]:size-4"
+                      title="Copy link"
                     >
-                      <Copy size={16} />
+                      <Link2 />
                     </button>
-                    <button onClick={() => handleDownload(file)} className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-primary transition-colors text-white" title="Download">
-                      <Download size={16} />
+                    <button
+                      onClick={() => handleDownload(file)}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-dash-textMuted transition-colors hover:bg-white hover:text-dash-text [&_svg]:size-4"
+                      title="Download"
+                    >
+                      <Download />
                     </button>
-                    <button onClick={() => handleDelete(file.id, file.path)} className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-rose-500 transition-colors text-white" title="Delete">
-                      <Trash2 size={16} />
+                    <button
+                      onClick={() => handleDelete(file.id, file.path)}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-dash-textMuted transition-colors hover:bg-white hover:text-rose-600 [&_svg]:size-4"
+                      title="Delete"
+                    >
+                      <Trash2 />
                     </button>
                   </div>
                 </div>
-              ) : (
-                <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center">
-                  {getFileIcon(file.mime_type || '')}
-                </div>
-              )}
-
-              <div className={`${view === 'grid' ? 'p-5' : 'flex-1'}`}>
-                <h4 className="text-sm font-black text-white uppercase tracking-tight truncate mb-1" title={file.name}>
-                  {file.name}
-                </h4>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black text-white/20 uppercase tracking-widest italic-none">
-                    {formatFileSize(file.size || 0)}
-                  </span>
-                  <Badge className="bg-white/5 text-white/40 border-none text-[8px] font-black uppercase tracking-[0.2em]">
-                    {(file.mime_type || '').split('/')[1] || 'FILE'}
-                  </Badge>
-                </div>
-              </div>
-              
-              {view === 'list' && (
-                <div className="flex items-center gap-4">
-                  <button 
-                    onClick={() => {
-                      if (file.path.startsWith('draft://')) {
-                        toast.error('Drafts do not have a public URL');
-                        return;
-                      }
-                      const url = file.path.startsWith('http') ? file.path : supabase.storage.from('media').getPublicUrl(file.path).data.publicUrl;
-                      navigator.clipboard.writeText(url);
-                      toast.success('Asset URL copied to clipboard!');
-                    }}
-                    className="p-2 text-white/20 hover:text-emerald-500 transition-colors"
-                    title="Copy Public URL"
-                  >
-                    <Copy size={18} />
-                  </button>
-                  <button onClick={() => handleDownload(file)} className="p-2 text-white/20 hover:text-white transition-colors" title="Download">
-                    <Download size={18} />
-                  </button>
-                  <button onClick={() => handleDelete(file.id, file.path)} className="p-2 text-white/20 hover:text-rose-500 transition-colors" title="Delete">
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              )}
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
     </div>
   );

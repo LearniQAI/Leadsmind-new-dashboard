@@ -3,7 +3,7 @@
 import React from 'react';
 import {
   Video, Headphones, FileText, Type, CheckSquare, FileEdit, Layers,
-  Download, Presentation, Code2, Radio, PlayCircle,
+  Download, Presentation, Code2, Radio, PlayCircle, FileCode2,
 } from 'lucide-react';
 import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
 
@@ -19,6 +19,7 @@ export const BLOCK_TYPE_META: Record<string, { label: string; icon: any; color: 
   slides: { label: 'Presentation slides', icon: Presentation, color: 'bg-blue-500' },
   embed: { label: 'Embed', icon: Code2, color: 'bg-indigo-500' },
   live_session: { label: 'Live session', icon: Radio, color: 'bg-red-500' },
+  html_code: { label: 'HTML code', icon: FileCode2, color: 'bg-slate-600' },
 };
 
 // Real, honest canvas-preview renderer per block type — same real field names verified in
@@ -83,6 +84,14 @@ export function BlockCanvasPreview({ block }: { block: any }) {
         <div className="text-[11px] !text-dash-textMuted font-mono truncate">{block.content.embed_url}</div>
       ) : (
         <EmptyPreview label="No embed URL yet" />
+      );
+    case 'html_code':
+      return block.content?.html?.trim() ? (
+        <div className="text-[11px] !text-dash-textMuted font-mono line-clamp-3 whitespace-pre-wrap break-all">
+          {block.content.html.slice(0, 240)}
+        </div>
+      ) : (
+        <EmptyPreview label="No HTML yet" />
       );
     case 'live_session':
       return block.file_url ? (

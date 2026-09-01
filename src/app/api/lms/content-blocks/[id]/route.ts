@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 const BLOCK_TYPES = [
   'video', 'audio', 'reading', 'rich_text', 'quiz', 'assignment',
-  'flashcards', 'download', 'slides', 'embed', 'live_session'
+  'flashcards', 'download', 'slides', 'embed', 'live_session', 'html_code'
 ];
 
 async function getOwnedBlock(adminClient: ReturnType<typeof createAdminClient>, id: string, workspaceId: string) {
