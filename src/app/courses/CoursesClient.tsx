@@ -88,10 +88,10 @@ export default function CoursesClient({
       {/* Top Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight !text-dash-text">
+          <h1 className="font-display text-[26px] md:text-[30px] font-semibold leading-tight tracking-[-0.02em] !text-dash-text">
             {courses.length} Course{courses.length === 1 ? "" : "s"}
           </h1>
-          <p className="text-[12px] !text-dash-textMuted mt-0.5">Manage everything you teach, in one place.</p>
+          <p className="text-[13px] leading-relaxed !text-dash-textMuted mt-1">Manage everything you teach, in one place.</p>
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
@@ -140,10 +140,10 @@ export default function CoursesClient({
             <div className="w-16 h-16 bg-dash-surface rounded-full flex items-center justify-center mb-6 border border-dash-border">
               <BookOpen className="w-8 h-8 !text-dash-textMuted" />
             </div>
-            <h3 className="text-lg font-bold !text-dash-text">
+            <h3 className="text-[15px] font-semibold !text-dash-text">
               {courses.length === 0 ? "No courses yet" : "No courses match your filters"}
             </h3>
-            <p className="!text-dash-textMuted text-xs mt-2">
+            <p className="!text-dash-textMuted text-[12px] leading-relaxed mt-1.5">
               {courses.length === 0 ? "Create your first course to get started" : "Try a different search or status filter"}
             </p>
             {courses.length === 0 && (
