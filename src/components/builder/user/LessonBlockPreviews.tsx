@@ -6,6 +6,9 @@ import {
   Download, Presentation, Code2, Radio, PlayCircle, FileCode2,
 } from 'lucide-react';
 import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
+import { SandboxedHtml } from '@/components/lms/SandboxedHtml';
+import { VoiceNotePlayer } from '@/components/common/VoiceNotePlayer';
+import { isSafeEmbedUrl } from '@/lib/security/isSafeEmbedUrl';
 
 export const BLOCK_TYPE_META: Record<string, { label: string; icon: any; color: string }> = {
   video: { label: 'Video', icon: Video, color: 'bg-blue-500' },
@@ -42,8 +45,27 @@ export function BlockCanvasPreview({ block }: { block: any }) {
         <EmptyPreview label="No video linked yet" />
       );
     case 'audio':
+      // Same real renderers the student sees (and the settings-panel "Live Preview") —
+      // pointer-events-none so the block stays selectable/draggable on the canvas.
+      if (block.content?.mode === 'embed' && block.content?.embed_html) {
+        return (
+          <div className="pointer-events-none">
+            <SandboxedHtml
+              html={block.content.embed_html}
+              className="h-[160px] overflow-hidden rounded-lg border border-dash-border bg-dash-surface"
+              title="Audio embed preview"
+            />
+          </div>
+        );
+      }
       return block.file_url ? (
-        <div className="text-[11px] !text-dash-textMuted truncate">🎧 {block.file_url}</div>
+        <div className="pointer-events-none">
+          <VoiceNotePlayer
+            audioUrl={block.file_url}
+            waveformBars={block.content?.waveform_bars || []}
+            theme="light"
+          />
+        </div>
       ) : (
         <EmptyPreview label="No audio file yet" />
       );
@@ -80,15 +102,33 @@ export function BlockCanvasPreview({ block }: { block: any }) {
         <EmptyPreview label="No file attached yet" />
       );
     case 'embed':
+      if (block.content?.embed_url && isSafeEmbedUrl(block.content.embed_url)) {
+        return (
+          <div className="pointer-events-none aspect-video overflow-hidden rounded-lg border border-dash-border bg-black">
+            <iframe
+              src={block.content.embed_url}
+              className="h-full w-full border-0"
+              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+              title="Embed preview"
+            />
+          </div>
+        );
+      }
       return block.content?.embed_url ? (
         <div className="text-[11px] !text-dash-textMuted font-mono truncate">{block.content.embed_url}</div>
       ) : (
         <EmptyPreview label="No embed URL yet" />
       );
     case 'html_code':
+      // Live-rendered result on the canvas (same SandboxedHtml component as the settings
+      // panel's "Live Preview" and the student view). Raw-code editing stays in settings.
       return block.content?.html?.trim() ? (
-        <div className="text-[11px] !text-dash-textMuted font-mono line-clamp-3 whitespace-pre-wrap break-all">
-          {block.content.html.slice(0, 240)}
+        <div className="pointer-events-none">
+          <SandboxedHtml
+            html={block.content.html}
+            className="h-[260px] w-full overflow-hidden rounded-lg border border-dash-border bg-white"
+            title="HTML block preview"
+          />
         </div>
       ) : (
         <EmptyPreview label="No HTML yet" />

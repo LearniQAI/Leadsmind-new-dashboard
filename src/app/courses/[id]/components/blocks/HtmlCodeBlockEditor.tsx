@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Editor, { loader } from "@monaco-editor/react";
-import { AlertCircle, ShieldCheck } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import type { ContentBlock } from "../ContentBlockList";
 import { PropertyGroup } from "@/components/builder/inspector/primitives";
 import { SandboxedHtml } from "@/components/lms/SandboxedHtml";
@@ -103,12 +103,6 @@ export default function HtmlCodeBlockEditor({ block, onChange }: HtmlCodeBlockEd
             ) : (
               <div className="h-full w-full bg-zinc-900 animate-pulse motion-reduce:animate-none rounded-xl" />
             )}
-          </div>
-          <div className="flex items-start gap-1.5 text-[10px] !text-dash-textMuted">
-            <ShieldCheck size={12} className="shrink-0 mt-0.5 text-green" />
-            Rendered only inside a locked-down <code className="font-mono">sandbox="allow-scripts"</code> iframe
-            (no <code className="font-mono">allow-same-origin</code>) — pasted scripts run in an isolated origin
-            and cannot read cookies, storage, or act as the logged-in user.
           </div>
         </div>
       </PropertyGroup>

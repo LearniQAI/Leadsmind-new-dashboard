@@ -1,7 +1,11 @@
 export interface LockReason {
   type: 'coming_soon' | 'paid_locked' | 'dripped' | 'prerequisite';
   message: string;
+  /** Whole calendar days until unlock (>= 1 while locked). Only set for `dripped`. */
   diffDays?: number;
+  /** ISO timestamp the lesson unlocks. Only set for `dripped`; lets the UI say
+   *  "later today" / "tomorrow" instead of a misleading rounded day count. */
+  unlockAt?: string;
 }
 
 interface LockCheckParams {
@@ -50,13 +54,22 @@ export function getLessonLockReason({
     const enrollDate = new Date(enrollment.enrolled_at);
     const unlockDate = new Date(enrollDate.getTime() + module.drip_days * 24 * 60 * 60 * 1000);
     const now = new Date();
-    if (now < unlockDate) {
-      const diffMs = unlockDate.getTime() - now.getTime();
-      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    // Strictly-in-the-future check: the moment `now` reaches `unlockDate` this branch is
+    // skipped and the lesson unlocks. `diffDays` is a whole-calendar-day count (>= 1 here),
+    // so a lesson unlocking in a few hours never renders as "0 days" — the UI uses
+    // `unlockAt` to say "later today" / "tomorrow" for near unlocks instead.
+    if (now.getTime() < unlockDate.getTime()) {
+      const startOfDay = (d: Date) =>
+        new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+      const diffDays = Math.max(
+        1,
+        Math.round((startOfDay(unlockDate) - startOfDay(now)) / (1000 * 60 * 60 * 24))
+      );
       return {
         type: 'dripped',
         message: `This module is dripped. It will unlock in ${diffDays} day${diffDays === 1 ? '' : 's'}.`,
-        diffDays
+        diffDays,
+        unlockAt: unlockDate.toISOString()
       };
     }
   }

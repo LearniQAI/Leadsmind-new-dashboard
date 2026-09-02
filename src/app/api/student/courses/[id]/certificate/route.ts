@@ -26,13 +26,21 @@ export async function GET(
     // First, find the workspace associated with the course to resolve the contact
     const { data: course } = await adminClient
       .from('courses')
-      .select('title, workspace_id')
+      .select('title, workspace_id, certificate_config')
       .eq('id', courseId)
       .single();
 
     if (!course) {
       return NextResponse.json({ error: 'Course not found' }, { status: 444 });
     }
+
+    // Certificate design: per-course override -> workspace default -> built-in classic.
+    const { data: ws } = await adminClient
+      .from('workspaces')
+      .select('certificate_config')
+      .eq('id', course.workspace_id)
+      .maybeSingle();
+    const certConfig = course.certificate_config || ws?.certificate_config || {};
 
     const contactId = await getOrCreateStudentContact(course.workspace_id);
     if (!contactId) {
@@ -162,6 +170,7 @@ export async function GET(
       courseTitle: cert!.course_title_snapshot,
       completionDate,
       validationId,
+      config: certConfig,
     });
 
     // Fire certificate telemetry event if needed

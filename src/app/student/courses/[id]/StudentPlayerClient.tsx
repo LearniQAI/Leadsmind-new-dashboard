@@ -10,6 +10,7 @@ import { markLessonComplete, markLessonIncomplete } from '@/app/actions/studentP
 import { handleLogout } from '@/app/actions/auth';
 import {
   DashDropdown, DashDropdownTrigger, DashDropdownContent, DashDropdownItem, DashDropdownSeparator,
+  DashModal, DashModalContent, DashModalHeader, DashModalTitle, DashModalDescription, DashModalFooter,
 } from '@/components/dashboard-ui';
 import { recordBlockCompletion, getCompletedBlockIdsForLesson, getLessonBlockCompletionStatus, getLessonReadingGateStatus, recordLessonReadingCompletion } from '@/app/actions/blockCompletion';
 import Editor from '@monaco-editor/react';
@@ -160,6 +161,7 @@ export default function StudentPlayerClient({
   // disabled with an accurate "N of M blocks remaining" indicator instead of only surfacing
   // an error banner after a failed click.
   const [blockStatus, setBlockStatus] = useState<{ total: number; completed: number } | null>(null);
+  const [showSoftConfirm, setShowSoftConfirm] = useState(false);
 
   const refreshBlockStatus = async (lessonId: string) => {
     const res = await getLessonBlockCompletionStatus(lessonId);
@@ -519,11 +521,14 @@ export default function StudentPlayerClient({
    * ordered list the Next button uses) and getLessonLockReason() so we never drop them into
    * a still-locked lesson.
    */
-  const handleCompleteAndAdvance = () => {
+  const handleCompleteAndAdvance = (confirmedOverride = false) => {
     if (!activeLesson || completedLessonIds.includes(activeLesson.id)) return;
+    // A locked lesson (drip / prerequisite / paid) can never be completed — the server
+    // rejects it too, this just avoids a pointless round-trip and error toast.
+    if (activeLockReason) return;
     const lesson = activeLesson;
     startTransition(async () => {
-      const res = await markLessonComplete(course.id, lesson.id);
+      const res = await markLessonComplete(course.id, lesson.id, { confirmedOverride });
       if ('error' in res) {
         toast.error(res.error);
         return;
@@ -621,12 +626,11 @@ export default function StudentPlayerClient({
 
   const isActiveDone = activeLesson ? completedLessonIds.includes(activeLesson.id) : false;
 
-  // ---- Unified "can this lesson be marked complete yet?" for the button + inline hint ----
-  // A lesson gates on EITHER real block completions OR the reading signal, never both:
-  // getLessonReadingGate() only fires for an inline-only canvas (zero trackable blocks), so
-  // these two branches are mutually exclusive by construction (prior task's decision).
-  // Matches isTrackableCanvasItem() server-side: an unwired ContentBox (blockId null) is a
-  // decorative placeholder, not a completion signal.
+  // ---- "Has the student genuinely finished this lesson's content?" ----
+  // "Mark complete" is ALWAYS enabled. This only decides whether a soft confirmation dialog
+  // appears first. A lesson gates on EITHER real block completions OR the reading signal,
+  // never both. `canvasHasBlocks` matches isTrackableCanvasItem() server-side (an unwired
+  // ContentBox with blockId null is decorative, not a signal).
   const canvasHasBlocks = Array.isArray(activeLesson?.canvasItems)
     ? activeLesson.canvasItems.some(
         (i: any) => i.kind === 'block' || (i.kind === 'contentbox' && !!i.blockId)
@@ -635,21 +639,13 @@ export default function StudentPlayerClient({
   const hasTrackableBlocks =
     canvasHasBlocks || (activeLesson?.contentBlocks && activeLesson.contentBlocks.length > 0);
 
-  const blocksRemaining =
-    hasTrackableBlocks && blockStatus ? Math.max(0, blockStatus.total - blockStatus.completed) : 0;
   const blocksGateMet = !hasTrackableBlocks || (blockStatus ? blockStatus.completed >= blockStatus.total : false);
   const readingGateMet = !readingGate.required || readingGate.done;
-  // Until the first status fetch lands for a block lesson, blockStatus is null → treat as
-  // not-ready (button disabled) rather than flashing enabled then disabled.
-  const lessonReady = isActiveDone || (blocksGateMet && readingGateMet);
-
-  const completeHint = isActiveDone
-    ? null
-    : readingGate.required && !readingGate.done
-      ? 'Keep reading to continue'
-      : hasTrackableBlocks && !blocksGateMet && blockStatus
-        ? `${blocksRemaining} of ${blockStatus.total} ${blockStatus.total === 1 ? 'block' : 'blocks'} remaining`
-        : null;
+  // blockStatus is null until the first status fetch lands — don't accuse a student of
+  // skipping ahead before we actually know, so treat "unknown" as done for the dialog check.
+  const signalsKnown = !hasTrackableBlocks || blockStatus !== null;
+  const lessonGenuinelyDone =
+    isActiveDone || !signalsKnown || (blocksGateMet && readingGateMet);
 
   /* ---------- Assignment panel (light) ---------- */
   const renderAssignmentPanel = (instructions?: string) => (
@@ -1167,22 +1163,29 @@ export default function StudentPlayerClient({
                 </div>
 
                 <div className="flex shrink-0 flex-col items-end gap-1">
-                  <button
-                    onClick={() =>
-                      isActiveDone ? handleToggleComplete(activeLesson.id) : handleCompleteAndAdvance()
-                    }
-                    disabled={isPending || !lessonReady}
-                    className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-lg px-5 text-[12px] font-semibold transition-colors [&_svg]:size-4 disabled:cursor-not-allowed disabled:opacity-50 ${
-                      isActiveDone
-                        ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                        : `text-white shadow-sm ${theme.solidBgClass} ${theme.solidHoverBgClass}`
-                    }`}
-                  >
-                    {isActiveDone ? <Check /> : <CheckSquare />}
-                    {isActiveDone ? 'Completed' : 'Mark complete'}
-                  </button>
-                  {completeHint && (
-                    <span className="text-[11px] !text-dash-textMuted">{completeHint}</span>
+                  {/* A locked lesson (drip / prerequisite / paid) has no body to complete —
+                      hide the action entirely rather than showing a dead disabled button. */}
+                  {!activeLockReason && (
+                    <button
+                      onClick={() => {
+                        if (isActiveDone) {
+                          handleToggleComplete(activeLesson.id);
+                        } else if (lessonGenuinelyDone) {
+                          handleCompleteAndAdvance(false);
+                        } else {
+                          setShowSoftConfirm(true);
+                        }
+                      }}
+                      disabled={isPending}
+                      className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-lg px-5 text-[12px] font-semibold transition-colors [&_svg]:size-4 disabled:cursor-not-allowed disabled:opacity-50 ${
+                        isActiveDone
+                          ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                          : `text-white shadow-sm ${theme.solidBgClass} ${theme.solidHoverBgClass}`
+                      }`}
+                    >
+                      {isActiveDone ? <Check /> : <CheckSquare />}
+                      {isActiveDone ? 'Completed' : 'Mark complete'}
+                    </button>
                   )}
                 </div>
               </div>
@@ -1527,6 +1530,39 @@ export default function StudentPlayerClient({
           if (target) setActiveLesson(target);
         }}
       />
+
+      {/* Soft confirmation — shown only when the student clicks "Mark complete" before
+          genuinely finishing the lesson's content. No technical wording, one time, no repeat. */}
+      <DashModal open={showSoftConfirm} onOpenChange={setShowSoftConfirm}>
+        <DashModalContent className="max-w-sm">
+          <DashModalHeader>
+            <DashModalTitle>Mark this lesson complete?</DashModalTitle>
+            <DashModalDescription>
+              Looks like there&apos;s still more to see in this lesson. You can mark it complete
+              now and move on, or stay a little longer.
+            </DashModalDescription>
+          </DashModalHeader>
+          <DashModalFooter>
+            <button
+              type="button"
+              onClick={() => setShowSoftConfirm(false)}
+              className="inline-flex h-9 items-center rounded-lg border border-dash-border bg-white px-4 text-[12px] font-semibold !text-dash-text transition-colors hover:bg-dash-surface"
+            >
+              Keep reading
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowSoftConfirm(false);
+                handleCompleteAndAdvance(true);
+              }}
+              className={`inline-flex h-9 items-center rounded-lg px-4 text-[12px] font-semibold text-white shadow-sm transition-colors ${theme.solidBgClass} ${theme.solidHoverBgClass}`}
+            >
+              Mark complete
+            </button>
+          </DashModalFooter>
+        </DashModalContent>
+      </DashModal>
 
       {openReadingId &&
         (() => {
