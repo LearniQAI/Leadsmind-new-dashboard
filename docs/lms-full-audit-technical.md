@@ -435,7 +435,7 @@ Fonts `css2` URL (not `next/font`).
 | G10 | Lesson authoring | Two parallel models (canvas `content_blocks` vs legacy `lesson_type`); `code` + `scorm` legacy lesson types are mock shims only | Medium |
 | G11 | Cohorts | `cohorts` / `course_cohorts` tables do not exist — no cohort/group functionality | Low (if not in scope) |
 | G12 | Assignments | Grading is manual/staff-driven; no cross-course "assignments due" inbox (My Results lists submitted ones only) | Low |
-| G13 | Contact portal | `/portal/dashboard` reads a non-existent `course_progress.progress_percent` — progress likely shows 0 there (separate portal from `/student`) | Low |
+| G13 | Contact portal | `/portal/dashboard` reads a non-existent `course_progress.progress_percent` — progress likely shows 0 there (separate portal from `/student`) | ~~Low~~ → **Resolved in code (2026-09-02, Batch 5); live verification pending** — real per-course completed/total calculation, same formula `/student` uses. See STEP 6.5 |
 | G14 | Legacy tables | `lms_certificates`, `lms_certificate_templates`, `lms_quizzes` remain in the DB, dead (drop deferred — Milestone 5, ADR-0005) | Cosmetic |
 | G15 | Landing/checkout | A code comment flags an out-of-scope checkout-page gap from the landing-page pass; guest-checkout payment paths not exercised live in this audit | Unknown — needs live payment test |
 
@@ -963,6 +963,105 @@ other real automation in this codebase.
   (`getWorkspaceEmailConfig` / `RESEND_API_KEY`); with none configured it fails soft and logs
   `lms.certificate_email.send_failed`, exactly as intended, never blocking the certificate
   itself.
+
+---
+
+## STEP 6.5 — Batch 5 resolution log ("Contact Portal Progress Reading a Nonexistent Column", 2026-09-02)
+
+> Same status vocabulary as 6.1–6.4: **code-complete** = wired, `npx tsc --noEmit` clean,
+> `npx vitest run` unchanged at 226/226 (this is a query-correctness fix in a Server Component,
+> the same category as the other DB-orchestration fixes in this project with no dedicated unit
+> test). Real evidence below is a live-data trace of the fixed formula, not a running-app
+> screenshot — see "Verification" for exactly what was and wasn't run. **No migration.**
+
+### STEP 0 re-confirm
+
+- Live `course_progress` columns (re-queried 2026-09-02): `id, workspace_id, contact_id,
+  course_id, lesson_id, completed_at, created_at, progress_seconds, interaction_attempts,
+  completion_override`. **No `progress_percent` column** — confirmed, matches the original
+  audit finding.
+- **Exact broken code**, `src/app/(portal)/portal/dashboard/page.tsx:81-91` (pre-fix): fetched
+  `course_progress` with `.select('*')` (not a select naming the missing column, so **no query
+  error** — the pattern here is subtly different from a swallowed-error case), built
+  `new Map(records.map(p => [p.course_id, p.progress_percent || 0]))`. Since `*` never
+  contains `progress_percent`, `p.progress_percent` is `undefined` on every row and the
+  `|| 0` fallback silently turns that into a legitimate-looking `0`. **No error is ever
+  thrown or logged** — this is quieter than the swallowed-`try/catch` pattern found elsewhere
+  in this project: there was nothing to swallow, the code just always computed zero.
+- **Second, structural problem beyond the column name:** `course_progress` is a row-per-
+  lesson-completion table (confirmed live: 2 rows for one contact/course pair, one per
+  completed lesson), not one summary row per course. Even a column-name fix alone (e.g.
+  reading some other single field) couldn't work here — the map built from raw rows keyed by
+  `course_id` needed to be a **count**, not a field lookup.
+- **Real correct formula, confirmed reused:** `getEnrolledCoursesWithProgress()`
+  (`src/app/actions/studentEnrollments.ts:337`) already computes this correctly for
+  `/student`: `completedLessons` = count of `course_progress` rows for the contact where
+  `completed_at IS NOT NULL`, `totalLessons` = count of `course_lessons` for the course,
+  `progressPercentage = round(completed/total*100)`. **Not called directly** — it resolves its
+  contact via `getUser()` (Supabase-auth email → matched `contacts` rows), a different
+  identity path than this page's `getPortalSession()`-resolved `contact.id`. A portal contact
+  isn't guaranteed to have a matching Supabase auth user, so calling the student function here
+  risked either "Not authenticated" for a real portal session or resolving progress against
+  the wrong identity. **Replicated the exact same formula** against the already-loaded
+  `contact.id` instead — same real calculation, correct identity for this session type, stated
+  explicitly per Step 1's either/or.
+
+### STEP 1 — fix
+
+`src/app/(portal)/portal/dashboard/page.tsx`: replaced the `progress_percent` lookup with two
+scoped queries (`course_progress` filtered `completed_at IS NOT NULL` + `course_lessons`
+count, both `.in('course_id', courseIds)`), counted per course, `Math.round(completed/total*100)`
+per course, then averaged across the contact's enrollments — same "Average Progress" card
+shape/semantics as before, now computing a real number. Change is scoped to that one block;
+nothing else on the page (invoices, bookings, FICA banner) was touched.
+
+### STEP 2 — sibling-bug sweep of `/portal/*`
+
+Checked every `.from()`/`.select()` call across `portal/{courses,bookings,invoices,documents,
+projects,support,profile,layout}` — 9 files, ~20 queries — against the real live schema:
+
+- `portal/courses/page.tsx` **already computes progress correctly** (`course_progress` +
+  `course_lessons` counts, same real formula) — not a duplicate of this bug, no fix needed.
+- Live-checked every other table referenced: `lms_expert_sessions` / `lms_expert_profiles`
+  (columns `course_id`/`start_time`/`end_time`/`is_live`/`meeting_url`/`name`/`bio` — all real,
+  confirmed against migration `20240101000172_remedial_and_experts.sql`), `contact_documents`
+  → `media_files` join (confirmed live, no error), `proposals` (`contact_id`/`status`
+  confirmed live), `booking_calendars`, `projects` (`project_settings` jsonb column real),
+  `project_tasks`, `support_tickets`, `invoices`, `appointments`, `workspaces`
+  (`invoice_settings`/`project_settings`), `users` (`first_name`/`last_name`),
+  `kyc_risk_ratings` (`fica_complete`) — every column referenced in these files exists on the
+  live table it's queried against.
+- Grepped all of `/portal/*` for the same shape of bug (`.progress`, `_percent`, `percentage`)
+  — **zero other hits**. This specific "summary-percentage column that doesn't exist" pattern
+  does not recur elsewhere in the contact portal.
+- **Conclusion: no sibling schema-drift issues found in `/portal/*` this pass.** A real,
+  checked "no," not an unchecked assumption — see the table-by-table list above.
+
+### STEP 3 — verification
+
+- **Real live-data trace of the fixed formula** (not a running-app load — no dev server this
+  pass): queried the real `course_progress` / `course_lessons` tables for a real contact with
+  real completions — 2 of 3 lessons complete for one course → **67%**. This is the exact
+  number the fixed `/portal/dashboard` query (per-course, then averaged) and the existing
+  `/student` `getEnrolledCoursesWithProgress()` (same formula, same tables, same
+  `completed_at IS NOT NULL` filter) independently compute for that course — by construction,
+  since both now run the identical calculation, not by inspecting two rendered pages.
+- **Not run:** loading `/portal/dashboard` and `/student` in a browser side-by-side. Runbook
+  step for that is in `docs/lms-portal-progress-batch5-verification.md`.
+- Regression: `npx tsc --noEmit` clean; `npx vitest run` 226/226 unchanged; `eslint` on the
+  touched file clean.
+
+### Known limitations / honest notes (Batch 5)
+
+- **Not live-verified** in a running app — code-complete, verified by direct live-data trace
+  of the corrected query logic instead. See the runbook for the remaining browser-level check.
+- The average-progress card is still an **average across enrollments** (unchanged UX/shape from
+  before this batch) — this fix corrects the number that goes into that average, it doesn't
+  change what the card is summarizing.
+- `portal/courses/page.tsx`'s unrelated `course_lessons` query (line 32-34) fetches every
+  lesson in the database with no `.in(courseIds)` scoping — a real inefficiency noticed while
+  auditing this file for schema drift, but not a schema-drift bug and not in this batch's
+  scope; flagged here rather than silently fixed as a drive-by.
 
 ---
 
