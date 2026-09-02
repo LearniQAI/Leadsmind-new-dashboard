@@ -1,23 +1,24 @@
 # What's Built in the LeadsMind Course Platform
 
 **Feature handover — prepared for LearniQ AI (Nelly & team)**
-Reviewed 2 September 2026 · Based on a direct review of the live system and current working code · Audit only, nothing was changed.
+Based on a direct review of the live system and current working code.
 
 This is written for a non-technical reader. It describes what a course creator and a student can
 actually *do* in each part of the platform right now — not what is planned, and not what a screen
-appears to offer until you use it. Where something looks finished but isn't, that's called out in a
-"still being worked on" note, and Section 6 gathers every one of those into a single list.
+appears to offer until you use it. Where something has a real limit, that's called out in a
+"still being worked on" note, and Section 7 gathers every one of those into a single list.
 
 **Status key:** 🟢 Ready to use (works end to end) · 🟡 Partly there (usable, with a real limit) · 🔴 Planned (not built yet)
 
 | Area | Status | One-line summary |
 |---|---|---|
 | Course building | 🟢 Ready | Create courses, build the curriculum, add any of 12 lesson content types, design a sales page. |
-| Student portal | 🟢 Ready | Dashboard, course player, results page, catalogue with search, flashcard review, settings. |
-| Quizzes | 🟡 Partly there | Lesson and module quizzes work and are graded fairly; three question styles are live, not eight. |
-| Certificates | 🟡 Partly there | Real, verifiable certificates on completion; automatic emailing is not built yet. |
+| Student portal | 🟢 Ready | Dashboard, course player, results page, catalogue with search and categories, flashcard review, settings. |
+| Quizzes | 🟢 Ready (one caveat) | All eight question styles work end to end; code-answer quizzes are graded by matching, not by running the code. |
+| Certificates | 🟢 Ready | Real, verifiable certificates issued and emailed automatically on completion. |
 | Course themes | 🟢 Ready | Three genuine visual identities — Ember, Signal, Grove — applied per course. |
-| Course automations | 🟡 Partly there | The rule builder is fully built; most events that would trigger a rule aren't connected yet. |
+| Course automations | 🟢 Ready | The rule builder works end to end and is scoped per course. |
+| **Checkout & payments** | 🔴 **Needs a live test** | The code looks right on a direct read, but no real payment has ever been run through this system end to end. Treat as unproven until it has. |
 
 ---
 
@@ -37,47 +38,56 @@ sellable product without leaving the platform.
   slides, downloadable file, embedded widget, live-session link, custom HTML, quiz, assignment,
   flashcards. Every one both authors correctly and shows up correctly for the student.
 - **Design each lesson visually** in a drag-and-drop canvas builder, or start from one of two
-  ready-made lesson layouts ("Standard", "Deep-Dive").
+  ready-made lesson layouts ("Standard", "Deep-Dive"). This is now the one and only way lessons
+  are built — an older, second lesson-editing system (including two placeholder lesson types,
+  "code exercise" and "SCORM package", that looked real but never ran real code or loaded a real
+  course package) has been retired.
 - **Build a sales / landing page** from three template designs, with real editable sections:
   outcomes, reviews, FAQ, instructor bio, curriculum outline, pricing. Each section can be shown or hidden.
-- **Set pricing** — free, one-time, subscription (monthly/yearly), or hybrid — and take payment
-  through the built-in checkout, which also works for buyers without an account (guest checkout).
+- **Set pricing** — free, one-time, subscription (monthly/yearly), or hybrid — with checkout that
+  also works for buyers without an account (guest checkout). **See the payments note at the top
+  of this document and in Section 7 — the checkout flow itself has not yet been proven with a
+  real test payment.**
+- **Organise the catalogue with categories** — a simple, one-category-per-course list your
+  students can filter the course catalogue by.
+- **Build automation rules** — "when X happens, send an email / add a tag / enrol them elsewhere
+  / issue a certificate." All the real triggers (course completed, lesson completed, quiz
+  passed/failed, module completed, new enrolment, certificate issued, student struggling) fire
+  correctly, and a rule built on one course only applies to that course.
 
 **Still being worked on**
 
-- The canvas lesson builder is functional and now shows the student exactly what you laid out, but
-  it sits alongside an older lesson-editing path, so authoring isn't yet one unified flow. Two older
-  carried-over lesson types — "code exercise" and "SCORM package" — are placeholders only.
-- The **Automations tab** on a course lets you build rules ("when X happens, send an email / add a
-  tag / enrol them elsewhere"). The builder and rule list are real, but most triggering events
-  (lesson completed, quiz passed/failed, course completed, module completed, new enrolment) are not
-  connected, so rules built on those will not fire. Only *certificate issued* and *student flagged as
-  struggling* work as triggers today. Rules also currently apply across every course in the
-  workspace, not just the one you built them on.
+- One automation action, **the plain "send an email" action, doesn't fill in placeholders** like
+  the student's first name — it sends the literal text `{{student_first_name}}` instead. The
+  dedicated certificate-delivery email is not affected by this; any other rule using a
+  placeholder in its email body is.
+- Two automation actions in the builder's list, **"assign certificate" and "enrol in a bundle,"
+  are real**, but **"grant community access" only partially is** — it tags the record but there's
+  no community-access gate in the product yet for it to actually restrict.
 
 ---
 
 ## 2. The student portal
 
-The student side is now a complete portal, not just a course player. Several things flagged as
-broken in the earlier review have been fixed.
+The student side is a complete portal, not just a course player.
 
 **What a student can do today**
 
-- **Dashboard** — enrolled courses, overall progress, quizzes passed and average quiz score (these
-  last two were previously stuck at zero and now report correctly), plus a "Continue learning" panel
-  that drops them back into the right course and, for video, the right spot in the video.
+- **Dashboard** — enrolled courses, overall progress, quizzes passed and average quiz score,
+  plus a "Continue learning" panel that drops them back into the right course and, for video, the
+  right spot in the video.
 - **Course player** — work through lessons with progress tracked per content block. Lessons
   genuinely lock until earlier ones are done, until a drip date arrives, or until a required quiz is
-  passed. Text-only lessons now require the student to scroll through and spend time on the reading
+  passed. Text-only lessons require the student to scroll through and spend time on the reading
   before it counts as complete.
-- **My Results page** — a real, complete page: every quiz attempt with score and pass/fail;
-  assignment status (pending / passed / needs revision) with instructor feedback; earned
-  certificates with verify and download links; per-course progress. This page did not exist before.
-- **Course catalogue** — search box, free / paid filter, sort by newest / price / title. Enrolment
-  state shows on each course.
-- **Flashcard review** — a dedicated area gathering flashcard sets from every enrolled course. Cards
-  marked "still learning" return within minutes; "got it" cards resurface after a few days.
+- **My Results page** — every quiz attempt with score and pass/fail; assignment status (pending /
+  passed / needs revision) with instructor feedback; earned certificates with verify and download
+  links; per-course progress; and a "My Work" list gathering everything not-yet-submitted,
+  awaiting review, sent back for revision, or recently graded, across every course at once.
+- **Course catalogue** — search box, category filter, free / paid filter, sort by newest / price /
+  title. Enrolment state shows on each course.
+- **Flashcard review** — a dedicated area gathering flashcard sets from every enrolled course.
+  Cards marked "still learning" return within minutes; "got it" cards resurface after a few days.
 - **Settings** — change display name (kept in sync everywhere, including on certificates), change
   password, turn course-update emails on or off.
 
@@ -86,8 +96,6 @@ broken in the earlier review have been fixed.
 - Flashcard scheduling is a simple two-speed system, not a full spaced-repetition algorithm.
 - Changing the account **email address** from settings is intentionally not available yet — that
   address ties together everything the student owns.
-- Assignment marking is done by a person, not automatically, and there's no single "assignments due"
-  list across courses.
 
 ---
 
@@ -104,50 +112,59 @@ real answer key — a student can't tamper with their score.
 - **Module quizzes** — a separate quiz covering a whole module. The student can only take it once
   every lesson in the module is complete (enforced on the server, not just hidden). It's reachable
   from the course outline, and the player moves the student to it automatically after the module's
-  last lesson. *This link was missing in the earlier review and is now in place.*
+  last lesson.
+- **All eight question styles work for students**: multiple choice, true/false, short answer,
+  matching, ordering, fill-in-the-blank, code, and file upload. Short-answer and fill-in-the-blank
+  answers are matched with a bit of built-in tolerance for typos and punctuation, and you can
+  optionally turn on AI-assisted marking for either, question by question.
 - **AI question generation** — generate multiple-choice questions from a lesson's or module's
   content with one click, then edit them.
 - **Quiz analytics for creators** — every student's attempts, scores, trends, per-question
-  breakdown, CSV export. Now reads live attempt data (previously read an old, unused table).
+  breakdown, CSV export, plus a "Needs grading" queue across every course.
 
 **Still being worked on**
 
-- The builder advertises **eight question styles**, but only three are fully live for students:
-  multiple choice, true / false, short text answer. The other five (matching, ordering,
-  fill-in-the-blank, code, file upload) can be added by a creator but a student can't answer them
-  and they score zero.
+- **Code-answer questions are graded by matching text, not by running the code.** A correct
+  answer written differently from every listed accepted answer will score zero. Both the builder
+  and the student see this stated plainly.
+- **A quiz containing a file-upload question isn't instant** — it waits for a person to grade it,
+  same as an assignment.
 - AI generation only produces multiple-choice questions.
-- Short-answer marking is an exact match against a list of accepted answers you provide — it doesn't
-  handle near-misses or unlisted synonyms.
 
 ---
 
 ## 4. Certificates
 
-This area was rebuilt since the last review. Certificates are now real, permanent records — not a
-fresh PDF invented on every download.
+Certificates are real, permanent records — not a fresh PDF invented on every download.
 
 **What you can do today**
 
 - **Students earn a certificate** automatically once they've completed every lesson *and* passed
   every quiz in a course. The system re-checks both before issuing.
+- **It's emailed to them automatically** the moment they earn it, with a real download link — no
+  need for you or the student to do anything.
 - **Each certificate has a permanent ID** (e.g. `LM-3C48-19BA-A4F7C201`) and freezes the student's
   name, course title and issue date at the moment it's first earned, so a later name or course
   rename doesn't alter an issued certificate.
 - **Anyone can verify a certificate** at a public web page using that ID. It confirms name, course
   and date — nothing else, no private data.
-- **Students download the PDF** from the course player (at 100%), My Results, or the client portal.
+- **Students can also download the PDF any time** from the course player (at 100%), My Results, or
+  the client portal.
 - **You can design the certificate** — one of three built-in styles (Classic, Modern, Editorial),
   an accent colour, a logo and a signature, or upload your own full design and position the text
   fields on it. Set once as a workspace default, override per course.
 
 **Still being worked on**
 
-- **Automatic delivery is not built.** The certificate is created and recorded on completion, but
-  nothing emails it to the student or notifies you — the student must return and download it.
-  Sending it automatically on completion is a clear next step.
-- The design screens are functional but haven't been exercised against a wide range of real course
-  data and custom uploads.
+- **The Classic template can clip its footer** — verified by rendering it — when a student has
+  both a very long name and a very long course title at once; the date and verification-ID line
+  can get cut off at the bottom of the page. The Modern and Editorial styles don't have this issue.
+- **Custom-uploaded certificate designs have no automatic spacing check** between fields — if two
+  fields (like name and course title) are placed close together, a longer-than-expected name or
+  title can visually overlap the field below it. Worth a quick check with your own real long names
+  before relying on a custom design at scale.
+- Automatic delivery went out only to courses created after this feature shipped, or to a course
+  where an admin has switched it on from that course's Automations tab.
 
 ---
 
@@ -167,41 +184,53 @@ Each theme controls the full palette, the heading and body typefaces, the corner
 signature visual element. It's applied on the public landing page, throughout the student's player
 and lesson outline, and in the creator's preview — consistently, from live course data.
 
-*Note: the three names are stored internally under their original labels, so you'll occasionally see
-an old name in a developer-facing place; the customer-facing names are Ember, Signal and Grove.*
+---
+
+## 6. Checkout & payments — needs a live test before real customer use
+
+This is the one part of the platform we're asking you to treat differently from everything above.
+
+The checkout flow — including guest checkout for buyers without an account — is built, and the
+code has been read carefully and looks correct: a buyer pays through a secure, hosted Stripe
+checkout page, and only a verified confirmation from Stripe ever creates the enrolment. But **no
+real payment has ever actually been run through this system, start to finish, by anyone.** The
+specific check that exists to confirm a buyer can't fake their way to a free enrolment has never
+been executed — only reasoned through by reading the code.
+
+This isn't a case of "probably fine" — it's the one place in the whole platform where a real test,
+with real (or safely test-mode) money moving through it, matters more than confidence from reading
+the code. We'd recommend running one before this checkout path is used with real customers.
 
 ---
 
-## 6. Everything that isn't done yet
+## 7. Everything that isn't done yet
 
 One consolidated list, roughly in priority order.
 
 | Priority | Item | Detail |
 |---|---|---|
-| 🔴 High | Course automations don't fire | Most triggers (lesson completed, quiz passed/failed, course completed, module completed, new enrolment) aren't connected. The builder looks fully functional but rules on those events never run. Only "certificate issued" and "student struggling" work today. |
-| 🔴 High | Automation rules aren't course-specific | A rule created on one course's Automations tab applies to every course in the workspace. |
-| 🟡 Medium | Only three quiz question types work for students | MC, true/false, short answer are live. Matching, ordering, fill-blank, code, file upload can be created but can't be answered and score zero. |
-| 🟡 Medium | Certificates aren't sent automatically | Created and verifiable on completion, but the student must return and download; no automatic email or creator notification. |
-| 🟡 Medium | AI question generation is multiple-choice only | And for a single lesson it works from the lesson's stored text, which is often empty in the current content model — module-level generation gives better results. |
-| 🟡 Medium | Two lesson-authoring paths; two dead legacy types | The visual canvas builder and an older lesson editor both exist. "Code exercise" and "SCORM package" are placeholders. |
-| 🟡 Low | "Assign certificate" / "enrol in bundle" automation actions | Offered in the rule builder's action list but not implemented; "grant community access" does nothing yet. |
-| 🟡 Low | No course categories or tags | Catalogue has search, free/paid filter and sorting, but no subject taxonomy to browse by. |
+| 🔴 **Highest** | **Checkout & payments not yet live-tested** | See Section 6. The code reads correctly, but no real payment has ever actually been run through this system, and the test that exists to confirm it's safe has never been executed. This is the one item that should be resolved before real customer payments depend on it. |
+| 🟡 Medium | Code-answer quiz questions are graded by matching, not execution | A correct answer written differently from the listed accepted answers scores zero. |
+| 🟡 Medium | File-upload quiz questions aren't instant | Like an assignment, they wait for a person to grade them. |
+| 🟡 Medium | Certificate template layout issues on long names/titles | Classic template can clip its footer; custom-upload designs have no spacing safeguard between fields. See Section 4. |
+| 🟡 Medium | The plain "send an email" automation doesn't fill in placeholders | Emails using `{{student_first_name}}`-style placeholders send that literal text. Certificate-delivery emails aren't affected. |
+| 🟡 Low | AI question generation is multiple-choice only | Every other question style must be written by hand. |
+| 🟡 Low | "Grant community access" automation action is partial | It tags the record, but there's no community-access gate yet for it to enforce. |
 | 🟡 Low | Flashcards use a simple two-speed schedule | Not a full spaced-repetition algorithm. |
-| 🟡 Low | Short-answer grading is exact-match | Checks against a list of accepted answers; no handling of unlisted synonyms or typos. |
-| 🟡 Low | No "assignments due" list for students | A student sees an assignment only inside its lesson; My Results lists ones already submitted. |
 | 🟡 Low | Email-address change disabled for students | Intentional for now — the address links everything the student owns. |
-| 🟡 Low | Live payment paths not re-tested in this review | Guest checkout and providers are wired; a full end-to-end payment test is a separate pre-launch task. |
+| 🔴 Planned | No cohorts / student groups | Not built yet. |
 | 🔴 Cosmetic | Old unused tables still present | Leftover certificate and quiz tables from a previous version remain in the database, unused; removal is deliberately scheduled for later. |
 
 ---
 
 ## The bottom line
 
-Course building, the student portal and course themes are in good shape and can be used with
-confidence today. A creator can build, price, theme and publish a full course, and a student gets a
-complete, honest learning experience with progress, results and a verifiable certificate at the end.
+Course building, the student portal, quizzes, certificates, course themes and automations are all
+in good shape and can be used with confidence today. A creator can build, price, theme, automate
+and publish a full course, and a student gets a complete, honest learning experience with
+progress, results and a verifiable, automatically-delivered certificate at the end.
 
-Quizzes and certificates work but each has one clear limitation to close — the five inactive
-question types, and automatic certificate delivery. Course automations is the one place where the
-interface promises more than the system currently delivers, and it's the highest-value area to
-finish next.
+The one item that stands apart from everything else in this document is checkout and payments.
+Nothing about it looks wrong — but nothing about it has been proven right either, because it has
+never carried a real payment. That's the one piece of real, pre-launch work left before this
+platform should be trusted with real customer money.
