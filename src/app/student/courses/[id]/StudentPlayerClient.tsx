@@ -961,6 +961,32 @@ export default function StudentPlayerClient({
     return m;
   }, [activeLesson]);
 
+  /**
+   * SYSTEMIC FIX for the recurring faded-text bug.
+   *
+   * Root cause (one shared source): the bundled marketing template stylesheet
+   * `public/assets/scss/components/_theme.scss` applies BARE type-selector resets —
+   *   p        { @apply text-body ...; text-[14px]; font-normal; mb-[15px]; }   // text-body = #878a99 (~2.9:1 on white)
+   *   li, span { color reset }
+   *   h1..h6   { text-headingPrimary; font-bold; leading-none; }
+   * These match the raw `<p>/<li>/<span>/<h*>` elements produced by dangerouslySetInnerHTML,
+   * at specificity (0,0,1). An inherited colour on the wrapper — even !important — loses to
+   * a directly-matched rule on the child, so authored text renders in #878a99 and, when the
+   * Craft.js editor wraps a heading's text in `<p>` (e.g. "<p>Nelly Agboola</p>"), also at
+   * 14px non-bold. The earlier fix only patched the `richtext` branch; this applies the same
+   * neutralisation to EVERY authored-HTML site (heading, richtext, callout headline + body):
+   * force every text descendant to inherit size/weight/line-height/colour from its properly
+   * styled container; class-carrying accent glyphs (blue ✓ etc.) keep their own colour.
+   */
+  const CANVAS_INLINE_HTML =
+    '[&_p]:![font-size:inherit] [&_p]:![font-weight:inherit] [&_p]:![line-height:inherit] ' +
+    '[&_p]:![color:inherit] [&_li]:![color:inherit] [&_span]:![color:inherit] ' +
+    '[&_h1]:![color:inherit] [&_h2]:![color:inherit] [&_h3]:![color:inherit] ' +
+    '[&_h4]:![color:inherit] [&_h5]:![color:inherit] [&_h6]:![color:inherit] ' +
+    '[&_strong]:font-semibold [&_strong]:![color:inherit] [&_em]:italic [&_em]:![color:inherit] ' +
+    '[&_a]:!text-sky-600 [&_a]:underline ' +
+    '[&_.text-blue-600]:!text-blue-600 [&_.text-sky-500]:!text-sky-500 [&_.text-amber-500]:!text-amber-500';
+
   const renderCanvasItem = (item: any, idx: number) => {
     if (item.kind === 'heading') {
       const sizes: Record<string, string> = {
@@ -975,7 +1001,7 @@ export default function StudentPlayerClient({
       return (
         <Tag
           key={idx}
-          className={`font-display font-bold leading-tight tracking-tight !text-dash-text ${sizes[item.level] || sizes.h2} ${
+          className={`font-display font-bold leading-tight tracking-tight !text-dash-text ${sizes[item.level] || sizes.h2} ${CANVAS_INLINE_HTML} ${
             item.align === 'center' ? 'text-center' : item.align === 'right' ? 'text-right' : ''
           }`}
           dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(item.html) }}
@@ -983,16 +1009,10 @@ export default function StudentPlayerClient({
       );
     }
     if (item.kind === 'richtext') {
-      // The bundled admin-template SCSS applies bare `p { color }` / `li { color }` resets
-      // (see the `!` prefixes all over the dash-* shell). Those directly match the elements
-      // inside this dangerouslySetInnerHTML, so an inherited color on the wrapper — even
-      // !important — loses to them and the non-bold text renders muted/faded. Force the real
-      // text color onto the descendants themselves. `<strong>` and any class-carrying span
-      // (e.g. the template checklist's blue ✓) keep their own styling.
       return (
         <div
           key={idx}
-          className={`text-[15px] leading-relaxed !text-dash-text [&_p]:!text-dash-text [&_li]:!text-dash-text [&_ul]:!text-dash-text [&_ol]:!text-dash-text [&_span]:!text-dash-text [&_strong]:font-semibold [&_strong]:!text-dash-text [&_a]:!text-sky-600 [&_a]:underline [&_.text-blue-600]:!text-blue-600 [&_.text-sky-500]:!text-sky-500 [&_.text-amber-500]:!text-amber-500 [&_p]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 ${
+          className={`text-[15px] leading-relaxed !text-dash-text ${CANVAS_INLINE_HTML} [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 ${
             item.align === 'center' ? 'text-center' : item.align === 'right' ? 'text-right' : ''
           }`}
           dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(item.html) }}
@@ -1031,13 +1051,13 @@ export default function StudentPlayerClient({
           <div className="space-y-3 p-5">
             {item.headline && (
               <div
-                className="font-display text-[16px] font-semibold !text-dash-text"
+                className={`font-display text-[16px] font-semibold !text-dash-text ${CANVAS_INLINE_HTML}`}
                 dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(item.headline) }}
               />
             )}
             {item.body && (
               <div
-                className="text-[13px] leading-relaxed !text-dash-textMuted [&_a]:text-sky-600 [&_a]:underline [&_strong]:font-semibold [&_strong]:!text-dash-text [&_p]:my-1.5"
+                className={`text-[13px] leading-relaxed !text-dash-text ${CANVAS_INLINE_HTML} [&_p]:my-1.5`}
                 dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(item.body) }}
               />
             )}
@@ -1104,7 +1124,28 @@ export default function StudentPlayerClient({
                 <ChevronDown size={13} className="!text-dash-textMuted" />
               </button>
             </DashDropdownTrigger>
-            <DashDropdownContent align="end">
+            <DashDropdownContent align="end" className="w-64">
+              {/* This course's live stats */}
+              <div className="px-2.5 pb-2 pt-1.5">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] !text-dash-textMuted">
+                  {course.title}
+                </div>
+                <div className="mt-1.5 flex items-baseline justify-between">
+                  <span className="font-display text-[20px] font-semibold leading-none !text-dash-text">
+                    {globalProgressPercentage}%
+                  </span>
+                  <span className="text-[11px] !text-dash-textMuted">
+                    {completedLessonsCount} / {totalLessonsCount} lessons
+                  </span>
+                </div>
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-dash-surface">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{ width: `${globalProgressPercentage}%`, background: theme.primaryHex }}
+                  />
+                </div>
+              </div>
+              <DashDropdownSeparator />
               <DashDropdownItem onSelect={() => router.push('/student/settings')}>
                 <Settings size={14} /> Settings
               </DashDropdownItem>

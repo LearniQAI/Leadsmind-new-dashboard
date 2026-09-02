@@ -101,7 +101,9 @@ export default function ContinueLearningBanner({
           </div>
         </div>
 
-        <span className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-dash-accent px-5 text-[12px] font-semibold text-white transition-colors group-hover:bg-dash-accent/90 [&_svg]:size-3.5">
+        {/* Deliberate fixed brand-orange for this one CTA — NOT dash-accent and NOT any
+            per-course theme. Same vivid orange regardless of which course is resumed. */}
+        <span className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-full bg-[#F7941D] px-6 text-[12px] font-semibold text-white shadow-sm transition-colors group-hover:bg-[#E07E0C] [&_svg]:size-3.5">
           <Play className="fill-current" />
           {started ? 'Resume' : 'Start'}
           <ArrowRight className="transition-transform group-hover:translate-x-0.5 motion-reduce:group-hover:translate-x-0" />
