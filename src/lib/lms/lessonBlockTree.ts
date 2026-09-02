@@ -1,4 +1,5 @@
 import type { createAdminClient } from '@/lib/supabase/server';
+import { flattenLessonCanvas, isInlineOnlyCanvas, requiredReadingDwellSeconds } from '@/lib/lms/flattenLessonCanvas';
 
 // Lesson Builder Part 2, Step 2: the real completion gate (markLessonCompleteForContact,
 // getLessonBlockCompletionStatus, getCompletedBlockIdsForLesson) all originally counted
@@ -52,4 +53,46 @@ export async function getBlockIdsForLesson(
     // throwing and blocking every completion check for this lesson.
   }
   return Array.from(blockIds);
+}
+
+/**
+ * Reading gate for a canvas lesson made ENTIRELY of inline content (heading / rich-text /
+ * image) with zero trackable block/contentbox nodes. For such a lesson getBlockIdsForLesson()
+ * returns [], so nothing else gates its completion — this fills that gap by requiring the
+ * student to have scrolled through the article and dwelled on it for `requiredDwell` seconds.
+ *
+ * Returns { required:false } for: a lesson with no linked `pages` row (legacy content_blocks
+ * lesson), a canvas that has real blocks, or an empty/unparseable canvas.
+ */
+export async function getLessonReadingGate(
+  adminClient: ReturnType<typeof createAdminClient>,
+  lessonId: string
+): Promise<{ required: boolean; requiredDwell: number }> {
+  const { data: page } = await adminClient
+    .from('pages')
+    .select('content')
+    .eq('course_lesson_id', lessonId)
+    .maybeSingle();
+
+  if (!page) return { required: false, requiredDwell: 0 };
+
+  const items = flattenLessonCanvas(page.content);
+  if (!isInlineOnlyCanvas(items)) return { required: false, requiredDwell: 0 };
+
+  return { required: true, requiredDwell: requiredReadingDwellSeconds(items) };
+}
+
+/** True once this student has a real lesson_reading_completions row for the lesson. */
+export async function hasLessonReadingCompletion(
+  adminClient: ReturnType<typeof createAdminClient>,
+  lessonId: string,
+  contactId: string
+): Promise<boolean> {
+  const { data } = await adminClient
+    .from('lesson_reading_completions')
+    .select('id')
+    .eq('lesson_id', lessonId)
+    .eq('contact_id', contactId)
+    .maybeSingle();
+  return !!data;
 }

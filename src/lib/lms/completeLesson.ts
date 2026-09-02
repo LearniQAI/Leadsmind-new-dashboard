@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { logger } from '@/shared/logger';
 import { isEnrolmentActive } from '@/lib/lms/enrolment';
-import { getBlockIdsForLesson } from '@/lib/lms/lessonBlockTree';
+import { getBlockIdsForLesson, getLessonReadingGate, hasLessonReadingCompletion } from '@/lib/lms/lessonBlockTree';
 
 // Core "mark a lesson complete" logic, taking an already-resolved/validated contactId rather
 // than resolving it from the current session — this is deliberately NOT a 'use server' export
@@ -93,6 +93,17 @@ export async function markLessonCompleteForContact(
           .maybeSingle();
 
         if (!passedAttempt) return { error: 'This lesson requires passing its quiz first' };
+      }
+
+      // A canvas lesson made entirely of inline content (heading/rich-text/image) with no
+      // trackable blocks has no other completion signal — require the reading gate
+      // (scrolled through + minimum dwell), recorded in lesson_reading_completions.
+      const readingGate = await getLessonReadingGate(adminClient, lessonId);
+      if (readingGate.required) {
+        const readDone = await hasLessonReadingCompletion(adminClient, lessonId, contactId);
+        if (!readDone) {
+          return { error: 'Read through the full lesson before marking it complete.' };
+        }
       }
     }
 

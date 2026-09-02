@@ -55,7 +55,7 @@ export default function SyllabusSidebar({
   const accent = theme.primaryHex;
 
   return (
-    <aside className="flex w-[340px] shrink-0 flex-col border-r border-dash-border bg-dash-surface/50">
+    <aside className="flex w-[272px] shrink-0 flex-col border-r border-dash-border bg-dash-surface/50">
       {/* Student card */}
       <div className="flex items-center gap-3 border-b border-dash-border px-5 py-4">
         <span

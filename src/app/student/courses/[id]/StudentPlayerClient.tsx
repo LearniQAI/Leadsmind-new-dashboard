@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useTransition, useEffect } from 'react';
+import React, { useState, useTransition, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   BookOpen, ChevronRight, ChevronLeft, ChevronDown, CheckSquare, Clock, Headphones, FileEdit, FileText, Video, Archive, Download, MessageSquare, Loader2, X, Check, Settings, LogOut,
@@ -11,14 +11,13 @@ import { handleLogout } from '@/app/actions/auth';
 import {
   DashDropdown, DashDropdownTrigger, DashDropdownContent, DashDropdownItem, DashDropdownSeparator,
 } from '@/components/dashboard-ui';
-import { recordBlockCompletion, getCompletedBlockIdsForLesson, getLessonBlockCompletionStatus } from '@/app/actions/blockCompletion';
+import { recordBlockCompletion, getCompletedBlockIdsForLesson, getLessonBlockCompletionStatus, getLessonReadingGateStatus, recordLessonReadingCompletion } from '@/app/actions/blockCompletion';
 import Editor from '@monaco-editor/react';
 import SyllabusSidebar from './components/SyllabusSidebar';
 import VideoPlayer from './components/VideoPlayer';
 import { useHeartbeat } from '@/hooks/useHeartbeat';
 import { getLessonLockReason } from './components/lock-utils';
 import LockedLessonPlaceholder from './components/LockedLessonPlaceholder';
-import LiveHelpWidget from './components/LiveHelpWidget';
 import CourseQAWidget from './components/CourseQAWidget';
 import LessonSummaryPanel from './components/LessonSummaryPanel';
 import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
@@ -65,6 +64,7 @@ interface StudentPlayerClientProps {
   lessons: any[];
   initialCompletedLessonIds: string[];
   enrollment: any;
+  studentName?: string | null;
 }
 
 /* --- Shared light-theme building blocks for the lesson renderers --- */
@@ -107,6 +107,7 @@ export default function StudentPlayerClient({
   lessons,
   initialCompletedLessonIds,
   enrollment,
+  studentName: studentNameProp,
 }: StudentPlayerClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -140,17 +141,51 @@ export default function StudentPlayerClient({
   const [completedBlockIds, setCompletedBlockIds] = useState<Set<string>>(new Set());
   const [isCheckingAdvance, setIsCheckingAdvance] = useState(false);
 
+  // Reading gate — only for a canvas lesson made entirely of inline content (heading /
+  // rich-text / image) with zero trackable blocks. Such a lesson has no other completion
+  // signal, so "Mark complete" stays disabled until the student has scrolled through the
+  // article AND dwelled on it for the server-computed minimum, recorded server-side in
+  // lesson_reading_completions.
+  const [readingGate, setReadingGate] = useState<{ required: boolean; requiredDwell: number; done: boolean }>({
+    required: false,
+    requiredDwell: 0,
+    done: false,
+  });
+  const [readingScrolled, setReadingScrolled] = useState(false);
+  const [readingElapsed, setReadingElapsed] = useState(0);
+  const lessonBodyRef = useRef<HTMLDivElement | null>(null);
+  const readingRecordedRef = useRef(false);
+
+  // Live per-lesson block-completion tally (server-authoritative), so "Mark complete" can be
+  // disabled with an accurate "N of M blocks remaining" indicator instead of only surfacing
+  // an error banner after a failed click.
+  const [blockStatus, setBlockStatus] = useState<{ total: number; completed: number } | null>(null);
+
+  const refreshBlockStatus = async (lessonId: string) => {
+    const res = await getLessonBlockCompletionStatus(lessonId);
+    if (res.error || !res.data) return;
+    // The reading-gate branch reports a synthetic totalBlocks:1 — that gate is surfaced
+    // separately via `readingGate`, so ignore it here.
+    if ((res.data as any).readingGate) {
+      setBlockStatus(null);
+      return;
+    }
+    setBlockStatus({ total: res.data.totalBlocks, completed: res.data.completedBlocks });
+  };
+
   const markBlockComplete = async (blockId: string, metric: Record<string, any> = {}) => {
     if (completedBlockIds.has(blockId)) return;
     const res = await recordBlockCompletion(blockId, metric);
     if (!res.error) {
       setCompletedBlockIds((prev) => new Set(prev).add(blockId));
+      if (activeLesson) refreshBlockStatus(activeLesson.id);
     }
   };
 
   useEffect(() => {
     if (!activeLesson) return;
     let cancelled = false;
+    setBlockStatus(null);
 
     (async () => {
       const res = await getCompletedBlockIdsForLesson(activeLesson.id);
@@ -166,6 +201,8 @@ export default function StudentPlayerClient({
           }
         }
       }
+
+      if (!cancelled) await refreshBlockStatus(activeLesson.id);
     })();
 
     return () => {
@@ -173,6 +210,83 @@ export default function StudentPlayerClient({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeLesson?.id]);
+
+  // ---- Reading gate (inline-only canvas lessons) ----
+  useEffect(() => {
+    setReadingScrolled(false);
+    setReadingElapsed(0);
+    readingRecordedRef.current = false;
+
+    if (!activeLesson) {
+      setReadingGate({ required: false, requiredDwell: 0, done: false });
+      return;
+    }
+    const items = (activeLesson.canvasItems as any[] | null) || null;
+    const inlineOnly =
+      Array.isArray(items) &&
+      items.length > 0 &&
+      items.some((i) => i.kind === 'heading' || i.kind === 'richtext' || i.kind === 'image') &&
+      !items.some((i) => i.kind === 'block' || (i.kind === 'contentbox' && !!i.blockId));
+
+    if (!inlineOnly) {
+      setReadingGate({ required: false, requiredDwell: 0, done: false });
+      return;
+    }
+
+    let cancelled = false;
+    setReadingGate({ required: true, requiredDwell: 0, done: false });
+    getLessonReadingGateStatus(activeLesson.id).then((res) => {
+      if (cancelled || res.error || !res.data) return;
+      setReadingGate({ required: res.data.required, requiredDwell: res.data.requiredDwell, done: res.data.done });
+      if (res.data.done) readingRecordedRef.current = true;
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeLesson?.id]);
+
+  // Dwell timer, running only while the gate is still pending.
+  useEffect(() => {
+    if (!readingGate.required || readingGate.done) return;
+    const id = setInterval(() => setReadingElapsed((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [readingGate.required, readingGate.done]);
+
+  // A short article that never needs a scrollbar counts as "scrolled through".
+  useEffect(() => {
+    if (!readingGate.required || readingScrolled) return;
+    const el = lessonBodyRef.current;
+    if (el && el.scrollHeight - el.clientHeight < 48) setReadingScrolled(true);
+  }, [readingGate.required, readingScrolled, activeLesson?.id]);
+
+  // Once scrolled through AND past the dwell floor, write the real server record.
+  useEffect(() => {
+    if (
+      !activeLesson ||
+      !readingGate.required ||
+      readingGate.done ||
+      readingRecordedRef.current ||
+      !readingScrolled ||
+      readingElapsed < readingGate.requiredDwell
+    ) {
+      return;
+    }
+    readingRecordedRef.current = true;
+    recordLessonReadingCompletion(activeLesson.id, { dwellSeconds: readingElapsed, scrolled: true }).then((res) => {
+      if (res.error) {
+        readingRecordedRef.current = false; // transient — allow a retry on the next tick
+        return;
+      }
+      setReadingGate((g) => ({ ...g, done: true }));
+    });
+  }, [readingGate, readingScrolled, readingElapsed, activeLesson?.id]);
+
+  const handleLessonBodyScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (!readingGate.required || readingScrolled) return;
+    const el = e.currentTarget;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 48) setReadingScrolled(true);
+  };
 
   const hasAssignmentBlock = (activeLesson?.contentBlocks || []).some((b: any) => b.type === 'assignment');
 
@@ -497,12 +611,45 @@ export default function StudentPlayerClient({
   const globalProgressPercentage =
     totalLessonsCount > 0 ? Math.round((completedLessonsCount / totalLessonsCount) * 100) : 0;
 
+  // Real logged-in student name (server-resolved via getCurrentProfile, same as the main
+  // dashboard greeting); enrollment.contact is a fallback, 'Student' only if genuinely unset.
   const studentName =
+    (studentNameProp || '').trim() ||
     [enrollment?.contact?.first_name, enrollment?.contact?.last_name].filter(Boolean).join(' ') ||
     enrollment?.contact?.email ||
     'Student';
 
   const isActiveDone = activeLesson ? completedLessonIds.includes(activeLesson.id) : false;
+
+  // ---- Unified "can this lesson be marked complete yet?" for the button + inline hint ----
+  // A lesson gates on EITHER real block completions OR the reading signal, never both:
+  // getLessonReadingGate() only fires for an inline-only canvas (zero trackable blocks), so
+  // these two branches are mutually exclusive by construction (prior task's decision).
+  // Matches isTrackableCanvasItem() server-side: an unwired ContentBox (blockId null) is a
+  // decorative placeholder, not a completion signal.
+  const canvasHasBlocks = Array.isArray(activeLesson?.canvasItems)
+    ? activeLesson.canvasItems.some(
+        (i: any) => i.kind === 'block' || (i.kind === 'contentbox' && !!i.blockId)
+      )
+    : false;
+  const hasTrackableBlocks =
+    canvasHasBlocks || (activeLesson?.contentBlocks && activeLesson.contentBlocks.length > 0);
+
+  const blocksRemaining =
+    hasTrackableBlocks && blockStatus ? Math.max(0, blockStatus.total - blockStatus.completed) : 0;
+  const blocksGateMet = !hasTrackableBlocks || (blockStatus ? blockStatus.completed >= blockStatus.total : false);
+  const readingGateMet = !readingGate.required || readingGate.done;
+  // Until the first status fetch lands for a block lesson, blockStatus is null → treat as
+  // not-ready (button disabled) rather than flashing enabled then disabled.
+  const lessonReady = isActiveDone || (blocksGateMet && readingGateMet);
+
+  const completeHint = isActiveDone
+    ? null
+    : readingGate.required && !readingGate.done
+      ? 'Keep reading to continue'
+      : hasTrackableBlocks && !blocksGateMet && blockStatus
+        ? `${blocksRemaining} of ${blockStatus.total} ${blockStatus.total === 1 ? 'block' : 'blocks'} remaining`
+        : null;
 
   /* ---------- Assignment panel (light) ---------- */
   const renderAssignmentPanel = (instructions?: string) => (
@@ -840,10 +987,16 @@ export default function StudentPlayerClient({
       );
     }
     if (item.kind === 'richtext') {
+      // The bundled admin-template SCSS applies bare `p { color }` / `li { color }` resets
+      // (see the `!` prefixes all over the dash-* shell). Those directly match the elements
+      // inside this dangerouslySetInnerHTML, so an inherited color on the wrapper — even
+      // !important — loses to them and the non-bold text renders muted/faded. Force the real
+      // text color onto the descendants themselves. `<strong>` and any class-carrying span
+      // (e.g. the template checklist's blue ✓) keep their own styling.
       return (
         <div
           key={idx}
-          className={`prose prose-slate max-w-none text-[14px] leading-relaxed !text-dash-text ${
+          className={`text-[15px] leading-relaxed !text-dash-text [&_p]:!text-dash-text [&_li]:!text-dash-text [&_ul]:!text-dash-text [&_ol]:!text-dash-text [&_span]:!text-dash-text [&_strong]:font-semibold [&_strong]:!text-dash-text [&_a]:!text-sky-600 [&_a]:underline [&_.text-blue-600]:!text-blue-600 [&_.text-sky-500]:!text-sky-500 [&_.text-amber-500]:!text-amber-500 [&_p]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 ${
             item.align === 'center' ? 'text-center' : item.align === 'right' ? 'text-right' : ''
           }`}
           dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(item.html) }}
@@ -888,7 +1041,7 @@ export default function StudentPlayerClient({
             )}
             {item.body && (
               <div
-                className="prose prose-slate max-w-none text-[13px] leading-relaxed !text-dash-textMuted"
+                className="text-[13px] leading-relaxed !text-dash-textMuted [&_a]:text-sky-600 [&_a]:underline [&_strong]:font-semibold [&_strong]:!text-dash-text [&_p]:my-1.5"
                 dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(item.body) }}
               />
             )}
@@ -1013,24 +1166,33 @@ export default function StudentPlayerClient({
                   </h2>
                 </div>
 
-                <button
-                  onClick={() =>
-                    isActiveDone ? handleToggleComplete(activeLesson.id) : handleCompleteAndAdvance()
-                  }
-                  disabled={isPending}
-                  className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-lg px-5 text-[12px] font-semibold transition-colors [&_svg]:size-4 ${
-                    isActiveDone
-                      ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                      : `text-white shadow-sm ${theme.solidBgClass} ${theme.solidHoverBgClass}`
-                  }`}
-                >
-                  {isActiveDone ? <Check /> : <CheckSquare />}
-                  {isActiveDone ? 'Completed' : 'Mark complete'}
-                </button>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <button
+                    onClick={() =>
+                      isActiveDone ? handleToggleComplete(activeLesson.id) : handleCompleteAndAdvance()
+                    }
+                    disabled={isPending || !lessonReady}
+                    className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-lg px-5 text-[12px] font-semibold transition-colors [&_svg]:size-4 disabled:cursor-not-allowed disabled:opacity-50 ${
+                      isActiveDone
+                        ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                        : `text-white shadow-sm ${theme.solidBgClass} ${theme.solidHoverBgClass}`
+                    }`}
+                  >
+                    {isActiveDone ? <Check /> : <CheckSquare />}
+                    {isActiveDone ? 'Completed' : 'Mark complete'}
+                  </button>
+                  {completeHint && (
+                    <span className="text-[11px] !text-dash-textMuted">{completeHint}</span>
+                  )}
+                </div>
               </div>
 
               {/* Lesson body */}
-              <div className="flex-1 space-y-6 overflow-y-auto p-6 md:p-8">
+              <div
+                ref={lessonBodyRef}
+                onScroll={handleLessonBodyScroll}
+                className="flex-1 space-y-6 overflow-y-auto p-6 md:p-8"
+              >
                 {lowBandwidthMode && activeLesson.lesson_type === 'video' && !activeLockReason && (
                   <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5 text-[12px] text-emerald-800">
                     <Clock size={16} className="shrink-0" />
@@ -1311,14 +1473,21 @@ export default function StudentPlayerClient({
                     onClick={async () => {
                       setIsCheckingAdvance(true);
                       let canAdvance = completedLessonIds.includes(activeLesson.id);
-                      if (activeLesson.contentBlocks && activeLesson.contentBlocks.length > 0) {
+                      const needsBlockCheck =
+                        (activeLesson.contentBlocks && activeLesson.contentBlocks.length > 0) ||
+                        (activeLesson.canvasItems && activeLesson.canvasItems.length > 0);
+                      if (needsBlockCheck) {
                         const res = await getLessonBlockCompletionStatus(activeLesson.id);
                         canAdvance = !res.error && res.data.allComplete;
                       }
                       setIsCheckingAdvance(false);
 
                       if (!canAdvance) {
-                        toast.error('Complete every block in this lesson before moving on.');
+                        toast.error(
+                          readingGate.required && !readingGate.done
+                            ? 'Read through the full lesson before moving on.'
+                            : 'Complete every block in this lesson before moving on.'
+                        );
                         return;
                       }
                       setActiveLesson(getNextLesson());
@@ -1351,7 +1520,6 @@ export default function StudentPlayerClient({
         </main>
       </div>
 
-      <LiveHelpWidget courseId={course.id} enrollment={enrollment} />
       <CourseQAWidget
         courseId={course.id}
         onJumpToLesson={(lessonId) => {

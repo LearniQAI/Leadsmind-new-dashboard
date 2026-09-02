@@ -3,7 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { getUser, getCurrentWorkspaceId } from '@/lib/auth';
 import { getOrCreateStudentContact } from './studentEnrollments';
-import { getBlockIdsForLesson } from '@/lib/lms/lessonBlockTree';
+import { getBlockIdsForLesson, getLessonReadingGate, hasLessonReadingCompletion } from '@/lib/lms/lessonBlockTree';
 import { logger } from '@/shared/logger';
 
 // Per-block completion tracking (Phase C, Step 1) — closes the loophole where the Next
@@ -123,6 +123,21 @@ export async function getLessonBlockCompletionStatus(lessonId: string) {
 
     const blockIds = await getBlockIdsForLesson(adminClient, lessonId);
     if (blockIds.length === 0) {
+      // No trackable blocks — but an inline-only canvas lesson still gates on the reading
+      // signal (scrolled + dwell), recorded in lesson_reading_completions.
+      const readingGate = await getLessonReadingGate(adminClient, lessonId);
+      if (readingGate.required) {
+        const done = await hasLessonReadingCompletion(adminClient, lessonId, contactId);
+        return {
+          data: {
+            allComplete: done,
+            totalBlocks: 1,
+            completedBlocks: done ? 1 : 0,
+            readingGate: true,
+            requiredDwell: readingGate.requiredDwell,
+          },
+        };
+      }
       return { data: { allComplete: true, totalBlocks: 0, completedBlocks: 0 } };
     }
 
@@ -145,5 +160,95 @@ export async function getLessonBlockCompletionStatus(lessonId: string) {
   } catch (err: any) {
     logger.error({ err, lessonId }, 'block_completion.status.failed');
     return { error: 'Failed to load block completion status.' };
+  }
+}
+
+/**
+ * Reading-gate status for the student player. `required` is true only for a canvas lesson
+ * made entirely of inline content (heading/rich-text/image) with zero trackable blocks;
+ * `requiredDwell` is the server-computed minimum seconds; `done` reflects a real
+ * lesson_reading_completions row.
+ */
+export async function getLessonReadingGateStatus(lessonId: string) {
+  try {
+    const user = await getUser();
+    if (!user) return { error: 'Not authenticated' };
+
+    const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { error: 'No active workspace context' };
+
+    const contactId = await getOrCreateStudentContact(workspaceId);
+    if (!contactId) return { data: { required: false, requiredDwell: 0, done: false } };
+
+    const adminClient = createAdminClient();
+    const gate = await getLessonReadingGate(adminClient, lessonId);
+    if (!gate.required) return { data: { required: false, requiredDwell: 0, done: false } };
+
+    const done = await hasLessonReadingCompletion(adminClient, lessonId, contactId);
+    return { data: { required: true, requiredDwell: gate.requiredDwell, done } };
+  } catch (err: any) {
+    logger.error({ err, lessonId }, 'lesson_reading.gate_status.failed');
+    return { error: 'Failed to load reading gate status.' };
+  }
+}
+
+/**
+ * Records that the current student scrolled through and dwelled on an inline-only canvas
+ * lesson's article content. The dwell floor is recomputed here from the lesson's own word
+ * count — a client can under-report `dwellSeconds` but cannot push the accepted value below
+ * the server-derived minimum. (Scroll is client-asserted, same disclosed limitation as the
+ * video watched_threshold — see recordBlockCompletion.)
+ */
+export async function recordLessonReadingCompletion(
+  lessonId: string,
+  metric: { dwellSeconds?: number; scrolled?: boolean } = {}
+) {
+  try {
+    const user = await getUser();
+    if (!user) return { error: 'Not authenticated' };
+
+    const workspaceId = await getCurrentWorkspaceId();
+    if (!workspaceId) return { error: 'No active workspace context' };
+
+    const contactId = await getOrCreateStudentContact(workspaceId);
+    if (!contactId) return { error: 'Failed to resolve student contact' };
+
+    const adminClient = createAdminClient();
+
+    const { data: lesson } = await adminClient
+      .from('course_lessons')
+      .select('id')
+      .eq('id', lessonId)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+    if (!lesson) return { error: 'Lesson not found' };
+
+    const gate = await getLessonReadingGate(adminClient, lessonId);
+    if (!gate.required) return { success: true, noop: true };
+
+    const dwell = typeof metric.dwellSeconds === 'number' ? Math.floor(metric.dwellSeconds) : 0;
+    if (metric.scrolled !== true) {
+      return { error: 'Scroll through the full lesson to complete it.' };
+    }
+    if (dwell < gate.requiredDwell) {
+      return { error: `Spend a little longer on this lesson (${dwell}s / ${gate.requiredDwell}s).` };
+    }
+
+    const { error } = await adminClient.from('lesson_reading_completions').upsert(
+      {
+        lesson_id: lessonId,
+        contact_id: contactId,
+        dwell_seconds: dwell,
+        scrolled: true,
+        metric,
+        completed_at: new Date().toISOString(),
+      },
+      { onConflict: 'lesson_id,contact_id' }
+    );
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    logger.error({ err, lessonId }, 'lesson_reading.record.failed');
+    return { error: 'Failed to record reading completion.' };
   }
 }

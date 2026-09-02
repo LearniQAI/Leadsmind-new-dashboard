@@ -151,3 +151,47 @@ export function flattenLessonCanvas(content: unknown): LessonCanvasItem[] {
   nodeToItems(root, tree, out, new Set<string>());
   return out;
 }
+
+/**
+ * A block/contentbox item only counts as a real completion signal once it's wired to a
+ * content_blocks row. `block` items are only emitted with a non-null blockId; a `contentbox`
+ * can exist as an unwired author placeholder (blockId null) that references no completable
+ * content — getBlockIdsForLesson() ignores those too, so this must match.
+ */
+export function isTrackableCanvasItem(i: LessonCanvasItem): boolean {
+  return i.kind === 'block' || (i.kind === 'contentbox' && !!i.blockId);
+}
+
+/** True when a flattened canvas has inline reading content but NO wired block/contentbox. */
+export function isInlineOnlyCanvas(items: LessonCanvasItem[]): boolean {
+  if (items.length === 0) return false;
+  const hasTrackable = items.some(isTrackableCanvasItem);
+  const hasInline = items.some((i) => i.kind === 'heading' || i.kind === 'richtext' || i.kind === 'image');
+  return hasInline && !hasTrackable;
+}
+
+/** Word count across the heading + rich-text items of a flattened canvas (HTML stripped). */
+export function countCanvasWords(items: LessonCanvasItem[]): number {
+  let words = 0;
+  for (const item of items) {
+    if (item.kind !== 'heading' && item.kind !== 'richtext') continue;
+    const text = item.html
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&[a-z]+;/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (text) words += text.split(' ').length;
+  }
+  return words;
+}
+
+/**
+ * Minimum seconds a student must dwell on an inline-only lesson before it can be completed.
+ * ~250 wpm reading speed, clamped to [8, 90] so a one-line lesson still needs a beat and a
+ * very long one isn't punishing. Recomputed server-side from the lesson's own content — the
+ * client cannot lower this floor.
+ */
+export function requiredReadingDwellSeconds(items: LessonCanvasItem[]): number {
+  const words = countCanvasWords(items);
+  return Math.min(90, Math.max(8, Math.round((words / 250) * 60)));
+}
