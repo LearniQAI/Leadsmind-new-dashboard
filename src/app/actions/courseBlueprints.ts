@@ -106,6 +106,9 @@ export async function seedCourseBlueprints(courseId: string) {
         .from('lms_automation_rules')
         .insert({
           workspace_id: blueprint.workspace_id,
+          // Blueprints are seeded from a specific course's Automations tab — scope them
+          // to that course so they don't fire for every course in the workspace.
+          course_id: courseId,
           name: blueprint.name,
           trigger_type: blueprint.trigger_type,
           trigger_config: blueprint.trigger_config,

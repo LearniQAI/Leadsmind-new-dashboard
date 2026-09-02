@@ -57,7 +57,7 @@ export default function AutomationsClient({ course }: AutomationsClientProps) {
   const loadRules = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/lms/automations?workspaceId=${workspaceId}`);
+      const res = await fetch(`/api/lms/automations?workspaceId=${workspaceId}&courseId=${course.id}`);
       const resData = await res.json();
       if (resData.data) {
         setRules(resData.data);
@@ -283,6 +283,7 @@ export default function AutomationsClient({ course }: AutomationsClientProps) {
         onSaved={loadRules}
         editingRule={editingRule}
         workspaceId={workspaceId}
+        courseId={course.id}
       />
 
       <ConfirmDialog

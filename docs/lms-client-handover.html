@@ -1,0 +1,701 @@
+<!-- LeadsMind LMS — client-facing handover for LearniQ AI (Nelly). Plain language, no jargon. -->
+<title>LeadsMind LMS Handover</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --paper:        #FBFAF7;
+    --paper-raised: #FFFFFF;
+    --paper-sunk:   #F3F1EA;
+    --ink:          #1C1C1A;
+    --ink-soft:     #57544C;
+    --ink-faint:    #86827A;
+    --rule:         #E4E0D6;
+    --rule-strong:  #D3CEC0;
+    --accent:       #16713C;
+    --accent-soft:  #E7F0E9;
+    --ready:        #2F7A4F;
+    --ready-bg:     #E8F1EA;
+    --partial:      #9A6512;
+    --partial-bg:   #F6EEDD;
+    --gap:          #A93A2D;
+    --gap-bg:       #F6E5E2;
+    --shadow:       0 1px 2px rgba(28,28,26,.05), 0 8px 24px -16px rgba(28,28,26,.18);
+
+    --measure: 40rem;
+    --font-display: "Fraunces", "Iowan Old Style", Palatino, Georgia, serif;
+    --font-body: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:        #17150F;
+      --paper-raised: #201D16;
+      --paper-sunk:   #12100B;
+      --ink:          #F1EDE3;
+      --ink-soft:     #B7B1A2;
+      --ink-faint:    #837D6E;
+      --rule:         #332F25;
+      --rule-strong:  #423D30;
+      --accent:       #7FC79B;
+      --accent-soft:  #1E2A21;
+      --ready:        #7FC79B;
+      --ready-bg:     #1C2A21;
+      --partial:      #E0B36A;
+      --partial-bg:   #2C2416;
+      --gap:          #E39084;
+      --gap-bg:       #2E1D19;
+      --shadow:       0 1px 2px rgba(0,0,0,.4), 0 12px 32px -18px rgba(0,0,0,.7);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:        #17150F;
+    --paper-raised: #201D16;
+    --paper-sunk:   #12100B;
+    --ink:          #F1EDE3;
+    --ink-soft:     #B7B1A2;
+    --ink-faint:    #837D6E;
+    --rule:         #332F25;
+    --rule-strong:  #423D30;
+    --accent:       #7FC79B;
+    --accent-soft:  #1E2A21;
+    --ready:        #7FC79B;
+    --ready-bg:     #1C2A21;
+    --partial:      #E0B36A;
+    --partial-bg:   #2C2416;
+    --gap:          #E39084;
+    --gap-bg:       #2E1D19;
+    --shadow:       0 1px 2px rgba(0,0,0,.4), 0 12px 32px -18px rgba(0,0,0,.7);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 63rem;
+    margin: 0 auto;
+    padding: clamp(2rem, 5vw, 4.5rem) clamp(1.25rem, 5vw, 3rem) 5rem;
+  }
+
+  /* ---- masthead ---- */
+  .masthead {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 2px solid var(--ink);
+  }
+  .kicker {
+    font-family: var(--font-mono);
+    font-size: .72rem;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-weight: 500;
+    font-size: clamp(2.1rem, 6vw, 3.4rem);
+    line-height: 1.05;
+    letter-spacing: -.015em;
+    text-wrap: balance;
+    margin: 0;
+    max-width: 20ch;
+  }
+  .standfirst {
+    font-size: 1.075rem;
+    color: var(--ink-soft);
+    max-width: var(--measure);
+    margin: 0;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem 2rem;
+    font-family: var(--font-mono);
+    font-size: .78rem;
+    color: var(--ink-faint);
+  }
+  .meta span { white-space: nowrap; }
+  .meta b { color: var(--ink-soft); font-weight: 500; }
+
+  /* ---- legend ---- */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .6rem 1.5rem;
+    margin: 2rem 0 0;
+    padding: 1rem 1.1rem;
+    background: var(--paper-sunk);
+    border-radius: 4px;
+    font-size: .85rem;
+  }
+  .legend div { display: flex; align-items: baseline; gap: .5rem; }
+  .dot {
+    width: .6rem; height: .6rem; border-radius: 50%;
+    flex-shrink: 0; transform: translateY(.05rem);
+  }
+  .dot.ready { background: var(--ready); }
+  .dot.partial { background: var(--partial); }
+  .dot.gap { background: var(--gap); }
+  .legend b { font-weight: 600; }
+  .legend span { color: var(--ink-soft); }
+
+  /* ---- intro prose ---- */
+  .intro {
+    margin: 2.75rem 0 0;
+    max-width: var(--measure);
+  }
+  .intro p { margin: 0 0 1rem; }
+  .intro p:last-child { margin-bottom: 0; }
+
+  /* ---- overview table ---- */
+  .overview {
+    margin: 3rem 0 0;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    background: var(--paper-raised);
+  }
+  .overview table { width: 100%; border-collapse: collapse; }
+  .overview caption {
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: .72rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    padding: .9rem 1.1rem .4rem;
+  }
+  .overview th, .overview td {
+    text-align: left;
+    padding: .8rem 1.1rem;
+    border-top: 1px solid var(--rule);
+    vertical-align: top;
+    font-size: .92rem;
+  }
+  .overview thead th {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: .72rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    border-top: none;
+  }
+  .overview tbody th {
+    font-weight: 600;
+    font-family: var(--font-body);
+    white-space: nowrap;
+  }
+  .overview td:last-child { color: var(--ink-soft); }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    font-family: var(--font-mono);
+    font-size: .72rem;
+    letter-spacing: .02em;
+    font-weight: 500;
+    padding: .2rem .5rem;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .chip::before { content: ""; width: .5rem; height: .5rem; border-radius: 50%; }
+  .chip.ready { background: var(--ready-bg); color: var(--ready); }
+  .chip.ready::before { background: var(--ready); }
+  .chip.partial { background: var(--partial-bg); color: var(--partial); }
+  .chip.partial::before { background: var(--partial); }
+  .chip.gap { background: var(--gap-bg); color: var(--gap); }
+  .chip.gap::before { background: var(--gap); }
+
+  /* ---- sections ---- */
+  section {
+    margin: 4rem 0 0;
+    scroll-margin-top: 2rem;
+  }
+  .sec-head {
+    display: grid;
+    grid-template-columns: 2.5rem 1fr;
+    gap: 0 1rem;
+    align-items: baseline;
+    padding-bottom: .9rem;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+  .sec-num {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 500;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .sec-head h2 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: clamp(1.5rem, 3.5vw, 2rem);
+    letter-spacing: -.01em;
+    line-height: 1.15;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .sec-body {
+    display: grid;
+    grid-template-columns: 2.5rem 1fr;
+    gap: 0 1rem;
+  }
+  .sec-body > * { grid-column: 2; }
+  .sec-body > .full { grid-column: 1 / -1; }
+
+  .sec-body p { max-width: var(--measure); margin: 1.25rem 0 0; }
+  .sec-body p.lead { margin-top: 1.5rem; font-size: 1.03rem; }
+
+  h3 {
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: .8rem;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 2rem 0 .75rem;
+  }
+
+  ul.do {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-width: var(--measure);
+    display: flex;
+    flex-direction: column;
+    gap: .55rem;
+  }
+  ul.do li {
+    position: relative;
+    padding-left: 1.4rem;
+    font-size: .95rem;
+  }
+  ul.do li::before {
+    content: "";
+    position: absolute;
+    left: .1rem;
+    top: .55rem;
+    width: .5rem;
+    height: .5rem;
+    border: 1.5px solid var(--accent);
+    border-radius: 50%;
+  }
+  ul.do li b { font-weight: 600; }
+
+  .working {
+    margin: 1.75rem 0 0;
+    max-width: var(--measure);
+    background: var(--partial-bg);
+    border-left: 3px solid var(--partial);
+    border-radius: 0 5px 5px 0;
+    padding: .95rem 1.1rem;
+    font-size: .92rem;
+  }
+  .working .lbl {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: .68rem;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--partial);
+    margin-bottom: .35rem;
+  }
+  .working p { margin: 0; max-width: none; }
+  .working p + p { margin-top: .6rem; }
+
+  .example {
+    font-family: var(--font-mono);
+    font-size: .82rem;
+    background: var(--paper-sunk);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: .15rem .4rem;
+    color: var(--ink-soft);
+    white-space: nowrap;
+  }
+
+  /* ---- gaps section ---- */
+  .gaps {
+    margin: 1.5rem 0 0;
+    border-top: 1px solid var(--rule);
+  }
+  .gaps .row {
+    display: grid;
+    grid-template-columns: 8.5rem 1fr;
+    gap: .25rem 1.25rem;
+    padding: 1.1rem 0;
+    border-bottom: 1px solid var(--rule);
+    max-width: 48rem;
+  }
+  .gaps .row > .chip { align-self: start; }
+  .gaps .row p { margin: 0; }
+  .gaps .row .area {
+    font-weight: 600;
+    font-size: .9rem;
+  }
+  .gaps .row .detail {
+    grid-column: 2;
+    color: var(--ink-soft);
+    font-size: .92rem;
+    margin-top: .2rem;
+  }
+  @media (max-width: 34rem) {
+    .gaps .row { grid-template-columns: 1fr; }
+    .gaps .row .detail, .gaps .row > .chip { grid-column: 1; }
+  }
+
+  /* ---- bottom line ---- */
+  .bottomline {
+    margin: 4rem 0 0;
+    padding: 1.75rem;
+    background: var(--accent-soft);
+    border-radius: 6px;
+    max-width: var(--measure);
+  }
+  .bottomline h2 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 1.35rem;
+    margin: 0 0 .6rem;
+    color: var(--accent);
+  }
+  .bottomline p { margin: 0 0 .8rem; font-size: .97rem; }
+  .bottomline p:last-child { margin-bottom: 0; }
+
+  footer {
+    margin: 4rem 0 0;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--rule);
+    font-family: var(--font-mono);
+    font-size: .74rem;
+    color: var(--ink-faint);
+    line-height: 1.7;
+  }
+
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, li:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  strong { font-weight: 600; }
+
+  @media (max-width: 40rem) {
+    .sec-head, .sec-body { grid-template-columns: 1fr; }
+    .sec-body > *, .sec-body > .full { grid-column: 1; }
+    .sec-num { font-size: 1.1rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="page">
+
+  <header class="masthead">
+    <p class="kicker">Feature Handover · Prepared for LearniQ&nbsp;AI</p>
+    <h1>What's built in the LeadsMind course platform</h1>
+    <p class="standfirst">A plain-language walkthrough of everything in the learning-management side of LeadsMind — course building, the student experience, quizzes, certificates and course themes — with an honest note on what each area still needs.</p>
+    <div class="meta">
+      <span><b>Audience</b> Nelly &amp; the LearniQ team</span>
+      <span><b>Reviewed</b> 2 September 2026</span>
+      <span><b>Basis</b> live system + working code</span>
+    </div>
+  </header>
+
+  <div class="legend" role="note" aria-label="Status key">
+    <div><span class="dot ready"></span><b>Ready to use</b><span>— working end to end today</span></div>
+    <div><span class="dot partial"></span><b>Partly there</b><span>— usable, with a real limit</span></div>
+    <div><span class="dot gap"></span><b>Planned</b><span>— not built yet</span></div>
+  </div>
+
+  <div class="intro">
+    <p>This document is written for a non-technical reader. It describes what a course creator (you and your team) and a student can actually <em>do</em> in each part of the platform right now — not what is planned, and not what a screen appears to offer until you use it.</p>
+    <p>Where something looks finished but isn't, that's called out in its own "still being worked on" note. The last section pulls every one of those into a single list so you can set priorities.</p>
+  </div>
+
+  <div class="overview">
+    <table>
+      <caption>The five areas at a glance</caption>
+      <thead>
+        <tr><th scope="col">Area</th><th scope="col">Status</th><th scope="col">One-line summary</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Course building</th>
+          <td><span class="chip ready">Ready</span></td>
+          <td>Create courses, build the curriculum, add any of 12 lesson content types, design a sales page.</td>
+        </tr>
+        <tr>
+          <th scope="row">Student portal</th>
+          <td><span class="chip ready">Ready</span></td>
+          <td>Dashboard, course player, results page, catalogue with search, flashcard review, settings.</td>
+        </tr>
+        <tr>
+          <th scope="row">Quizzes</th>
+          <td><span class="chip partial">Partly there</span></td>
+          <td>Lesson and module quizzes work and are graded fairly; three question styles are live, not eight.</td>
+        </tr>
+        <tr>
+          <th scope="row">Certificates</th>
+          <td><span class="chip partial">Partly there</span></td>
+          <td>Real, verifiable certificates on completion; automatic emailing is not built yet.</td>
+        </tr>
+        <tr>
+          <th scope="row">Course themes</th>
+          <td><span class="chip ready">Ready</span></td>
+          <td>Three genuine visual identities — Ember, Signal, Grove — applied per course.</td>
+        </tr>
+        <tr>
+          <th scope="row">Course automations</th>
+          <td><span class="chip partial">Partly there</span></td>
+          <td>The rule builder is fully built; most of the events that would trigger a rule aren't connected yet.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 1 ─────────────────────────────────────────────── -->
+  <section id="courses">
+    <div class="sec-head">
+      <span class="sec-num">1</span>
+      <h2>Course building</h2>
+    </div>
+    <div class="sec-body">
+      <p class="lead">This is the strongest area. A creator can take a course from an empty title to a published, sellable product without leaving the platform.</p>
+
+      <h3>What you can do today</h3>
+      <ul class="do">
+        <li><b>Create a course</b> in two short steps — give it a name and web address (on <span class="example">leadsmind.io</span> or your own connected domain), then pick a visual theme. New courses start as a private draft; you publish when ready.</li>
+        <li><b>Build the curriculum</b> with modules and lessons. Drag to reorder. Set a module to unlock a set number of days after a student enrols ("drip"), require lessons to be done in order, or gate a lesson behind a quiz pass.</li>
+        <li><b>Add lesson content</b> from twelve building blocks: video, audio, reading document, rich text, slides, a downloadable file, an embedded widget, a live-session link, custom HTML, a quiz, an assignment, and flashcards. Every one of these both authors correctly and shows up correctly for the student.</li>
+        <li><b>Design each lesson visually</b> in a drag-and-drop canvas builder, or use one of two ready-made lesson layouts ("Standard" and "Deep-Dive") as a starting point.</li>
+        <li><b>Build a sales / landing page</b> from three template designs, with real editable sections: learning outcomes, student reviews, an FAQ, an instructor bio, a curriculum outline and pricing. Each section can be shown or hidden.</li>
+        <li><b>Set pricing</b> — free, one-time payment, subscription (monthly or yearly), or a hybrid — and take payment through the built-in checkout, which also works for buyers who don't yet have an account (guest checkout).</li>
+      </ul>
+
+      <div class="working">
+        <span class="lbl">Still being worked on</span>
+        <p><strong>The canvas lesson builder</strong> is functional and now shows the student exactly what you laid out, but it sits alongside an older lesson-editing path, so the authoring experience isn't yet a single unified flow. Two older lesson types carried over from the previous system — "code exercise" and "SCORM package" — are placeholders only.</p>
+        <p><strong>The "Automations" tab on a course</strong> lets you build rules like "when X happens, send an email / add a tag / enrol them in another course." The builder and its rule list are real, but most of the triggering events (lesson completed, quiz passed, course completed, module completed, new enrolment) are not yet connected to it, so a rule built on those will not fire. Rules triggered by <em>a certificate being issued</em> or <em>a student being flagged as struggling</em> are the two that work today. Rules also currently apply across every course in the workspace, not just the one you built them on.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 ─────────────────────────────────────────────── -->
+  <section id="portal">
+    <div class="sec-head">
+      <span class="sec-num">2</span>
+      <h2>The student portal</h2>
+    </div>
+    <div class="sec-body">
+      <p class="lead">The student side has grown considerably and is now a complete portal, not just a course player. Several things flagged as broken in the earlier review have been fixed.</p>
+
+      <h3>What a student can do today</h3>
+      <ul class="do">
+        <li><b>Dashboard</b> — see enrolled courses, overall progress, quizzes passed and average quiz score (these last two were previously stuck at zero and now report correctly), plus a "Continue learning" panel that drops them back into the right course, and for video lessons, the right spot in the video.</li>
+        <li><b>Course player</b> — work through lessons with progress tracked per content block. Lessons genuinely lock until earlier ones are done, until a drip date arrives, or until a required quiz is passed. Text-only lessons now require the student to actually scroll through and spend time on the reading before they count as complete.</li>
+        <li><b>My Results page</b> — a real, complete page listing every quiz attempt with score and pass/fail, assignment status (pending, passed, needs revision) with instructor feedback, earned certificates with verify and download links, and per-course progress. This page did not exist before.</li>
+        <li><b>Course catalogue</b> — browse available courses with a search box, a free / paid filter, and sorting by newest, price or title. Enrolment state (enrolled, buy, enrol free) shows on each course.</li>
+        <li><b>Flashcard review</b> — a dedicated area that gathers flashcard sets from every enrolled course. Cards you mark "still learning" come back within minutes; cards you mark "got it" resurface after a few days.</li>
+        <li><b>Settings</b> — change their display name (kept in sync everywhere, including on certificates), change their password, and turn course-update emails on or off.</li>
+      </ul>
+
+      <div class="working">
+        <span class="lbl">Still being worked on</span>
+        <p>The flashcard scheduling is a simple two-speed system ("soon" vs. "in a few days"), not a full spaced-repetition algorithm. Changing the account <strong>email address</strong> from the settings page is intentionally not available yet, because that address ties together everything the student owns. Assignment marking is done by a person, not automatically, and there's no single "assignments due" list across courses — a student sees an assignment inside its lesson.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 ─────────────────────────────────────────────── -->
+  <section id="quizzes">
+    <div class="sec-head">
+      <span class="sec-num">3</span>
+      <h2>Quizzes</h2>
+    </div>
+    <div class="sec-body">
+      <p class="lead">There are two separate quiz systems and both work. Grading is always done on the server from the real answer key — a student can't tamper with their score.</p>
+
+      <h3>What you can do today</h3>
+      <ul class="do">
+        <li><b>Lesson quizzes</b> — attached to a single lesson. Set a pass mark (70% by default) and an attempt limit (3 by default). On passing, the lesson is marked complete. When a student uses up all their attempts, they're offered an <b>AI-generated remedial exercise</b>; passing it unlocks another attempt.</li>
+        <li><b>Module quizzes</b> — a separate quiz covering a whole module. The student can only take it once every lesson in that module is complete (enforced on the server, not just hidden in the interface). It's reachable from the course outline and the player moves the student to it automatically after the module's last lesson. <em>This link was missing in the earlier review and is now in place.</em></li>
+        <li><b>AI question generation</b> — generate multiple-choice questions from a lesson's or a module's content with one click, then edit them.</li>
+        <li><b>Quiz analytics for creators</b> — see every student's attempts, scores, trends and a per-question breakdown, with CSV export. This now reads live attempt data (it previously read an old, unused table).</li>
+      </ul>
+
+      <div class="working">
+        <span class="lbl">Still being worked on</span>
+        <p>The quiz builder advertises <strong>eight question styles</strong>, but only three are fully live for students: multiple choice, true / false, and short text answer. The other five (matching, ordering, fill-in-the-blank, code, file upload) can be added by a creator but a student has no way to answer them, and they score zero. AI generation only produces multiple-choice questions. Short-answer marking is an exact match against a list of accepted answers you provide — it doesn't understand near-misses or synonyms you didn't list.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 ─────────────────────────────────────────────── -->
+  <section id="certificates">
+    <div class="sec-head">
+      <span class="sec-num">4</span>
+      <h2>Certificates</h2>
+    </div>
+    <div class="sec-body">
+      <p class="lead">This area was rebuilt since the last review. Certificates are now real, permanent records — not a fresh PDF invented on every download.</p>
+
+      <h3>What you can do today</h3>
+      <ul class="do">
+        <li><b>Students earn a certificate</b> automatically once they've completed every lesson <em>and</em> passed every quiz in a course. The system re-checks both before issuing.</li>
+        <li><b>Each certificate has a permanent ID</b> — for example <span class="example">LM-3C48-19BA-A4F7C201</span> — and freezes the student's name, the course title and the issue date at the moment it's first earned, so a later name change or course rename doesn't alter an issued certificate.</li>
+        <li><b>Anyone can verify a certificate</b> at a public web page using that ID. It confirms the name, course and date and nothing else — no private data is exposed.</li>
+        <li><b>Students download the PDF</b> from the course player (at 100%), their My Results page, or the client portal.</li>
+        <li><b>You can design the certificate</b> — choose one of three built-in styles (Classic, Modern, Editorial), set an accent colour, add a logo and a signature, or upload your own full certificate design and position the text fields on it. This can be set once as a workspace default and overridden per course.</li>
+      </ul>
+
+      <div class="working">
+        <span class="lbl">Still being worked on</span>
+        <p><strong>Automatic delivery is not built.</strong> The certificate is created and recorded on completion, but nothing emails it to the student or notifies you — the student has to come back and download it. Sending a certificate automatically on completion is a clear next step. The certificate-design screens are functional but haven't been exercised against a wide range of real course data and custom uploads.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 ─────────────────────────────────────────────── -->
+  <section id="themes">
+    <div class="sec-head">
+      <span class="sec-num">5</span>
+      <h2>Course themes</h2>
+    </div>
+    <div class="sec-body">
+      <p class="lead">Each course can carry one of three genuine visual identities. This is real, live styling per course — not just a colour label.</p>
+
+      <h3>The three themes</h3>
+      <ul class="do">
+        <li><b>Ember</b> — warm and energetic. Near-white background, vivid orange, rounded shapes, a friendly rounded typeface. Built for coaching and creative courses. This is the default.</li>
+        <li><b>Signal</b> — sharp and high-contrast. Near-black with white cards, a strong crimson, hard edges, a bold headline typeface and a rotated "seal" motif. Built for certification and flagship courses.</li>
+        <li><b>Grove</b> — calm and natural. Pale sage background, forest green, a warm serif typeface, soft organic corners and a branching progress line. Built for language, wellness and personal-growth courses.</li>
+      </ul>
+
+      <p>Each theme controls the full palette (background, text, borders, success and error colours), the heading and body typefaces, the corner rounding, and one signature visual element. A theme is applied on the course's public landing page, throughout the student's course player and lesson outline, and in the creator's preview — consistently, from live course data.</p>
+
+      <div class="working">
+        <span class="lbl">Note</span>
+        <p>Because the three theme names are stored internally under their original labels, you'll occasionally see an old name in a developer-facing place; the customer-facing names are Ember, Signal and Grove.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- GAPS ─────────────────────────────────────────── -->
+  <section id="gaps">
+    <div class="sec-head">
+      <span class="sec-num">6</span>
+      <h2>Everything that isn't done yet</h2>
+    </div>
+    <div class="sec-body">
+      <p class="lead full">One consolidated list, roughly in priority order, so decisions about what to build next can be made from a complete picture.</p>
+
+      <div class="gaps full">
+        <div class="row">
+          <span class="chip gap">High</span>
+          <p class="area">Course automations don't fire</p>
+          <p class="detail">Most triggers (lesson completed, quiz passed / failed, course completed, module completed, new enrolment) aren't connected. The rule builder looks fully functional but rules built on those events never run. Only "certificate issued" and "student struggling" triggers work today.</p>
+        </div>
+        <div class="row">
+          <span class="chip gap">High</span>
+          <p class="area">Automation rules aren't course-specific</p>
+          <p class="detail">A rule created on one course's Automations tab applies to every course in the workspace.</p>
+        </div>
+        <div class="row">
+          <span class="chip partial">Medium</span>
+          <p class="area">Only three quiz question types work for students</p>
+          <p class="detail">Multiple choice, true / false and short answer are live. Matching, ordering, fill-in-the-blank, code and file-upload can be created but can't be answered and score zero. The builder's "8 question types" label overstates this.</p>
+        </div>
+        <div class="row">
+          <span class="chip partial">Medium</span>
+          <p class="area">Certificates aren't sent automatically</p>
+          <p class="detail">They're created and verifiable on completion, but the student must return and download; there's no automatic email or creator notification.</p>
+        </div>
+        <div class="row">
+          <span class="chip partial">Medium</span>
+          <p class="area">AI question generation is multiple-choice only</p>
+          <p class="detail">And for a single lesson it works from the lesson's stored text, which in the current content model is often empty — module-level generation, which reads all the lessons, gives better results.</p>
+        </div>
+        <div class="row">
+          <span class="chip partial">Medium</span>
+          <p class="area">Two lesson-authoring paths, two dead legacy types</p>
+          <p class="detail">The visual canvas builder and an older lesson editor both exist. "Code exercise" and "SCORM package" lesson types from the old system are placeholders.</p>
+        </div>
+        <div class="row">
+          <span class="chip partial">Low</span>
+          <p class="area">Certificate "assign" and "enrol in bundle" automation actions</p>
+          <p class="detail">Offered in the rule builder's action list but not implemented; "grant community access" does nothing yet.</p>
+        </div>
+        <div class="row">
+          <span class="chip partial">Low</span>
+          <p class="area">No course categories or tags</p>
+          <p class="detail">The catalogue has search, a free/paid filter and sorting, but no subject taxonomy to browse or filter by.</p>
+        </div>
+        <div class="row">
+          <span class="chip partial">Low</span>
+          <p class="area">Flashcards use a simple two-speed schedule</p>
+          <p class="detail">Not a full spaced-repetition algorithm.</p>
+        </div>
+        <div class="row">
+          <span class="chip partial">Low</span>
+          <p class="area">Short-answer grading is exact-match</p>
+          <p class="detail">It checks against a list of accepted answers and doesn't handle unlisted synonyms or typos.</p>
+        </div>
+        <div class="row">
+          <span class="chip partial">Low</span>
+          <p class="area">No "assignments due" list for students</p>
+          <p class="detail">A student sees an assignment only inside its lesson; My Results lists ones already submitted.</p>
+        </div>
+        <div class="row">
+          <span class="chip partial">Low</span>
+          <p class="area">Email-address change is disabled for students</p>
+          <p class="detail">Intentional for now — the address links everything the student owns, and safe propagation of a change isn't built.</p>
+        </div>
+        <div class="row">
+          <span class="chip partial">Low</span>
+          <p class="area">Live payment paths not re-tested in this review</p>
+          <p class="detail">Guest checkout and the payment providers are wired; a full end-to-end payment test is a separate task before go-live.</p>
+        </div>
+        <div class="row">
+          <span class="chip gap">Cosmetic</span>
+          <p class="area">Old unused tables still present</p>
+          <p class="detail">Leftover certificate and quiz tables from a previous version remain in the database, unused; their removal is deliberately scheduled for later.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="bottomline">
+    <h2>The bottom line</h2>
+    <p>Course building, the student portal and course themes are in good shape and can be used with confidence today. A creator can build, price, theme and publish a full course, and a student gets a complete, honest learning experience with progress, results and a verifiable certificate at the end.</p>
+    <p>Quizzes and certificates work but each has one clear limitation to close — the five inactive question types, and automatic certificate delivery. The course-automations feature is the one place where the interface promises more than the system currently delivers, and it's the highest-value area to finish next.</p>
+  </div>
+
+  <footer>
+    LeadsMind LMS feature handover · prepared for LearniQ AI · reviewed 2 September 2026<br>
+    Based on a direct review of the live system and the current working code. Audit only — nothing was changed during this review.
+  </footer>
+
+</div>

@@ -47,6 +47,29 @@ export async function getCourses() {
  }
 }
 
+/** Active course bundles in the current workspace — used by the automation rule builder's
+ *  "Enroll in Bundle" action to pick a real lms_bundles row. */
+export async function getBundles() {
+ try {
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { error: 'No workspace active' };
+
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+   .from('lms_bundles')
+   .select('id, name')
+   .eq('workspace_id', workspaceId)
+   .eq('is_active', true)
+   .order('name');
+
+  if (error) throw error;
+  return { data: data || [] };
+ } catch (error: any) {
+  logger.error({ err: error }, 'get.bundles.failed');
+  return { error: 'Operation failed. Please try again.' };
+ }
+}
+
 export async function getCourse(courseId: string) {
  try {
   const workspaceId = await getCurrentWorkspaceId();

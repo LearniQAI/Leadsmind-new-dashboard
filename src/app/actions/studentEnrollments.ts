@@ -156,8 +156,12 @@ export async function enrollStudent(courseId: string) {
     if (error) throw error;
 
     // Hook telemetry triggers
+    // Trigger string is 'enrollment_created' — the exact value the automation-rule
+    // builder's dropdown offers (RuleModal TRIGGERS) and emitLMSEvent matches by
+    // exact string. It was historically emitted as 'student.enrolled', which no
+    // rule could ever match.
     const { emitLMSEvent } = await import('../../../libs/core/src/events/lms-event-bus');
-    await emitLMSEvent('student.enrolled', {
+    await emitLMSEvent('enrollment_created', {
       workspaceId,
       contactId,
       courseId

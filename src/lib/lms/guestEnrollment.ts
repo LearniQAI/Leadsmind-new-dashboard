@@ -344,7 +344,8 @@ export async function handleGuestCheckoutSessionCompleted(session: any): Promise
 
     try {
       const { emitLMSEvent } = await import('../../../libs/core/src/events/lms-event-bus');
-      await emitLMSEvent('student.enrolled', { workspaceId, contactId, courseId });
+      // 'enrollment_created' matches the automation-rule builder dropdown (was 'student.enrolled').
+      await emitLMSEvent('enrollment_created', { workspaceId, contactId, courseId });
       await emitLMSEvent('payment.completed', { workspaceId, contactId, courseId });
     } catch (e) {
       logger.error({ err: e, courseId, contactId }, 'guest_enrollment.webhook.events.failed');

@@ -196,6 +196,24 @@ export async function submitQuizAttempt(payload: {
       await markLessonComplete(payload.courseId, payload.lessonId);
     }
 
+    // LMS automation event bus — fire quiz_passed / quiz_failed off the server-graded
+    // outcome (never a client-supplied score). One attempt row == one real graded
+    // outcome == one emit; this only runs on an actual submit, not on page loads, so
+    // there is nothing to re-fire. The rule's optional trigger_config.min_score is
+    // honoured inside emitLMSEvent using the score passed here in metadata.
+    try {
+      const { emitLMSEvent } = await import('../../../libs/core/src/events/lms-event-bus');
+      await emitLMSEvent(passed ? 'quiz_passed' : 'quiz_failed', {
+        workspaceId,
+        contactId,
+        courseId: payload.courseId,
+        lessonId: payload.lessonId,
+        metadata: { score, maxScore, rawScore, quizScope: 'lesson' },
+      });
+    } catch (evtErr) {
+      logger.error({ err: evtErr, courseId: payload.courseId, lessonId: payload.lessonId }, 'student_progress.quiz_attempt.lms_event.failed');
+    }
+
     // Evaluate student struggle profile in background
     try {
       const { evaluateStudentStruggle } = await import('../../../libs/core/src/analytics/struggle-processor');
@@ -252,6 +270,21 @@ export async function submitModuleQuizAttempt(payload: {
       });
 
     if (attemptErr) throw attemptErr;
+
+    // LMS automation event bus — same discipline as the lesson-quiz path above:
+    // fire off the server-graded outcome, once per real attempt.
+    try {
+      const { emitLMSEvent } = await import('../../../libs/core/src/events/lms-event-bus');
+      await emitLMSEvent(passed ? 'quiz_passed' : 'quiz_failed', {
+        workspaceId,
+        contactId,
+        courseId: payload.courseId,
+        moduleId: payload.moduleId,
+        metadata: { score, maxScore, rawScore, quizScope: 'module' },
+      });
+    } catch (evtErr) {
+      logger.error({ err: evtErr, courseId: payload.courseId, moduleId: payload.moduleId }, 'student_progress.module_quiz_attempt.lms_event.failed');
+    }
 
     return { success: true, score, passed, maxScore, rawScore };
   } catch (err: any) {
