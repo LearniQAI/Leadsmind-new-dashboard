@@ -66,7 +66,13 @@ function nodeToItems(
 
   switch (name) {
     case 'Heading': {
-      const html = typeof p.text === 'string' ? p.text : '';
+      let html = typeof p.text === 'string' ? p.text : '';
+      // The Craft.js editor wraps a heading's text in a `<p>` ("<p>Nelly Agboola</p>").
+      // Left in place, the marketing-template SCSS `p {}` reset shrinks + fades it. Unwrap a
+      // sole wrapping <p> so it renders as a real heading. (The renderer's CANVAS_INLINE_HTML
+      // is the belt for any <p> that survives, e.g. multi-paragraph headings.)
+      const solo = html.trim().match(/^<p[^>]*>([\s\S]*)<\/p>$/i);
+      if (solo && !/<p[\s>]/i.test(solo[1])) html = solo[1];
       if (html.trim()) {
         out.push({
           kind: 'heading',

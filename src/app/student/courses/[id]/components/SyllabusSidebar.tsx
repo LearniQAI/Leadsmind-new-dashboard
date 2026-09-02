@@ -48,7 +48,6 @@ export default function SyllabusSidebar({
   totalLessonsCount,
   handleDownloadCertificate,
   lessonsByModule,
-  studentName,
 }: SyllabusSidebarProps) {
   const tutorName: string | null = course?.landing_page_settings?.instructor?.name?.trim() || null;
   const theme = getCourseTheme(course?.landing_page_settings?.template);
@@ -56,23 +55,24 @@ export default function SyllabusSidebar({
 
   return (
     <aside className="flex w-[272px] shrink-0 flex-col border-r border-dash-border bg-dash-surface/50">
-      {/* Student card */}
-      <div className="flex items-center gap-3 border-b border-dash-border px-5 py-4">
-        <span
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold text-white"
-          style={{ background: accent }}
-        >
-          {initials(studentName)}
-        </span>
-        <div className="min-w-0">
-          <div className="truncate text-[13px] font-semibold !text-dash-text">
-            {studentName || 'Student'}
+      {/* Instructor — the student's own identity lives in the top-right header dropdown,
+          so this panel leads with the distinct info: who teaches this course. */}
+      {tutorName && (
+        <div className="border-b border-dash-border px-5 py-4">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] !text-dash-textMuted">
+            Instructor
           </div>
-          <div className="text-[11px] !text-dash-textMuted">
-            {tutorName ? `Tutor · ${tutorName}` : 'Enrolled student'}
+          <div className="mt-1 flex items-center gap-2.5">
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold text-white"
+              style={{ background: accent }}
+            >
+              {initials(tutorName)}
+            </span>
+            <span className="truncate text-[13px] font-semibold !text-dash-text">{tutorName}</span>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Progress */}
       <div className="space-y-3 border-b border-dash-border px-5 py-4">

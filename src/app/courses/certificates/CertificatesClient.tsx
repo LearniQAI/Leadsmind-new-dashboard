@@ -16,9 +16,39 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import CertificateDesignForm from "@/app/courses/[id]/components/CertificateDesignForm";
+import { saveWorkspaceCertificateConfig } from "@/app/actions/lms/certificates";
+import type { CertificateConfig } from "../../../../libs/services/src/pdf/cert-templates";
 
 interface CertificatesClientProps {
   certificates: any[];
+  workspaceConfig: CertificateConfig | null;
+}
+
+/* Global "Design" tab — writes the WORKSPACE default (workspaces.certificate_config),
+   the fallback for any course without its own override. */
+function WorkspaceCertificateDesign({ initial }: { initial: CertificateConfig | null }) {
+  const [current, setCurrent] = useState<CertificateConfig | null>(initial);
+  return (
+    <CertificateDesignForm
+      key={current ? "set" : "unset"}
+      initialConfig={current || {}}
+      onSave={async (payload) => {
+        const res = await saveWorkspaceCertificateConfig(payload as any);
+        if (!res.success) throw new Error(res.error || "Failed to save");
+        setCurrent((res.data as CertificateConfig) || null);
+        toast.success(payload ? "Workspace certificate design saved" : "Reset to the built-in default");
+      }}
+      header={{
+        eyebrow: "Workspace default",
+        title: "Certificate design",
+        description:
+          "The default applied to every course that doesn't set its own certificate design (Course → Settings → Certificate).",
+      }}
+      revert={{ label: "Reset to built-in default", show: !!current }}
+      saveLabel="Save workspace default"
+    />
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -74,9 +104,10 @@ function initials(name: string): string {
 
 /* ================================================================== */
 
-export default function CertificatesClient({ certificates }: CertificatesClientProps) {
+export default function CertificatesClient({ certificates, workspaceConfig }: CertificatesClientProps) {
   const [query, setQuery] = useState("");
   const [preview, setPreview] = useState<any | null>(null);
+  const [tab, setTab] = useState<"issued" | "design">("issued");
 
   const stats = useMemo(() => {
     const recipients = new Set(certificates.map((c) => c.contact_id || recipientOf(c)));
@@ -132,17 +163,44 @@ export default function CertificatesClient({ certificates }: CertificatesClientP
           </p>
         </div>
 
-        <div className="relative w-full md:w-72">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-dash-textMuted" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search recipient, course or code…"
-            className="h-10 w-full rounded-lg border border-dash-border bg-white pl-9 pr-3 text-[13px] !text-dash-text outline-none transition-colors placeholder:text-dash-textMuted focus:border-sky-500 focus:ring-4 focus:ring-sky-500/12"
-          />
-        </div>
+        {tab === "issued" && (
+          <div className="relative w-full md:w-72">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-dash-textMuted" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search recipient, course or code…"
+              className="h-10 w-full rounded-lg border border-dash-border bg-white pl-9 pr-3 text-[13px] !text-dash-text outline-none transition-colors placeholder:text-dash-textMuted focus:border-sky-500 focus:ring-4 focus:ring-sky-500/12"
+            />
+          </div>
+        )}
       </div>
 
+      {/* Sub-nav */}
+      <div className="flex gap-1 border-b border-dash-border">
+        {([
+          { id: "issued" as const, label: "Issued" },
+          { id: "design" as const, label: "Design" },
+        ]).map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={cn(
+              "-mb-px border-b-2 px-3 py-2 text-[13px] font-semibold transition-colors",
+              tab === t.id
+                ? "border-sky-500 text-sky-700"
+                : "border-transparent !text-dash-textMuted hover:!text-dash-text"
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "design" ? (
+        <WorkspaceCertificateDesign initial={workspaceConfig} />
+      ) : (
+        <>
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Stat label="Issued" value={stats.total} icon={<Award />} tone="sky" />
@@ -208,6 +266,8 @@ export default function CertificatesClient({ certificates }: CertificatesClientP
       )}
 
       {preview && <CertificatePreview cert={preview} onClose={() => setPreview(null)} />}
+        </>
+      )}
     </div>
   );
 }
