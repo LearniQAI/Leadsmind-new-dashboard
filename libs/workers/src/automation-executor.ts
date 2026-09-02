@@ -187,8 +187,113 @@ export async function executeLMSAction(
         break;
       }
 
+      case 'enroll_bundle': {
+        const bundleId = config.bundle_id || config.bundleId;
+        if (!bundleId) {
+          console.error('[LMS Worker Executor] bundle_id is required for enroll_bundle');
+          break;
+        }
+        // Reuse the one real bundle-enrollment implementation (writes lms_bundle_enrollments
+        // + a child enrollments row per course in the bundle, then publishes
+        // student_enrolled_bundle). Do not duplicate that logic here.
+        const { lms_enroll_bundle } = await import('@/lib/automation/lms_actions');
+        await lms_enroll_bundle(workspaceId, contactId, {
+          bundleId,
+          child_privileges: config.child_privileges || {},
+          duration_days: config.duration_days,
+          welcome_email_enabled: config.welcome_email_enabled,
+          welcome_whatsapp_enabled: config.welcome_whatsapp_enabled,
+          email_subject: config.email_subject,
+          email_body: config.email_body,
+        });
+        break;
+      }
+
+      case 'assign_certificate': {
+        if (!courseId) {
+          console.error('[LMS Worker Executor] courseId is required for assign_certificate');
+          break;
+        }
+        // Reuse the single persisted, stable-id certificate path — one row per
+        // (contact, course) in course_certificates, validation_id minted once. No second
+        // creation path. The student's PDF download route reads this same row.
+        const { ensureCourseCertificate } = await import('@/lib/lms/issueCertificate');
+        const cert = await ensureCourseCertificate({ contactId, courseId, workspaceId });
+        console.log(
+          `[LMS Worker Executor] assign_certificate: ${cert.created ? 'issued' : 'already issued'} ${cert.validation_id} for ${contactId} / course ${courseId}`
+        );
+        // Chain the certificate_issued trigger only on a genuine first issue, so a
+        // certificate_issued -> assign_certificate rule cannot loop.
+        if (cert.created) {
+          try {
+            const { emitLMSEvent } = await import('../../core/src/events/lms-event-bus');
+            await emitLMSEvent('certificate_issued', {
+              workspaceId,
+              contactId,
+              courseId,
+              metadata: { validationId: cert.validation_id, source: 'assign_certificate' },
+            });
+          } catch (evtErr) {
+            console.error('[LMS Worker Executor] assign_certificate telemetry emit failed:', evtErr);
+          }
+        }
+        break;
+      }
+
+      // Batch 4 (G7) — the certificate-earned notification, distinct from generic 'send_email'
+      // (which does not interpolate {{variables}} — reusing it would either ship literal
+      // template text or require fixing that as a side effect of this batch). Fires from a
+      // certificate_issued trigger; courseId comes from the SAME event payload assign_certificate
+      // used to issue the cert, so there's no re-lookup ambiguity.
+      case 'send_certificate_email': {
+        if (!courseId) {
+          console.error('[LMS Worker Executor] courseId is required for send_certificate_email');
+          break;
+        }
+        const validationId = config.validationId || config.validation_id;
+        if (!validationId) {
+          // Defensive only — every real certificate_issued emit (download route,
+          // assign_certificate) always carries metadata.validationId. Without it there is no
+          // certificate to link to, so there's nothing safe to send.
+          console.error('[LMS Worker Executor] send_certificate_email: no validationId in event metadata, skipping');
+          break;
+        }
+        const { sendCertificateEarnedEmail } = await import('@/lib/lms/certificateEmail');
+        const result = await sendCertificateEarnedEmail({ courseId, contactId, workspaceId, validationId });
+        console.log(
+          `[LMS Worker Executor] send_certificate_email: ${result.sent ? 'sent' : `failed (${result.reason})`} to contact ${contactId}`
+        );
+        break;
+      }
+
       case 'grant_community': {
-        console.log(`[LMS Worker Executor] Granting community access for ${contactId}`);
+        // There is no per-contact "community access" gate in this codebase: forum/community
+        // browsing (src/app/community/*) is gated purely by workspace membership
+        // (check_workspace_access), and contacts.metadata.community_role — written by the
+        // CRM engine's update_community_privilege — is read nowhere. The real, observable
+        // effect available today is CRM segmentation: apply a 'community-access' tag (same
+        // atomic RPC as the add_tag action) and stamp community_role so a future forum-ACL
+        // feature has a signal to honour. This is NOT full forum gating — logged plainly.
+        const { AutomationActions } = await import('@/lib/automation/actions_registry');
+        await AutomationActions.apply_tag(workspaceId, contactId, {
+          tag: config.tag_name || 'community-access',
+        });
+        // Stamp contacts.metadata.community_role, mirroring the CRM engine's
+        // update_community_privilege (same JSONB field), so a future forum-ACL feature
+        // has a real signal to read.
+        const { data: cRow } = await supabaseAdmin
+          .from('contacts')
+          .select('metadata')
+          .eq('id', contactId)
+          .maybeSingle();
+        await supabaseAdmin
+          .from('contacts')
+          .update({ metadata: { ...(cRow?.metadata || {}), community_role: config.level || 'member' } })
+          .eq('id', contactId)
+          .eq('workspace_id', workspaceId);
+        console.log(
+          `[LMS Worker Executor] grant_community: tagged ${contactId} 'community-access' (note: forum access itself is workspace-membership-gated; no per-contact ACL exists yet)`
+        );
         break;
       }
 

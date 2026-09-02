@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { randomBytes } from 'crypto';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getUser } from '@/lib/auth';
 import { getOrCreateStudentContact } from '@/app/actions/studentEnrollments';
+import { ensureCourseCertificate } from '@/lib/lms/issueCertificate';
 import { generateCertificatePDF } from '../../../../../../../libs/services/src/pdf/cert-generator';
 
 export const dynamic = 'force-dynamic';
@@ -102,62 +102,17 @@ export async function GET(
     // its displayed name/course/date are generated ONCE, on first issue, and stored in
     // course_certificates. Every later download reuses that same row, so a re-download
     // produces the SAME certificate — not a fresh Math.random() id and a new date each time.
-    const currentName = contact
-      ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || contact.email
-      : user.email || 'Verified Graduate';
+    // This is the single certificate-creation path, shared with the assign_certificate
+    // automation action via ensureCourseCertificate().
+    const cert = await ensureCourseCertificate({
+      contactId,
+      courseId,
+      workspaceId: course.workspace_id,
+      adminClient,
+    });
 
-    const CERT_COLS = 'validation_id, issued_at, student_name_snapshot, course_title_snapshot';
-
-    let cert:
-      | { validation_id: string; issued_at: string; student_name_snapshot: string; course_title_snapshot: string }
-      | null = null;
-
-    const { data: existingCert } = await adminClient
-      .from('course_certificates')
-      .select(CERT_COLS)
-      .eq('contact_id', contactId)
-      .eq('course_id', courseId)
-      .maybeSingle();
-
-    if (existingCert) {
-      cert = existingCert as any;
-    } else {
-      const newRow = {
-        contact_id: contactId,
-        course_id: courseId,
-        workspace_id: course.workspace_id,
-        validation_id: `LM-${courseId.slice(0, 4).toUpperCase()}-${contactId.slice(0, 4).toUpperCase()}-${randomBytes(4).toString('hex').toUpperCase()}`,
-        student_name_snapshot: currentName,
-        course_title_snapshot: course.title,
-      };
-      const { data: inserted, error: insErr } = await adminClient
-        .from('course_certificates')
-        .insert(newRow)
-        .select(CERT_COLS)
-        .single();
-
-      if (insErr) {
-        // Lost a race with a concurrent first download (unique(contact_id, course_id)) —
-        // re-read the row the other request just wrote so both downloads still agree.
-        const { data: raced } = await adminClient
-          .from('course_certificates')
-          .select(CERT_COLS)
-          .eq('contact_id', contactId)
-          .eq('course_id', courseId)
-          .maybeSingle();
-        cert = (raced as any) || {
-          validation_id: newRow.validation_id,
-          issued_at: new Date().toISOString(),
-          student_name_snapshot: newRow.student_name_snapshot,
-          course_title_snapshot: newRow.course_title_snapshot,
-        };
-      } else {
-        cert = inserted as any;
-      }
-    }
-
-    const validationId = cert!.validation_id;
-    const completionDate = new Date(cert!.issued_at).toLocaleDateString('en-US', {
+    const validationId = cert.validation_id;
+    const completionDate = new Date(cert.issued_at).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -166,24 +121,32 @@ export async function GET(
     // 5. Generate A4 Landscape PDF from the stored snapshot (so a later rename of the student
     // or the course never silently alters an already-issued certificate).
     const pdfBuffer = await generateCertificatePDF({
-      studentName: cert!.student_name_snapshot,
-      courseTitle: cert!.course_title_snapshot,
+      studentName: cert.student_name_snapshot,
+      courseTitle: cert.course_title_snapshot,
       completionDate,
       validationId,
       config: certConfig,
     });
 
-    // Fire certificate telemetry event if needed
-    try {
-      const { emitLMSEvent } = await import('../../../../../../../libs/core/src/events/lms-event-bus');
-      await emitLMSEvent('certificate_issued', {
-        workspaceId: course.workspace_id,
-        contactId,
-        courseId,
-        metadata: { validationId }
-      });
-    } catch (telemetryErr) {
-      console.error('[Certificate API Telemetry Event Error]:', telemetryErr);
+    // Batch 4 (G7) fix — this MUST be gated on cert.created, exactly like the
+    // assign_certificate automation action already gates it (issueCertificate.ts /
+    // automation-executor.ts). Found during the Batch 4 chain-idempotency audit: this emit was
+    // previously unconditional, so every re-download (not just the first) re-fired
+    // certificate_issued — harmless before any certificate_issued rule existed, but once a
+    // certificate_issued -> send_certificate_email rule is seeded, an unconditional emit here
+    // would send a fresh "you earned your certificate!" email on every single re-download.
+    if (cert.created) {
+      try {
+        const { emitLMSEvent } = await import('../../../../../../../libs/core/src/events/lms-event-bus');
+        await emitLMSEvent('certificate_issued', {
+          workspaceId: course.workspace_id,
+          contactId,
+          courseId,
+          metadata: { validationId }
+        });
+      } catch (telemetryErr) {
+        console.error('[Certificate API Telemetry Event Error]:', telemetryErr);
+      }
     }
 
     // Return PDF stream directly

@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
       question_text,
       options = [],
       correct_answer,
+      metadata = {},   // Batch 2 — see quiz/questions/route.ts
       explanation = '',
       points = 1,
       position = 0
@@ -77,6 +78,7 @@ export async function POST(req: NextRequest) {
         question_text,
         options,
         correct_answer,
+        metadata,
         explanation,
         points,
         position
@@ -103,13 +105,14 @@ export async function PATCH(req: NextRequest) {
     const adminClient = createAdminClient();
 
     const body = await req.json();
-    const { question_type, question_text, options, correct_answer, explanation, points, position } = body;
+    const { question_type, question_text, options, correct_answer, metadata, explanation, points, position } = body;
 
     const updatePayload: any = {};
     if (question_type !== undefined) updatePayload.question_type = question_type;
     if (question_text !== undefined) updatePayload.question_text = question_text;
     if (options !== undefined) updatePayload.options = options;
     if (correct_answer !== undefined) updatePayload.correct_answer = correct_answer;
+    if (metadata !== undefined) updatePayload.metadata = metadata;
     if (explanation !== undefined) updatePayload.explanation = explanation;
     if (points !== undefined) updatePayload.points = points;
     if (position !== undefined) updatePayload.position = position;

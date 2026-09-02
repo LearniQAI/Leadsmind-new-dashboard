@@ -14,6 +14,7 @@ import {
   Award,
   CheckCircle2,
   PenLine,
+  ClipboardCheck,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -122,6 +123,10 @@ export default function CoursesClient({
 
           <Button variant="outline" onClick={() => router.push("/courses/certificates")}>
             <Award size={13} /> Certificates
+          </Button>
+
+          <Button variant="outline" onClick={() => router.push("/courses/needs-grading")}>
+            <ClipboardCheck size={13} /> Needs grading
           </Button>
 
           <Button

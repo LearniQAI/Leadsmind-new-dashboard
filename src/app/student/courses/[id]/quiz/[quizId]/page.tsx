@@ -5,6 +5,7 @@ import { requireAuth, getCurrentProfile } from '@/lib/auth';
 import { getOrCreateStudentContact } from '@/app/actions/studentEnrollments';
 import StudentQuizClient from './StudentQuizClient';
 import ModuleQuizShell from '../../module-quiz/[moduleId]/ModuleQuizShell';
+import { buildClientQuestion } from '@/lib/lms/quizGrading';
 
 interface StudentQuizPageProps {
   params: { id: string; quizId: string };
@@ -75,7 +76,7 @@ export default async function StudentQuizPage({ params }: StudentQuizPageProps) 
       <StudentQuizClient
         courseId={courseId}
         quiz={lesson}
-        questions={questionsRes.data || []}
+        questions={(questionsRes.data || []).map(buildClientQuestion)}
         settings={settingsRes.data || {}}
         attemptsCount={attemptsRes.data?.length || 0}
         hasPassedRemedial={remedialRes.data?.status === 'passed'}

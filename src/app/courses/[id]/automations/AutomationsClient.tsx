@@ -2,15 +2,15 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { 
-  Plus, PlayCircle, Loader2, Trash2, ArrowRight, Zap, HelpCircle, Mail, MessageSquare, Tag, Lock, Settings 
+import {
+  Plus, PlayCircle, Loader2, Trash2, ArrowRight, Zap, HelpCircle, Mail, MessageSquare, Tag, Lock, Settings, Award, CheckCircle2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useDashboardContext } from "@/components/layouts/DashboardProvider";
 import RuleModal from "./components/RuleModal";
-import { seedCourseBlueprints } from "@/app/actions/courseBlueprints";
+import { seedCourseBlueprints, enableCertificateDelivery } from "@/app/actions/courseBlueprints";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 
 interface AutomationsClientProps {
@@ -25,11 +25,19 @@ export default function AutomationsClient({ course }: AutomationsClientProps) {
   const [rules, setRules] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
+  const [enablingCertDelivery, setEnablingCertDelivery] = useState(false);
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<any | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  // Batch 4 (G7) — new courses get this chain automatically (createCourseWithDomain); this
+  // reflects that real state rather than assuming it, so the button below only shows on a
+  // course that genuinely doesn't have it yet (e.g. one created before this batch).
+  const hasCertificateDelivery = rules.some(
+    (r) => r.trigger_type === "course_completed" && r.action_type === "assign_certificate"
+  );
 
   const handleSeedBlueprints = async () => {
     setSeeding(true);
@@ -48,6 +56,27 @@ export default function AutomationsClient({ course }: AutomationsClientProps) {
     }
   };
 
+  const handleEnableCertificateDelivery = async () => {
+    setEnablingCertDelivery(true);
+    try {
+      const result = await enableCertificateDelivery(course.id);
+      if (result?.error) {
+        toast.error(result.error);
+      } else {
+        toast.success(
+          result.created
+            ? "Automatic certificate delivery enabled for this course."
+            : "Automatic certificate delivery was already enabled."
+        );
+        await loadRules();
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to enable certificate delivery");
+    } finally {
+      setEnablingCertDelivery(false);
+    }
+  };
+
   useEffect(() => {
     if (workspaceId) {
       loadRules();
@@ -57,7 +86,7 @@ export default function AutomationsClient({ course }: AutomationsClientProps) {
   const loadRules = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/lms/automations?workspaceId=${workspaceId}`);
+      const res = await fetch(`/api/lms/automations?workspaceId=${workspaceId}&courseId=${course.id}`);
       const resData = await res.json();
       if (resData.data) {
         setRules(resData.data);
@@ -129,6 +158,25 @@ export default function AutomationsClient({ course }: AutomationsClientProps) {
           </p>
         </div>
         <div className="flex gap-3">
+          {hasCertificateDelivery ? (
+            <div className="flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 h-11 text-xs font-bold text-emerald-700">
+              <CheckCircle2 size={14} /> Certificate delivery enabled
+            </div>
+          ) : (
+            <Button
+              onClick={handleEnableCertificateDelivery}
+              disabled={enablingCertDelivery || loading}
+              className="bg-amber-500 text-white rounded-xl text-xs font-bold h-11 px-6 shadow-sm hover:bg-amber-600 disabled:opacity-50 flex items-center gap-1.5 transition-colors motion-reduce:transition-none"
+              title="Adds: course completed -> issue certificate, certificate issued -> email the student"
+            >
+              {enablingCertDelivery ? (
+                <Loader2 className="animate-spin motion-reduce:animate-none" size={14} />
+              ) : (
+                <Award size={14} />
+              )}
+              Enable certificate delivery
+            </Button>
+          )}
           <Button
             onClick={handleSeedBlueprints}
             disabled={seeding}
@@ -232,10 +280,11 @@ export default function AutomationsClient({ course }: AutomationsClientProps) {
                 {/* 3. Action card */}
                 <div className="bg-white border border-dash-accent/30 p-5 rounded-2xl shadow-sm w-60 shrink-0 text-center space-y-3 relative group">
                   <div className="w-10 h-10 bg-dash-accent/10 border border-dash-accent/20 text-dash-accent rounded-xl flex items-center justify-center mx-auto">
-                    {selectedRule.action_type === "send_email" && <Mail size={18} />}
+                    {(selectedRule.action_type === "send_email" || selectedRule.action_type === "send_certificate_email") && <Mail size={18} />}
                     {selectedRule.action_type === "send_whatsapp" && <MessageSquare size={18} />}
                     {selectedRule.action_type === "add_tag" && <Tag size={18} />}
-                    {!(["send_email", "send_whatsapp", "add_tag"].includes(selectedRule.action_type)) && <Lock size={18} />}
+                    {selectedRule.action_type === "assign_certificate" && <Award size={18} />}
+                    {!(["send_email", "send_certificate_email", "send_whatsapp", "add_tag", "assign_certificate"].includes(selectedRule.action_type)) && <Lock size={18} />}
                   </div>
                   <div>
                     <span className="text-[9px] font-bold !text-dash-textMuted">Action</span>
@@ -283,6 +332,7 @@ export default function AutomationsClient({ course }: AutomationsClientProps) {
         onSaved={loadRules}
         editingRule={editingRule}
         workspaceId={workspaceId}
+        courseId={course.id}
       />
 
       <ConfirmDialog

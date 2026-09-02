@@ -6,17 +6,28 @@ import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
-// GET — list automation rules for the caller's own workspace
+// GET — list automation rules for the caller's own workspace.
+// With ?courseId=, returns that course's own rules plus any workspace-wide
+// (course_id IS NULL) rules, since those also fire for the course.
 export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url);
+    const courseId = searchParams.get('courseId');
+
     const { workspaceId } = await requireLmsInstructor();
     const adminClient = createAdminClient();
 
-    const { data: rules, error } = await adminClient
+    let query = adminClient
       .from('lms_automation_rules')
       .select('*')
       .eq('workspace_id', workspaceId)
       .order('created_at', { ascending: false });
+
+    if (courseId) {
+      query = query.or(`course_id.eq.${courseId},course_id.is.null`);
+    }
+
+    const { data: rules, error } = await query;
 
     if (error) throw error;
     return NextResponse.json({ data: rules });
@@ -40,17 +51,21 @@ export async function POST(req: NextRequest) {
       trigger_config = {},
       action_type,
       action_config = {},
-      active = true
+      active = true,
+      course_id = null
     } = body;
 
     if (!name || !trigger_type || !action_type) {
       return NextResponse.json({ error: 'Missing required fields: name, trigger_type, action_type' }, { status: 400 });
     }
 
+    // course_id scopes the rule to a single course. The per-course builder always sends
+    // the current course id; a null here means an intentional workspace-wide rule.
     const { data: rule, error } = await adminClient
       .from('lms_automation_rules')
       .insert({
         workspace_id: workspaceId,
+        course_id: course_id || null,
         name,
         trigger_type,
         trigger_config,
@@ -81,7 +96,7 @@ export async function PATCH(req: NextRequest) {
     const adminClient = createAdminClient();
 
     const body = await req.json();
-    const { name, trigger_type, trigger_config, action_type, action_config, active } = body;
+    const { name, trigger_type, trigger_config, action_type, action_config, active, course_id } = body;
 
     const updatePayload: any = {};
     if (name !== undefined) updatePayload.name = name;
@@ -90,6 +105,8 @@ export async function PATCH(req: NextRequest) {
     if (action_type !== undefined) updatePayload.action_type = action_type;
     if (action_config !== undefined) updatePayload.action_config = action_config;
     if (active !== undefined) updatePayload.active = active;
+    // Only touched when explicitly supplied; `null` is a valid value (widen to workspace-wide).
+    if (course_id !== undefined) updatePayload.course_id = course_id || null;
 
     const { data: rule, error } = await adminClient
       .from('lms_automation_rules')

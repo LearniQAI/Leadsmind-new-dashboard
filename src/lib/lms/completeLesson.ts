@@ -175,7 +175,16 @@ export async function markLessonCompleteForContact(
 
     try {
       const { publishEvent } = await import('@/lib/events/EventBus');
+      // LMS automation event bus (lms_automation_rules) is a SEPARATE engine from the CRM
+      // EventBus/triggerWorkflows above — the course Automations tab reads only the former.
+      // Every branch below is reached exactly once per genuine completion: the
+      // `existing?.completed_at` fast-path return near the top of this function means a
+      // lesson that is already complete never re-enters this block, so re-opening the
+      // player or re-marking a done lesson does not re-fire any of these.
+      const { emitLMSEvent } = await import('../../../libs/core/src/events/lms-event-bus');
+
       await publishEvent(workspaceId, 'lesson_completed', contactId, { courseId, lessonId });
+      await emitLMSEvent('lesson_completed', { workspaceId, contactId, courseId, lessonId });
 
       const { data: lessonRow } = await adminClient
         .from('course_lessons')
@@ -197,8 +206,11 @@ export async function markLessonCompleteForContact(
           .not('completed_at', 'is', null)
           .in('lesson_id', (moduleLessons || []).map((l) => l.id));
 
+        // This test runs only inside the "first completion of this lesson" pass, so it is
+        // true exactly on the completion that takes the module from partial -> 100%.
         if (completedLessons && completedLessons.length === moduleLessons?.length) {
           await publishEvent(workspaceId, 'module_completed', contactId, { courseId, moduleId: lessonRow.module_id });
+          await emitLMSEvent('module_completed', { workspaceId, contactId, courseId, moduleId: lessonRow.module_id });
         }
       }
 
@@ -214,8 +226,11 @@ export async function markLessonCompleteForContact(
         .eq('course_id', courseId)
         .not('completed_at', 'is', null);
 
+      // Same guarantee: true exactly on the completion that takes the course to 100%.
+      // This is the same real trigger point the certificate auto-eligibility check uses.
       if (allCompletedCourseLessons && allCompletedCourseLessons.length === allCourseLessons?.length) {
         await publishEvent(workspaceId, 'course_completed', contactId, { courseId });
+        await emitLMSEvent('course_completed', { workspaceId, contactId, courseId });
       }
     } catch (telemetryErr) {
       logger.error({ err: telemetryErr, workspaceId, contactId, courseId }, 'complete_lesson.telemetry_hook.failed');

@@ -49,9 +49,14 @@ export default function TemplateCleanMinimal({ course, modules, lessons, preview
     return settings.visible_sections?.[secName] !== false;
   };
 
-  // Real enrollment flow — /student/checkout/[courseId] runs the actual free-enroll or
-  // Stripe Connect checkout. Known gap (out of scope this pass): the checkout page calls
-  // requireAuth(), so a logged-out visitor is bounced to sign-in before paying.
+  // Real enrollment flow — /checkout/[courseId] runs the actual free-enroll or Stripe
+  // Connect checkout. Batch 10 (G15) re-confirmed: this comment used to flag the checkout
+  // page as requireAuth()-gated (bouncing a logged-out visitor to sign-in) — that was true of
+  // the OLD /student/checkout/[courseId] route only. This button already points at the real,
+  // rebuilt PUBLIC /checkout/[courseId] route (see its own docblock), which serves a real
+  // guest (name+email / guest Stripe Checkout) flow for a logged-out visitor with no redirect
+  // to sign-in; the old route now just redirects here. The gap this comment described no
+  // longer exists — corrected rather than left to mislead the next reader.
   const handleEnroll = () => {
     if (course?.id) {
       // Public checkout — works for logged-out visitors (guest flow) and authenticated students.

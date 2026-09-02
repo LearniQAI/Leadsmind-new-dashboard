@@ -156,23 +156,41 @@ export async function submitQuizAttempt(payload: {
 
     // 1. Independently recompute score/pass from the real quiz_questions data — never trust
     // a client-supplied score or pass field.
-    const { score, passed, rawScore, maxScore } = await gradeQuizAttempt(payload.lessonId, payload.answers);
+    const { score, passed, rawScore, maxScore, autoRawScore, pendingManual } =
+      await gradeQuizAttempt(payload.lessonId, payload.answers);
 
-    // 2. Insert quiz attempt using admin client to bypass RLS
+    // 2. Insert quiz attempt using admin client to bypass RLS.
+    // Batch 2: a quiz containing a file_upload question can't be fully auto-graded — the
+    // attempt is held in 'pending_review' (passed/score NULL) until an instructor grades the
+    // upload(s) via gradeQuizAttemptManualReview. It does NOT complete the lesson or fire
+    // quiz_passed/quiz_failed yet.
     const { error: attemptErr } = await adminClient
       .from('quiz_attempts')
       .insert({
         workspace_id: workspaceId,
         lesson_id: payload.lessonId,
         student_id: contactId,
-        score,
+        score: pendingManual ? null : score,
         max_score: maxScore,
-        percentage: score,
-        passed,
+        percentage: pendingManual ? null : score,
+        passed: pendingManual ? null : passed,
+        grade_status: pendingManual ? 'pending_review' : 'auto',
+        auto_score: autoRawScore,
         answers: payload.answers
       });
 
     if (attemptErr) throw attemptErr;
+
+    if (pendingManual) {
+      return {
+        success: true,
+        pendingReview: true,
+        score: null,
+        passed: false,
+        maxScore,
+        rawScore: autoRawScore,
+      };
+    }
 
     // 3. If passed (server-computed), record completion for any quiz content_blocks on this
     // lesson, then mark the lesson complete — matches how every other block type writes its
@@ -194,6 +212,24 @@ export async function submitQuizAttempt(payload: {
       }
 
       await markLessonComplete(payload.courseId, payload.lessonId);
+    }
+
+    // LMS automation event bus — fire quiz_passed / quiz_failed off the server-graded
+    // outcome (never a client-supplied score). One attempt row == one real graded
+    // outcome == one emit; this only runs on an actual submit, not on page loads, so
+    // there is nothing to re-fire. The rule's optional trigger_config.min_score is
+    // honoured inside emitLMSEvent using the score passed here in metadata.
+    try {
+      const { emitLMSEvent } = await import('../../../libs/core/src/events/lms-event-bus');
+      await emitLMSEvent(passed ? 'quiz_passed' : 'quiz_failed', {
+        workspaceId,
+        contactId,
+        courseId: payload.courseId,
+        lessonId: payload.lessonId,
+        metadata: { score, maxScore, rawScore, quizScope: 'lesson' },
+      });
+    } catch (evtErr) {
+      logger.error({ err: evtErr, courseId: payload.courseId, lessonId: payload.lessonId }, 'student_progress.quiz_attempt.lms_event.failed');
     }
 
     // Evaluate student struggle profile in background
@@ -236,7 +272,8 @@ export async function submitModuleQuizAttempt(payload: {
 
     const adminClient = createAdminClient();
 
-    const { score, passed, rawScore, maxScore } = await gradeModuleQuizAttempt(payload.moduleId, payload.answers);
+    const { score, passed, rawScore, maxScore, autoRawScore, pendingManual } =
+      await gradeModuleQuizAttempt(payload.moduleId, payload.answers);
 
     const { error: attemptErr } = await adminClient
       .from('module_quiz_attempts')
@@ -244,14 +281,42 @@ export async function submitModuleQuizAttempt(payload: {
         workspace_id: workspaceId,
         module_id: payload.moduleId,
         student_id: contactId,
-        score,
+        score: pendingManual ? null : score,
         max_score: maxScore,
-        percentage: score,
-        passed,
+        percentage: pendingManual ? null : score,
+        passed: pendingManual ? null : passed,
+        grade_status: pendingManual ? 'pending_review' : 'auto',
+        auto_score: autoRawScore,
         answers: payload.answers
       });
 
     if (attemptErr) throw attemptErr;
+
+    if (pendingManual) {
+      return {
+        success: true,
+        pendingReview: true,
+        score: null,
+        passed: false,
+        maxScore,
+        rawScore: autoRawScore,
+      };
+    }
+
+    // LMS automation event bus — same discipline as the lesson-quiz path above:
+    // fire off the server-graded outcome, once per real attempt.
+    try {
+      const { emitLMSEvent } = await import('../../../libs/core/src/events/lms-event-bus');
+      await emitLMSEvent(passed ? 'quiz_passed' : 'quiz_failed', {
+        workspaceId,
+        contactId,
+        courseId: payload.courseId,
+        moduleId: payload.moduleId,
+        metadata: { score, maxScore, rawScore, quizScope: 'module' },
+      });
+    } catch (evtErr) {
+      logger.error({ err: evtErr, courseId: payload.courseId, moduleId: payload.moduleId }, 'student_progress.module_quiz_attempt.lms_event.failed');
+    }
 
     return { success: true, score, passed, maxScore, rawScore };
   } catch (err: any) {

@@ -1,7 +1,11 @@
 'use server';
 
-import { createServerClient } from '@/lib/supabase/server';
+import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
+import { requireLmsInstructor } from '@/lib/lms/access';
+import { gradeWithManualAwards, MANUAL_REVIEW_TYPES } from '@/lib/lms/quizGrading';
+import { applyAiGradingPass } from '@/lib/lms/aiGradeAnswer';
+import { markLessonCompleteForContact } from '@/lib/lms/completeLesson';
 import { logger } from '@/shared/logger';
 
 // Three Deferred Items, Item 3 — the legacy lms_quizzes/lms_questions/lms_quiz_options/
@@ -125,7 +129,13 @@ export async function getQuizSubmissionsAction(lessonId: string) {
       contact: contactsById.get(a.student_id) || null,
       submitted_at: a.submitted_at,
       score: a.score,
-      status: a.passed ? 'passed' : 'failed',
+      status: a.grade_status === 'pending_review' ? 'pending' : a.passed ? 'passed' : 'failed',
+      grade_status: a.grade_status || 'auto',
+      answers: a.answers || {},
+      max_score: a.max_score ?? null,
+      auto_score: a.auto_score ?? null,
+      manual_points_awarded: a.manual_points_awarded || null,
+      reviewer_feedback: a.reviewer_feedback || null,
       metadata: { total_duration_seconds: a.time_taken_seconds || 0 },
     }));
     return { data: shaped };
@@ -169,12 +179,163 @@ export async function getModuleQuizSubmissionsAction(moduleId: string) {
       contact: contactsById.get(a.student_id) || null,
       submitted_at: a.submitted_at,
       score: a.score,
-      status: a.passed ? 'passed' : 'failed',
+      status: a.grade_status === 'pending_review' ? 'pending' : a.passed ? 'passed' : 'failed',
+      grade_status: a.grade_status || 'auto',
+      answers: a.answers || {},
+      max_score: a.max_score ?? null,
+      auto_score: a.auto_score ?? null,
+      manual_points_awarded: a.manual_points_awarded || null,
+      reviewer_feedback: a.reviewer_feedback || null,
       metadata: { total_duration_seconds: a.time_taken_seconds || 0 },
     }));
     return { data: shaped };
   } catch (error: any) {
     logger.error({ err: error }, 'get.module_quiz.submissions.action.failed');
     return { error: 'Operation failed. Please try again.' };
+  }
+}
+
+/**
+ * Instructor action — grade a quiz attempt that is sitting in 'pending_review' because it
+ * contains one or more file_upload answers. `awards` is { questionId: pointsAwarded } for
+ * each file_upload question (clamped server-side to [0, question.points]). Auto-graded
+ * questions in the same attempt are re-graded from their stored answers; the two are summed
+ * into the final score/pass. On a passing LESSON-quiz review this also marks the lesson
+ * complete and fires quiz_passed (module scope only fires the event).
+ */
+export async function gradeQuizAttemptManualReview(input: {
+  attemptId: string;
+  scope: 'lesson' | 'module';
+  awards: Record<string, number>;
+  feedback?: string;
+}) {
+  try {
+    const { workspaceId, userId } = await requireLmsInstructor();
+    const db = createAdminClient();
+
+    const attemptTable = input.scope === 'module' ? 'module_quiz_attempts' : 'quiz_attempts';
+    const qTable = input.scope === 'module' ? 'module_quiz_questions' : 'quiz_questions';
+    const sTable = input.scope === 'module' ? 'module_quiz_settings' : 'quiz_settings';
+    const scopeCol = input.scope === 'module' ? 'module_id' : 'lesson_id';
+
+    const { data: attempt, error: aErr } = await db
+      .from(attemptTable)
+      .select('*')
+      .eq('id', input.attemptId)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+    if (aErr) throw aErr;
+    if (!attempt) return { error: 'Attempt not found.' };
+    if (attempt.grade_status === 'auto') {
+      return { error: 'This attempt was fully auto-graded — there is nothing to review.' };
+    }
+
+    const scopeId = attempt[scopeCol];
+    const [{ data: questions }, { data: settings }] = await Promise.all([
+      db.from(qTable).select('*').eq(scopeCol, scopeId),
+      db.from(sTable).select('pass_percentage').eq(scopeCol, scopeId).maybeSingle(),
+    ]);
+
+    // Only accept awards for real file_upload questions on this quiz; ignore anything else.
+    const manualIds = new Set(
+      (questions || []).filter((q: any) => MANUAL_REVIEW_TYPES.has(q.question_type)).map((q: any) => q.id),
+    );
+    const cleanAwards: Record<string, number> = {};
+    for (const [qid, pts] of Object.entries(input.awards || {})) {
+      if (manualIds.has(qid)) cleanAwards[qid] = Number(pts) || 0;
+    }
+
+    const passPct = settings?.pass_percentage ?? 70;
+    const result = await applyAiGradingPass(
+      gradeWithManualAwards(questions || [], attempt.answers || {}, cleanAwards, passPct),
+      questions || [],
+      attempt.answers || {},
+      passPct,
+    );
+
+    const { error: uErr } = await db
+      .from(attemptTable)
+      .update({
+        grade_status: 'reviewed',
+        score: result.score,
+        percentage: result.score,
+        passed: result.passed,
+        manual_points_awarded: cleanAwards,
+        reviewer_feedback: (input.feedback || '').trim() || null,
+        graded_by_user_id: userId,
+        graded_at: new Date().toISOString(),
+      })
+      .eq('id', input.attemptId);
+    if (uErr) throw uErr;
+
+    // Post-review side effects mirror the auto-grade path in studentProgress.ts — but run
+    // here because they were deliberately skipped while the attempt was pending.
+    if (input.scope === 'lesson') {
+      const { data: lesson } = await db
+        .from('course_lessons')
+        .select('id, course_id')
+        .eq('id', scopeId)
+        .maybeSingle();
+
+      if (lesson?.course_id) {
+        if (result.passed) {
+          const { data: quizBlocks } = await db
+            .from('content_blocks')
+            .select('id')
+            .eq('lesson_id', scopeId)
+            .eq('type', 'quiz');
+          for (const block of quizBlocks || []) {
+            await db.from('lesson_block_completions').upsert(
+              {
+                content_block_id: block.id,
+                contact_id: attempt.student_id,
+                metric: { score: result.score, passed: true, reviewed: true },
+                completed_at: new Date().toISOString(),
+              },
+              { onConflict: 'content_block_id,contact_id' },
+            );
+          }
+          await markLessonCompleteForContact(workspaceId, attempt.student_id, lesson.course_id, scopeId);
+        }
+
+        try {
+          const { emitLMSEvent } = await import('../../../libs/core/src/events/lms-event-bus');
+          await emitLMSEvent(result.passed ? 'quiz_passed' : 'quiz_failed', {
+            workspaceId,
+            contactId: attempt.student_id,
+            courseId: lesson.course_id,
+            lessonId: scopeId,
+            metadata: { score: result.score, maxScore: result.maxScore, quizScope: 'lesson', reviewed: true },
+          });
+        } catch (evtErr) {
+          logger.error({ err: evtErr, attemptId: input.attemptId }, 'quiz.manual_review.lms_event.failed');
+        }
+      }
+    } else {
+      const { data: courseModule } = await db
+        .from('course_modules')
+        .select('course_id')
+        .eq('id', scopeId)
+        .maybeSingle();
+      if (courseModule?.course_id) {
+        try {
+          const { emitLMSEvent } = await import('../../../libs/core/src/events/lms-event-bus');
+          await emitLMSEvent(result.passed ? 'quiz_passed' : 'quiz_failed', {
+            workspaceId,
+            contactId: attempt.student_id,
+            courseId: courseModule.course_id,
+            moduleId: scopeId,
+            metadata: { score: result.score, maxScore: result.maxScore, quizScope: 'module', reviewed: true },
+          });
+        } catch (evtErr) {
+          logger.error({ err: evtErr, attemptId: input.attemptId }, 'quiz.manual_review.lms_event.failed');
+        }
+      }
+    }
+
+    return { success: true, score: result.score, passed: result.passed, maxScore: result.maxScore };
+  } catch (error: any) {
+    logger.error({ err: error }, 'quiz.manual_review.grade.failed');
+    return { error: 'Failed to save the review.' };
   }
 }

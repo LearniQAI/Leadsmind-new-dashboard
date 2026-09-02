@@ -1,4 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
+import { ruleMatchesCourse, quizScoreGatePasses } from './lms-rule-matching';
+
+export { ruleMatchesCourse, quizScoreGatePasses } from './lms-rule-matching';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,7 +26,7 @@ export async function emitLMSEvent(
 
   try {
     // Query active lms_automation_rules matching this trigger_type
-    const { data: rules, error } = await supabaseAdmin
+    const { data: allRules, error } = await supabaseAdmin
       .from('lms_automation_rules')
       .select('*')
       .eq('workspace_id', payload.workspaceId)
@@ -35,13 +38,25 @@ export async function emitLMSEvent(
       return;
     }
 
-    if (!rules || rules.length === 0) {
-      console.log(`[LMS Event Bus] No active rules matching event: ${eventType}`);
+    // Course scoping: a rule with course_id set fires ONLY for events on that course;
+    // a rule with course_id NULL is workspace-wide and fires for every course. If the
+    // event itself carries no courseId, only workspace-wide rules can match.
+    const rules = (allRules || []).filter((r: any) => ruleMatchesCourse(r, payload.courseId));
+
+    if (rules.length === 0) {
+      console.log(`[LMS Event Bus] No active rules matching event: ${eventType} (course: ${payload.courseId ?? 'n/a'})`);
       return;
     }
 
     for (const rule of rules) {
       console.log(`[LMS Event Bus] Processing rule: ${rule.name} (Action: ${rule.action_type})`);
+
+      // Quiz score gate (see quizScoreGatePasses) — honour the builder's Minimum Score
+      // against the real server-graded score the emitter passes in metadata.
+      if (!quizScoreGatePasses(eventType, rule, payload.metadata?.score)) {
+        console.log(`[LMS Event Bus] Skipping rule ${rule.name}: score ${payload.metadata?.score} fails min_score ${rule.trigger_config?.min_score} for ${eventType}.`);
+        continue;
+      }
 
       // Conditional Branching Rules (Payment Status == Paid vs Free, etc.)
       if (rule.trigger_config?.conditions && rule.trigger_config.conditions.length > 0) {
@@ -75,6 +90,19 @@ export async function emitLMSEvent(
       const delayDays = Number(rule.action_config?.delay_days || 0);
       const totalDelayMs = (delayHours * 60 * 60 * 1000) + (delayDays * 24 * 60 * 60 * 1000);
 
+      // Event metadata (e.g. certificate_issued's { validationId }, quiz_passed's { score })
+      // is spread into the action config so a downstream action (send_certificate_email,
+      // Batch 4) can read what the EVENT carried, not just what the rule was configured with.
+      // rule.action_config wins on any key collision — an explicit rule setting is never
+      // silently overridden by event metadata.
+      const actionConfig = {
+        ...(payload.metadata || {}),
+        ...rule.action_config,
+        courseId: payload.courseId,
+        lessonId: payload.lessonId,
+        moduleId: payload.moduleId,
+      };
+
       if (totalDelayMs > 0) {
         // Insert into delayed actions queue
         const runAt = new Date(Date.now() + totalDelayMs).toISOString();
@@ -84,7 +112,7 @@ export async function emitLMSEvent(
             workspace_id: payload.workspaceId,
             contact_id: payload.contactId,
             action_type: rule.action_type,
-            action_config: { ...rule.action_config, courseId: payload.courseId, lessonId: payload.lessonId },
+            action_config: actionConfig,
             run_at: runAt,
             status: 'pending'
           });
@@ -96,11 +124,7 @@ export async function emitLMSEvent(
         }
       } else {
         // Execute immediately
-        await executeLMSAction(rule.workspace_id, payload.contactId, rule.action_type, {
-          ...rule.action_config,
-          courseId: payload.courseId,
-          lessonId: payload.lessonId
-        });
+        await executeLMSAction(rule.workspace_id, payload.contactId, rule.action_type, actionConfig);
       }
     }
   } catch (err) {

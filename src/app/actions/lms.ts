@@ -47,6 +47,29 @@ export async function getCourses() {
  }
 }
 
+/** Active course bundles in the current workspace — used by the automation rule builder's
+ *  "Enroll in Bundle" action to pick a real lms_bundles row. */
+export async function getBundles() {
+ try {
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { error: 'No workspace active' };
+
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+   .from('lms_bundles')
+   .select('id, name')
+   .eq('workspace_id', workspaceId)
+   .eq('is_active', true)
+   .order('name');
+
+  if (error) throw error;
+  return { data: data || [] };
+ } catch (error: any) {
+  logger.error({ err: error }, 'get.bundles.failed');
+  return { error: 'Operation failed. Please try again.' };
+ }
+}
+
 export async function getCourse(courseId: string) {
  try {
   const workspaceId = await getCurrentWorkspaceId();
@@ -169,6 +192,20 @@ export async function createCourseWithDomain(title: string, domainId?: string | 
    }
    throw error;
   }
+
+  // Batch 4 (G7) — every new course gets the default certificate-delivery rule chain
+  // (course_completed -> assign_certificate, certificate_issued -> send_certificate_email)
+  // automatically, visible/editable in this course's own Automations tab like any other rule.
+  // Fail-soft and best-effort: a problem seeding automation rules must never block course
+  // creation, which has already succeeded above. Idempotent on its own (see
+  // seedCertificateDeliveryBlueprint), so this is also safe if ever called twice.
+  try {
+    const { seedCertificateDeliveryBlueprint } = await import('./courseBlueprints');
+    await seedCertificateDeliveryBlueprint(data.id, workspaceId);
+  } catch (seedErr) {
+    logger.error({ err: seedErr, courseId: data.id, workspaceId }, 'create.course.seed_certificate_delivery.failed');
+  }
+
   return { data };
  } catch (error: any) {
   logger.error({ err: error }, 'create.course.with.domain.failed');

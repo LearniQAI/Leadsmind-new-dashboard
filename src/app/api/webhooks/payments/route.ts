@@ -115,7 +115,9 @@ export async function POST(req: NextRequest) {
 
       // Hook telemetry triggers
       const { emitLMSEvent } = await import('../../../../../libs/core/src/events/lms-event-bus');
-      await emitLMSEvent('student.enrolled', {
+      // 'enrollment_created' — matches the automation-rule builder dropdown; was
+      // previously 'student.enrolled', which no rule could match.
+      await emitLMSEvent('enrollment_created', {
         workspaceId,
         contactId,
         courseId

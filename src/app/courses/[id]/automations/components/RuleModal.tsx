@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { getCourses } from "@/app/actions/lms";
+import { getCourses, getBundles } from "@/app/actions/lms";
 
 interface RuleModalProps {
   isOpen: boolean;
@@ -12,6 +12,8 @@ interface RuleModalProps {
   onSaved: () => void;
   editingRule?: any;
   workspaceId: string | null;
+  /** Course whose Automations tab this modal is opened from. New rules are scoped to it. */
+  courseId: string;
 }
 
 const TRIGGERS = [
@@ -34,6 +36,7 @@ const ACTIONS = [
   { value: "send_email", label: "Send Email" },
   { value: "send_whatsapp", label: "Send WhatsApp" },
   { value: "assign_certificate", label: "Assign Certificate" },
+  { value: "send_certificate_email", label: "Send Certificate Email" },
   { value: "notify_instructor", label: "Notify Instructor" }
 ];
 
@@ -42,7 +45,8 @@ export default function RuleModal({
   onClose,
   onSaved,
   editingRule,
-  workspaceId
+  workspaceId,
+  courseId
 }: RuleModalProps) {
   const [name, setName] = useState("");
   const [triggerType, setTriggerType] = useState("course_completed");
@@ -54,6 +58,7 @@ export default function RuleModal({
 
   // Action configurations
   const [targetCourseId, setTargetCourseId] = useState("");
+  const [targetBundleId, setTargetBundleId] = useState("");
   const [gracePeriod, setGracePeriod] = useState(0);
   const [tagName, setTagName] = useState("");
   const [emailSubject, setEmailSubject] = useState("");
@@ -62,12 +67,16 @@ export default function RuleModal({
   const [instructorId, setInstructorId] = useState("");
 
   const [courses, setCourses] = useState<any[]>([]);
+  const [bundles, setBundles] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       getCourses().then((res) => {
         if (res.data) setCourses(res.data);
+      });
+      getBundles().then((res) => {
+        if (res.data) setBundles(res.data);
       });
     }
   }, [isOpen]);
@@ -84,6 +93,7 @@ export default function RuleModal({
 
       const ac = editingRule.action_config || {};
       setTargetCourseId(ac.course_id || "");
+      setTargetBundleId(ac.bundle_id || "");
       setGracePeriod(ac.grace_period_days || 0);
       setTagName(ac.tag_name || "");
       setEmailSubject(ac.email_subject || "");
@@ -97,6 +107,7 @@ export default function RuleModal({
       setMinScore(70);
       setStruggleThreshold(3);
       setTargetCourseId("");
+      setTargetBundleId("");
       setGracePeriod(0);
       setTagName("");
       setEmailSubject("");
@@ -118,6 +129,10 @@ export default function RuleModal({
       toast.error("No active workspace found");
       return;
     }
+    if (actionType === "enroll_bundle" && !targetBundleId) {
+      toast.error("Select a bundle for the Enroll in Bundle action");
+      return;
+    }
 
     setSaving(true);
 
@@ -134,6 +149,8 @@ export default function RuleModal({
     } else if (actionType === "revoke_course") {
       action_config.course_id = targetCourseId;
       action_config.grace_period_days = gracePeriod;
+    } else if (actionType === "enroll_bundle") {
+      action_config.bundle_id = targetBundleId;
     } else if (actionType === "add_tag") {
       action_config.tag_name = tagName;
     } else if (actionType === "send_email") {
@@ -150,7 +167,7 @@ export default function RuleModal({
       const method = editingRule ? "PATCH" : "POST";
       const bodyPayload = editingRule
         ? { name, trigger_type: triggerType, trigger_config, action_type: actionType, action_config }
-        : { workspace_id: workspaceId, name, trigger_type: triggerType, trigger_config, action_type: actionType, action_config };
+        : { workspace_id: workspaceId, course_id: courseId, name, trigger_type: triggerType, trigger_config, action_type: actionType, action_config };
 
       const res = await fetch(url, {
         method,
@@ -295,6 +312,26 @@ export default function RuleModal({
               </div>
             )}
 
+            {actionType === "enroll_bundle" && (
+              <div className="space-y-1">
+                <label className="text-[11px] !text-dash-textMuted">Select Bundle</label>
+                <select
+                  value={targetBundleId}
+                  onChange={(e) => setTargetBundleId(e.target.value)}
+                  className="w-full bg-dash-surface border border-dash-border rounded-lg px-3 py-2 text-xs outline-none focus:border-dash-accent !text-dash-text"
+                  required
+                >
+                  <option value="">-- Choose Bundle --</option>
+                  {bundles.map((b) => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+                {bundles.length === 0 && (
+                  <p className="text-[10px] !text-dash-textMuted italic">No active bundles in this workspace yet.</p>
+                )}
+              </div>
+            )}
+
             {actionType === "add_tag" && (
               <div className="space-y-1">
                 <label className="text-[11px] !text-dash-textMuted">Tag Name</label>
@@ -364,7 +401,25 @@ export default function RuleModal({
               </div>
             )}
 
-            {!(["enroll_course", "revoke_course", "add_tag", "send_email", "send_whatsapp", "notify_instructor"].includes(actionType)) && (
+            {actionType === "assign_certificate" && (
+              <div className="text-[10px] !text-dash-textMuted italic">
+                Issues this course's completion certificate (stable validation id) to the student. No configuration required.
+              </div>
+            )}
+
+            {actionType === "send_certificate_email" && (
+              <div className="text-[10px] !text-dash-textMuted italic">
+                Sends a dedicated "you earned your certificate" email with a real download link — trigger this on the <span className="font-mono">Certificate Issued</span> event. No configuration required.
+              </div>
+            )}
+
+            {actionType === "grant_community" && (
+              <div className="text-[10px] !text-dash-textMuted italic">
+                Applies a <span className="font-mono">community-access</span> tag and marks the contact's community role. Note: forum access itself is currently workspace-wide.
+              </div>
+            )}
+
+            {!(["enroll_course", "revoke_course", "enroll_bundle", "add_tag", "send_email", "send_whatsapp", "notify_instructor", "assign_certificate", "send_certificate_email", "grant_community"].includes(actionType)) && (
               <div className="text-[10px] !text-dash-textMuted italic">No configuration required for this action response.</div>
             )}
 

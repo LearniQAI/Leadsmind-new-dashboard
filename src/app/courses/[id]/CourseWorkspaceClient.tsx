@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Layers, UserPlus, Users, Palette, Settings as SettingsIcon, Rocket, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -9,7 +9,6 @@ import { useDashboardContext } from "@/components/layouts/DashboardProvider";
 import ModuleCard from "./components/ModuleCard";
 import ModuleCreatorModal from "./components/ModuleCreatorModal";
 import LessonCreatorModal from "./components/LessonCreatorModal";
-import LessonTypePicker from "./components/LessonTypePicker";
 import ConfirmationModal from "@/components/calendar/modals/ConfirmationModal";
 import { mapLessonForModal, mapLessonTypeToDb } from "./utils/lessonMapping";
 import CourseWorkspaceHeader from "./components/CourseWorkspaceHeader";
@@ -30,6 +29,7 @@ export default function CourseWorkspaceClient({
   initialModules
 }: CourseWorkspaceClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { workspace } = useDashboardContext();
   const workspaceId = workspace?.id || null;
 
@@ -44,21 +44,29 @@ export default function CourseWorkspaceClient({
   const [activeFilter, setActiveFilter] = useState<"All" | "draft" | "published" | "coming_soon">("All");
   // Nav restructure (Section 2): 2 top-level tabs only. Modules stays the default — see
   // CourseWorkspaceHeader.tsx and CourseSettingsContainer.tsx for where the other 6 moved.
-  const [activeTab, setActiveTab] = useState<"modules" | "settings">("modules");
-  const [settingsSection, setSettingsSection] = useState<SettingsSectionId>("general");
+  // Batch 8 (G12): the workspace-wide "Needs grading" queue deep-links straight to
+  // ?tab=settings&section=submissions rather than dropping the instructor on Modules.
+  const initialTabParam = searchParams?.get("tab");
+  const initialSectionParam = searchParams?.get("section") as SettingsSectionId | null;
+  const [activeTab, setActiveTab] = useState<"modules" | "settings">(
+    initialTabParam === "settings" ? "settings" : "modules"
+  );
+  const [settingsSection, setSettingsSection] = useState<SettingsSectionId>(
+    initialTabParam === "settings" && initialSectionParam ? initialSectionParam : "general"
+  );
 
   // Modals States
   const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
   const [editingModule, setEditingModule] = useState<any | undefined>(undefined);
 
-  const [isLessonPickerOpen, setIsLessonPickerOpen] = useState(false);
   const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
   const [activeModuleIdForLesson, setActiveModuleIdForLesson] = useState<string>("");
   const [editingLesson, setEditingLesson] = useState<any | undefined>(undefined);
-  // Lesson Builder Foundation (Part 1, Step 2): "+ Add Lesson" is now name-only, replacing
-  // the old LessonTypePicker-first flow for lessons going forward. LessonTypePicker/
-  // LessonCreatorModal are kept (imports above) — they're still the real edit path for
-  // lessons created before this feature (see onEditLesson below).
+  // Batch 7 (G10) — the legacy LessonTypePicker-first flow is retired entirely (it was already
+  // unreachable: nothing ever opened it live). "+ Add Lesson" is name-only -> canvas
+  // (AddLessonNameModal) for every new lesson. LessonCreatorModal is kept only as the real
+  // content-blocks editor for onEditLesson's no-canvas-page fallback and
+  // handleCreateAssignment's "add an assignment block" shortcut — see its own file header.
   const [isAddLessonNameOpen, setIsAddLessonNameOpen] = useState(false);
 
   const [deletingLessonId, setDeletingLessonId] = useState<string | null>(null);
@@ -124,40 +132,6 @@ export default function CourseWorkspaceClient({
       }
     } catch {
       toast.error("Failed to delete module");
-    }
-  };
-
-  const handleLessonTypeSelect = async (lessonType: string) => {
-    if (!activeModuleIdForLesson || !workspaceId) return;
-    try {
-      const res = await fetch("/api/lms/lessons", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          module_id: activeModuleIdForLesson,
-          course_id: course.id,
-          workspace_id: workspaceId,
-          title: `Untitled ${lessonType.toUpperCase()}`,
-          lesson_type: lessonType,
-          content: {},
-          position: (modules.find(m => m.id === activeModuleIdForLesson)?.lessons?.length || 0) + 1
-        })
-      });
-      const dataJson = await res.json();
-      if (dataJson.error) toast.error(dataJson.error);
-      else {
-        toast.success("Lesson initialized.");
-        setIsLessonPickerOpen(false);
-        await refreshWorkspace();
-        if (lessonType === "quiz") {
-          router.push(`/courses/${course.id}/quiz/${dataJson.data.id}`);
-        } else {
-          setEditingLesson(mapLessonForModal(dataJson.data));
-          setIsLessonModalOpen(true);
-        }
-      }
-    } catch {
-      toast.error("Failed to initialize lesson");
     }
   };
 
@@ -503,12 +477,6 @@ export default function CourseWorkspaceClient({
         moduleId={editingModule?.id}
         onClose={() => { setIsModuleModalOpen(false); setEditingModule(undefined); }}
         onSaved={refreshWorkspace}
-      />
-
-      <LessonTypePicker
-        isOpen={isLessonPickerOpen}
-        onClose={() => setIsLessonPickerOpen(false)}
-        onSelect={handleLessonTypeSelect}
       />
 
       {isAddLessonNameOpen && workspaceId && (

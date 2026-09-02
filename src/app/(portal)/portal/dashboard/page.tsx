@@ -74,19 +74,58 @@ export default async function PortalDashboard() {
     .eq('courses.workspace_id', workspace.id);
 
   const enrollments = dbEnrollments || [];
-  
-  // Calculate average progress
+
+  // Calculate average progress across this contact's enrolled courses.
+  //
+  // Batch 5 (G13) fix — this used to read course_progress.progress_percent, a column that
+  // does not exist on the real, live course_progress table (confirmed live 2026-09-02:
+  // id, workspace_id, contact_id, course_id, lesson_id, completed_at, created_at,
+  // progress_seconds, interaction_attempts, completion_override — no percentage column, and
+  // course_progress is a row-PER-LESSON-COMPLETION table, not one summary row per course).
+  // The old `.select('*')` never errored (a nonexistent column just isn't in the returned
+  // row), so `p.progress_percent` was silently `undefined` on every row and the `|| 0`
+  // fallback made every contact's progress read as a real-looking 0% forever — no error,
+  // no visible symptom, just a permanently wrong number.
+  //
+  // Real fix: the same real calculation getEnrolledCoursesWithProgress() already uses
+  // correctly on the /student dashboard — completed lessons (course_progress rows with
+  // completed_at IS NOT NULL) divided by total lessons (course_lessons count), per course.
+  // Not calling that function directly: it resolves its contact from getUser() (Supabase
+  // auth email), a different identity path than this page's getPortalSession()-resolved
+  // `contact` — a portal contact isn't guaranteed to have a matching Supabase auth user, and
+  // reusing a function that re-resolves identity a different way here would risk silently
+  // computing progress for the wrong contact (or none) instead of the one already loaded
+  // above. Replicating the exact same real logic against the already-resolved `contact.id`
+  // keeps this narrowly scoped to the one broken calculation and guarantees the same number
+  // /student would show for the same course.
   let averageProgress = 0;
   if (enrollments.length > 0) {
-    const { data: progressRecords } = await supabase
-      .from('course_progress')
-      .select('*')
-      .eq('contact_id', contact.id);
+    const courseIds = enrollments.map((e: any) => e.course_id).filter(Boolean);
 
-    const progressMap = new Map((progressRecords || []).map(p => [p.course_id, p.progress_percent || 0]));
+    const [{ data: progressLogs }, { data: lessons }] = await Promise.all([
+      supabase
+        .from('course_progress')
+        .select('course_id')
+        .eq('contact_id', contact.id)
+        .not('completed_at', 'is', null)
+        .in('course_id', courseIds),
+      supabase.from('course_lessons').select('course_id').in('course_id', courseIds),
+    ]);
+
+    const lessonCounts = new Map<string, number>();
+    for (const l of lessons || []) {
+      lessonCounts.set(l.course_id, (lessonCounts.get(l.course_id) || 0) + 1);
+    }
+    const completedCounts = new Map<string, number>();
+    for (const p of progressLogs || []) {
+      completedCounts.set(p.course_id, (completedCounts.get(p.course_id) || 0) + 1);
+    }
+
     let totalProgress = 0;
-    for (const e of enrollments) {
-      totalProgress += progressMap.get(e.course_id) || 0;
+    for (const courseId of courseIds) {
+      const total = lessonCounts.get(courseId) || 0;
+      const completed = completedCounts.get(courseId) || 0;
+      totalProgress += total > 0 ? Math.round((completed / total) * 100) : 0;
     }
     averageProgress = Math.round(totalProgress / enrollments.length);
   }

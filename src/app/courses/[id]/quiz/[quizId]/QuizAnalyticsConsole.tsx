@@ -6,9 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   Download, RefreshCw, BarChart2, TrendingUp, TrendingDown,
-  Minus, Clock, ClipboardList, ShieldCheck, XCircle, ChevronRight, X
+  Minus, Clock, ClipboardList, ShieldCheck, XCircle, ChevronRight, X,
+  Clock3, FileText, Loader2
 } from "lucide-react";
-import { getQuizSubmissionsAction, getModuleQuizSubmissionsAction } from "@/app/actions/quizzes";
+import {
+  getQuizSubmissionsAction, getModuleQuizSubmissionsAction, gradeQuizAttemptManualReview,
+} from "@/app/actions/quizzes";
 
 interface QuizAnalyticsConsoleProps {
   quiz: any;
@@ -308,11 +311,19 @@ export default function QuizAnalyticsConsole({ quiz, course, questions, moduleId
                     <div className="space-y-1">
                       <span className="text-[9px] font-bold !text-dash-textMuted block">Latest Score</span>
                       <span className="text-xs font-bold !text-dash-text flex items-center gap-1">
-                        {latest.score}%
-                        {latest.status === "passed" ? (
-                          <span className="text-[9px] text-green">Passed</span>
+                        {latest.status === "pending" ? (
+                          <span className="text-[9px] text-amber-600 flex items-center gap-0.5">
+                            <Clock3 size={9} /> Pending review
+                          </span>
                         ) : (
-                          <span className="text-[9px] text-red">Failed</span>
+                          <>
+                            {latest.score}%
+                            {latest.status === "passed" ? (
+                              <span className="text-[9px] text-green">Passed</span>
+                            ) : (
+                              <span className="text-[9px] text-red">Failed</span>
+                            )}
+                          </>
                         )}
                       </span>
                     </div>
@@ -384,7 +395,11 @@ export default function QuizAnalyticsConsole({ quiz, course, questions, moduleId
                 <div className="grid grid-cols-2 gap-4 bg-dash-surface border border-dash-border p-4 rounded-xl text-xs">
                   <div>
                     <span className="text-[10px] !text-dash-textMuted block">Attempt Score</span>
-                    <span className="font-bold !text-dash-text mt-0.5 block">{selectedSubmission.score}%</span>
+                    <span className="font-bold !text-dash-text mt-0.5 block">
+                      {selectedSubmission.grade_status === "pending_review"
+                        ? "Awaiting review"
+                        : `${selectedSubmission.score ?? 0}%`}
+                    </span>
                   </div>
                   <div>
                     <span className="text-[10px] !text-dash-textMuted block">Duration Spent</span>
@@ -395,6 +410,18 @@ export default function QuizAnalyticsConsole({ quiz, course, questions, moduleId
                     </span>
                   </div>
                 </div>
+
+                {selectedSubmission.grade_status === "pending_review" && (
+                  <ManualReviewPanel
+                    submission={selectedSubmission}
+                    questions={questions}
+                    scope={moduleId ? "module" : "lesson"}
+                    onGraded={() => {
+                      setSelectedSubmission(null);
+                      loadSubmissions();
+                    }}
+                  />
+                )}
 
                 <div className="space-y-4">
                   <span className="text-[10px] font-bold !text-dash-textMuted block">Question Breakdown</span>
@@ -480,6 +507,142 @@ export default function QuizAnalyticsConsole({ quiz, course, questions, moduleId
           </div>
         );
       })()}
+    </div>
+  );
+}
+
+/* --------------------------------------------------------------------------------
+ * Manual review panel — shown inside the diagnostics modal when an attempt is sitting
+ * in 'pending_review' because it contains file_upload answer(s). The instructor opens
+ * each uploaded file, assigns points (0..question points) and optional feedback, and
+ * finalises — which recomputes the attempt's score from (auto-graded questions +
+ * these awards), sets passed, and (for a lesson quiz that now passes) marks the lesson
+ * complete + fires the automation event.
+ * ------------------------------------------------------------------------------ */
+function ManualReviewPanel({
+  submission,
+  questions,
+  scope,
+  onGraded,
+}: {
+  submission: any;
+  questions: any[];
+  scope: "lesson" | "module";
+  onGraded: () => void;
+}) {
+  const fileQuestions = (questions || []).filter((q: any) => q.question_type === "file_upload");
+  const [awards, setAwards] = useState<Record<string, number>>(() => {
+    const seed: Record<string, number> = {};
+    for (const q of fileQuestions) seed[q.id] = submission.manual_points_awarded?.[q.id] ?? 0;
+    return seed;
+  });
+  const [feedback, setFeedback] = useState<string>(submission.reviewer_feedback || "");
+  const [saving, setSaving] = useState(false);
+
+  const answers = submission.answers || {};
+
+  const submitReview = async () => {
+    setSaving(true);
+    try {
+      const res = await gradeQuizAttemptManualReview({
+        attemptId: submission.id,
+        scope,
+        awards,
+        feedback,
+      });
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success(
+        `Review saved — ${res.score}% (${res.passed ? "passed" : "not passed"}).`
+      );
+      onGraded();
+    } catch {
+      toast.error("Could not save the review.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4 rounded-xl border border-amber-200 bg-amber-50/50 p-4">
+      <div className="flex items-center gap-2">
+        <Clock3 size={13} className="text-amber-600" />
+        <span className="text-[11px] font-bold text-amber-800">Grade the uploaded file(s) to finalise this attempt</span>
+      </div>
+
+      {fileQuestions.map((q: any, i: number) => {
+        const ans = answers[q.id];
+        const rubric: { criteria: string; max_points: number }[] = q.metadata?.rubric_criteria || [];
+        const maxPts = q.points || 1;
+        return (
+          <div key={q.id} className="space-y-2.5 rounded-lg border border-dash-border bg-white p-3.5">
+            <span className="text-[11px] font-bold !text-dash-text block">
+              File question {i + 1}: {q.question_text}
+            </span>
+
+            {ans?.file_url ? (
+              <a
+                href={ans.file_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-sky-600 hover:underline"
+              >
+                <FileText size={12} /> {ans.file_name || "Open submitted file"}
+              </a>
+            ) : (
+              <span className="text-[11px] italic !text-dash-textMuted">No file was uploaded.</span>
+            )}
+
+            {rubric.length > 0 && (
+              <ul className="space-y-0.5">
+                {rubric.map((r, ri) => (
+                  <li key={ri} className="flex justify-between text-[10.5px] !text-dash-textMuted">
+                    <span>{r.criteria}</span>
+                    <span>{r.max_points} pts</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="flex items-center gap-2">
+              <label className="text-[10px] font-bold !text-dash-textMuted">Points awarded</label>
+              <input
+                type="number"
+                min={0}
+                max={maxPts}
+                value={awards[q.id] ?? 0}
+                onChange={(e) => {
+                  const v = Math.max(0, Math.min(maxPts, Number(e.target.value) || 0));
+                  setAwards((prev) => ({ ...prev, [q.id]: v }));
+                }}
+                className="w-20 rounded-lg border border-dash-border bg-white px-2 py-1 text-xs !text-dash-text"
+              />
+              <span className="text-[10px] !text-dash-textMuted">/ {maxPts}</span>
+            </div>
+          </div>
+        );
+      })}
+
+      <div className="space-y-1.5">
+        <label className="text-[10px] font-bold !text-dash-textMuted block">Feedback to the student (optional)</label>
+        <textarea
+          value={feedback}
+          onChange={(e) => setFeedback(e.target.value)}
+          rows={2}
+          className="w-full rounded-lg border border-dash-border bg-white px-2.5 py-2 text-xs !text-dash-text"
+        />
+      </div>
+
+      <Button
+        onClick={submitReview}
+        disabled={saving}
+        className="h-10 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-bold px-5 flex items-center gap-1.5 transition-colors motion-reduce:transition-none disabled:opacity-50"
+      >
+        {saving ? <Loader2 size={13} className="animate-spin motion-reduce:animate-none" /> : <ShieldCheck size={13} />}
+        Save review &amp; finalise score
+      </Button>
     </div>
   );
 }
