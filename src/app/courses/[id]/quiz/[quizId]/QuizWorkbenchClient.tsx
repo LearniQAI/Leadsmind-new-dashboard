@@ -92,8 +92,15 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
   const [matchingPairs, setMatchingPairs] = useState<{ left: string; right: string }[]>([{ left: "", right: "" }]);
   const [orderingItems, setOrderingItems] = useState<string[]>(["", ""]);
   const [blankText, setBlankText] = useState("JavaScript is a [blank] scripting language.");
+  // One comma-separated accepted-answers list per [blank], in order. Graded with the SAME
+  // rule short_answer uses (case-insensitive exact match against the list).
+  const [blankAnswers, setBlankAnswers] = useState<string[]>([""]);
+  const [blankCaseSensitive, setBlankCaseSensitive] = useState(false);
   const [starterCode, setStarterCode] = useState("// Write starter challenge template here\n");
-  const [codeAssertions, setCodeAssertions] = useState<{ input: string; expected: string }[]>([{ input: "", expected: "" }]);
+  // Batch 2 scope decision: code questions are graded by NORMALIZED-TEXT match against these
+  // accepted solutions — the student's code is NOT executed. Real execution is a separate,
+  // much larger project.
+  const [acceptedSolutions, setAcceptedSolutions] = useState<string[]>([""]);
   const [rubrics, setRubrics] = useState<{ criteria: string; max_points: number }[]>([{ criteria: "Correctness", max_points: 5 }]);
   
   // Explanation state
@@ -174,9 +181,11 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
       setOrderingItems(meta.items || ["", ""]);
     } else if (q.question_type === "fill_blank") {
       setBlankText(meta.text_with_blanks || "");
+      setBlankAnswers((meta.blanks || []).map((b: any) => (b.accepted || []).join(", ")));
+      setBlankCaseSensitive(!!meta.case_sensitive);
     } else if (q.question_type === "code") {
       setStarterCode(meta.starter_template || "");
-      setCodeAssertions(meta.assertions || [{ input: "", expected: "" }]);
+      setAcceptedSolutions(meta.accepted_solutions?.length ? meta.accepted_solutions : [""]);
     } else if (q.question_type === "file_upload") {
       setRubrics(meta.rubric_criteria || [{ criteria: "Correctness", max_points: 5 }]);
     }
@@ -197,8 +206,10 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
     setMatchingPairs([{ left: "", right: "" }]);
     setOrderingItems(["", ""]);
     setBlankText("Write sentence using [blank] placeholder.");
+    setBlankAnswers([""]);
+    setBlankCaseSensitive(false);
     setStarterCode("// Code challenge starter template\n");
-    setCodeAssertions([{ input: "", expected: "" }]);
+    setAcceptedSolutions([""]);
     setRubrics([{ criteria: "Completeness", max_points: 10 }]);
   };
 
@@ -256,16 +267,32 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
     } else if (type === "ordering") {
       metadata.items = orderingItems.filter(Boolean);
     } else if (type === "fill_in_blank") {
-      if (!blankText.includes("[blank]")) {
+      const blankCount = (blankText.match(/\[blank\]/g) || []).length;
+      if (blankCount === 0) {
         toast.error("Sentence must contain at least one '[blank]' placeholder");
         return;
       }
+      const blanks = Array.from({ length: blankCount }, (_, i) => ({
+        accepted: (blankAnswers[i] || "").split(",").map(s => s.trim()).filter(Boolean),
+      }));
+      if (blanks.some(b => b.accepted.length === 0)) {
+        toast.error("Every blank needs at least one accepted answer");
+        return;
+      }
       metadata.text_with_blanks = blankText;
+      metadata.blanks = blanks;
+      metadata.case_sensitive = blankCaseSensitive;
     } else if (type === "code_challenge") {
+      const solutions = acceptedSolutions.map(s => s.trim()).filter(Boolean);
+      if (solutions.length === 0) {
+        toast.error("Add at least one accepted solution — code is graded by matching against these, not by running it");
+        return;
+      }
       metadata.starter_template = starterCode;
-      metadata.assertions = codeAssertions.filter(a => a.input && a.expected);
+      metadata.accepted_solutions = solutions;
+      metadata.match_mode = "normalized";
     } else if (type === "file_upload") {
-      metadata.rubric_criteria = rubrics;
+      metadata.rubric_criteria = rubrics.filter(r => r.criteria.trim());
     }
 
     const qTypeMap: Record<string, string> = {
@@ -828,21 +855,56 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
               )}
 
               {/* Fill-in-the-blank */}
-              {type === "fill_in_blank" && (
-                <div className="space-y-3">
-                  <label className="text-[10px] !text-dash-textMuted block">Sentence with [blank] spots:</label>
-                  <textarea
-                    value={blankText}
-                    onChange={(e) => setBlankText(e.target.value)}
-                    rows={2}
-                    className="w-full bg-white border border-dash-border rounded-xl px-3 py-2 text-xs !text-dash-text"
-                  />
-                </div>
-              )}
+              {type === "fill_in_blank" && (() => {
+                const blankCount = (blankText.match(/\[blank\]/g) || []).length;
+                return (
+                  <div className="space-y-3">
+                    <label className="text-[10px] !text-dash-textMuted block">Sentence — put <code className="font-mono">[blank]</code> where each answer goes:</label>
+                    <textarea
+                      value={blankText}
+                      onChange={(e) => setBlankText(e.target.value)}
+                      rows={2}
+                      className="w-full bg-white border border-dash-border rounded-xl px-3 py-2 text-xs !text-dash-text"
+                    />
+                    {blankCount === 0 ? (
+                      <p className="text-[10px] text-amber-600">Add at least one <code className="font-mono">[blank]</code> placeholder.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        <span className="text-[10px] !text-dash-textMuted block font-bold">Accepted answers per blank (comma-separated — matched case-insensitively):</span>
+                        {Array.from({ length: blankCount }, (_, idx) => (
+                          <div key={idx} className="flex gap-2 items-center">
+                            <span className="text-[10px] !text-dash-textMuted font-mono shrink-0 w-14">Blank {idx + 1}</span>
+                            <input
+                              type="text"
+                              value={blankAnswers[idx] || ""}
+                              onChange={(e) => {
+                                const updated = [...blankAnswers];
+                                updated[idx] = e.target.value;
+                                setBlankAnswers(updated);
+                              }}
+                              placeholder="e.g. dynamic, interpreted"
+                              className="flex-1 bg-white border border-dash-border rounded-lg px-2 py-1.5 text-xs !text-dash-text"
+                            />
+                          </div>
+                        ))}
+                        <label className="flex items-center gap-2 text-[10px] !text-dash-textMuted">
+                          <input type="checkbox" checked={blankCaseSensitive} onChange={(e) => setBlankCaseSensitive(e.target.checked)} className="accent-primary" />
+                          Case-sensitive matches
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
-              {/* Code Challenge */}
+              {/* Code Challenge — graded by normalized-text match, NOT execution */}
               {type === "code_challenge" && (
                 <div className="space-y-3">
+                  <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/70 p-2.5 text-[10px] leading-relaxed text-amber-800">
+                    <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+                    <span>Graded by comparing the student&apos;s code against your accepted solution(s) with whitespace and indentation ignored — the code is <strong>not run</strong>. For anything requiring real execution, use an assignment instead.</span>
+                  </div>
+                  <label className="text-[10px] !text-dash-textMuted block">Starter template shown to the student:</label>
                   <textarea
                     value={starterCode}
                     onChange={(e) => setStarterCode(e.target.value)}
@@ -850,42 +912,35 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
                     placeholder="// Starter challenge code..."
                     className="w-full bg-white border border-dash-border rounded-xl px-3 py-2 text-xs !text-dash-text font-mono"
                   />
-                  <span className="text-[10px] !text-dash-textMuted block font-bold">Assertions test suite</span>
-                  {codeAssertions.map((assert, idx) => (
-                    <div key={idx} className="flex gap-2">
-                      <input 
-                        type="text"
-                        value={assert.input}
+                  <span className="text-[10px] !text-dash-textMuted block font-bold">Accepted solution(s) — a submission matching any one (ignoring formatting) is correct:</span>
+                  {acceptedSolutions.map((sol, idx) => (
+                    <div key={idx} className="flex gap-2 items-start">
+                      <textarea
+                        value={sol}
                         onChange={(e) => {
-                          const updated = [...codeAssertions];
-                          updated[idx].input = e.target.value;
-                          setCodeAssertions(updated);
+                          const updated = [...acceptedSolutions];
+                          updated[idx] = e.target.value;
+                          setAcceptedSolutions(updated);
                         }}
-                        placeholder="Inputs parameter"
+                        rows={3}
+                        placeholder={"function add(a, b) {\n  return a + b;\n}"}
                         className="flex-1 bg-white border border-dash-border rounded-lg px-2 py-1.5 text-xs !text-dash-text font-mono"
                       />
-                      <input 
-                        type="text"
-                        value={assert.expected}
-                        onChange={(e) => {
-                          const updated = [...codeAssertions];
-                          updated[idx].expected = e.target.value;
-                          setCodeAssertions(updated);
-                        }}
-                        placeholder="Expected outcome"
-                        className="flex-1 bg-white border border-dash-border rounded-lg px-2 py-1.5 text-xs !text-dash-text font-mono"
-                      />
-                      <button onClick={() => setCodeAssertions(codeAssertions.filter((_, i) => i !== idx))} className="text-red shrink-0"><Trash2 size={12} /></button>
+                      <button onClick={() => setAcceptedSolutions(acceptedSolutions.filter((_, i) => i !== idx))} className="text-red shrink-0 pt-1.5"><Trash2 size={12} /></button>
                     </div>
                   ))}
-                  <Button onClick={() => setCodeAssertions([...codeAssertions, { input: "", expected: "" }])} className="h-9 bg-white border border-dash-border hover:bg-dash-surface !text-dash-text rounded-lg text-[10.5px] font-bold transition-colors motion-reduce:transition-none">+ Add Assertion</Button>
+                  <Button onClick={() => setAcceptedSolutions([...acceptedSolutions, ""])} className="h-9 bg-white border border-dash-border hover:bg-dash-surface !text-dash-text rounded-lg text-[10.5px] font-bold transition-colors motion-reduce:transition-none">+ Add accepted solution</Button>
                 </div>
               )}
 
               {/* File Upload Rubrics */}
               {type === "file_upload" && (
                 <div className="space-y-3">
-                  <span className="text-[10px] !text-dash-textMuted block font-bold">Grading criteria rubric:</span>
+                  <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/70 p-2.5 text-[10px] leading-relaxed text-amber-800">
+                    <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+                    <span>The student uploads a file and <strong>you grade it by hand</strong> from the Results tab. Any quiz containing this question type is no longer scored instantly — the student&apos;s attempt waits in &ldquo;pending review&rdquo; until you assign points.</span>
+                  </div>
+                  <span className="text-[10px] !text-dash-textMuted block font-bold">Grading criteria rubric (shown to the student):</span>
                   {rubrics.map((rubric, idx) => (
                     <div key={idx} className="flex gap-2">
                       <input 

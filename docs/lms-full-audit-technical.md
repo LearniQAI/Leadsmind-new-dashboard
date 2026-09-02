@@ -280,11 +280,13 @@ cross-workspace identity key; downstream propagation unbuilt).
 ### 3.1 Lesson-level quizzes — ✅ core, ⚠️ question-type coverage
 
 - **Question types:** schema allows `mcq, true_false, short_answer, matching, ordering,
-  fill_blank, code, file_upload`. Student UI (`StudentQuizClient.tsx`) renders answer inputs
-  for **only** `mcq`, `true_false`, `short_answer`. Server grader (`gradeQuiz.ts`,
-  `LIVE_GRADED_TYPES`) grades the same three; the other five are counted in `maxScore` but
-  always score 0 (deliberate — replaces an old client-side "any non-empty answer = full
-  credit" bug). Effectively quizzes are MCQ / true-false / short-answer today.
+  fill_blank, code, file_upload`. **Original audit state:** student UI rendered inputs for
+  only `mcq`/`true_false`/`short_answer`; the other 5 scored 0. **Batch 2 (2026-09-02,
+  code-complete — see STEP 6.2):** all 8 now have a real student answer UI and real server
+  grading — `matching`/`ordering`/`fill_blank` fully auto-graded, `code` by normalized-text
+  match against accepted solutions (no execution), `file_upload` by instructor review (which
+  makes that quiz non-instant). `LIVE_GRADED_TYPES` in `quizGrading.ts` now holds 7; grading
+  moved to the shared pure module `src/lib/lms/quizGrading.ts`.
 - **Server-side grading:** ✅. `submitQuizAttempt` (`studentProgress.ts:145`) recomputes
   score/pass from `quiz_questions` server-side, never trusts a client score, inserts
   `quiz_attempts` (`student_id` = contact id), and on pass writes quiz-block
@@ -417,7 +419,7 @@ Fonts `css2` URL (not `next/font`).
 | G1 | Automations | 6 of 8 rule triggers (`course_completed`, `lesson_completed`, `quiz_passed`, `quiz_failed`, `module_completed`, `enrollment_created`) are never emitted — rules on them silently never fire | ~~High~~ → **Resolved in code (2026-09-02, Batch 1); live verification pending** — see STEP 6.1 |
 | G2 | Automations | Rules are workspace-wide, not per-course, despite living on a per-course tab | ~~Medium~~ → **Resolved in code (2026-09-02, Batch 1); live verification pending** — see STEP 6.1 |
 | G3 | Automations | `enroll_bundle` + `assign_certificate` actions are unhandled stubs; `grant_community` is a no-op | ~~Medium~~ → **Partially resolved in code (2026-09-02, Batch 1); live verification pending** — `enroll_bundle` + `assign_certificate` now real; `grant_community` intentionally partial (no forum-ACL concept exists). See STEP 6.1 |
-| G4 | Quizzes | 5 of 8 question types (`matching`, `ordering`, `fill_blank`, `code`, `file_upload`) have no student answer UI and always grade 0; the "8 question types" label in the lesson picker overstates it | Medium |
+| G4 | Quizzes | 5 of 8 question types (`matching`, `ordering`, `fill_blank`, `code`, `file_upload`) have no student answer UI and always grade 0; the "8 question types" label in the lesson picker overstates it | ~~Medium~~ → **Resolved in code (2026-09-02, Batch 2); live verification pending** — all 8 now have real student UI + server grading (`code` by normalized-text match, not execution; `file_upload` by instructor review). Label is now accurate. See STEP 6.2 |
 | G5 | AI quiz gen | MCQ only; lesson-scoped generation reads `course_lessons.content` (`{}` in practice) not the actual `content_blocks`, so lesson-scoped output can be generic | Medium |
 | G6 | AI quiz gen | Short-answer grading is exact string match vs a synonyms list — no fuzzy/AI marking | Low |
 | G7 | Certificates | No automatic issue/email on course completion — pull-only download | Medium (roadmap item) |
@@ -535,6 +537,114 @@ course id wins over a rule's *configured target* `course_id`. An `enroll_course`
 `revoke_course` action aimed at a *different* course than the trigger's would act on the
 trigger's course instead. Out of scope for Batch 1 (not G1–G3), left as-is; the seeded
 blueprints all target the same course so they are unaffected.
+
+---
+
+## STEP 6.2 — Batch 2 resolution log ("Missing Quiz Question Types", 2026-09-02)
+
+> Same status vocabulary as STEP 6.1: **code-complete** = wired, `npx tsc --noEmit` clean,
+> `npx vitest run` 218/218 pass (30 new in `src/lib/lms/quizGrading.test.ts`). The
+> student-answers-each-type + instructor-grades-the-upload end-to-end proof needs a running
+> app + seeded student — runbook: `docs/lms-quiz-types-batch2-verification.md`.
+
+### STEP 0 re-confirm (drift check, 2026-09-02)
+
+- Live DB: `quiz_questions` **0 rows**, `module_quiz_questions` **10 rows all `mcq`** — so
+  **zero** existing rows of any of the 5 types; free hand on storage shape. Neither table had
+  a `metadata` column (columns: `id, lesson_id|module_id, workspace_id, question_type,
+  question_text, options, correct_answer, explanation, points, position, created_at`).
+- `LIVE_GRADED_TYPES = {mcq, true_false, short_answer}` confirmed in **both** `gradeQuiz.ts`
+  and `gradeModuleQuiz.ts`. `StudentQuizClient.tsx` rendered inputs for those 3 only. Split
+  was still exactly "3 work, 5 don't".
+- **New finding:** the admin `QuizWorkbenchClient` already had authoring UI for all 8 types
+  and POSTed a `metadata` object for the 5 — but `/api/lms/quiz/questions` +
+  `/api/lms/module-quiz/questions` **silently dropped `metadata`** (never in the insert/update
+  payload, no column). So a matching/ordering/etc. question saved with `options: []`,
+  `correct_answer: {}`, nothing gradeable. `fill_blank` had no per-blank answer editor at
+  all; `code` stored `assertions` (input/expected) that nothing consumed.
+- `api/ai/generate-questions` still MCQ-only (unchanged — G5, not this batch).
+- `page.tsx` (lesson quiz) passed full rows incl. `correct_answer` straight to the client.
+
+### Storage decision
+
+`metadata jsonb` column added to `quiz_questions` + `module_quiz_questions`
+(`20260903000025_quiz_questions_metadata.sql`). Kept the answer key in a **separate** column
+(not `correct_answer`) specifically so the student page can strip it — `buildClientQuestion`
+in `src/lib/lms/quizGrading.ts` drops `metadata` + `correct_answer` for the 5 new types and
+sends only a safe `presentation` object (left items + a **shuffled** right bank; the shuffled
+ordering items; the blank text + count; the code starter; the rubric). The 3 existing types
+are passed through untouched (their `correct_answer` still ships — the client's optimistic
+preview grade for those 3 is unchanged, zero regression). Canonical `metadata` shape per type
+is documented in the migration and in `quizGrading.ts`.
+
+### Per-type outcome
+
+| Type | Student UI | Grading | Scope decision |
+|---|---|---|---|
+| `matching` | dropdown-per-left-item, choosing from a shuffled right bank | server: every pair must match the stored mapping (all-or-nothing per question, like the existing 3) | none — fully auto-gradable |
+| `ordering` | real drag-to-reorder (`@hello-pangea/dnd`, the project's existing DnD lib) | server: submitted order must equal the stored order exactly | none — fully auto-gradable |
+| `fill_blank` | inline `<input>` per `[blank]`, rendered into the sentence | server: **reuses the short-answer matcher** (`matchesAccepted`) per blank against a per-blank accepted list; all blanks must match; honours `case_sensitive` | none — added the missing per-blank accepted-answers editor to the admin workbench |
+| `code` | monospace `<textarea>` seeded with the starter template | server: `normalizeCodeSubmission` (trim lines, collapse whitespace, drop blank lines / CRLF) then exact-match against any stored **accepted solution** — **the code is NOT executed** | **SCOPED DOWN** per prompt. Real execution/test-runner is a separate large project. Admin editor shows an amber note "graded by matching against accepted solutions, not by running the code"; the student sees the same caveat. Replaced the old unused `assertions` editor with an "accepted solutions" editor. |
+| `file_upload` | reuses the existing student upload flow (`/api/lms/upload`, `pathPrefix=student-assignments`) — identical to the in-lesson Assignment upload | **manual**: `gradeQuestionSet` marks the attempt `pendingManual`; `submitQuizAttempt` inserts it `grade_status='pending_review'`, `passed=NULL`, does **not** complete the lesson or fire `quiz_passed`/`quiz_failed`. Instructor grades from `QuizAnalyticsConsole` → new `gradeQuizAttemptManualReview` action → recomputes `auto + awarded` points, sets `passed`, and (lesson scope, now passing) runs block-completion + `markLessonCompleteForContact` + emits the event. | **SCOPED DOWN** per prompt — no auto-grade. Explicit behaviour change: **a quiz containing a `file_upload` question is no longer instant / fully automated.** Surfaced to the student (amber banner on the quiz + "awaiting review" result screen) and to the admin (amber note in the editor + "Pending review" state in the results console). Did **not** reuse `lms_assignment_submissions` (its `unique(contact_id, lesson_id)` would collide with a real lesson assignment); review state lives on the attempt row (`20260903000026_quiz_attempts_manual_review.sql`: `grade_status`, `auto_score`, `manual_points_awarded`, `reviewer_feedback`, `graded_by_user_id`, `graded_at`). |
+
+### Labeling (STEP 4)
+
+After this batch all 8 types genuinely function, so `LessonTypePicker.tsx`'s "8 question
+types" is now **accurate** and left as-is. `docs`/help copy (`src/app/actions/help.ts:725`)
+already enumerated all eight and is now true. **Still overstated, out of this batch's scope:**
+`src/app/(marketing)/landing/data.tsx` says "**10** quiz question types" (there are 8) —
+flagged, not changed (marketing copy, separate decision).
+
+### Files changed
+
+- Migrations: `20260903000025_quiz_questions_metadata.sql`,
+  `20260903000026_quiz_attempts_manual_review.sql`.
+- New: `src/lib/lms/quizGrading.ts` (pure: `gradeSingleQuestion`, `gradeQuestionSet`,
+  `gradeWithManualAwards`, `buildClientQuestion`, `normalizeCodeSubmission`, `matchesAccepted`,
+  `stableShuffle`, `LIVE_GRADED_TYPES`, `MANUAL_REVIEW_TYPES`) + `quizGrading.test.ts` (30).
+- `src/lib/lms/gradeQuiz.ts`, `gradeModuleQuiz.ts` → delegate to `gradeQuestionSet`; return
+  `pendingManual` + `autoRawScore`.
+- `src/app/actions/studentProgress.ts` → `submitQuizAttempt` / `submitModuleQuizAttempt`
+  handle the `pending_review` insert + early return.
+- `src/app/actions/quizzes.ts` → `getQuizSubmissionsAction` / `getModuleQuizSubmissionsAction`
+  now also return `answers` / `grade_status` / `max_score` / `auto_score` /
+  `manual_points_awarded` / `reviewer_feedback`; new `gradeQuizAttemptManualReview`.
+- `src/app/api/lms/quiz/questions/route.ts` + `…/module-quiz/questions/route.ts` → persist
+  `metadata` on POST + PATCH.
+- `src/app/student/courses/[id]/quiz/[quizId]/StudentQuizClient.tsx` → 5 new answer
+  components + file upload + `pendingReview` result state; optimistic client preview now only
+  when every question is one of the 3 client-gradable types.
+- `src/app/student/courses/[id]/quiz/[quizId]/page.tsx` + `…/module-quiz/[moduleId]/page.tsx`
+  → `.map(buildClientQuestion)` before handing questions to the client.
+- `src/app/courses/[id]/quiz/[quizId]/QuizWorkbenchClient.tsx` → per-blank accepted-answers
+  editor; `code` "accepted solutions" editor + caveat; `file_upload` "not instant" note;
+  `metadata` shapes aligned to `quizGrading.ts`.
+- `src/app/courses/[id]/quiz/[quizId]/QuizAnalyticsConsole.tsx` → "Pending review" state in
+  the roster + a `ManualReviewPanel` (open file, award points ≤ question points, feedback,
+  finalise).
+
+### Known limitations / honest notes (Batch 2)
+
+- **Not live-verified.** No running app + seeded student this pass. Migrations **not** applied
+  to any DB by this change (consistent with Batch 1 — production migration is a Milestone 5
+  gate item).
+- **Deploy coupling:** `submitQuizAttempt` / `submitModuleQuizAttempt` now always write
+  `grade_status` + `auto_score`, so migration `…26` MUST be applied before or with this code
+  or **every** quiz submission breaks (not just the new types). Ship them together.
+- `matching` / `ordering` / `fill_blank` are **all-or-nothing per question** (no partial
+  credit) — deliberately consistent with how `mcq`/`short_answer` already score.
+- `code` grading is **string comparison, not execution** — a functionally-correct solution
+  the instructor didn't list as an accepted variant scores 0. This is the documented scope
+  cut; real execution is a separate project.
+- `file_upload` inherits the **same workspace-membership constraint** as the existing
+  in-lesson Assignment upload: `/api/lms/upload` calls `requireWorkspaceAccess()`, so a
+  contact-only `/student` user with no `workspace_members` row can't upload. Pre-existing,
+  shared with Assignments, not introduced here.
+- A `pending_review` attempt **counts toward `max_attempts`** for a lesson quiz. A student
+  who submits a file-upload quiz and is then out of attempts sees the remedial CTA while the
+  review is still pending. Minor; left as-is (it is a real attempt).
+- `ordering` uses pointer drag (`@hello-pangea/dnd`); no keyboard-only reorder fallback was
+  added.
 
 ---
 

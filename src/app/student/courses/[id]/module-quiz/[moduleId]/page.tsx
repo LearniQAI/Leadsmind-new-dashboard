@@ -8,6 +8,7 @@ import { getOrCreateStudentContact } from '@/app/actions/studentEnrollments';
 import { getModuleCompletionStatus } from '@/lib/lms/moduleCompletion';
 import StudentQuizClient from '../../quiz/[quizId]/StudentQuizClient';
 import ModuleQuizShell from './ModuleQuizShell';
+import { buildClientQuestion } from '@/lib/lms/quizGrading';
 
 interface StudentModuleQuizPageProps {
   params: { id: string; moduleId: string };
@@ -109,7 +110,7 @@ export default async function StudentModuleQuizPage({ params }: StudentModuleQui
       <StudentQuizClient
         courseId={courseId}
         quiz={{ id: courseModule.id, title: `${courseModule.title} Quiz` }}
-        questions={questionsRes.data || []}
+        questions={(questionsRes.data || []).map(buildClientQuestion)}
         settings={settingsRes.data || {}}
         attemptsCount={attemptsRes.data?.length || 0}
         hasPassedRemedial={false}
