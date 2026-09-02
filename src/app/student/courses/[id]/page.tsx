@@ -3,7 +3,7 @@ import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ShieldAlert } from 'lucide-react';
 import { createAdminClient } from '@/lib/supabase/server';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, getCurrentProfile } from '@/lib/auth';
 import { getOrCreateStudentContact } from '@/app/actions/studentEnrollments';
 import { getCompletedLessons } from '@/app/actions/studentProgress';
 import { isEnrolmentActive } from '@/lib/lms/enrolment';
@@ -146,6 +146,12 @@ export default async function StudentCoursePlayerPage({ params }: StudentCourseP
     canvasItems: canvasByLesson.get(l.id) || null,
   }));
 
+  // Real logged-in student name — same resolution as the main dashboard greeting.
+  const profile = await getCurrentProfile();
+  const pf = (profile?.firstName || '').trim();
+  const pl = (profile?.lastName || '').trim();
+  const studentName = (pf && pl && pf !== pl ? `${pf} ${pl}` : pf || pl) || null;
+
   return (
     <StudentPlayerClient
       course={course}
@@ -153,6 +159,7 @@ export default async function StudentCoursePlayerPage({ params }: StudentCourseP
       lessons={lessonsWithBlocks}
       initialCompletedLessonIds={completedLessonIds}
       enrollment={enrollment}
+      studentName={studentName}
     />
   );
 }
