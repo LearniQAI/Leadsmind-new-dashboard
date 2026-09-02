@@ -9,7 +9,6 @@ import { useDashboardContext } from "@/components/layouts/DashboardProvider";
 import ModuleCard from "./components/ModuleCard";
 import ModuleCreatorModal from "./components/ModuleCreatorModal";
 import LessonCreatorModal from "./components/LessonCreatorModal";
-import LessonTypePicker from "./components/LessonTypePicker";
 import ConfirmationModal from "@/components/calendar/modals/ConfirmationModal";
 import { mapLessonForModal, mapLessonTypeToDb } from "./utils/lessonMapping";
 import CourseWorkspaceHeader from "./components/CourseWorkspaceHeader";
@@ -51,14 +50,14 @@ export default function CourseWorkspaceClient({
   const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
   const [editingModule, setEditingModule] = useState<any | undefined>(undefined);
 
-  const [isLessonPickerOpen, setIsLessonPickerOpen] = useState(false);
   const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
   const [activeModuleIdForLesson, setActiveModuleIdForLesson] = useState<string>("");
   const [editingLesson, setEditingLesson] = useState<any | undefined>(undefined);
-  // Lesson Builder Foundation (Part 1, Step 2): "+ Add Lesson" is now name-only, replacing
-  // the old LessonTypePicker-first flow for lessons going forward. LessonTypePicker/
-  // LessonCreatorModal are kept (imports above) — they're still the real edit path for
-  // lessons created before this feature (see onEditLesson below).
+  // Batch 7 (G10) — the legacy LessonTypePicker-first flow is retired entirely (it was already
+  // unreachable: nothing ever opened it live). "+ Add Lesson" is name-only -> canvas
+  // (AddLessonNameModal) for every new lesson. LessonCreatorModal is kept only as the real
+  // content-blocks editor for onEditLesson's no-canvas-page fallback and
+  // handleCreateAssignment's "add an assignment block" shortcut — see its own file header.
   const [isAddLessonNameOpen, setIsAddLessonNameOpen] = useState(false);
 
   const [deletingLessonId, setDeletingLessonId] = useState<string | null>(null);
@@ -124,40 +123,6 @@ export default function CourseWorkspaceClient({
       }
     } catch {
       toast.error("Failed to delete module");
-    }
-  };
-
-  const handleLessonTypeSelect = async (lessonType: string) => {
-    if (!activeModuleIdForLesson || !workspaceId) return;
-    try {
-      const res = await fetch("/api/lms/lessons", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          module_id: activeModuleIdForLesson,
-          course_id: course.id,
-          workspace_id: workspaceId,
-          title: `Untitled ${lessonType.toUpperCase()}`,
-          lesson_type: lessonType,
-          content: {},
-          position: (modules.find(m => m.id === activeModuleIdForLesson)?.lessons?.length || 0) + 1
-        })
-      });
-      const dataJson = await res.json();
-      if (dataJson.error) toast.error(dataJson.error);
-      else {
-        toast.success("Lesson initialized.");
-        setIsLessonPickerOpen(false);
-        await refreshWorkspace();
-        if (lessonType === "quiz") {
-          router.push(`/courses/${course.id}/quiz/${dataJson.data.id}`);
-        } else {
-          setEditingLesson(mapLessonForModal(dataJson.data));
-          setIsLessonModalOpen(true);
-        }
-      }
-    } catch {
-      toast.error("Failed to initialize lesson");
     }
   };
 
@@ -503,12 +468,6 @@ export default function CourseWorkspaceClient({
         moduleId={editingModule?.id}
         onClose={() => { setIsModuleModalOpen(false); setEditingModule(undefined); }}
         onSaved={refreshWorkspace}
-      />
-
-      <LessonTypePicker
-        isOpen={isLessonPickerOpen}
-        onClose={() => setIsLessonPickerOpen(false)}
-        onSelect={handleLessonTypeSelect}
       />
 
       {isAddLessonNameOpen && workspaceId && (

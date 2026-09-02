@@ -134,11 +134,9 @@ ordered list the player renders: `heading`/`text`/`image` inline like an article
   is set server-side from an independent re-check. Honest-reporting flag; no student-facing effect.
 - Lesson templates: `LESSON_TEMPLATES` = **2** ("Standard Lesson", "Deep-Dive Lesson"),
   CraftJS-JSON seeds applied via `actions.deserialize()`.
-- Rough edges: two parallel authoring models coexist — the newer canvas/`content_blocks`
-  path and the legacy `lesson_type` path (`LessonTypePicker` still offers `text/video/quiz/
-  assignment/pdf/audio/live_session/flashcards/code/scorm`, incl. `code` and `scorm` which
-  have only mock in-player shims). The legacy per-`lesson_type` renderers still exist as the
-  fallback when a lesson has no blocks (`StudentPlayerClient` ~:1270-1400).
+- **Batch 7 (2026-09-02, see STEP 6.7):** the legacy `lesson_type` authoring path (and its
+  `code`/`scorm` mock shims) has been fully retired — canvas/`content_blocks` is now the only
+  lesson-authoring model, everywhere. `LessonTypePicker.tsx` was deleted.
 
 ### 1.5 Course landing / sales pages — ✅
 
@@ -267,10 +265,10 @@ cross-workspace identity key; downstream propagation unbuilt).
 
 ### 2.7 Known open issues in this area
 
-- Legacy `lesson_type` fallback renderers still ship (`code`/`scorm` are mock shims).
-- `/portal/*` (the separate CRM-contact portal) is a distinct surface; `/portal/dashboard`
-  reads `course_progress.progress_percent` which does not exist on the row-per-lesson table —
-  likely always 0 there (not the `/student` portal, noted for completeness).
+- ~~Legacy `lesson_type` fallback renderers still ship (`code`/`scorm` are mock shims).~~
+  Resolved — Batch 7 (STEP 6.7).
+- ~~`/portal/*`... reads `course_progress.progress_percent` which does not exist...~~
+  Resolved — Batch 5 (STEP 6.5).
 - Short-answer grading is exact-match against a synonyms list, no fuzzy/AI matching.
 
 ---
@@ -432,7 +430,7 @@ Fonts `css2` URL (not `next/font`).
 | G7 | Certificates | No automatic issue/email on course completion — pull-only download | ~~Medium~~ → **Resolved in code (2026-09-02, Batch 4); live verification pending** — seeded rule chain (`course_completed → assign_certificate → certificate_issued → send_certificate_email`), on by default for new courses, real explicit toggle for existing ones. See STEP 6.4 |
 | G8 | Certificates | Design templates real, but no live "preview with real course data" beyond the form; custom-upload placement UX not exercised in this audit | Low |
 | G9 | Catalog | No category / tag filter or taxonomy (no `course_categories` table); search is client-side over the already-loaded list | ~~Low~~ → **Resolved in code (2026-09-02, Batch 6); live verification pending** — real, flat, single-category-per-course taxonomy, admin-manageable, composes with search/price/sort. Search is still client-side over the loaded list (unchanged, out of scope). See STEP 6.6 |
-| G10 | Lesson authoring | Two parallel models (canvas `content_blocks` vs legacy `lesson_type`); `code` + `scorm` legacy lesson types are mock shims only | Medium |
+| G10 | Lesson authoring | Two parallel models (canvas `content_blocks` vs legacy `lesson_type`); `code` + `scorm` legacy lesson types are mock shims only | ~~Medium~~ → **Fully resolved in code (2026-09-02, Batch 7); live verification pending** — legacy per-`lesson_type` system fully retired (student renderer, admin type-picker, admin preview player); `code`/`scorm` removed everywhere as options, not just deprioritized. Zero real lessons required migration. See STEP 6.7 |
 | G11 | Cohorts | `cohorts` / `course_cohorts` tables do not exist — no cohort/group functionality | Low (if not in scope) |
 | G12 | Assignments | Grading is manual/staff-driven; no cross-course "assignments due" inbox (My Results lists submitted ones only) | Low |
 | G13 | Contact portal | `/portal/dashboard` reads a non-existent `course_progress.progress_percent` — progress likely shows 0 there (separate portal from `/student`) | ~~Low~~ → **Resolved in code (2026-09-02, Batch 5); live verification pending** — real per-course completed/total calculation, same formula `/student` uses. See STEP 6.5 |
@@ -1174,6 +1172,165 @@ would argue for freeform multi-tag over a fixed list.
 - Catalog search itself remains client-side over the already-loaded course list (G9's original
   "search is client-side" note) — unchanged, out of this batch's scope, which was specifically
   the missing taxonomy/filter, not search architecture.
+
+---
+
+## STEP 6.7 — Batch 7 resolution log ("Consolidate Lesson Authoring", 2026-09-02)
+
+> Same status vocabulary as 6.1–6.6: **code-complete** = wired, `npx tsc --noEmit` clean,
+> `npx vitest run` unchanged at 226/226 (a UI-consolidation batch — no new pure-logic module).
+> **No migration** — STEP 0's audit found nothing to migrate. No live app run this pass;
+> "content preserved exactly" is verified by construction (the canvas/content_blocks render
+> paths were never touched — see below), not by a before/after screenshot comparison.
+
+### STEP 0 — audit (this reshaped the whole plan)
+
+- **Live lesson inventory (3 lessons, 100% coverage):** every real `course_lessons` row has
+  `lesson_type = 'text'`, a linked canvas `pages` row (`course_lesson_id`), **and** real
+  `content_blocks` rows referenced from that canvas tree. `course_lessons.content` (the legacy
+  field) is `{}` on all three. **Zero real lessons rely on the legacy per-`lesson_type`
+  render path.** There was nothing to migrate — Step 3's "real lesson migration" is a
+  confirmed no-op, stated plainly rather than performed as theater.
+- **New-lesson creation already canvas-only — this was done in an earlier, undocumented pass.**
+  `AddLessonNameModal` (the only reachable "+ Add Lesson" flow) POSTs
+  `lesson_type: 'text', content: {}, create_builder_page: true` unconditionally — there is no
+  live path that creates a lesson of any other type. The standalone `LessonTypePicker`
+  component was still imported and rendered in `CourseWorkspaceClient.tsx`, but a full search
+  confirmed **`setIsLessonPickerOpen(true)` has zero call sites anywhere** — it was already
+  fully dead code, never reachable by a real click.
+- **`LessonCreatorModal`'s own internal Step-1 type grid was also already unreachable.** Its
+  two real, live callers — `onEditLesson`'s no-`builder_page` fallback and
+  `handleCreateAssignment`'s "add an assignment block" shortcut — both always pass an existing
+  `editingLesson`, and the modal's own `useEffect` jumps straight to Step 2 whenever
+  `editingLesson` is set. Step 1 could only ever render if the modal were opened with no
+  lesson at all, which nothing in the live codebase does.
+- **`code` and `scorm` present as fully real to a student, not visibly fake — confirmed, not
+  assumed.** `code`: a genuine Monaco editor + a `new Function('console', codeValue)` runner
+  that really executes JS/TS in the browser and prints real console output (only fails
+  silently for the other listed languages — Python/HTML/CSS — which it can't actually run).
+  `scorm`: a "SCORM player" card with a version label and a fake `window.API`/`API_1484_11`
+  SCORM 1.2/2004 shim wired up — genuinely responds to real SCORM JS calls — but **nothing
+  ever loads a real SCORM package into it** (no manifest parsing, no launch file, just a
+  static card + a "Mark SCORM complete" button, or a raw iframe/download link for a `.zip`).
+  Both present with full confidence, no "demo"/"placeholder" language anywhere a student would
+  see. This confirmed the urgency STEP 2 assumed.
+- **A second, separate instance of the same shim was found during the codebase search that
+  wasn't in the original G10 description:** the ADMIN preview player
+  (`/courses/[id]/learn` → `CoursePlayerClient` → `SpecializedPlayer.tsx`) has its own
+  Video/Audio/PDF/Live-Session/Flashcards/Code/Quiz/Assignment/SCORM switch, keyed off
+  `lesson.type` — a field real `course_lessons` rows never populate (the real column is
+  `lesson_type`), a fact the file's own pre-existing comment already documented. This switch
+  was **already entirely dead** for real lessons (always falls to its plain-text `default`
+  case) — confirmed, not new breakage. Only its `Code`/`SCORM` cases were removed here (Step 2
+  scope); the broader "this admin preview never shows real canvas content" gap is a separate,
+  larger issue, stated but not fixed in this batch (see limitations).
+
+### STEP 1 — consolidation decision: RECOMMENDED path, executed in full
+
+Full retirement, not the fallback alternative — STEP 0 found no real blocker (no real
+legacy-authored content anywhere to risk losing). Concretely:
+- `StudentPlayerClient.tsx`: removed the `lesson_type === 'video' | 'pdf' | 'audio' |
+  'assignment' | 'live_session' | 'flashcards' | 'code' | 'scorm'` render branches and their
+  supporting state/effects (SCORM `window.API` shim, Monaco code-runner state, transcript
+  toggle). **Kept** `lesson_type === 'quiz'` — a distinct, real, currently-used system (a
+  lesson that IS a quiz container, gated separately by `/quiz/[quizId]`), not part of this
+  consolidation. **Kept** the shared `renderAssignmentPanel`/`renderFlashcardsPanel` functions
+  (still real, still used by the `content_blocks` `assignment`/`flashcards` types) — only their
+  legacy `lesson_type`-driven dispatch entries were removed.
+- `LessonTypePicker.tsx` — deleted (confirmed fully dead, see STEP 0).
+- `LessonCreatorModal.tsx` — rewritten, not deleted (it has one real remaining job: the
+  content-blocks editor for `handleCreateAssignment`'s shortcut and `onEditLesson`'s
+  no-canvas-page fallback). Removed: the Step-1 type grid, the `type` state as a user choice,
+  and every type-gated panel that only existed to configure a type nobody can create anymore
+  (video/audio/PDF/SCORM asset URL + upload, SCORM version, Code sandbox, Live Session
+  schedule, the legacy on-lesson flashcards deck — the real flashcards mechanism is the
+  `content_blocks` `flashcards` type via `FlashcardsBlockEditor`, untouched). Kept: title,
+  the real Content Blocks panel (`ContentBlockList`), access level, time estimate, unlock
+  condition, the free-text fallback body, and the AI lesson-summary control.
+- `SpecializedPlayer.tsx` (admin preview) — removed its `Code` and `SCORM` cases specifically
+  (Step 2), left every other case as-is (already-dead, out of this batch's scope to fix).
+- `src/app/actions/help.ts` — the `course-module-lesson-builder` help article described
+  "choosing a lesson type such as ... SCORM-labelled upload" — now stale. Rewrote it to
+  describe the real canvas-first flow and to state SCORM/code-sandbox were removed as options
+  (this article already had an honest "SCORM isn't real" FAQ entry before this batch; the body
+  copy just hadn't caught up).
+
+### STEP 2 — code/scorm: removed entirely, everywhere found
+
+Removed as selectable/reachable options from: `LessonCreatorModal`'s type grid (gone with the
+whole grid), `LessonTypePicker.tsx` (deleted), the `StudentPlayerClient` render switch, and the
+`SpecializedPlayer` admin-preview switch. **Not attempted:** real SCORM runtime or real
+in-browser code execution/grading — explicitly out of scope per the prompt, stated rather than
+quietly built partway.
+
+### STEP 3 — build safety, verified by real search + code trace
+
+- Full-codebase search confirmed `LessonTypePicker` had exactly one importer
+  (`CourseWorkspaceClient.tsx`) before deletion, and zero remain after.
+- Full-codebase search for `lesson_type === 'video'|'pdf'|'audio'|'code'|'scorm'|
+  'live_session'|'flashcards'|'assignment'` returns zero hits anywhere in `src/` post-edit.
+- `hasAssignmentBlock` (real, `content_blocks`-based) is unchanged; only its dead
+  `|| activeLesson.lesson_type === 'assignment'` OR-clause was dropped.
+- The low-bandwidth data-saver banner was gated on the now-dead
+  `activeLesson.lesson_type === 'video'` (meaning it silently never showed for any real,
+  canvas-authored video lesson before this batch either) — replaced with a real
+  `hasVideoBlock` check against `activeLesson.contentBlocks`, a small in-scope correctness fix
+  surfaced by removing the branch it was piggy-backing on.
+- `npx tsc --noEmit` clean; `npx eslint` on every touched file: 0 new errors, 0 new warnings
+  (3 pre-existing `exhaustive-deps` warnings confirmed unchanged via a `git stash` diff; one
+  pre-existing warning — on the now-deleted SCORM effect — is gone, a net improvement).
+
+### STEP 4 — verification
+
+- **Content preserved exactly:** verified by construction, not by comparison — the
+  `canvasItems`/`contentBlocks` render branches (the ONLY branches any real lesson ever
+  reaches) were not edited at all in this batch. Zero real lessons touch the removed code, so
+  there is nothing that could have changed for them.
+- **New-lesson creation is canvas-only, with no legacy step reachable:** confirmed by code
+  trace (`AddLessonNameModal` is the only creation path) and by deleting the one component
+  that could have offered a type choice.
+- **Code/scorm confirmed absent everywhere searched:** `LessonCreatorModal`, the deleted
+  `LessonTypePicker`, `StudentPlayerClient`, `SpecializedPlayer` — all clear. `help.ts`
+  corrected. `src/data/modules.ts` (marketing landing-page copy) still lists "SCORM support"
+  as a feature — **found, not fixed**, same treatment as Batch 3's "10 quiz question types"
+  marketing overstatement: a business-copy decision, out of a code-audit batch's scope, stated
+  plainly rather than silently left or silently rewritten.
+- **Gating regression:** `getLessonLockReason`, `markLessonCompleteForContact`,
+  `lesson_block_completions`/`recordBlockCompletion`, and the reading-gate logic were not
+  touched by any edit in this batch — zero-diff, so drip/sequential locking and quiz-block
+  completion are unaffected by construction, not just by inference.
+- **Not run:** an actual browser session clicking through course creation → canvas editing →
+  student playback. Runbook: `docs/lms-lesson-consolidation-batch7-verification.md`.
+
+### Files changed (Batch 7)
+
+- `src/app/student/courses/[id]/StudentPlayerClient.tsx` — legacy render branches + dead
+  state/effects removed; `hasVideoBlock` real-signal fix.
+- `src/app/courses/[id]/components/LessonCreatorModal.tsx` — rewritten (content-blocks-only
+  editor, no type picker).
+- Deleted: `src/app/courses/[id]/components/LessonTypePicker.tsx`.
+- `src/app/courses/[id]/CourseWorkspaceClient.tsx` — `LessonTypePicker` import/state/handler/
+  JSX removed.
+- `src/app/courses/[id]/learn/components/SpecializedPlayer.tsx` — `Code`/`SCORM` cases removed.
+- `src/app/api/lms/lessons/route.ts` — stale comment corrected.
+- `src/app/actions/help.ts` — lesson-builder help article updated to the real flow.
+
+### Known limitations / honest notes (Batch 7)
+
+- **Not live-verified in a running browser.** Verified by full-codebase search + code trace +
+  the "zero real lessons touch the removed paths" argument instead. Runbook provided.
+- **`SpecializedPlayer`/`CoursePlayerClient` (the admin `/courses/[id]/learn` preview) is
+  confirmed dead for real lessons beyond just Code/SCORM** — every real canvas-authored lesson
+  renders as plain fallback text there, not its real content blocks. This is a genuinely
+  separate, larger gap (the admin preview needs its own canvas/content_blocks awareness, the
+  same rebuild the student player already has) — found during this audit, explicitly NOT
+  fixed here (out of Batch 7's scope, which was retiring the legacy path and removing
+  code/scorm, not rebuilding the admin preview). Worth its own future item.
+- `src/data/modules.ts` marketing copy still claims "SCORM support" — flagged, not changed
+  (business-copy decision).
+- `LessonCreatorModal` still exists (not deleted) — it has one real remaining job (the
+  content-blocks editor for the assignment-shortcut and no-canvas-page edge case). This is a
+  deliberate, narrower removal than "delete the whole modal," stated explicitly.
 
 ---
 

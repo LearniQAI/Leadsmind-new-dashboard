@@ -68,9 +68,10 @@ export async function POST(req: NextRequest) {
       time_estimate_minutes = null,
       // Lesson Builder Foundation (Part 1, Step 2): name-only "+Add Lesson" creates the
       // linked builder `pages` row eagerly, right alongside the lesson row, so the new
-      // flow never needs the builder route's lazy-backfill fallback. Existing callers
-      // (LessonTypePicker's other lesson types, still using the old modal editor) don't
-      // pass this and are unaffected.
+      // flow never needs the builder route's lazy-backfill fallback. Batch 7 (G10): the
+      // one other caller this route ever had — the legacy LessonTypePicker "choose a type"
+      // flow — has been removed entirely (it was already unreachable live); every real
+      // caller of this POST now sets lesson_type: 'text' and create_builder_page: true.
       create_builder_page = false,
       // Part 3: an id into the server-side LESSON_TEMPLATES catalog, never raw client-
       // supplied tree JSON — the same "don't trust client input blindly" rule as every other

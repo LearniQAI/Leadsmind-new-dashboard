@@ -1,12 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import Editor from "@monaco-editor/react";
 import { Button } from "@/components/ui/button";
-import { 
-  PlayCircle, BookOpen, Headphones, FileText, 
-  Video, Layers, Code, Archive, CheckCircle, 
-  ChevronRight, RefreshCw, AlertCircle 
+import {
+  PlayCircle, BookOpen, Headphones, FileText,
+  Video, Layers, CheckCircle,
+  ChevronRight, RefreshCw, AlertCircle
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -49,11 +48,6 @@ export default function SpecializedPlayer({
   const [isFlipped, setIsFlipped] = useState(false);
   const deck = metadata.flashcards || [];
 
-  // Code editor state
-  const [code, setCode] = useState(metadata.starterCode || "");
-  const [codeOutput, setCodeOutput] = useState("");
-  const [isCompiling, setIsCompiling] = useState(false);
-
   // Quiz state
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [checked, setChecked] = useState(false);
@@ -61,16 +55,6 @@ export default function SpecializedPlayer({
   // Assignment state
   const [submissionText, setSubmissionText] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
-
-  const handleRunCode = () => {
-    setIsCompiling(true);
-    setCodeOutput("Running test suites...");
-    setTimeout(() => {
-      setIsCompiling(false);
-      setCodeOutput(`✓ Compilation Successful!\n✓ Test Suite 1 Passed: Output matches challenge spec.\n✓ Test Suite 2 Passed: Execution speed is 4ms.`);
-      toast.success("Code challenge passed!");
-    }, 1500);
-  };
 
   const handleQuizSubmit = () => {
     setChecked(true);
@@ -204,53 +188,6 @@ export default function SpecializedPlayer({
           </div>
         );
 
-      case "Code":
-        return (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[500px]">
-            {/* Monaco Sandbox */}
-            <div className="border border-white/5 rounded-2xl overflow-hidden shadow-2xl flex flex-col h-full bg-[#1e1e1e]">
-              <div className="bg-[#1a1a1a] border-b border-white/5 px-4 py-2 flex items-center justify-between shrink-0">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-accent2 font-mono">{metadata.codeLanguage || "javascript"} Editor</span>
-                <Button
-                  onClick={handleRunCode}
-                  disabled={isCompiling}
-                  className="bg-accent hover:bg-accent/90 text-white font-black text-[9px] uppercase tracking-wider h-8 px-4 rounded-lg flex items-center gap-1 shrink-0"
-                >
-                  {isCompiling ? (
-                    <RefreshCw size={10} className="animate-spin mr-1" />
-                  ) : (
-                    <Code size={10} className="mr-1" />
-                  )}
-                  Execute Code
-                </Button>
-              </div>
-              <div className="flex-1 min-h-0">
-                <Editor
-                  height="100%"
-                  language={metadata.codeLanguage || "javascript"}
-                  theme="vs-dark"
-                  value={code}
-                  onChange={(val) => setCode(val || "")}
-                  options={{
-                    fontSize: 12,
-                    minimap: { enabled: false },
-                    scrollBeyondLastLine: false,
-                    padding: { top: 10, bottom: 10 }
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Test output logs */}
-            <div className="bg-black/50 border border-white/5 rounded-2xl p-4 flex flex-col h-full overflow-hidden shadow-inner font-mono">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-white/40 block mb-2">Terminal Output Logs</span>
-              <div className="flex-1 bg-black/80 rounded-xl p-4 text-xs overflow-y-auto leading-relaxed whitespace-pre-wrap text-emerald-400">
-                {codeOutput || "Run code execution terminal to review outputs..."}
-              </div>
-            </div>
-          </div>
-        );
-
       case "Quiz":
         // Three Deferred Items, Item 3 — QuizPlayer.tsx (and the legacy lms_quizzes/
         // lms_questions/lms_quiz_submissions tables it read/wrote) removed: confirmed dead,
@@ -304,19 +241,6 @@ export default function SpecializedPlayer({
                 </Button>
               </div>
             )}
-          </div>
-        );
-
-      case "SCORM":
-        return (
-          <div className="space-y-4">
-            <div className="w-full h-[550px] rounded-2xl border border-white/5 overflow-hidden shadow-2xl bg-black relative">
-              <div className="absolute top-2 left-2 z-10 bg-black/60 px-3 py-1 rounded text-[9px] text-accent2 font-mono font-bold uppercase tracking-widest border border-white/5">
-                SCORM 1.2 / 2004 Compliant iframe
-              </div>
-              <iframe src={video_url} className="w-full h-full" allowFullScreen />
-            </div>
-            {content && <p className="text-xs text-white/60 leading-relaxed mt-2">{content}</p>}
           </div>
         );
 

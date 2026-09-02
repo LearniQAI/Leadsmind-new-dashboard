@@ -709,13 +709,13 @@ export async function seedHelpArticles() {
         slug: 'course-module-lesson-builder',
         category: 'LMS Advanced Workflows',
         title: 'Building Courses, Modules, and Lessons',
-        body_plain: 'Create courses with modules and lessons from the course builder, choosing a lesson type such as video, text, PDF, audio, quiz, assignment, or SCORM-labelled upload, with real per-lesson access levels of public, enrolled, or paid.',
+        body_plain: 'Create courses with modules and lessons from the course builder. Every lesson opens in the visual canvas editor — no lesson-type choice up front — where you lay out rich text, video, audio, reading material, downloads, embeds, quizzes, assignments and flashcards as real content blocks, with per-lesson access levels of public, enrolled, or paid.',
         content_json: [
           { step: 1, title: 'Create a Course', description: 'Go to Courses and create a new course.' },
-          { step: 2, title: 'Add Modules and Lessons', description: 'Add modules, then lessons of the type you need, and set each lesson’s access level.' }
+          { step: 2, title: 'Add Modules and Lessons', description: 'Add a module, name a lesson, then build it in the canvas editor and set its access level.' }
         ],
         faq_json: [
-          { q: 'Does LeadsMind actually run SCORM packages?', a: 'No, SCORM is currently just a file-upload lesson type accepting a zip file; there is no SCORM runtime, manifest parsing, or completion tracking behind it.' }
+          { q: 'Does LeadsMind support SCORM packages?', a: 'No — SCORM and the in-browser "code sandbox" lesson type were removed as real options; they never had a real runtime behind them. A real SCORM player is a substantial separate project, not currently built.' }
         ]
       },
       {

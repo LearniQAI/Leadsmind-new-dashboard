@@ -3,7 +3,7 @@
 import React, { useState, useTransition, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  BookOpen, ChevronRight, ChevronLeft, ChevronDown, CheckSquare, Clock, Headphones, FileEdit, FileText, Video, Archive, Download, MessageSquare, Loader2, X, Check, Settings, LogOut,
+  BookOpen, ChevronRight, ChevronLeft, ChevronDown, CheckSquare, Clock, FileEdit, FileText, Download, Loader2, X, Check, Settings, LogOut,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { markLessonComplete, markLessonIncomplete } from '@/app/actions/studentProgress';
@@ -13,7 +13,6 @@ import {
   DashModal, DashModalContent, DashModalHeader, DashModalTitle, DashModalDescription, DashModalFooter,
 } from '@/components/dashboard-ui';
 import { recordBlockCompletion, getCompletedBlockIdsForLesson, getLessonBlockCompletionStatus, getLessonReadingGateStatus, recordLessonReadingCompletion } from '@/app/actions/blockCompletion';
-import Editor from '@monaco-editor/react';
 import SyllabusSidebar from './components/SyllabusSidebar';
 import VideoPlayer from './components/VideoPlayer';
 import { useHeartbeat } from '@/hooks/useHeartbeat';
@@ -128,14 +127,8 @@ export default function StudentPlayerClient({
   const [loadingSubmission, setLoadingSubmission] = useState(false);
   const [uploadingStudentFile, setUploadingStudentFile] = useState(false);
 
-  const [showTranscript, setShowTranscript] = useState(false);
-
   const [flashcardIndex, setFlashcardIndex] = useState(0);
   const [flashcardFlipped, setFlashcardFlipped] = useState(false);
-
-  const [codeValue, setCodeValue] = useState('');
-  const [codeConsole, setCodeConsole] = useState('');
-  const [codeRunning, setCodeRunning] = useState(false);
 
   const [openReadingId, setOpenReadingId] = useState<string | null>(null);
 
@@ -291,9 +284,13 @@ export default function StudentPlayerClient({
   };
 
   const hasAssignmentBlock = (activeLesson?.contentBlocks || []).some((b: any) => b.type === 'assignment');
+  // Batch 7 (G10) — real content-block signal, replacing the dead activeLesson.lesson_type ===
+  // 'video' check (no real lesson has ever set that field; video lessons are real content_blocks
+  // rows now, canvas-authored or flat-list, both already present in contentBlocks).
+  const hasVideoBlock = (activeLesson?.contentBlocks || []).some((b: any) => b.type === 'video');
 
   useEffect(() => {
-    if (activeLesson && (activeLesson.lesson_type === 'assignment' || hasAssignmentBlock)) {
+    if (activeLesson && hasAssignmentBlock) {
       setLoadingSubmission(true);
       fetch(`/api/lms/assignments?lessonId=${activeLesson.id}`)
         .then((res) => res.json())
@@ -316,67 +313,6 @@ export default function StudentPlayerClient({
         .finally(() => setLoadingSubmission(false));
     }
   }, [activeLesson]);
-
-  useEffect(() => {
-    if (activeLesson && activeLesson.lesson_type === 'code') {
-      const meta = activeLesson.metadata || {};
-      setCodeValue(meta.starterCode || '');
-      setCodeConsole('');
-    }
-  }, [activeLesson]);
-
-  useEffect(() => {
-    if (activeLesson && activeLesson.lesson_type === 'scorm') {
-      (window as any).API = {
-        LMSInitialize: () => 'true',
-        LMSFinish: () => 'true',
-        LMSGetValue: (element: string) => {
-          if (element === 'cmi.core.lesson_status') {
-            return completedLessonIds.includes(activeLesson.id) ? 'completed' : 'incomplete';
-          }
-          return '';
-        },
-        LMSSetValue: (element: string, value: string) => {
-          if (element === 'cmi.core.lesson_status' && (value === 'completed' || value === 'passed')) {
-            handleToggleComplete(activeLesson.id);
-            toast.success('SCORM package completed!');
-          }
-          return 'true';
-        },
-        LMSCommit: () => 'true',
-        LMSGetLastError: () => '0',
-        LMSGetErrorString: () => 'No error',
-        LMSGetDiagnostic: () => 'No error diagnostic',
-      };
-
-      (window as any).API_1484_11 = {
-        Initialize: () => 'true',
-        Terminate: () => 'true',
-        GetValue: (element: string) => {
-          if (element === 'cmi.completion_status') {
-            return completedLessonIds.includes(activeLesson.id) ? 'completed' : 'incomplete';
-          }
-          return '';
-        },
-        SetValue: (element: string, value: string) => {
-          if ((element === 'cmi.completion_status' || element === 'cmi.success_status') && (value === 'completed' || value === 'passed')) {
-            handleToggleComplete(activeLesson.id);
-            toast.success('SCORM package completed!');
-          }
-          return 'true';
-        },
-        Commit: () => 'true',
-        GetLastError: () => '0',
-        GetErrorString: () => 'No error',
-        GetDiagnostic: () => 'No error diagnostic',
-      };
-    }
-
-    return () => {
-      delete (window as any).API;
-      delete (window as any).API_1484_11;
-    };
-  }, [activeLesson, completedLessonIds]);
 
   const handleStudentFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1237,7 +1173,7 @@ export default function StudentPlayerClient({
                 onScroll={handleLessonBodyScroll}
                 className="flex-1 space-y-6 overflow-y-auto p-6 md:p-8"
               >
-                {lowBandwidthMode && activeLesson.lesson_type === 'video' && !activeLockReason && (
+                {lowBandwidthMode && hasVideoBlock && !activeLockReason && (
                   <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5 text-[12px] text-emerald-800">
                     <Clock size={16} className="shrink-0" />
                     <span>
@@ -1267,34 +1203,6 @@ export default function StudentPlayerClient({
                       <div key={block.id}>{renderBlockBody(block)}</div>
                     ))}
                   </div>
-                ) : activeLesson.lesson_type === 'video' ? (
-                  <VideoPlayer
-                    videoUrl={activeLesson.content?.video_url}
-                    onComplete={() => {
-                      if (!completedLessonIds.includes(activeLesson.id)) {
-                        handleToggleComplete(activeLesson.id);
-                      }
-                    }}
-                    isAlreadyCompleted={completedLessonIds.includes(activeLesson.id)}
-                    lowBandwidthMode={lowBandwidthMode}
-                    onVideoRegister={(el, playing) => {
-                      setVideoElement(el);
-                      setIsVideoPlaying(playing);
-                    }}
-                    onProgressUpdate={async (seconds) => {
-                      if (seconds % 30 === 0) {
-                        try {
-                          await fetch(`/api/enrolments/${enrollment.id}/activity`, {
-                            method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ lessonId: activeLesson.id, progressSeconds: seconds }),
-                          });
-                        } catch (err) {
-                          console.error('[Embed Heartbeat Sync error]:', err);
-                        }
-                      }
-                    }}
-                  />
                 ) : activeLesson.lesson_type === 'quiz' ? (
                   <LessonCard className="mx-auto max-w-xl space-y-5 text-center">
                     <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-500/15">
@@ -1313,182 +1221,6 @@ export default function StudentPlayerClient({
                       Start quiz
                     </a>
                   </LessonCard>
-                ) : activeLesson.lesson_type === 'pdf' ? (
-                  <LessonCard className="mx-auto max-w-xl space-y-5 text-center">
-                    <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-500/15">
-                      <FileText size={24} />
-                    </span>
-                    <div className="space-y-1">
-                      <h3 className="text-[15px] font-semibold !text-dash-text">PDF document</h3>
-                      <p className="mx-auto max-w-sm text-[13px] leading-relaxed !text-dash-textMuted">
-                        Opens in-page so you never lose your place in the course.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setOpenReadingId('legacy-pdf')}
-                      className={`mx-auto inline-flex h-11 items-center justify-center gap-1.5 rounded-lg px-8 text-[13px] font-semibold text-white shadow-sm transition-colors [&_svg]:size-3.5 ${theme.solidBgClass} ${theme.solidHoverBgClass}`}
-                    >
-                      <FileText /> Open reading
-                    </button>
-                  </LessonCard>
-                ) : activeLesson.lesson_type === 'audio' ? (
-                  <LessonCard className="mx-auto max-w-2xl space-y-5">
-                    <PanelHead icon={<Headphones />} title="Audio lesson" subtitle="MP3 playback" />
-                    <audio
-                      src={activeLesson.content?.video_url || activeLesson.video_url}
-                      controls
-                      className="w-full"
-                    />
-                    {activeLesson.content?.text && (
-                      <div className="space-y-3 border-t border-dash-border pt-4">
-                        <button
-                          onClick={() => setShowTranscript(!showTranscript)}
-                          className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-sky-600 hover:text-sky-700"
-                        >
-                          <MessageSquare size={13} /> {showTranscript ? 'Hide transcript' : 'View transcript'}
-                        </button>
-                        {showTranscript && (
-                          <div className="max-h-[300px] overflow-y-auto whitespace-pre-line rounded-xl border border-dash-border bg-dash-surface/60 p-4 text-[13px] leading-relaxed !text-dash-text">
-                            {activeLesson.content.text}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </LessonCard>
-                ) : activeLesson.lesson_type === 'assignment' ? (
-                  renderAssignmentPanel(activeLesson.content?.text)
-                ) : activeLesson.lesson_type === 'live_session' ? (
-                  <LessonCard className="mx-auto max-w-xl space-y-5 text-center">
-                    <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-500/15">
-                      <Video size={24} />
-                    </span>
-                    <div className="space-y-1">
-                      <h3 className="text-[15px] font-semibold !text-dash-text">Live session</h3>
-                      <p className="text-[13px] !text-dash-textMuted">
-                        {activeLesson.metadata?.startTime
-                          ? `Scheduled for ${new Date(activeLesson.metadata.startTime).toLocaleString()}`
-                          : 'Session is active'}
-                      </p>
-                    </div>
-                    {activeLesson.content?.text && (
-                      <div className="mx-auto max-w-md rounded-xl border border-dash-border bg-dash-surface/60 p-4 text-[13px] leading-relaxed !text-dash-text">
-                        {activeLesson.content.text}
-                      </div>
-                    )}
-                    <a
-                      href={activeLesson.content?.video_url || activeLesson.video_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`mx-auto inline-flex h-11 items-center justify-center gap-1.5 rounded-lg px-8 text-[13px] font-semibold text-white shadow-sm transition-colors [&_svg]:size-4 ${theme.solidBgClass} ${theme.solidHoverBgClass}`}
-                    >
-                      <Video /> Join meeting
-                    </a>
-                  </LessonCard>
-                ) : activeLesson.lesson_type === 'flashcards' ? (
-                  renderFlashcardsPanel(activeLesson.metadata?.flashcards || [], () =>
-                    handleToggleComplete(activeLesson.id)
-                  )
-                ) : activeLesson.lesson_type === 'code' ? (
-                  <div className="grid h-[550px] grid-cols-1 gap-4 overflow-hidden lg:grid-cols-3">
-                    <div className="flex flex-col overflow-hidden rounded-2xl border border-dash-border bg-white lg:col-span-2">
-                      <div className="flex shrink-0 items-center justify-between border-b border-dash-border px-4 py-3">
-                        <span className="text-[12px] font-semibold !text-dash-text">
-                          Code sandbox ({activeLesson.metadata?.codeLanguage || 'javascript'})
-                        </span>
-                        <button
-                          onClick={async () => {
-                            setCodeRunning(true);
-                            setCodeConsole('Running…\n');
-                            setTimeout(() => {
-                              try {
-                                let logs: string[] = [];
-                                const mockConsole = {
-                                  log: (...args: any[]) =>
-                                    logs.push(
-                                      args
-                                        .map((a) => (typeof a === 'object' ? JSON.stringify(a) : a))
-                                        .join(' ')
-                                    ),
-                                  error: (...args: any[]) => logs.push('[ERROR]: ' + args.join(' ')),
-                                  warn: (...args: any[]) => logs.push('[WARN]: ' + args.join(' ')),
-                                };
-                                const runner = new Function('console', codeValue);
-                                runner(mockConsole);
-                                setCodeConsole(
-                                  logs.length > 0 ? logs.join('\n') : 'Completed with exit code 0.'
-                                );
-                                toast.success('Execution completed!');
-                                handleToggleComplete(activeLesson.id);
-                              } catch (e: any) {
-                                setCodeConsole(`[RUNTIME EXCEPTION]: ${e.message}`);
-                                toast.error('Execution exception detected.');
-                              } finally {
-                                setCodeRunning(false);
-                              }
-                            }, 1000);
-                          }}
-                          disabled={codeRunning}
-                          className={`inline-flex h-9 items-center gap-1.5 rounded-lg px-5 text-[12px] font-semibold text-white transition-colors ${theme.solidBgClass} ${theme.solidHoverBgClass}`}
-                        >
-                          {codeRunning ? <Loader2 className="animate-spin" size={12} /> : null} Run
-                        </button>
-                      </div>
-                      <div className="min-h-0 flex-1 bg-[#1e1e1e]">
-                        <Editor
-                          height="100%"
-                          language={activeLesson.metadata?.codeLanguage || 'javascript'}
-                          theme="vs-dark"
-                          value={codeValue}
-                          onChange={(val) => setCodeValue(val || '')}
-                          options={{ minimap: { enabled: false }, fontSize: 12, lineNumbers: 'on', automaticLayout: true }}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex flex-col overflow-hidden rounded-2xl border border-dash-border bg-white p-4">
-                      <span className="mb-3 block shrink-0 text-[11px] font-semibold uppercase tracking-[0.1em] !text-dash-textMuted">
-                        Console
-                      </span>
-                      <pre className="flex-1 select-text overflow-y-auto whitespace-pre-wrap rounded-xl border border-dash-border bg-slate-950 p-4 font-mono text-[11px] leading-relaxed text-slate-200">
-                        {codeConsole || 'Idle. Write code and click Run.'}
-                      </pre>
-                    </div>
-                  </div>
-                ) : activeLesson.lesson_type === 'scorm' ? (
-                  <div className="flex h-[650px] flex-col overflow-hidden rounded-2xl border border-dash-border bg-white">
-                    <div className="flex shrink-0 items-center justify-between border-b border-dash-border px-4 py-3">
-                      <span className="text-[12px] font-semibold !text-dash-text">
-                        SCORM player ({activeLesson.metadata?.scormVersion === 'scorm2004' ? 'SCORM 2004' : 'SCORM 1.2'})
-                      </span>
-                      <button
-                        onClick={() => {
-                          handleToggleComplete(activeLesson.id);
-                          toast.success('SCORM package completed!');
-                        }}
-                        className="inline-flex h-9 items-center rounded-lg border border-dash-border bg-white px-4 text-[12px] font-semibold !text-dash-text transition-colors hover:bg-dash-surface"
-                      >
-                        Mark SCORM complete
-                      </button>
-                    </div>
-                    {activeLesson.video_url?.endsWith('.zip') ? (
-                      <div className="flex flex-1 flex-col items-center justify-center gap-4 bg-dash-surface/40 p-8 text-center">
-                        <Archive className="text-sky-500" size={44} />
-                        <div>
-                          <h4 className="text-[14px] font-semibold !text-dash-text">SCORM package loaded</h4>
-                          <p className="mx-auto mt-1 max-w-sm text-[12px] leading-relaxed !text-dash-textMuted">
-                            The archive is hosted securely. Download it or mark the lesson complete.
-                          </p>
-                        </div>
-                        <a
-                          href={activeLesson.video_url}
-                          className={`inline-flex h-10 items-center justify-center rounded-lg px-5 text-[12px] font-semibold text-white transition-colors ${theme.solidBgClass} ${theme.solidHoverBgClass}`}
-                        >
-                          Download package
-                        </a>
-                      </div>
-                    ) : (
-                      <iframe src={activeLesson.video_url} className="flex-1 w-full border-0" />
-                    )}
-                  </div>
                 ) : (
                   <LessonCard className="mx-auto max-w-2xl">
                     <div className="whitespace-pre-line text-[14px] leading-relaxed !text-dash-text">
