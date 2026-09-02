@@ -240,6 +240,32 @@ export async function executeLMSAction(
         break;
       }
 
+      // Batch 4 (G7) — the certificate-earned notification, distinct from generic 'send_email'
+      // (which does not interpolate {{variables}} — reusing it would either ship literal
+      // template text or require fixing that as a side effect of this batch). Fires from a
+      // certificate_issued trigger; courseId comes from the SAME event payload assign_certificate
+      // used to issue the cert, so there's no re-lookup ambiguity.
+      case 'send_certificate_email': {
+        if (!courseId) {
+          console.error('[LMS Worker Executor] courseId is required for send_certificate_email');
+          break;
+        }
+        const validationId = config.validationId || config.validation_id;
+        if (!validationId) {
+          // Defensive only — every real certificate_issued emit (download route,
+          // assign_certificate) always carries metadata.validationId. Without it there is no
+          // certificate to link to, so there's nothing safe to send.
+          console.error('[LMS Worker Executor] send_certificate_email: no validationId in event metadata, skipping');
+          break;
+        }
+        const { sendCertificateEarnedEmail } = await import('@/lib/lms/certificateEmail');
+        const result = await sendCertificateEarnedEmail({ courseId, contactId, workspaceId, validationId });
+        console.log(
+          `[LMS Worker Executor] send_certificate_email: ${result.sent ? 'sent' : `failed (${result.reason})`} to contact ${contactId}`
+        );
+        break;
+      }
+
       case 'grant_community': {
         // There is no per-contact "community access" gate in this codebase: forum/community
         // browsing (src/app/community/*) is gated purely by workspace membership

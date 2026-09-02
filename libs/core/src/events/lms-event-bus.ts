@@ -90,6 +90,19 @@ export async function emitLMSEvent(
       const delayDays = Number(rule.action_config?.delay_days || 0);
       const totalDelayMs = (delayHours * 60 * 60 * 1000) + (delayDays * 24 * 60 * 60 * 1000);
 
+      // Event metadata (e.g. certificate_issued's { validationId }, quiz_passed's { score })
+      // is spread into the action config so a downstream action (send_certificate_email,
+      // Batch 4) can read what the EVENT carried, not just what the rule was configured with.
+      // rule.action_config wins on any key collision — an explicit rule setting is never
+      // silently overridden by event metadata.
+      const actionConfig = {
+        ...(payload.metadata || {}),
+        ...rule.action_config,
+        courseId: payload.courseId,
+        lessonId: payload.lessonId,
+        moduleId: payload.moduleId,
+      };
+
       if (totalDelayMs > 0) {
         // Insert into delayed actions queue
         const runAt = new Date(Date.now() + totalDelayMs).toISOString();
@@ -99,7 +112,7 @@ export async function emitLMSEvent(
             workspace_id: payload.workspaceId,
             contact_id: payload.contactId,
             action_type: rule.action_type,
-            action_config: { ...rule.action_config, courseId: payload.courseId, lessonId: payload.lessonId, moduleId: payload.moduleId },
+            action_config: actionConfig,
             run_at: runAt,
             status: 'pending'
           });
@@ -111,12 +124,7 @@ export async function emitLMSEvent(
         }
       } else {
         // Execute immediately
-        await executeLMSAction(rule.workspace_id, payload.contactId, rule.action_type, {
-          ...rule.action_config,
-          courseId: payload.courseId,
-          lessonId: payload.lessonId,
-          moduleId: payload.moduleId
-        });
+        await executeLMSAction(rule.workspace_id, payload.contactId, rule.action_type, actionConfig);
       }
     }
   } catch (err) {

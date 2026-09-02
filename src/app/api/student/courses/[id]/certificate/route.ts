@@ -128,17 +128,25 @@ export async function GET(
       config: certConfig,
     });
 
-    // Fire certificate telemetry event if needed
-    try {
-      const { emitLMSEvent } = await import('../../../../../../../libs/core/src/events/lms-event-bus');
-      await emitLMSEvent('certificate_issued', {
-        workspaceId: course.workspace_id,
-        contactId,
-        courseId,
-        metadata: { validationId }
-      });
-    } catch (telemetryErr) {
-      console.error('[Certificate API Telemetry Event Error]:', telemetryErr);
+    // Batch 4 (G7) fix — this MUST be gated on cert.created, exactly like the
+    // assign_certificate automation action already gates it (issueCertificate.ts /
+    // automation-executor.ts). Found during the Batch 4 chain-idempotency audit: this emit was
+    // previously unconditional, so every re-download (not just the first) re-fired
+    // certificate_issued — harmless before any certificate_issued rule existed, but once a
+    // certificate_issued -> send_certificate_email rule is seeded, an unconditional emit here
+    // would send a fresh "you earned your certificate!" email on every single re-download.
+    if (cert.created) {
+      try {
+        const { emitLMSEvent } = await import('../../../../../../../libs/core/src/events/lms-event-bus');
+        await emitLMSEvent('certificate_issued', {
+          workspaceId: course.workspace_id,
+          contactId,
+          courseId,
+          metadata: { validationId }
+        });
+      } catch (telemetryErr) {
+        console.error('[Certificate API Telemetry Event Error]:', telemetryErr);
+      }
     }
 
     // Return PDF stream directly

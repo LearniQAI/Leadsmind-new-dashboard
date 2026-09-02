@@ -384,11 +384,12 @@ name / course / issue date / validation id (nothing else). "Certificate verified
   join), not the legacy `certificates` table; on error it warns and returns `[]` (so the
   page renders empty rather than crashing — but it is no longer *permanently* empty by
   construction, it will list real issued rows).
-- **Not built:** automatic send-on-completion (no `emitLMSEvent`/email path issues a
-  certificate or emails a link on course completion — `grep` for cert email in
-  `lib/automation` + `lib/lms` is empty; the `assign_certificate` automation action is an
-  unhandled stub). Delivery today is pull-only: the student downloads from the player sidebar
-  (at 100%), My Results, or `/portal/courses`.
+- **Original audit state:** no automatic send-on-completion — pull-only download. **Batch 4
+  (2026-09-02, code-complete — see STEP 6.4):** a seeded, on-by-default automation rule chain
+  (`course_completed → assign_certificate`, `certificate_issued → send_certificate_email`)
+  now delivers the certificate automatically, reusing the persisted `ensureCourseCertificate`
+  path and a real dedicated email template. Still pull-download-capable exactly as before —
+  this adds delivery, it doesn't replace the manual download.
 - Legacy `lms_certificates` / `lms_certificate_templates` — ⛔ zero code refs, zero rows.
 
 ---
@@ -428,7 +429,7 @@ Fonts `css2` URL (not `next/font`).
 | G4 | Quizzes | 5 of 8 question types (`matching`, `ordering`, `fill_blank`, `code`, `file_upload`) have no student answer UI and always grade 0; the "8 question types" label in the lesson picker overstates it | ~~Medium~~ → **Resolved in code (2026-09-02, Batch 2); live verification pending** — all 8 now have real student UI + server grading (`code` by normalized-text match, not execution; `file_upload` by instructor review). Label is now accurate. See STEP 6.2 |
 | G5 | AI quiz gen | MCQ only; lesson-scoped generation reads `course_lessons.content` (`{}` in practice) not the actual `content_blocks`, so lesson-scoped output can be generic | ~~Medium~~ → **Content source resolved in code (2026-09-02, Batch 3); live verification pending** — both scopes now assemble real text from `content_blocks`. Still MCQ-only (out of Batch 3 scope). See STEP 6.3 |
 | G6 | AI quiz gen | Short-answer grading is exact string match vs a synonyms list — no fuzzy/AI marking | ~~Low~~ → **Resolved in code (2026-09-02, Batch 3); live verification pending** — deterministic fuzzy matching (punctuation-insensitive + capped edit-distance) now default for `short_answer` + `fill_blank`; opt-in per-question AI-semantic grading added, **default off**. See STEP 6.3 |
-| G7 | Certificates | No automatic issue/email on course completion — pull-only download | Medium (roadmap item) |
+| G7 | Certificates | No automatic issue/email on course completion — pull-only download | ~~Medium~~ → **Resolved in code (2026-09-02, Batch 4); live verification pending** — seeded rule chain (`course_completed → assign_certificate → certificate_issued → send_certificate_email`), on by default for new courses, real explicit toggle for existing ones. See STEP 6.4 |
 | G8 | Certificates | Design templates real, but no live "preview with real course data" beyond the form; custom-upload placement UX not exercised in this audit | Low |
 | G9 | Catalog | No category / tag filter or taxonomy (no `course_categories` table); search is client-side over the already-loaded list | Low |
 | G10 | Lesson authoring | Two parallel models (canvas `content_blocks` vs legacy `lesson_type`); `code` + `scorm` legacy lesson types are mock shims only | Medium |
@@ -800,6 +801,168 @@ untouched (they never call this matcher).
 - `applyAiGradingPass` has no unit test that exercises a real model (would be non-
   deterministic); it's covered by the "no candidates → returns base unchanged, zero calls"
   path via the existing grader tests.
+
+---
+
+## STEP 6.4 — Batch 4 resolution log ("Automatic Certificate Issuance & Delivery", 2026-09-02)
+
+> Same status vocabulary as 6.1–6.3: **code-complete** = wired, `npx tsc --noEmit` clean,
+> `npx vitest run` still 226/226 (no new pure-logic surface here to unit-test — this batch is
+> DB/event-orchestration, same category as `gradeQuizAttemptManualReview` in Batch 2, which
+> also has no unit test, by the same precedent). Runbook:
+> `docs/lms-certificate-delivery-batch4-verification.md`. **One migration** (below).
+
+### STEP 0 — design decision: (a), as recommended
+
+Chose the seeded on-by-default rule chain over a hardcoded system behaviour. The STEP 1 audit
+found no real ordering/race concern that would force option (b) — see "chain execution" below.
+Certificate delivery is therefore a normal, visible, editable pair of rows in the same
+`lms_automation_rules` table as everything else on the Automations tab, exactly like every
+other real automation in this codebase.
+
+### STEP 1 audit findings
+
+- **Email infra confirmed and reused, not duplicated.** `sendCourseOnboardingEmail`
+  (`src/lib/lms/onboardingEmail.ts`) is the one other real templated LMS email: Resend via
+  `sendEmail()` (`src/lib/email.ts`, fail-**closed** on a missing/placeholder key — throws),
+  `getWorkspaceEmailConfig` for the workspace's own sender, wrapped in a try/catch that is
+  fail-**soft** at the caller (logs, returns `{sent:false, reason}`, never throws back out).
+  New `src/lib/lms/certificateEmail.ts::sendCertificateEarnedEmail` copies this exact shape.
+- **Real, found-not-assumed bug: the generic `send_email` automation action does not
+  interpolate `{{variables}}`** — `automation-executor.ts`'s `send_email` case does
+  `` `<div>${config.email_body || ''}</div>` `` with no `render()` step, so the 5 pre-existing
+  seeded blueprints (e.g. "Free Enrolment Flow") actually send literal `{{student_first_name}}`
+  text today. This is why a **dedicated action type** (`send_certificate_email`, own fixed
+  template, not reusing `send_email`) was the right call, not a side effect avoided — reusing
+  the broken generic path would have shipped an unrendered template. Not fixed here (separate,
+  pre-existing issue, out of Batch 4's scope) but now documented.
+- **Chain execution — confirmed to cascade correctly, and a real gap was found and closed.**
+  `emitLMSEvent` executes `executeLMSAction` synchronously (`await`, no queue) for a
+  no-delay rule, and `assign_certificate`'s own action handler `await`s a **nested**
+  `emitLMSEvent('certificate_issued', ...)` on a genuine first issue — so
+  `course_completed → assign_certificate → certificate_issued → send_certificate_email` runs
+  as one real, awaited call chain within a single request. **Real gap found:** `emitLMSEvent`
+  built the executor's `config` from only `rule.action_config` + `courseId/lessonId/moduleId`
+  — it never passed the triggering event's `metadata` through, so `send_certificate_email`
+  had no way to read the `validationId` `assign_certificate`'s emit carried. **Fixed:**
+  `emitLMSEvent` now spreads `payload.metadata` into the action config (rule config wins on
+  any key collision), for both the immediate-execution and delayed-action paths.
+- **Loop safety re-verified for the chained scenario specifically, not just standalone.**
+  `assign_certificate` only re-emits `certificate_issued` when `ensureCourseCertificate`
+  reports `created: true` — and that flag comes from a real DB check (existing row → `false`),
+  not from in-memory state. So even a deliberately misconfigured
+  `certificate_issued → assign_certificate` rule self-terminates: the second call finds the
+  row `assign_certificate` itself just inserted, gets `created:false`, and does not re-emit.
+  No infinite loop possible through this action.
+- **Second real gap found: the certificate DOWNLOAD route's own `certificate_issued` emit was
+  unconditional** — every re-download (not just the first) re-fired the event. Harmless before
+  any `certificate_issued` rule existed; **once this batch seeds one, every re-download would
+  have sent a fresh "you earned your certificate!" email.** This is exactly the chained-rule
+  idempotency risk STEP 1 asked to re-verify, and it did NOT hold. **Fixed:**
+  `api/student/courses/[id]/certificate/route.ts` now gates that emit on `cert.created`,
+  matching `assign_certificate`'s own guard.
+- **`seedCourseBlueprints` re-run safety:** confirmed unsafe as-is — it unconditionally
+  `insert()`s all 5 blueprints with no existence check, so clicking its button twice
+  duplicates every rule. Batch 4 does **not** add its 2 rules to that array. Instead, new
+  `seedCertificateDeliveryBlueprint(courseId, workspaceId)` checks for an existing
+  `course_completed` + `assign_certificate` row scoped to the course **first** and no-ops if
+  found — safe to call automatically on every course creation and safe to re-trigger by hand.
+
+### STEP 2 — build
+
+- **New action type `send_certificate_email`** (`automation-executor.ts`) — real
+  congratulatory template (`certificateEmail.ts`): student's real first name, real course
+  title, a **real download link** to the existing authenticated
+  `/api/student/courses/[id]/certificate` route + a verify link, sent via the same
+  Resend/`getWorkspaceEmailConfig` infra. **Decision: link, not PDF attachment** — generating
+  the attachment would mean a second real Puppeteer/`@sparticuz/chromium` render inside the
+  automation event-bus's synchronous call stack (already mid-chain through other rules), for
+  no benefit over a link to the one canonical, always-current PDF-generation path
+  (`issueCertificate.ts`'s explicit "exactly ONE certificate-creation path" principle). Stated
+  here as the open question the original certificate work flagged, now closed.
+- **`lms_automation_rules.action_type` CHECK constraint didn't allow the new value** —
+  confirmed live (migration `20240101000171_lms_admin.sql`'s enum). New migration
+  `20260903000027_lms_automation_send_certificate_email_action.sql` adds
+  `'send_certificate_email'` to the allowed list. (No other schema change this batch —
+  `course_certificates`, `lms_automation_rules.course_id`, and `metadata` all already exist
+  from Batches 1–2.)
+- **Seeding:** `seedCertificateDeliveryBlueprint` called (a) automatically from
+  `createCourseWithDomain`, fail-soft, right after a course is created — every **new** course
+  gets the chain; (b) via a new explicit `enableCertificateDelivery` server action, exposed as
+  a real **"Enable certificate delivery"** button in the course Automations tab (only shown
+  when the course doesn't already have the chain — computed from the loaded rules, not
+  assumed) — the real, transparent way to backfill an **existing** course, per Step 2's
+  either/or: chosen "a real admin-triggered action," not a silent one-off migration script.
+- **Rule visibility:** `send_certificate_email` added to `RuleModal`'s action dropdown with
+  its own no-config explainer, and to the Automations canvas's action-icon switch
+  (`assign_certificate` → award icon, `send_certificate_email` → mail icon) — both seeded
+  rules render and edit exactly like any hand-built rule.
+- **Fail-soft confirmed by construction:** `sendCertificateEarnedEmail` catches every error
+  internally and returns `{sent:false, reason}` — `automation-executor.ts`'s
+  `send_certificate_email` case never throws it back into `emitLMSEvent`'s loop, so one rule
+  failing to email never stops the certificate (already persisted by the earlier
+  `assign_certificate` step) or any other rule.
+
+### STEP 3 — idempotency, end to end (verified by code trace)
+
+1. Student completes final lesson → `markLessonCompleteForContact`'s **first-completion fast
+   path** (existing `existing?.completed_at` guard, unchanged from Batch 1) means
+   `course_completed` fires **exactly once** per genuine 100%-completion event.
+2. `assign_certificate` → `ensureCourseCertificate`: unique `(contact_id, course_id)` DB
+   constraint + race-safe re-read → **exactly one** `course_certificates` row ever, `created`
+   true only the first time.
+3. `certificate_issued` emitted **only when `created:true`** — both call sites now agree
+   (`assign_certificate` already did; the download route is the fix above) → **exactly one**
+   `certificate_issued` event per student per course, regardless of how many times the route
+   is hit or the completion recalculated.
+4. `send_certificate_email` therefore runs **at most once** per student per course. A
+   re-triggered completion recalculation (Batch 1's flagged risk) hits step 1's fast path and
+   never reaches step 2 again; even if it somehow did, step 2's DB-level idempotency absorbs
+   it before an event is ever re-emitted.
+5. The manual "download my certificate" button and the admin issued-certificates list are
+   unaffected — both still read the same single `course_certificates` row via
+   `ensureCourseCertificate` / `getAdminCertificates`; nothing about this batch changes what
+   they show.
+
+### Files changed (Batch 4)
+
+- Migration: `20260903000027_lms_automation_send_certificate_email_action.sql`.
+- New: `src/lib/lms/certificateEmail.ts`.
+- `libs/workers/src/automation-executor.ts` — `send_certificate_email` case.
+- `libs/core/src/events/lms-event-bus.ts` — pass `payload.metadata` into the executed action's
+  config (both immediate and delayed paths).
+- `src/app/api/student/courses/[id]/certificate/route.ts` — gate the `certificate_issued`
+  emit on `cert.created` (bug fix, required for chain idempotency).
+- `src/app/actions/courseBlueprints.ts` — `seedCertificateDeliveryBlueprint` (idempotent) +
+  `enableCertificateDelivery` (auth-gated action).
+- `src/app/actions/lms.ts` — `createCourseWithDomain` seeds the chain on every new course,
+  fail-soft.
+- `src/app/courses/[id]/automations/AutomationsClient.tsx` — "Enable certificate delivery"
+  button (state-aware) + action icons.
+- `src/app/courses/[id]/automations/components/RuleModal.tsx` — `send_certificate_email` in
+  the action dropdown + explainer.
+
+### Known limitations / honest notes (Batch 4)
+
+- **Not live-verified.** No running app / real email send / real student completion this
+  pass; verified by full code trace of the idempotency chain instead. Runbook:
+  `docs/lms-certificate-delivery-batch4-verification.md`.
+- Existing courses created **before** this batch do not have the chain until an admin clicks
+  "Enable certificate delivery" (or it's scripted in bulk separately) — deliberate, not a
+  silent migration.
+- The generic `send_email` action's missing `{{variable}}` interpolation (found during this
+  audit) is a real pre-existing bug, left unfixed — out of this batch's scope, but now on the
+  record rather than newly discovered and ignored.
+- `libs/core/src/events/lms-event-bus.ts` and `libs/workers/src/automation-executor.ts` both
+  fail this project's `no-console` ESLint rule — **pre-existing** on both files (9 violations
+  before this batch, 11 after; the 2 new ones are this batch's own log lines, in the same
+  style as every other case in the same file). Not a regression introduced by this batch, not
+  fixed either (would mean touching every existing case, out of scope).
+- Certificate email delivery inherits the same delivery risk as every other transactional
+  email in this project: it depends on a real configured Resend key
+  (`getWorkspaceEmailConfig` / `RESEND_API_KEY`); with none configured it fails soft and logs
+  `lms.certificate_email.send_failed`, exactly as intended, never blocking the certificate
+  itself.
 
 ---
 

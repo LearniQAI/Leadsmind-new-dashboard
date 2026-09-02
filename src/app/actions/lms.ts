@@ -192,6 +192,20 @@ export async function createCourseWithDomain(title: string, domainId?: string | 
    }
    throw error;
   }
+
+  // Batch 4 (G7) — every new course gets the default certificate-delivery rule chain
+  // (course_completed -> assign_certificate, certificate_issued -> send_certificate_email)
+  // automatically, visible/editable in this course's own Automations tab like any other rule.
+  // Fail-soft and best-effort: a problem seeding automation rules must never block course
+  // creation, which has already succeeded above. Idempotent on its own (see
+  // seedCertificateDeliveryBlueprint), so this is also safe if ever called twice.
+  try {
+    const { seedCertificateDeliveryBlueprint } = await import('./courseBlueprints');
+    await seedCertificateDeliveryBlueprint(data.id, workspaceId);
+  } catch (seedErr) {
+    logger.error({ err: seedErr, courseId: data.id, workspaceId }, 'create.course.seed_certificate_delivery.failed');
+  }
+
   return { data };
  } catch (error: any) {
   logger.error({ err: error }, 'create.course.with.domain.failed');

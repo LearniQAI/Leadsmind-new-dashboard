@@ -36,6 +36,7 @@ const ACTIONS = [
   { value: "send_email", label: "Send Email" },
   { value: "send_whatsapp", label: "Send WhatsApp" },
   { value: "assign_certificate", label: "Assign Certificate" },
+  { value: "send_certificate_email", label: "Send Certificate Email" },
   { value: "notify_instructor", label: "Notify Instructor" }
 ];
 
@@ -406,13 +407,19 @@ export default function RuleModal({
               </div>
             )}
 
+            {actionType === "send_certificate_email" && (
+              <div className="text-[10px] !text-dash-textMuted italic">
+                Sends a dedicated "you earned your certificate" email with a real download link — trigger this on the <span className="font-mono">Certificate Issued</span> event. No configuration required.
+              </div>
+            )}
+
             {actionType === "grant_community" && (
               <div className="text-[10px] !text-dash-textMuted italic">
                 Applies a <span className="font-mono">community-access</span> tag and marks the contact's community role. Note: forum access itself is currently workspace-wide.
               </div>
             )}
 
-            {!(["enroll_course", "revoke_course", "enroll_bundle", "add_tag", "send_email", "send_whatsapp", "notify_instructor", "assign_certificate", "grant_community"].includes(actionType)) && (
+            {!(["enroll_course", "revoke_course", "enroll_bundle", "add_tag", "send_email", "send_whatsapp", "notify_instructor", "assign_certificate", "send_certificate_email", "grant_community"].includes(actionType)) && (
               <div className="text-[10px] !text-dash-textMuted italic">No configuration required for this action response.</div>
             )}
 
