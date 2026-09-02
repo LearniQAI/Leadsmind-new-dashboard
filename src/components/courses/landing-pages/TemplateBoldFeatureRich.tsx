@@ -48,8 +48,9 @@ export default function TemplateBoldFeatureRich({ course, modules, lessons, prev
     return settings.visible_sections?.[secName] !== false;
   };
 
-  // Real enrollment flow — see note in TemplateCleanMinimal. requireAuth() gate for
-  // logged-out visitors is a known, out-of-scope gap for this pass.
+  // Real enrollment flow — see the corrected note in TemplateCleanMinimal (Batch 10 / G15):
+  // /checkout/[courseId] is the real, public, guest-capable route; the old requireAuth()
+  // gate this comment used to flag belonged to a route that no longer exists.
   const handleEnroll = () => {
     if (course?.id) {
       // Public checkout — works for logged-out visitors (guest flow) and authenticated students.

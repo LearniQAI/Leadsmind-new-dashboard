@@ -428,14 +428,14 @@ Fonts `css2` URL (not `next/font`).
 | G5 | AI quiz gen | MCQ only; lesson-scoped generation reads `course_lessons.content` (`{}` in practice) not the actual `content_blocks`, so lesson-scoped output can be generic | ~~Medium~~ → **Content source resolved in code (2026-09-02, Batch 3); live verification pending** — both scopes now assemble real text from `content_blocks`. Still MCQ-only (out of Batch 3 scope). See STEP 6.3 |
 | G6 | AI quiz gen | Short-answer grading is exact string match vs a synonyms list — no fuzzy/AI marking | ~~Low~~ → **Resolved in code (2026-09-02, Batch 3); live verification pending** — deterministic fuzzy matching (punctuation-insensitive + capped edit-distance) now default for `short_answer` + `fill_blank`; opt-in per-question AI-semantic grading added, **default off**. See STEP 6.3 |
 | G7 | Certificates | No automatic issue/email on course completion — pull-only download | ~~Medium~~ → **Resolved in code (2026-09-02, Batch 4); live verification pending** — seeded rule chain (`course_completed → assign_certificate → certificate_issued → send_certificate_email`), on by default for new courses, real explicit toggle for existing ones. See STEP 6.4 |
-| G8 | Certificates | Design templates real, but no live "preview with real course data" beyond the form; custom-upload placement UX not exercised in this audit | Low |
+| G8 | Certificates | Design templates real, but no live "preview with real course data" beyond the form; custom-upload placement UX not exercised in this audit | **Genuinely live-verified (2026-09-02, Batch 10)** — real screenshots rendered from the real template code with real long-name/long-course stress data. **2 real layout bugs found, not fixed** (classic template footer clips on double-long name+title; custom-upload fields can visually overlap on long values). See STEP 6.9 |
 | G9 | Catalog | No category / tag filter or taxonomy (no `course_categories` table); search is client-side over the already-loaded list | ~~Low~~ → **Resolved in code (2026-09-02, Batch 6); live verification pending** — real, flat, single-category-per-course taxonomy, admin-manageable, composes with search/price/sort. Search is still client-side over the loaded list (unchanged, out of scope). See STEP 6.6 |
 | G10 | Lesson authoring | Two parallel models (canvas `content_blocks` vs legacy `lesson_type`); `code` + `scorm` legacy lesson types are mock shims only | ~~Medium~~ → **Fully resolved in code (2026-09-02, Batch 7); live verification pending** — legacy per-`lesson_type` system fully retired (student renderer, admin type-picker, admin preview player); `code`/`scorm` removed everywhere as options, not just deprioritized. Zero real lessons required migration. See STEP 6.7 |
 | G11 | Cohorts | `cohorts` / `course_cohorts` tables do not exist — no cohort/group functionality | Low (if not in scope) |
 | G12 | Assignments | Grading is manual/staff-driven; no cross-course "assignments due" inbox (My Results lists submitted ones only) | ~~Low~~ → **Resolved in code (2026-09-02, Batch 8); live verification pending** — unified "My Work" section on My Results (not-submitted / awaiting review / needs revision / recently graded), covering assignments AND Batch 2's file-upload pending-review quiz attempts together; a real cross-course admin "Needs grading" queue also built. **Depends on Batch 2's migration `…026` being applied** — see STEP 6.8 |
 | G13 | Contact portal | `/portal/dashboard` reads a non-existent `course_progress.progress_percent` — progress likely shows 0 there (separate portal from `/student`) | ~~Low~~ → **Resolved in code (2026-09-02, Batch 5); live verification pending** — real per-course completed/total calculation, same formula `/student` uses. See STEP 6.5 |
 | G14 | Legacy tables | `lms_certificates`, `lms_certificate_templates`, `lms_quizzes` remain in the DB, dead (drop deferred — Milestone 5, ADR-0005) | Cosmetic |
-| G15 | Landing/checkout | A code comment flags an out-of-scope checkout-page gap from the landing-page pass; guest-checkout payment paths not exercised live in this audit | Unknown — needs live payment test |
+| G15 | Landing/checkout | A code comment flags an out-of-scope checkout-page gap from the landing-page pass; guest-checkout payment paths not exercised live in this audit | **NOT live-verified — stated as the primary finding, not buried.** This session has no browser/Stripe-hosted-checkout capability, AND this environment's `STRIPE_SECRET_KEY` is a **live-mode key** (`sk_live_...`), so a real test here would risk real money — correctly refused rather than attempted. The flagged code comment itself **no longer applies** (confirmed stale — the route it described was replaced). Code-trace + DB verification only. See STEP 6.9 |
 
 ## STEP 6.1 — Batch 1 resolution log ("Make Course Automations Actually Work", 2026-09-02)
 
@@ -1454,6 +1454,196 @@ small, symmetric addition, not a second system.
 - The admin queue enumerates and deep-links; it does not add a grade-inline action on that
   page itself — grading still happens on the existing Submissions/Results tabs, deliberately,
   to avoid a second, parallel grading code path.
+
+---
+
+## STEP 6.9 — Batch 10 resolution log ("Certificate Design Verification + Live Payment Path Test", 2026-09-02)
+
+> Different status vocabulary this time, deliberately: G8 below is **genuinely live-verified**
+> (real template code, real Chromium render, real screenshots visually inspected) — the
+> highest confidence level this whole sequence has produced. G15 is explicitly **NOT
+> live-verified**, stated as the primary finding rather than softened — see its own section
+> for exactly why, including a safety-relevant reason beyond tooling. No migration, no code
+> changes to the payment path; two stale comments corrected (landing templates); two real
+> template bugs found and documented, not fixed.
+
+### STEP 0 — audit
+
+- **The flagged landing-page comment, read exactly, not paraphrased:** "Real enrollment flow
+  — `/student/checkout/[courseId]` runs the actual free-enroll or Stripe Connect checkout.
+  Known gap (out of scope this pass): the checkout page calls `requireAuth()`, so a logged-out
+  visitor is bounced to sign-in before paying." **This describes a route the button two lines
+  below it doesn't even call.** The actual `handleEnroll()` navigates to `/checkout/[courseId]`
+  (no `/student` prefix) — confirmed via that route's own docblock to be a **real, rebuilt,
+  public** checkout page: "PUBLIC course checkout... Logged-out visitor → the guest flow
+  (name+email for free; Stripe hosted checkout in guest mode for paid). No redirect to sign-in.
+  The old route `/student/checkout/[courseId]` now just redirects here." **The gap the comment
+  described no longer exists** — the checkout page was rebuilt to be public at some point
+  after that comment was written, and the comment was simply never updated. Corrected in all 3
+  landing templates (`TemplateCleanMinimal`/`BoldFeatureRich`/`CommunityCoaching`) rather than
+  left to mislead the next reader.
+- **Guest-checkout code path re-traced end to end, confirmed reading the CORRECTED insert
+  logic:** landing "Enroll" → `/checkout/[courseId]` (public, `getUser()` branches guest vs.
+  authenticated) → `CheckoutClient` (`isGuest` mode) → `createGuestCourseCheckoutSession`
+  (`guestCheckout.ts`) creates a Stripe Checkout Session with `{courseId, workspaceId}`
+  metadata, no `contactId` → real signature-verified `checkout.session.completed` webhook
+  (`api/webhooks/payments/route.ts`) → `handleGuestCheckoutSessionCompleted`
+  (`guestEnrollment.ts`) → `insertEnrollmentIfAbsent`. **Confirmed live in the current code,
+  not assumed:** the enrollment insert does NOT write `workspace_id` (comment: "enrollments
+  has no workspace_id column — workspace derives via course_id -> courses") — the exact fix
+  the schema-drift sweep's real, confirmed money-losing bug required — and
+  `emitLMSEvent('enrollment_created', ...)` (not the old unmatched `'student.enrolled'`) is
+  the correctly-renamed event from Batch 1. **Also confirmed live:** the authenticated
+  (non-guest) branch of the same webhook has the identical fix and the identical correct event
+  name. Both paths read the corrected logic — there is no stale bypass route left.
+- **Real, historical evidence checked, not just code-read:** live-queried this database for
+  `contacts` with `source='guest_checkout'` (**0 rows**) and `enrollments` with a real
+  `stripe_payment_intent_id` (**0 rows**). **No real paid enrollment — guest or authenticated
+  — has ever gone through this system on this database.** Stated plainly: there is no
+  historical evidence either way that the live payment path has ever actually worked
+  end-to-end for real money, only that the code, read directly, looks correct.
+- **Certificate system re-confirmed current** before testing: `certConfig = course.
+  certificate_config || ws?.certificate_config || {}` (the resolution route) is untouched by
+  Batch 1's refactor of `issueCertificate.ts` (that refactor only touched the
+  validation-id/snapshot issuance logic, not this separate config-resolution line) — still
+  intact, confirmed by direct re-read.
+
+### STEP 1 — G8, genuinely live-verified
+
+**What "live" means here, stated precisely:** this app's real production PDF path
+(`@sparticuz/chromium`, a Linux/Lambda binary) cannot launch on this session's Windows host —
+confirmed: `chromium.executablePath()` resolves to a nonexistent path, launch fails ENOENT.
+Substituted a real local Chrome install instead (disclosed, not the literal prod binary) to
+render the **exact same, unmodified** `renderCertificateHtml()` function imported directly
+from `libs/services/src/pdf/cert-templates.ts` via `tsx` — genuinely the real template code, a
+real modern Chromium engine, real screenshots, **visually inspected**, not just code-read.
+
+8 real renders: each of `classic`/`modern`/`editorial` with a short-data case and a
+deliberately extreme long-data stress case (a hyphenated multi-word name, a 120-character
+course title), plus `modern` with a real logo + signature name/title/image, plus 2
+custom-upload renders (short data, then the same long-data stress case) with a real background
+image and 4 real field placements. All 8 saved as real evidence:
+`docs/batch10-certificate-verification/` (with its own README indexing each finding).
+
+**Findings:**
+- **`modern` and `editorial`: robust.** Both wrap long names/titles onto multiple lines
+  cleanly with no clipping or overlap in either the short or the extreme-long case — `modern`
+  because its footer (validation id, signature) is independently positioned, not pushed by the
+  name/title block; `editorial` because its split two-column layout lets the left column grow
+  freely. Logo, signature name/title, and signature image all render correctly in `modern`.
+- **Real bug found: `classic` template clips its footer on long data.** With a long name AND a
+  long course title together, the wrapped text pushes the "Verified Graduate" seal and the
+  date/validation-id footer row down far enough that the footer is **cut off by the page's own
+  `overflow:hidden` bottom edge** — the validation ID becomes invisible on the generated
+  certificate. Root cause: `classic()`'s layout is normal document flow inside a fixed-height
+  `297mm × 210mm` box with `overflow:hidden` and no dynamic scaling — nothing shrinks or
+  reflows when the two longest real-world fields combine. **Not fixed in this batch** (a
+  verification pass, per this batch's own framing) — documented precisely so it can be.
+- **Real bug found: custom-upload fields can visually overlap on long values.** Each field
+  (`studentName`/`courseTitle`/`completionDate`/`validationId`) is an independently
+  absolutely-positioned `<div>` at a fixed `top:{yPct}%`, vertically centred on that point via
+  `transform:translate(...,-50%)`. There is no measurement of a field's actual rendered height
+  and no collision-awareness between fields — an admin who places `studentName` and
+  `courseTitle` close together (reasonable for the short names they were likely previewing
+  with) gets a real, confirmed visual collision — the wrapped long name overlapped the course
+  title text directly in the rendered screenshot. **Not fixed in this batch** — same reasoning
+  as above.
+- **Config resolution confirmed correct:** workspace-default vs. per-course-override behaves
+  exactly as documented, unaffected by Batch 1.
+
+### STEP 2 — G15, live-verification explicitly NOT performed — stated first, not buried
+
+**This session has no capability to complete a real Stripe hosted checkout** — no browser, no
+way to fill in Stripe's own payment form, no `stripe listen` webhook forwarding set up, no
+running app server this pass. That alone would already put G15 at "code-complete, pending
+live" like most of this sequence.
+
+**But there is a second, more important reason this was not attempted, found during this
+batch's own audit:** this environment's `.env.local` has `STRIPE_SECRET_KEY=sk_live_...` — a
+**live-mode** key, not `sk_test_...` — and `src/lib/stripe.ts` reads that exact variable for
+every Stripe call including Checkout Session creation. **Attempting anything resembling a real
+checkout in this session would not be a test — it would be a real charge against a real Stripe
+account.** Correctly refused, not attempted, and surfaced here as the primary finding for this
+item, exactly as the task's own instruction required for the highest-risk item in the sequence.
+
+What WAS verified, at the standard available (code trace + live DB, no payment attempt):
+- The flagged code comment: confirmed stale, no longer applies (see STEP 0).
+- The guest-checkout code path: re-traced end to end, confirmed reading the corrected
+  `enrollments`-insert logic and the corrected event name on both the guest and authenticated
+  branches (see STEP 0).
+- **The critical bypass test (Test 3) — re-confirmed by direct code read, not by running it.**
+  A pre-existing, never-executed runbook already exists for this exact scenario
+  (`docs/LIVE_TEST_CHECKLIST.md`, written when guest checkout was first built) — its own header
+  states the tests "could not be executed in the build environment," and its "Two-bucket report
+  to fill in after running" section is still blank placeholders. **This test has never actually
+  been run, in this codebase's history, by anyone, in any session.** This batch re-confirmed
+  its "passes by construction" reasoning still holds by re-reading the exact current code: the
+  `?status=pending` guest-return screen (`CheckoutClient.tsx`) is a static confirmation message
+  with no `useEffect`, no `fetch`, no write path at all (confirmed by direct read of that
+  branch); the only function that ever creates a guest enrollment is
+  `handleGuestCheckoutSessionCompleted`, reachable exclusively through the signature-verified
+  `checkout.session.completed` webhook branch, which itself only proceeds when
+  `session.payment_status` is `paid`/`no_payment_required`. This reasoning is unchanged since
+  the checklist was written and holds under direct re-read — but it is reasoning about code,
+  not a report of the URL having actually been hit and confirmed to create nothing.
+- **Real, historical DB evidence** (STEP 0): zero guest-checkout contacts, zero enrollments
+  with a real Stripe payment intent, on this database, ever.
+
+### Files changed (Batch 10)
+
+- `src/components/courses/landing-pages/TemplateCleanMinimal.tsx`,
+  `TemplateBoldFeatureRich.tsx`, `TemplateCommunityCoaching.tsx` — corrected the stale
+  requireAuth()/checkout-gap comment.
+- No other files changed — this batch is verification + documentation; the 2 real template
+  bugs found were deliberately left unfixed, per this batch's own scope (a verification pass),
+  and documented here instead.
+
+### Known limitations / honest notes (Batch 10)
+
+- **G15 is the one real live-testing gap in this whole sequence that remains genuinely open**,
+  and for a good reason (live Stripe keys in this environment), not a capability gap alone.
+  Closing it requires a real test-mode Stripe environment (test keys + `stripe listen` +
+  a running app + a real browser) — none of which exist in this session — run against
+  `docs/LIVE_TEST_CHECKLIST.md`, which already exists and already covers exactly this.
+- The `classic` certificate template's long-data footer-clip and the custom-upload field
+  overlap are real, confirmed, unfixed. Both are template/layout work, not data or grading
+  bugs — lower urgency than anything that mis-scores a student or mis-enrolls one, but real.
+- Verification used a local Chrome substitute for the real `@sparticuz/chromium` Lambda
+  binary (which cannot run on this host) — the HTML/CSS rendered is byte-identical to
+  production, but this was not the literal production binary, stated explicitly.
+
+---
+
+## Closing summary — the G1–G15 sequence is complete
+
+Ten batches (1–10, this document's STEP 6.1–6.9 — Batch 9 did not exist as a numbered batch;
+this project's own sequencing skipped directly from 8 to 10) closed every gap opened by the
+original full audit:
+
+| Gap | Batch | Real status |
+|---|---|---|
+| G1–G3 (automations engine) | 1 | Code-complete, live verification pending (`lms-automation-batch1-verification.md`) |
+| G4 (5 missing quiz types) | 2 | Code-complete, live verification pending (`lms-quiz-types-batch2-verification.md`) |
+| G5–G6 (AI context source + fuzzy/AI grading) | 3 | Code-complete, live verification pending (`lms-quiz-types-batch3-verification.md`) |
+| G7 (automatic certificate delivery) | 4 | Code-complete, live verification pending (`lms-certificate-delivery-batch4-verification.md`) |
+| G13 (contact-portal progress bug) | 5 | Code-complete, live verification pending (`lms-portal-progress-batch5-verification.md`) |
+| G9 (course categories) | 6 | Code-complete, live verification pending (`lms-course-categories-batch6-verification.md`) |
+| G10 (legacy lesson authoring + code/scorm) | 7 | Code-complete, live verification pending (`lms-lesson-consolidation-batch7-verification.md`) |
+| G12 (cross-course pending work) | 8 | Code-complete, live verification pending (`lms-pending-work-batch8-verification.md`) — **also depends on Batch 2's migration being applied** |
+| G8 (certificate design) | 10 | **Genuinely live-verified** — real rendered screenshots, visually inspected. 2 real template bugs found, documented, deliberately not fixed |
+| G15 (guest-checkout payment path) | 10 | **NOT live-verified** — no safe/available way to in this session (live Stripe keys); code-trace + DB evidence only |
+| G11 | — | Explicitly skipped (never assigned a batch in this sequence) |
+| G14 (legacy dead tables) | — | Deliberately deferred per the standing ADR-0005 / Milestone 5 drop-schedule — not this sequence's job to close |
+
+**The single remaining real dependency before this whole sequence can be called fully
+closed:** every batch's own runbook (9 of them, listed above) needs to be run against a real
+deployed/staging environment — most need only a normal logged-in test flow; Batch 8's
+additionally needs Batch 2's migration applied first; Batch 10's G15 additionally needs a
+**real Stripe TEST-mode key** swapped in (never the live key already in this environment) plus
+`stripe listen` webhook forwarding and a browser, run against the pre-existing
+`docs/LIVE_TEST_CHECKLIST.md`. Until that happens, every "code-complete" item in this table is
+exactly that — real, reviewed, type-checked, and (where applicable) unit-tested code that has
+not yet been watched work in a live environment by a human or an automated live-test run.
 
 ---
 
