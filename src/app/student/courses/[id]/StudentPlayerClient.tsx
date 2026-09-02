@@ -701,6 +701,205 @@ export default function StudentPlayerClient({
     </div>
   );
 
+  // Renders one content_blocks row's body — the single per-type switch shared by the legacy
+  // flat-list lesson render AND the canvas-lesson render below, so the two never drift.
+  const renderBlockBody = (block: any) => (
+    <>
+      {block.type === 'video' && block.file_url && (
+        <VideoPlayer
+          videoUrl={block.file_url}
+          onComplete={() => markBlockComplete(block.id, { percentage: 90 })}
+          isAlreadyCompleted={completedBlockIds.has(block.id)}
+          lowBandwidthMode={lowBandwidthMode}
+        />
+      )}
+      {block.type === 'audio' && block.content?.mode === 'embed' && block.content?.embed_html && (
+        <div className="space-y-3">
+          <SandboxedHtml
+            html={block.content.embed_html}
+            className="h-[180px] overflow-hidden rounded-xl border border-dash-border bg-dash-surface"
+            title="Audio embed"
+          />
+          {!completedBlockIds.has(block.id) && (
+            <button
+              onClick={() => markBlockComplete(block.id, { opened: true })}
+              className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-dash-border bg-white px-4 text-[12px] font-semibold !text-dash-text transition-colors hover:bg-dash-surface"
+            >
+              Mark as listened
+            </button>
+          )}
+        </div>
+      )}
+      {block.type === 'audio' && block.content?.mode !== 'embed' && block.file_url && (
+        <VoiceNotePlayer
+          audioUrl={block.file_url}
+          waveformBars={block.content?.waveform_bars}
+          theme="light"
+          isAlreadyCompleted={completedBlockIds.has(block.id)}
+          onWatchedThreshold={(pct) => markBlockComplete(block.id, { percentage: pct })}
+        />
+      )}
+      {block.type === 'html_code' && block.content?.html && (
+        <SandboxedHtml
+          html={block.content.html}
+          className="h-[420px] overflow-hidden rounded-xl border border-dash-border bg-white"
+          title="Embedded content"
+        />
+      )}
+      {(block.type === 'reading' || block.type === 'slides') && block.file_url && (
+        <button
+          onClick={() => {
+            setOpenReadingId(block.id);
+            markBlockComplete(block.id, { opened: true });
+          }}
+          className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-dash-border bg-white px-4 text-[12px] font-semibold !text-dash-text transition-colors hover:bg-dash-surface [&_svg]:size-3.5"
+        >
+          <FileText /> {block.type === 'slides' ? 'Open slides' : 'Open reading'}
+        </button>
+      )}
+      {block.type === 'rich_text' && block.content?.text && (
+        <div
+          className="prose prose-slate max-w-none text-[14px] leading-relaxed !text-dash-text"
+          dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(block.content.text) }}
+        />
+      )}
+      {block.type === 'download' && block.file_url && (
+        <a
+          href={block.file_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-sky-600 hover:underline"
+        >
+          <Download size={14} /> Download resource
+        </a>
+      )}
+      {block.type === 'embed' && block.content?.embed_url && isSafeEmbedUrl(block.content.embed_url) && (
+        <div className="aspect-video overflow-hidden rounded-xl border border-dash-border bg-black">
+          <iframe
+            src={block.content.embed_url}
+            className="h-full w-full border-0"
+            sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+            title="Embedded content"
+          />
+        </div>
+      )}
+      {block.type === 'live_session' && block.file_url && (
+        <a
+          href={block.file_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-sky-600 hover:underline"
+        >
+          Join live session
+        </a>
+      )}
+      {block.type === 'quiz' && (
+        <a
+          href={`/student/courses/${course.id}/quiz/${activeLesson.id}`}
+          className={`inline-flex h-10 items-center justify-center gap-1.5 rounded-lg px-6 text-[12px] font-semibold text-white shadow-sm transition-colors ${theme.solidBgClass} ${theme.solidHoverBgClass}`}
+        >
+          Start quiz
+        </a>
+      )}
+      {block.type === 'assignment' && renderAssignmentPanel(block.content?.instructions)}
+      {block.type === 'flashcards' &&
+        renderFlashcardsPanel(block.content?.flashcards || [], () =>
+          markBlockComplete(block.id, { finished: true })
+        )}
+    </>
+  );
+
+  // Canvas-authored lessons: pages.content is flattened server-side (flattenLessonCanvas) into
+  // an ordered list. Text/heading/image render inline like an article; a 'block'/'contentbox'
+  // item hands off to renderBlockBody keyed on the real content_blocks row.
+  const contentBlocksById = React.useMemo(() => {
+    const m = new Map<string, any>();
+    for (const b of activeLesson?.contentBlocks || []) m.set(b.id, b);
+    return m;
+  }, [activeLesson]);
+
+  const renderCanvasItem = (item: any, idx: number) => {
+    if (item.kind === 'heading') {
+      const sizes: Record<string, string> = {
+        h1: 'text-[28px] md:text-[34px]',
+        h2: 'text-[22px] md:text-[26px]',
+        h3: 'text-[18px] md:text-[20px]',
+        h4: 'text-[16px]',
+        h5: 'text-[15px]',
+        h6: 'text-[14px]',
+      };
+      const Tag = (/^h[1-6]$/.test(item.level) ? item.level : 'h2') as keyof JSX.IntrinsicElements;
+      return (
+        <Tag
+          key={idx}
+          className={`font-display font-bold leading-tight tracking-tight !text-dash-text ${sizes[item.level] || sizes.h2} ${
+            item.align === 'center' ? 'text-center' : item.align === 'right' ? 'text-right' : ''
+          }`}
+          dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(item.html) }}
+        />
+      );
+    }
+    if (item.kind === 'richtext') {
+      return (
+        <div
+          key={idx}
+          className={`prose prose-slate max-w-none text-[14px] leading-relaxed !text-dash-text ${
+            item.align === 'center' ? 'text-center' : item.align === 'right' ? 'text-right' : ''
+          }`}
+          dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(item.html) }}
+        />
+      );
+    }
+    if (item.kind === 'image') {
+      return (
+        <img
+          key={idx}
+          src={item.src}
+          alt={item.alt}
+          className="w-full object-cover"
+          style={{ borderRadius: `${item.radius ?? 12}px` }}
+        />
+      );
+    }
+    if (item.kind === 'divider') {
+      return <hr key={idx} className="border-dash-border" />;
+    }
+    if (item.kind === 'block') {
+      const block = contentBlocksById.get(item.blockId);
+      if (!block) return null;
+      return <div key={idx}>{renderBlockBody(block)}</div>;
+    }
+    if (item.kind === 'contentbox') {
+      const block = item.blockId ? contentBlocksById.get(item.blockId) : null;
+      return (
+        <div key={idx} className="overflow-hidden rounded-2xl border border-dash-border bg-white">
+          <div
+            className="px-5 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-white"
+            style={{ background: item.headerColorHex || '#1359FF' }}
+          >
+            {item.headerLabel}
+          </div>
+          <div className="space-y-3 p-5">
+            {item.headline && (
+              <div
+                className="font-display text-[16px] font-semibold !text-dash-text"
+                dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(item.headline) }}
+              />
+            )}
+            {item.body && (
+              <div
+                className="prose prose-slate max-w-none text-[13px] leading-relaxed !text-dash-textMuted"
+                dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(item.body) }}
+              />
+            )}
+            {block && renderBlockBody(block)}
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
   const progressCircumference = 2 * Math.PI * 13;
 
   return (
@@ -847,115 +1046,19 @@ export default function StudentPlayerClient({
                     courseId={course.id}
                     onUpgradeRedirect={() => router.push(`/student/checkout/${course.id}`)}
                   />
+                ) : activeLesson.canvasItems && activeLesson.canvasItems.length > 0 ? (
+                  /* Lesson authored in the canvas Lesson Builder — its real content lives in
+                     pages.content, flattened server-side. Renders as one continuous article;
+                     interactive blocks hand off to the shared renderBlockBody(). */
+                  <div className="space-y-6">
+                    {activeLesson.canvasItems.map((item: any, idx: number) => renderCanvasItem(item, idx))}
+                  </div>
                 ) : activeLesson.contentBlocks && activeLesson.contentBlocks.length > 0 ? (
-                  /* One continuous lesson — content blocks flow in order like an article,
-                     no per-block chrome or "Block N · TYPE" labels (that was builder-editor
-                     UI that had leaked into the student view). */
+                  /* Legacy flat-list lesson — content blocks flow in order like an article,
+                     no per-block chrome or "Block N · TYPE" labels. */
                   <div className="space-y-8">
                     {activeLesson.contentBlocks.map((block: any) => (
-                      <div key={block.id}>
-                        {block.type === 'video' && block.file_url && (
-                          <VideoPlayer
-                            videoUrl={block.file_url}
-                            onComplete={() => markBlockComplete(block.id, { percentage: 90 })}
-                            isAlreadyCompleted={completedBlockIds.has(block.id)}
-                            lowBandwidthMode={lowBandwidthMode}
-                          />
-                        )}
-                        {block.type === 'audio' && block.content?.mode === 'embed' && block.content?.embed_html && (
-                          <div className="space-y-3">
-                            <SandboxedHtml
-                              html={block.content.embed_html}
-                              className="h-[180px] overflow-hidden rounded-xl border border-dash-border bg-dash-surface"
-                              title="Audio embed"
-                            />
-                            {!completedBlockIds.has(block.id) && (
-                              <button
-                                onClick={() => markBlockComplete(block.id, { opened: true })}
-                                className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-dash-border bg-white px-4 text-[12px] font-semibold !text-dash-text transition-colors hover:bg-dash-surface"
-                              >
-                                Mark as listened
-                              </button>
-                            )}
-                          </div>
-                        )}
-                        {block.type === 'audio' && block.content?.mode !== 'embed' && block.file_url && (
-                          <VoiceNotePlayer
-                            audioUrl={block.file_url}
-                            waveformBars={block.content?.waveform_bars}
-                            theme="light"
-                            isAlreadyCompleted={completedBlockIds.has(block.id)}
-                            onWatchedThreshold={(pct) => markBlockComplete(block.id, { percentage: pct })}
-                          />
-                        )}
-                        {block.type === 'html_code' && block.content?.html && (
-                          <SandboxedHtml
-                            html={block.content.html}
-                            className="h-[420px] overflow-hidden rounded-xl border border-dash-border bg-white"
-                            title="Embedded content"
-                          />
-                        )}
-                        {(block.type === 'reading' || block.type === 'slides') && block.file_url && (
-                          <button
-                            onClick={() => {
-                              setOpenReadingId(block.id);
-                              markBlockComplete(block.id, { opened: true });
-                            }}
-                            className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-dash-border bg-white px-4 text-[12px] font-semibold !text-dash-text transition-colors hover:bg-dash-surface [&_svg]:size-3.5"
-                          >
-                            <FileText /> {block.type === 'slides' ? 'Open slides' : 'Open reading'}
-                          </button>
-                        )}
-                        {block.type === 'rich_text' && block.content?.text && (
-                          <div
-                            className="prose prose-slate max-w-none text-[14px] leading-relaxed !text-dash-text"
-                            dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(block.content.text) }}
-                          />
-                        )}
-                        {block.type === 'download' && block.file_url && (
-                          <a
-                            href={block.file_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-sky-600 hover:underline"
-                          >
-                            <Download size={14} /> Download resource
-                          </a>
-                        )}
-                        {block.type === 'embed' && block.content?.embed_url && isSafeEmbedUrl(block.content.embed_url) && (
-                          <div className="aspect-video overflow-hidden rounded-xl border border-dash-border bg-black">
-                            <iframe
-                              src={block.content.embed_url}
-                              className="h-full w-full border-0"
-                              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-                              title="Embedded content"
-                            />
-                          </div>
-                        )}
-                        {block.type === 'live_session' && block.file_url && (
-                          <a
-                            href={block.file_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-sky-600 hover:underline"
-                          >
-                            Join live session
-                          </a>
-                        )}
-                        {block.type === 'quiz' && (
-                          <a
-                            href={`/student/courses/${course.id}/quiz/${activeLesson.id}`}
-                            className={`inline-flex h-10 items-center justify-center gap-1.5 rounded-lg px-6 text-[12px] font-semibold text-white shadow-sm transition-colors ${theme.solidBgClass} ${theme.solidHoverBgClass}`}
-                          >
-                            Start quiz
-                          </a>
-                        )}
-                        {block.type === 'assignment' && renderAssignmentPanel(block.content?.instructions)}
-                        {block.type === 'flashcards' &&
-                          renderFlashcardsPanel(block.content?.flashcards || [], () =>
-                            markBlockComplete(block.id, { finished: true })
-                          )}
-                      </div>
+                      <div key={block.id}>{renderBlockBody(block)}</div>
                     ))}
                   </div>
                 ) : activeLesson.lesson_type === 'video' ? (

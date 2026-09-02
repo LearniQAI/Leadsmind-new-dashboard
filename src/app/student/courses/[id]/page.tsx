@@ -8,6 +8,7 @@ import { getOrCreateStudentContact } from '@/app/actions/studentEnrollments';
 import { getCompletedLessons } from '@/app/actions/studentProgress';
 import { isEnrolmentActive } from '@/lib/lms/enrolment';
 import StudentPlayerClient from './StudentPlayerClient';
+import { flattenLessonCanvas } from '@/lib/lms/flattenLessonCanvas';
 
 interface StudentCoursePlayerPageProps {
   params: {
@@ -121,7 +122,29 @@ export default async function StudentCoursePlayerPage({ params }: StudentCourseP
     list.push(block);
     blocksByLesson.set(block.lesson_id, list);
   }
-  const lessonsWithBlocks = lessons.map((l) => ({ ...l, contentBlocks: blocksByLesson.get(l.id) || [] }));
+
+  // 5. Canvas Lesson Builder content lives in `pages.content` (linked by course_lesson_id),
+  // NOT in content_blocks. Flatten each lesson's tree to an ordered render list so the
+  // student sees the real authored lesson instead of only legacy/orphan content_blocks rows.
+  const { data: lessonPages } = lessonIds.length
+    ? await adminClient
+        .from('pages')
+        .select('course_lesson_id, content')
+        .in('course_lesson_id', lessonIds)
+    : { data: [] as any[] };
+
+  const canvasByLesson = new Map<string, ReturnType<typeof flattenLessonCanvas>>();
+  for (const pg of lessonPages || []) {
+    if (!pg.course_lesson_id) continue;
+    const items = flattenLessonCanvas(pg.content);
+    if (items.length > 0) canvasByLesson.set(pg.course_lesson_id, items);
+  }
+
+  const lessonsWithBlocks = lessons.map((l) => ({
+    ...l,
+    contentBlocks: blocksByLesson.get(l.id) || [],
+    canvasItems: canvasByLesson.get(l.id) || null,
+  }));
 
   return (
     <StudentPlayerClient
