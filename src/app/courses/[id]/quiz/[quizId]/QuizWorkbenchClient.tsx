@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
@@ -66,7 +66,14 @@ interface QuizWorkbenchClientProps {
 export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWorkbenchClientProps) {
   const isModuleScope = !!moduleId;
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"questions" | "settings" | "analytics">("questions");
+  const searchParams = useSearchParams();
+  // Batch 8 (G12) — real deep-link support: the workspace-wide "Needs grading" queue links
+  // straight to a pending attempt's Results tab (?tab=analytics) rather than dropping the
+  // instructor on Questions and making them find it themselves.
+  const initialTab = searchParams?.get("tab");
+  const [activeTab, setActiveTab] = useState<"questions" | "settings" | "analytics">(
+    initialTab === "analytics" || initialTab === "settings" ? initialTab : "questions"
+  );
 
   // Quiz settings state
   const [quizTitle, setQuizTitle] = useState(quiz.title || "");

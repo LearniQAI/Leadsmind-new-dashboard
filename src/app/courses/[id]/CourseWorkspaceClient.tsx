@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Layers, UserPlus, Users, Palette, Settings as SettingsIcon, Rocket, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -29,6 +29,7 @@ export default function CourseWorkspaceClient({
   initialModules
 }: CourseWorkspaceClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { workspace } = useDashboardContext();
   const workspaceId = workspace?.id || null;
 
@@ -43,8 +44,16 @@ export default function CourseWorkspaceClient({
   const [activeFilter, setActiveFilter] = useState<"All" | "draft" | "published" | "coming_soon">("All");
   // Nav restructure (Section 2): 2 top-level tabs only. Modules stays the default — see
   // CourseWorkspaceHeader.tsx and CourseSettingsContainer.tsx for where the other 6 moved.
-  const [activeTab, setActiveTab] = useState<"modules" | "settings">("modules");
-  const [settingsSection, setSettingsSection] = useState<SettingsSectionId>("general");
+  // Batch 8 (G12): the workspace-wide "Needs grading" queue deep-links straight to
+  // ?tab=settings&section=submissions rather than dropping the instructor on Modules.
+  const initialTabParam = searchParams?.get("tab");
+  const initialSectionParam = searchParams?.get("section") as SettingsSectionId | null;
+  const [activeTab, setActiveTab] = useState<"modules" | "settings">(
+    initialTabParam === "settings" ? "settings" : "modules"
+  );
+  const [settingsSection, setSettingsSection] = useState<SettingsSectionId>(
+    initialTabParam === "settings" && initialSectionParam ? initialSectionParam : "general"
+  );
 
   // Modals States
   const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);

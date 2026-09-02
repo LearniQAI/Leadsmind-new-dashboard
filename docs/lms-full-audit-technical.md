@@ -432,7 +432,7 @@ Fonts `css2` URL (not `next/font`).
 | G9 | Catalog | No category / tag filter or taxonomy (no `course_categories` table); search is client-side over the already-loaded list | ~~Low~~ → **Resolved in code (2026-09-02, Batch 6); live verification pending** — real, flat, single-category-per-course taxonomy, admin-manageable, composes with search/price/sort. Search is still client-side over the loaded list (unchanged, out of scope). See STEP 6.6 |
 | G10 | Lesson authoring | Two parallel models (canvas `content_blocks` vs legacy `lesson_type`); `code` + `scorm` legacy lesson types are mock shims only | ~~Medium~~ → **Fully resolved in code (2026-09-02, Batch 7); live verification pending** — legacy per-`lesson_type` system fully retired (student renderer, admin type-picker, admin preview player); `code`/`scorm` removed everywhere as options, not just deprioritized. Zero real lessons required migration. See STEP 6.7 |
 | G11 | Cohorts | `cohorts` / `course_cohorts` tables do not exist — no cohort/group functionality | Low (if not in scope) |
-| G12 | Assignments | Grading is manual/staff-driven; no cross-course "assignments due" inbox (My Results lists submitted ones only) | Low |
+| G12 | Assignments | Grading is manual/staff-driven; no cross-course "assignments due" inbox (My Results lists submitted ones only) | ~~Low~~ → **Resolved in code (2026-09-02, Batch 8); live verification pending** — unified "My Work" section on My Results (not-submitted / awaiting review / needs revision / recently graded), covering assignments AND Batch 2's file-upload pending-review quiz attempts together; a real cross-course admin "Needs grading" queue also built. **Depends on Batch 2's migration `…026` being applied** — see STEP 6.8 |
 | G13 | Contact portal | `/portal/dashboard` reads a non-existent `course_progress.progress_percent` — progress likely shows 0 there (separate portal from `/student`) | ~~Low~~ → **Resolved in code (2026-09-02, Batch 5); live verification pending** — real per-course completed/total calculation, same formula `/student` uses. See STEP 6.5 |
 | G14 | Legacy tables | `lms_certificates`, `lms_certificate_templates`, `lms_quizzes` remain in the DB, dead (drop deferred — Milestone 5, ADR-0005) | Cosmetic |
 | G15 | Landing/checkout | A code comment flags an out-of-scope checkout-page gap from the landing-page pass; guest-checkout payment paths not exercised live in this audit | Unknown — needs live payment test |
@@ -1331,6 +1331,129 @@ quietly built partway.
 - `LessonCreatorModal` still exists (not deleted) — it has one real remaining job (the
   content-blocks editor for the assignment-shortcut and no-canvas-page edge case). This is a
   deliberate, narrower removal than "delete the whole modal," stated explicitly.
+
+---
+
+## STEP 6.8 — Batch 8 resolution log ("Cross-Course Assignments/Pending-Work Inbox", 2026-09-02)
+
+> Same status vocabulary as 6.1–6.7: **code-complete** = wired, `npx tsc --noEmit` clean,
+> `npx vitest run` unchanged at 226/226 (DB-query + UI batch, no new pure-logic module — same
+> category as Batches 4/5/6). **No new migration** — but see the hard dependency on Batch 2's
+> migration below, found live during this batch's own verification pass.
+
+### STEP 0 — audit
+
+- **Enumeration pattern confirmed reusable:** the same real
+  `content_blocks(type='assignment') → course_lessons → courses`, scoped through the
+  contact's active `enrollments`, that `getStudentFlashcardSets` (Batch/earlier "flashcard
+  review" work) already uses for its own block enumeration. Reused directly, not
+  reimplemented.
+- **No due-date concept exists — confirmed, not assumed.** Grepped `AssignmentBlockEditor.tsx`
+  and the `content-blocks` API route: an assignment block's `content` only ever has
+  `instructions`. No due-date field anywhere in the schema or the admin editor. "Not yet
+  submitted" in this batch means exactly that and nothing more — never framed as overdue.
+- **Real states re-confirmed:** `lms_assignment_submissions.grade_status` ∈
+  `{pending, passed, failed}` (migration `190`, live and applied). `quiz_attempts` /
+  `module_quiz_attempts.grade_status` ∈ `{auto, pending_review, reviewed}` (Batch 2,
+  migration `…026`) — **only defined in a migration FILE, not yet applied to this session's
+  live database** (re-confirmed by this batch's own live query smoke test — see
+  "Verification"). A plain `'auto'` attempt is fully resolved instantly and correctly does
+  NOT appear in this inbox; only `pending_review` and a recently-`reviewed` one do.
+- **Admin side — confirmed no unified queue exists today.** `CourseSubmissionsTab` is
+  strictly per-course (`/api/lms/assignments?courseId=`, ALL submissions not just pending).
+  `QuizAnalyticsConsole` is strictly per-quiz. An instructor with pending work spread across
+  several courses had to check each course's Submissions tab and each quiz's Results tab
+  individually — confirmed, not assumed, by reading both components' data-fetching. This
+  justified Step 1's decision to include the admin side.
+
+### STEP 1 — scope decision
+
+Built the recommended full scope: ONE unified student-facing "My Work" section (on the
+existing My Results page, not a new page — it's naturally the results/status home already)
+covering all five real states from the prompt, **plus** a basic admin-facing cross-course
+"Needs grading" queue — included now, not deferred, because it assembles from the exact same
+two real tables (`lms_assignment_submissions`, `quiz_attempts`/`module_quiz_attempts`) the
+student view already queries, just `workspace_id`-scoped instead of `contact_id`-scoped — a
+small, symmetric addition, not a second system.
+
+### STEP 2 — build
+
+- **Student:** new `getStudentPendingWork()` (`src/app/actions/studentPendingWork.ts`) —
+  reuses `getStudentContactIds()` (the same contact-resolution helper `getStudentResults` /
+  `getStudentFlashcardSets` use). Returns 4 real buckets: `notSubmitted`, `awaitingReview`
+  (assignments `pending` + quiz attempts `pending_review`, in the SAME bucket, not two
+  separate inboxes — the prompt's explicit ask), `needsRevision` (assignments `failed` only —
+  a real, stated design choice: a failed quiz's real recovery path is retake/AI-remedial, not
+  resubmission, so it doesn't belong here), `recentlyGraded` (assignments `passed` + quiz
+  attempts `reviewed`, within a stated 7-day window). Rendered as a new "My Work" section at
+  the top of `/student/results`, above the existing stat strip — reusing `DashCard`/
+  `DashEmptyState`, matching the page's existing visual language exactly.
+- **Admin:** new `getWorkspacePendingGradingQueue()` (`src/app/actions/courseGrading.ts`) —
+  same two tables, `workspace_id`-scoped, joined to `contacts` for student name/email. New
+  page `/courses/needs-grading` (mirrors `/courses/certificates`'s existing
+  page-shell-then-client pattern), linked from the Courses list header next to the existing
+  Certificates button.
+- **Real deep links, reusing real existing grading actions — nothing new was built to grade
+  anything.** Assignment items link to
+  `/courses/[id]?tab=settings&section=submissions` (the existing `CourseSubmissionsTab`, which
+  already grades via `PATCH /api/lms/assignments`); quiz items link to
+  `/courses/[id]/quiz/[lessonId]?tab=analytics` or `/courses/[id]/module-quiz/[moduleId]
+  ?tab=analytics` (the existing `QuizAnalyticsConsole` → `ManualReviewPanel`, which already
+  grades via Batch 2's `gradeQuizAttemptManualReview`). Small, real, in-scope addition needed
+  to make these deep links land on the right tab: `CourseWorkspaceClient` and
+  `QuizWorkbenchClient` now read `?tab=`/`?section=` on mount (they previously always opened
+  on their first tab) — a genuine, reusable navigation improvement, not a one-off hack.
+  Student-side items link into the real lesson (`?lessonId=`, the same pattern
+  `getStudentResults`'s assignment list already used) or the course itself for quizzes (no
+  per-attempt detail page exists for a student to land on — stated, not invented).
+
+### STEP 3/4 — verification
+
+- **Real live query smoke test (not a UI walkthrough — no running app this pass):** ran the
+  exact query shapes both new actions use against the live database. `lms_assignment_submissions`
+  (`grade_status='pending'`) and the `content_blocks`/`course_lessons` enumeration queries ran
+  clean (0 rows — none seeded yet, but no schema error). **`quiz_attempts.grade_status` and
+  `module_quiz_attempts.grade_status` do not exist on this live database** — confirming Batch
+  2's migration `20260903000026_quiz_attempts_manual_review.sql` is still unapplied here, same
+  as every prior batch's "not applied to any DB" note, just now caught as a real, concrete
+  blocking dependency rather than a generic caveat.
+- **Real, honest consequence of that:** today, on this live database, the assignment half of
+  both the student "My Work" section and the admin "Needs grading" queue would work
+  end-to-end (0 real pending rows to show, but the query path is sound); the file-upload-quiz
+  half would silently show nothing (student side: a caught-and-swallowed query error, same
+  no-error-check convention `getStudentResults` already uses for its own parallel queries —
+  not a new pattern; admin side: `getWorkspacePendingGradingQueue` explicitly checks
+  `.error` and throws, caught by its own try/catch, so the page falls back to an empty state
+  rather than crashing) until migration `…026` is applied.
+- `npx tsc --noEmit` clean; `npx eslint` on every touched file: 0 new errors, 2 pre-existing
+  warnings unchanged; `npx vitest run` 226/226 unchanged.
+- **Not run:** a live browser session with real seeded pending items across all 4 (5 with
+  admin) categories. Runbook: `docs/lms-pending-work-batch8-verification.md`.
+
+### Files changed (Batch 8)
+
+- New: `src/app/actions/studentPendingWork.ts`, `src/app/actions/courseGrading.ts`,
+  `src/app/courses/needs-grading/{page.tsx,NeedsGradingClient.tsx}`.
+- `src/app/student/results/page.tsx` — "My Work" section.
+- `src/app/courses/CoursesClient.tsx` — "Needs grading" nav button.
+- `src/app/courses/[id]/CourseWorkspaceClient.tsx`,
+  `src/app/courses/[id]/quiz/[quizId]/QuizWorkbenchClient.tsx` — `?tab=`/`?section=` deep-link
+  support on mount.
+
+### Known limitations / honest notes (Batch 8)
+
+- **Hard dependency on Batch 2's migration `20260903000026`.** The quiz-attempt half of both
+  views is inert without it. Flagged prominently, not discovered quietly — apply Batches 2's
+  and this batch's migrations together.
+- Not live-verified in a running browser — runbook provided.
+- "Not yet submitted" has no time dimension by real design (no due-date field exists) — it
+  will never say "overdue," only "not submitted yet."
+- `needsRevision` is assignments-only, a stated real design choice, not a gap.
+- No per-attempt detail page for a student to land on for a quiz item — the deep link goes to
+  the course itself, the closest real destination that exists today.
+- The admin queue enumerates and deep-links; it does not add a grade-inline action on that
+  page itself — grading still happens on the existing Submissions/Results tabs, deliberately,
+  to avoid a second, parallel grading code path.
 
 ---
 

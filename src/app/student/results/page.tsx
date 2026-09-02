@@ -15,10 +15,13 @@ import {
   Award,
   ShieldCheck,
   Download,
+  Sparkles,
+  CircleDot,
 } from 'lucide-react';
 import { getEnrolledCoursesWithProgress } from '@/app/actions/studentEnrollments';
 import { getStudentResults } from '@/app/actions/studentResults';
 import { getStudentQuizStats } from '@/app/actions/studentProgress';
+import { getStudentPendingWork, type PendingWorkItem } from '@/app/actions/studentPendingWork';
 import { Progress } from '@/components/ui/progress';
 import { DashCard, DashEmptyState } from '@/components/dashboard-ui';
 
@@ -62,16 +65,48 @@ function SectionHead({ title, meta }: { title: string; meta?: string }) {
   );
 }
 
+const KIND_LABEL: Record<PendingWorkItem['kind'], string> = {
+  assignment: 'Assignment',
+  lesson_quiz: 'Quiz',
+  module_quiz: 'Module quiz',
+};
+
+function PendingRow({ item }: { item: PendingWorkItem }) {
+  return (
+    <Link
+      href={item.href}
+      className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-dash-surface/60"
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="shrink-0 rounded-full bg-dash-surface px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide !text-dash-textMuted">
+            {KIND_LABEL[item.kind]}
+          </span>
+          <span className="truncate text-[13px] font-semibold !text-dash-text">{item.title}</span>
+        </div>
+        <div className="mt-0.5 truncate text-[11.5px] !text-dash-textMuted">
+          {item.courseTitle}
+          {item.feedback ? ` · "${item.feedback}"` : ''}
+        </div>
+      </div>
+      <ChevronRight size={15} className="shrink-0 !text-dash-textMuted" />
+    </Link>
+  );
+}
+
 export default async function StudentResultsPage() {
-  const [enrolledRes, resultsRes, quizStatsRes] = await Promise.all([
+  const [enrolledRes, resultsRes, quizStatsRes, pendingRes] = await Promise.all([
     getEnrolledCoursesWithProgress(),
     getStudentResults(),
     getStudentQuizStats(),
+    getStudentPendingWork(),
   ]);
 
   const courses = enrolledRes.data || [];
   const { quizHistory, assignments, certificates } = resultsRes.data;
   const quizStats = quizStatsRes.data;
+  const { notSubmitted, awaitingReview, needsRevision, recentlyGraded } = pendingRes.data;
+  const totalPending = notSubmitted.length + awaitingReview.length + needsRevision.length;
   const completedCourses = courses.filter((c: any) => (c.progressPercentage || 0) >= 100).length;
 
   const stats = [
@@ -131,6 +166,80 @@ export default async function StudentResultsPage() {
           </p>
         </div>
       </header>
+
+      {/* My Work — unified cross-course pending-items inbox (Batch 8 / G12). "Not yet
+          submitted" reflects the real absence of a submission, never a deadline — assignment
+          content blocks have no due-date field. Needs-revision is assignments only, by real
+          design (a failed quiz's real recovery path is retaking/AI-remedial, not resubmission). */}
+      <section className="space-y-4">
+        <SectionHead
+          title="My work"
+          meta={totalPending > 0 ? `${totalPending} need${totalPending === 1 ? 's' : ''} attention` : undefined}
+        />
+        {totalPending === 0 && recentlyGraded.length === 0 ? (
+          <DashCard padding="default" interactive={false} className="border-dashed">
+            <DashEmptyState
+              icon={Sparkles}
+              title="You're all caught up"
+              description="No assignments or quiz submissions are waiting on you or an instructor right now."
+            />
+          </DashCard>
+        ) : (
+          <div className="space-y-3">
+            {needsRevision.length > 0 && (
+              <DashCard padding="none" interactive={false}>
+                <div className="flex items-center gap-1.5 border-b border-dash-border bg-rose-50/60 px-5 py-2.5 text-[11px] font-bold uppercase tracking-wide text-rose-700">
+                  <CircleX size={13} /> Needs revision ({needsRevision.length})
+                </div>
+                <div className="divide-y divide-dash-border">
+                  {needsRevision.map((item) => (
+                    <PendingRow key={item.id} item={item} />
+                  ))}
+                </div>
+              </DashCard>
+            )}
+
+            {notSubmitted.length > 0 && (
+              <DashCard padding="none" interactive={false}>
+                <div className="flex items-center gap-1.5 border-b border-dash-border bg-amber-50/60 px-5 py-2.5 text-[11px] font-bold uppercase tracking-wide text-amber-700">
+                  <CircleDot size={13} /> Not yet submitted ({notSubmitted.length})
+                </div>
+                <div className="divide-y divide-dash-border">
+                  {notSubmitted.map((item) => (
+                    <PendingRow key={item.id} item={item} />
+                  ))}
+                </div>
+              </DashCard>
+            )}
+
+            {awaitingReview.length > 0 && (
+              <DashCard padding="none" interactive={false}>
+                <div className="flex items-center gap-1.5 border-b border-dash-border bg-sky-50/60 px-5 py-2.5 text-[11px] font-bold uppercase tracking-wide text-sky-700">
+                  <Clock3 size={13} /> Awaiting review ({awaitingReview.length})
+                </div>
+                <div className="divide-y divide-dash-border">
+                  {awaitingReview.map((item) => (
+                    <PendingRow key={item.id} item={item} />
+                  ))}
+                </div>
+              </DashCard>
+            )}
+
+            {recentlyGraded.length > 0 && (
+              <DashCard padding="none" interactive={false}>
+                <div className="flex items-center gap-1.5 border-b border-dash-border bg-emerald-50/60 px-5 py-2.5 text-[11px] font-bold uppercase tracking-wide text-emerald-700">
+                  <CircleCheck size={13} /> Recently graded — last 7 days ({recentlyGraded.length})
+                </div>
+                <div className="divide-y divide-dash-border">
+                  {recentlyGraded.map((item) => (
+                    <PendingRow key={item.id} item={item} />
+                  ))}
+                </div>
+              </DashCard>
+            )}
+          </div>
+        )}
+      </section>
 
       {/* Stat strip */}
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
