@@ -14,8 +14,18 @@ export async function markLessonCompleteForContact(
   workspaceId: string,
   contactId: string,
   courseId: string,
-  lessonId: string
-): Promise<{ success: true; progressPercentage?: number } | { error: string }> {
+  lessonId: string,
+  opts?: {
+    /**
+     * Student's own "Mark complete" click. The button is always enabled; if content isn't
+     * finished the student confirms a soft dialog. With this set, the per-block and reading
+     * gates ACCEPT instead of rejecting — and `course_progress.completion_override` is set
+     * from the server's OWN re-check (true when a real signal was unmet). The quiz-pass and
+     * drip/enrolment gates stay hard. Omitted (system/grading callers) = original behaviour.
+     */
+    allowIncomplete?: boolean;
+  }
+): Promise<{ success: true; progressPercentage?: number; override?: boolean } | { error: string }> {
   try {
     const adminClient = createAdminClient();
 
@@ -38,7 +48,7 @@ export async function markLessonCompleteForContact(
 
     const { data: enrollment } = await adminClient
       .from('enrollments')
-      .select('id, status, active')
+      .select('id, status, active, enrolled_at')
       .eq('contact_id', contactId)
       .eq('course_id', courseId)
       .maybeSingle();
@@ -50,12 +60,33 @@ export async function markLessonCompleteForContact(
 
     const { data: lesson } = await adminClient
       .from('course_lessons')
-      .select('id')
+      .select('id, module_id')
       .eq('id', lessonId)
       .eq('course_id', courseId)
       .maybeSingle();
 
     if (!lesson) return { error: 'Lesson not found in this course' };
+
+    // Schedule (drip) gate — a lesson still behind its module's enrollment-relative drip
+    // offset isn't open to the student, so it can't be marked complete no matter what the
+    // block/reading state looks like. Mirrors getLessonLockReason() on the read side and
+    // closes the gap where a no-block / no-quiz lesson could be completed while locked.
+    if (lesson.module_id && enrollment.enrolled_at) {
+      const { data: mod } = await adminClient
+        .from('course_modules')
+        .select('drip_days')
+        .eq('id', lesson.module_id)
+        .maybeSingle();
+
+      const dripDays = mod?.drip_days || 0;
+      if (dripDays > 0) {
+        const unlockTime =
+          new Date(enrollment.enrolled_at).getTime() + dripDays * 24 * 60 * 60 * 1000;
+        if (Date.now() < unlockTime) {
+          return { error: "This lesson hasn't unlocked yet." };
+        }
+      }
+    }
 
     // Phase C: a lesson built from content_blocks can only be marked complete once every
     // block has a real lesson_block_completions row for this student. Part 2: for a lesson
@@ -63,6 +94,13 @@ export async function markLessonCompleteForContact(
     // the tree (see getBlockIdsForLesson) — not every content_blocks row that happens to
     // still exist for this lesson_id, which could include one orphaned by a bulk
     // Section/Row deletion that removed it from the canvas without deleting its row.
+    // Independent server-side re-check of the "soft" completion signals (per-block
+    // completions, reading/scroll gate). When `allowIncomplete` is set (the student's own
+    // click, having confirmed the soft dialog) these no longer reject — instead an unmet
+    // signal is recorded as `completion_override = true`. The quiz-pass and drip/enrolment
+    // gates above/below stay hard for everyone.
+    let completionOverride = false;
+
     const blockIds = await getBlockIdsForLesson(adminClient, lessonId);
 
     if (blockIds.length > 0) {
@@ -74,7 +112,10 @@ export async function markLessonCompleteForContact(
 
       const completedCount = new Set((completions || []).map((c) => c.content_block_id)).size;
       if (completedCount < blockIds.length) {
-        return { error: `Complete every block in this lesson first (${completedCount}/${blockIds.length} done)` };
+        if (!opts?.allowIncomplete) {
+          return { error: `Complete every block in this lesson first (${completedCount}/${blockIds.length} done)` };
+        }
+        completionOverride = true;
       }
     } else {
       const { data: quizQuestions } = await adminClient
@@ -92,6 +133,7 @@ export async function markLessonCompleteForContact(
           .eq('passed', true)
           .maybeSingle();
 
+        // Assessment integrity: a quiz must actually be passed — NOT overridable.
         if (!passedAttempt) return { error: 'This lesson requires passing its quiz first' };
       }
 
@@ -102,7 +144,10 @@ export async function markLessonCompleteForContact(
       if (readingGate.required) {
         const readDone = await hasLessonReadingCompletion(adminClient, lessonId, contactId);
         if (!readDone) {
-          return { error: 'Read through the full lesson before marking it complete.' };
+          if (!opts?.allowIncomplete) {
+            return { error: 'Read through the full lesson before marking it complete.' };
+          }
+          completionOverride = true;
         }
       }
     }
@@ -114,7 +159,7 @@ export async function markLessonCompleteForContact(
     const { error } = existing
       ? await adminClient
           .from('course_progress')
-          .update({ completed_at: new Date().toISOString() })
+          .update({ completed_at: new Date().toISOString(), completion_override: completionOverride })
           .eq('id', existing.id)
       : await adminClient
           .from('course_progress')
@@ -122,7 +167,8 @@ export async function markLessonCompleteForContact(
             workspace_id: workspaceId,
             contact_id: contactId,
             course_id: courseId,
-            lesson_id: lessonId
+            lesson_id: lessonId,
+            completion_override: completionOverride
           });
 
     if (error) throw error;
@@ -198,7 +244,7 @@ export async function markLessonCompleteForContact(
       logger.error({ err: struggleErr, workspaceId, contactId, courseId }, 'complete_lesson.struggle_processor.failed');
     }
 
-    return { success: true, progressPercentage: percentage };
+    return { success: true, progressPercentage: percentage, override: completionOverride };
   } catch (err: any) {
     logger.error({ err, workspaceId, contactId, courseId, lessonId }, 'complete_lesson.failed');
     return { error: 'Failed to mark lesson complete.' };

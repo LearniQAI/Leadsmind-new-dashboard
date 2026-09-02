@@ -166,8 +166,7 @@ export default function AudioBlockEditor({ block, onChange }: AudioBlockEditorPr
             />
             <div className="flex items-start gap-1.5 text-[10px] !text-dash-textMuted">
               <ShieldCheck size={12} className="shrink-0 mt-0.5 text-green" />
-              Paste an embed snippet from a podcast host or audio platform. It renders in a
-              locked-down sandbox with no access to student accounts or site data.
+              Paste an embed snippet from a podcast host or audio platform.
             </div>
           </div>
         )}
@@ -211,7 +210,7 @@ export default function AudioBlockEditor({ block, onChange }: AudioBlockEditorPr
               title="Audio embed preview"
             />
             <div className="flex items-center gap-1.5 text-[10px] font-bold text-green bg-green/10 border border-green/20 rounded-lg px-3 py-2 mt-2">
-              <CheckCircle2 size={13} className="shrink-0" /> Rendered in a sandboxed iframe — this is what students will see. Completion: marked when the student opens this block.
+              <CheckCircle2 size={13} className="shrink-0" /> This is what students will see. Completion: marked when the student opens this block.
             </div>
           </>
         ) : (

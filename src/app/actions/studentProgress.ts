@@ -47,11 +47,21 @@ async function resolveCourseContext(
  * path (quiz pass, assignment grading, remedial-assignment pass) uses the same function
  * rather than duplicating this logic with its own course_progress write.
  */
-export async function markLessonComplete(courseId: string, lessonId: string) {
+export async function markLessonComplete(
+  courseId: string,
+  lessonId: string,
+  opts?: { confirmedOverride?: boolean }
+) {
   const ctx = await resolveCourseContext(courseId);
   if ('error' in ctx) return { error: ctx.error };
 
-  return markLessonCompleteForContact(ctx.workspaceId, ctx.contactId, courseId, lessonId);
+  // The student's own "Mark complete" button is always enabled; when content isn't finished
+  // they confirm a soft dialog, which sets confirmedOverride. That lets the per-block /
+  // reading gates accept — the server still re-checks the real signals itself to decide
+  // whether the stored completion is genuine or an override.
+  return markLessonCompleteForContact(ctx.workspaceId, ctx.contactId, courseId, lessonId, {
+    allowIncomplete: opts?.confirmedOverride === true,
+  });
 }
 
 /**

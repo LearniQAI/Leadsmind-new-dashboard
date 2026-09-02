@@ -272,18 +272,55 @@ export async function getMarketplaceCourses(overrideWorkspaceId?: string) {
       }
     }
 
-    if (allowedWorkspaceIds.size === 0) {
-      return { data: [] };
+    const byId = new Map<string, any>();
+
+    // Discovery set: published courses in the workspaces this user may browse.
+    if (allowedWorkspaceIds.size > 0) {
+      const { data: courses, error } = await adminClient
+        .from('courses')
+        .select('*')
+        .eq('published', true)
+        .in('workspace_id', Array.from(allowedWorkspaceIds));
+
+      if (error) throw error;
+      for (const c of courses || []) byId.set(c.id, c);
     }
 
-    const { data: courses, error } = await adminClient
-      .from('courses')
-      .select('*')
-      .eq('published', true)
-      .in('workspace_id', Array.from(allowedWorkspaceIds));
+    // Always also include courses this student is ALREADY enrolled in — regardless of the
+    // course's publish status OR which workspace it's in. A student's login spans every
+    // workspace they're a contact of, and enrolments can predate a course being published
+    // (published=true / status='draft' is a real state). Without this the catalog shows
+    // "No courses available" to a student who is genuinely enrolled — see the dashboard,
+    // which already spans all of the user's contacts by email. You can only ever reach a
+    // course here that you're personally enrolled in, so this is not a cross-tenant leak.
+    if (user?.email) {
+      const { data: myContacts } = await adminClient
+        .from('contacts')
+        .select('id')
+        .eq('email', user.email);
+      const myContactIds = (myContacts || []).map((c: any) => c.id);
 
-    if (error) throw error;
-    return { data: courses || [] };
+      if (myContactIds.length > 0) {
+        const { data: myEnrollments } = await adminClient
+          .from('enrollments')
+          .select('course_id')
+          .in('contact_id', myContactIds);
+        const enrolledCourseIds = Array.from(
+          new Set((myEnrollments || []).map((e: any) => e.course_id).filter(Boolean))
+        );
+        const missingIds = enrolledCourseIds.filter((id) => !byId.has(id));
+
+        if (missingIds.length > 0) {
+          const { data: enrolledCourses } = await adminClient
+            .from('courses')
+            .select('*')
+            .in('id', missingIds);
+          for (const c of enrolledCourses || []) byId.set(c.id, c);
+        }
+      }
+    }
+
+    return { data: Array.from(byId.values()) };
   } catch (err: any) {
     logger.error({ err }, 'student_enrollments.marketplace_courses.fetch.failed');
     return { error: 'Failed to fetch marketplace courses.' };

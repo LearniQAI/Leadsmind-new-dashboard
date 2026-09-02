@@ -11,6 +11,7 @@ import {
   Zap,
   BarChart3,
   ArrowUpRight,
+  Award,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CourseSettingsForm from "./CourseSettingsForm";
@@ -18,6 +19,7 @@ import CourseAnalyticsTab from "./CourseAnalyticsTab";
 import CourseLandingForm from "./CourseLandingForm";
 import CoursePricingForm from "./CoursePricingForm";
 import EmailTemplateForm from "./EmailTemplateForm";
+import CourseCertificateForm from "./CourseCertificateForm";
 import CourseSubmissionsTab from "./CourseSubmissionsTab";
 
 // Nav restructure (Systeme-parity Master Prompt, Section 2): the 6 tabs other than Modules/
@@ -37,6 +39,7 @@ export type SettingsSectionId =
   | "landing-page"
   | "pricing"
   | "emails"
+  | "certificate"
   | "submissions"
   | "automations"
   | "analytics";
@@ -57,6 +60,7 @@ const NAV_GROUPS: { heading: string; items: NavItem[] }[] = [
       { id: "landing-page", label: "Landing page", description: "Theme, sections, copy", icon: Palette },
       { id: "pricing", label: "Pricing", description: "Model, checkout, caps", icon: DollarSign },
       { id: "emails", label: "Emails", description: "Onboarding template", icon: Mail },
+      { id: "certificate", label: "Certificate", description: "Design & branding", icon: Award },
       { id: "automations", label: "Automations", description: "Triggers & flows", icon: Zap, external: true },
     ],
   },
@@ -181,6 +185,9 @@ export default function CourseSettingsContainer({
             )}
             {activeSection === "emails" && (
               <EmailTemplateForm course={course} onSaved={onCourseSaved} />
+            )}
+            {activeSection === "certificate" && (
+              <CourseCertificateForm course={course} onSaved={onCourseSaved} />
             )}
           </div>
         )}

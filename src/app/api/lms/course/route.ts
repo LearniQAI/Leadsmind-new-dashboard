@@ -41,7 +41,7 @@ export async function PATCH(req: NextRequest) {
     const adminClient = createAdminClient();
 
     const body = await req.json();
-    const { title, description, price, status, thumbnail_url } = body;
+    const { title, description, price, status, thumbnail_url, certificate_config } = body;
 
     const updatePayload: any = {};
     if (title !== undefined) updatePayload.title = title;
@@ -51,6 +51,13 @@ export async function PATCH(req: NextRequest) {
     if (status !== undefined) {
       updatePayload.status = status;
       updatePayload.published = (status === 'published');
+    }
+    // Certificate design config (Part 2). null clears the per-course override so the course
+    // falls back to the workspace default; an object is stored verbatim (validated client-side
+    // + shape-tolerant server-side render).
+    if (certificate_config !== undefined) {
+      updatePayload.certificate_config =
+        certificate_config && typeof certificate_config === 'object' ? certificate_config : null;
     }
 
     const { data: course, error } = await adminClient
