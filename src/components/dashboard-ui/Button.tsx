@@ -18,7 +18,7 @@ const dashButtonVariants = cva(
     variants: {
       variant: {
         primary:
-          "bg-dash-accent text-white shadow-[0_4px_16px_rgba(19,89,255,0.3)] hover:shadow-[0_8px_24px_rgba(19,89,255,0.4)] hover:-translate-y-0.5 motion-reduce:hover:translate-y-0",
+          "bg-gradient-to-b from-dash-accent to-[#0F47CC] text-white shadow-[0_4px_16px_rgba(19,89,255,0.3)] hover:shadow-[0_10px_28px_rgba(19,89,255,0.45)] hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 [&>svg:last-child:not(:first-child)]:transition-transform [&>svg:last-child:not(:first-child)]:duration-200 hover:[&>svg:last-child:not(:first-child)]:translate-x-0.5 motion-reduce:hover:[&>svg:last-child:not(:first-child)]:translate-x-0",
         secondary: "bg-dash-surface text-dash-text border border-dash-border hover:bg-dash-border/60",
         ghost: "bg-transparent text-dash-text border border-dash-text/15 hover:bg-dash-text/5",
         destructive: "bg-danger text-white hover:bg-danger/90",

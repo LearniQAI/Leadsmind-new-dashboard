@@ -3,10 +3,14 @@
 import React, { useState, useTransition, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  BookOpen, ChevronRight, ChevronLeft, CheckSquare, Clock, Headphones, FileEdit, FileText, Video, Archive, Download, MessageSquare, Loader2, X, Check,
+  BookOpen, ChevronRight, ChevronLeft, ChevronDown, CheckSquare, Clock, Headphones, FileEdit, FileText, Video, Archive, Download, MessageSquare, Loader2, X, Check, Settings, LogOut,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { markLessonComplete, markLessonIncomplete } from '@/app/actions/studentProgress';
+import { handleLogout } from '@/app/actions/auth';
+import {
+  DashDropdown, DashDropdownTrigger, DashDropdownContent, DashDropdownItem, DashDropdownSeparator,
+} from '@/components/dashboard-ui';
 import { recordBlockCompletion, getCompletedBlockIdsForLesson, getLessonBlockCompletionStatus } from '@/app/actions/blockCompletion';
 import Editor from '@monaco-editor/react';
 import SyllabusSidebar from './components/SyllabusSidebar';
@@ -385,6 +389,73 @@ export default function StudentPlayerClient({
     window.open(`/api/student/courses/${course.id}/certificate`, '_blank');
   };
 
+  const handleSignOut = async () => {
+    try {
+      await handleLogout();
+    } finally {
+      window.location.href = '/auth/signin-basic';
+    }
+  };
+
+  /**
+   * "Mark complete" + auto-advance in one action. The server-side per-block gate lives in
+   * markLessonComplete → markLessonCompleteForContact, so a non-error result means the
+   * completion is legitimate; we then move the student straight on rather than making them
+   * hunt for a separate "Next lesson" button. Navigation reuses getNextLesson() (the same
+   * ordered list the Next button uses) and getLessonLockReason() so we never drop them into
+   * a still-locked lesson.
+   */
+  const handleCompleteAndAdvance = () => {
+    if (!activeLesson || completedLessonIds.includes(activeLesson.id)) return;
+    const lesson = activeLesson;
+    startTransition(async () => {
+      const res = await markLessonComplete(course.id, lesson.id);
+      if ('error' in res) {
+        toast.error(res.error);
+        return;
+      }
+      const newCompleted = [...completedLessonIds, lesson.id];
+      setCompletedLessonIds(newCompleted);
+      toast.success('Lesson complete!');
+
+      const siblings = lessonsByModule[lesson.module_id] || [];
+      const isLastInModule =
+        siblings.length > 0 && siblings[siblings.length - 1].id === lesson.id;
+      const moduleAllDone = siblings.every((l: any) => newCompleted.includes(l.id));
+      const next = getNextLesson();
+
+      // Brief beat so the "Lesson complete!" toast registers before the view changes.
+      setTimeout(() => {
+        // End of a module that has its own quiz, now unlocked → send them into it first.
+        if (isLastInModule && activeModule?.has_module_quiz && moduleAllDone) {
+          router.push(`/student/courses/${course.id}/module-quiz/${activeModule.id}`);
+          return;
+        }
+        if (next) {
+          const lockReason = getLessonLockReason({
+            lesson: next,
+            module: modules.find((m: any) => m.id === next.module_id),
+            moduleIndex: modules.findIndex((m: any) => m.id === next.module_id),
+            course,
+            enrollment,
+            modules,
+            lessonsByModule,
+            completedLessonIds: newCompleted,
+          });
+          // If the next lesson is still gated (drip / prerequisite / paid), stay put —
+          // the toast already confirmed this lesson is done.
+          if (!lockReason) setActiveLesson(next);
+          return;
+        }
+        // No next lesson → end of course.
+        if (newCompleted.length === totalLessonsCount) {
+          toast.success('Course complete! 🎓 Your certificate is ready.');
+          handleDownloadCertificate();
+        }
+      }, 550);
+    });
+  };
+
   const getNextLesson = () => {
     if (!activeLesson) return null;
     const currentIndex = lessons.findIndex((l) => l.id === activeLesson.id);
@@ -669,15 +740,32 @@ export default function StudentPlayerClient({
             <span className="text-[12px] font-semibold !text-dash-text">{globalProgressPercentage}%</span>
           </div>
 
-          <span className="hidden items-center gap-2 border-l border-dash-border pl-4 sm:flex">
-            <span
-              className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold text-white"
-              style={{ background: theme.primaryHex }}
-            >
-              {studentName.slice(0, 1).toUpperCase()}
-            </span>
-            <span className="text-[12px] font-medium !text-dash-text">{studentName}</span>
-          </span>
+          <DashDropdown>
+            <DashDropdownTrigger asChild>
+              <button
+                type="button"
+                className="hidden items-center gap-2 border-l border-dash-border pl-4 outline-none transition-opacity hover:opacity-80 sm:flex"
+              >
+                <span
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold text-white"
+                  style={{ background: theme.primaryHex }}
+                >
+                  {studentName.slice(0, 1).toUpperCase()}
+                </span>
+                <span className="text-[12px] font-medium !text-dash-text">{studentName}</span>
+                <ChevronDown size={13} className="!text-dash-textMuted" />
+              </button>
+            </DashDropdownTrigger>
+            <DashDropdownContent align="end">
+              <DashDropdownItem onSelect={() => router.push('/student/settings')}>
+                <Settings size={14} /> Settings
+              </DashDropdownItem>
+              <DashDropdownSeparator />
+              <DashDropdownItem destructive onSelect={handleSignOut}>
+                <LogOut size={14} /> Sign out
+              </DashDropdownItem>
+            </DashDropdownContent>
+          </DashDropdown>
         </div>
       </header>
 
@@ -727,7 +815,9 @@ export default function StudentPlayerClient({
                 </div>
 
                 <button
-                  onClick={() => handleToggleComplete(activeLesson.id)}
+                  onClick={() =>
+                    isActiveDone ? handleToggleComplete(activeLesson.id) : handleCompleteAndAdvance()
+                  }
                   disabled={isPending}
                   className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-lg px-5 text-[12px] font-semibold transition-colors [&_svg]:size-4 ${
                     isActiveDone
@@ -758,12 +848,12 @@ export default function StudentPlayerClient({
                     onUpgradeRedirect={() => router.push(`/student/checkout/${course.id}`)}
                   />
                 ) : activeLesson.contentBlocks && activeLesson.contentBlocks.length > 0 ? (
-                  <div className="space-y-4">
-                    {activeLesson.contentBlocks.map((block: any, i: number) => (
-                      <div key={block.id} className="rounded-2xl border border-dash-border bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-                        <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.1em] !text-dash-textMuted">
-                          Block {i + 1} · {block.type.replace('_', ' ')}
-                        </div>
+                  /* One continuous lesson — content blocks flow in order like an article,
+                     no per-block chrome or "Block N · TYPE" labels (that was builder-editor
+                     UI that had leaked into the student view). */
+                  <div className="space-y-8">
+                    {activeLesson.contentBlocks.map((block: any) => (
+                      <div key={block.id}>
                         {block.type === 'video' && block.file_url && (
                           <VideoPlayer
                             videoUrl={block.file_url}

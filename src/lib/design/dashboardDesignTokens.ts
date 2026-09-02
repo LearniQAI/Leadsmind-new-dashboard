@@ -147,11 +147,14 @@ export const button = {
   transition: 'transition-all duration-200',
   variants: {
     primary: {
-      background: '#1359FF', // dash accent / brand royal blue — NOT the marketing hero's #FF8D00 orange, which is a marketing-conversion-color choice, not the product's primary action color
+      // Subtle vertical gradient from the dash accent to a ~20%-darker royal blue
+      // (#0F47CC) for depth — same hue family, not a new colour. Flat #1359FF was
+      // the earlier value.
+      background: 'bg-gradient-to-b from-dash-accent to-[#0F47CC]', // dash accent / brand royal blue — NOT the marketing hero's #FF8D00 orange
       text: '#FFFFFF',
-      hover: 'hover:-translate-y-0.5',
+      hover: 'hover:-translate-y-0.5', // + trailing arrow/chevron slides 2px right on hover (premium micro-interaction, motion-reduce safe)
       shadow: 'shadow-[0_4px_16px_rgba(19,89,255,0.3)]',
-      shadowHover: 'hover:shadow-[0_8px_24px_rgba(19,89,255,0.4)]',
+      shadowHover: 'hover:shadow-[0_10px_28px_rgba(19,89,255,0.45)]',
     },
     secondary: {
       background: '#F1F5F9', // slate-100, Pricing.tsx:205
