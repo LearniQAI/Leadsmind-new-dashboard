@@ -25,6 +25,7 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
   ]);
 
   const courses = coursesRes.data || [];
+  const categories = (coursesRes as any).categories || [];
   const enrolledCourses = enrolledRes.data || [];
   const enrolledCourseIds = enrolledCourses.map((e: any) => e.id);
 
@@ -64,6 +65,7 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
       {courses.length > 0 ? (
         <MarketplaceClient
           courses={courses}
+          categories={categories}
           enrolledCourseIds={enrolledCourseIds}
           userRole={userRole}
           activeWorkspaceId={workspaceId}

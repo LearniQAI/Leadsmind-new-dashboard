@@ -41,7 +41,7 @@ export async function PATCH(req: NextRequest) {
     const adminClient = createAdminClient();
 
     const body = await req.json();
-    const { title, description, price, status, thumbnail_url, certificate_config } = body;
+    const { title, description, price, status, thumbnail_url, certificate_config, category_id } = body;
 
     const updatePayload: any = {};
     if (title !== undefined) updatePayload.title = title;
@@ -51,6 +51,25 @@ export async function PATCH(req: NextRequest) {
     if (status !== undefined) {
       updatePayload.status = status;
       updatePayload.published = (status === 'published');
+    }
+    // Batch 6 (G9) — category_id is never trusted blindly: null clears it (uncategorized),
+    // otherwise it must be a real category in the CALLER'S OWN workspace, same discipline as
+    // every other cross-entity reference in this app (e.g. createCourseWithDomain's domainId).
+    if (category_id !== undefined) {
+      if (category_id === null) {
+        updatePayload.category_id = null;
+      } else {
+        const { data: category } = await adminClient
+          .from('course_categories')
+          .select('id')
+          .eq('id', category_id)
+          .eq('workspace_id', workspaceId)
+          .maybeSingle();
+        if (!category) {
+          return NextResponse.json({ error: 'Category not found in this workspace' }, { status: 400 });
+        }
+        updatePayload.category_id = category_id;
+      }
     }
     // Certificate design config (Part 2). null clears the per-course override so the course
     // falls back to the workspace default; an object is stored verbatim (validated client-side

@@ -431,7 +431,7 @@ Fonts `css2` URL (not `next/font`).
 | G6 | AI quiz gen | Short-answer grading is exact string match vs a synonyms list — no fuzzy/AI marking | ~~Low~~ → **Resolved in code (2026-09-02, Batch 3); live verification pending** — deterministic fuzzy matching (punctuation-insensitive + capped edit-distance) now default for `short_answer` + `fill_blank`; opt-in per-question AI-semantic grading added, **default off**. See STEP 6.3 |
 | G7 | Certificates | No automatic issue/email on course completion — pull-only download | ~~Medium~~ → **Resolved in code (2026-09-02, Batch 4); live verification pending** — seeded rule chain (`course_completed → assign_certificate → certificate_issued → send_certificate_email`), on by default for new courses, real explicit toggle for existing ones. See STEP 6.4 |
 | G8 | Certificates | Design templates real, but no live "preview with real course data" beyond the form; custom-upload placement UX not exercised in this audit | Low |
-| G9 | Catalog | No category / tag filter or taxonomy (no `course_categories` table); search is client-side over the already-loaded list | Low |
+| G9 | Catalog | No category / tag filter or taxonomy (no `course_categories` table); search is client-side over the already-loaded list | ~~Low~~ → **Resolved in code (2026-09-02, Batch 6); live verification pending** — real, flat, single-category-per-course taxonomy, admin-manageable, composes with search/price/sort. Search is still client-side over the loaded list (unchanged, out of scope). See STEP 6.6 |
 | G10 | Lesson authoring | Two parallel models (canvas `content_blocks` vs legacy `lesson_type`); `code` + `scorm` legacy lesson types are mock shims only | Medium |
 | G11 | Cohorts | `cohorts` / `course_cohorts` tables do not exist — no cohort/group functionality | Low (if not in scope) |
 | G12 | Assignments | Grading is manual/staff-driven; no cross-course "assignments due" inbox (My Results lists submitted ones only) | Low |
@@ -1062,6 +1062,118 @@ projects,support,profile,layout}` — 9 files, ~20 queries — against the real 
   lesson in the database with no `.in(courseIds)` scoping — a real inefficiency noticed while
   auditing this file for schema drift, but not a schema-drift bug and not in this batch's
   scope; flagged here rather than silently fixed as a drive-by.
+
+---
+
+## STEP 6.6 — Batch 6 resolution log ("Real Course Categories & Tags", 2026-09-02)
+
+> Same status vocabulary as 6.1–6.5: **code-complete** = wired, `npx tsc --noEmit` clean,
+> `npx vitest run` unchanged at 226/226 (the category filter is inline `useMemo` logic in
+> `MarketplaceClient.tsx` — the same shape as the pre-existing, also-untested price filter it
+> sits beside; no new pure-logic module to extract). **One migration**, confirmed NOT applied
+> to this session's live DB (consistent with every prior batch) — see "Verification" for what
+> was and wasn't checkable as a result. Runbook: `docs/lms-course-categories-batch6-verification.md`.
+
+### STEP 0 re-confirm
+
+- **The earlier finding does not hold in the form the prompt describes, and the real story is
+  cleaner than "dormant scaffolding to repair."** Re-read `docs/schema-drift-audit.md`'s
+  actual original finding (item 43): it flagged `src/app/actions/lms/categories.ts` — a
+  **file that was never imported anywhere** — referencing a `course_categories` table and a
+  `courses.category_id` column that were confirmed **not to exist on the live schema even
+  then** ("no table/col"). So there was never a real table+column pair sitting dormant; only
+  dead *code* pointing at a schema that was never real. Re-confirmed live 2026-09-02:
+  `course_categories` still doesn't exist (`PGRST205`), `courses` still has no `category_id`
+  column (confirmed against the real, current 21-column `courses` schema) — **and the dead
+  `categories.ts` file itself has since been removed from the repo entirely** (not found
+  under `src/app/actions/lms/` any more; a separate cleanup pass, not this batch). Nothing to
+  repair, repoint, or bypass — this is a genuinely fresh build.
+- **Real course inventory checked before designing a starter list:** 6 real courses exist,
+  titles: "English Language", two `T18 Test Course …` smoke-test placeholders, one literal
+  YouTube URL as a title, "Mathematics", and "Michael" — unmistakably demo/test data with no
+  real, coherent taxonomy of its own to reverse-engineer categories from. The starter list
+  seeded (Business / Technology / Language & Communication / Health & Wellness / Personal
+  Development / Academic) is therefore a **generic, sensible set for any course marketplace**,
+  stated explicitly as such rather than presented as derived from real content signal that
+  doesn't exist here.
+
+### STEP 1 — scope decision
+
+**Flat, single-category-per-course** — as recommended, not tags/many-to-many, not a nested
+taxonomy. Matches the catalog's existing complexity level (a flat price filter + sort, no
+hierarchy anywhere else in the catalog) and Step 0 found no real course variety here that
+would argue for freeform multi-tag over a fixed list.
+
+### STEP 2 — build
+
+- **Schema** (`20260903000028_course_categories.sql`): `course_categories` (workspace-scoped,
+  `name` + `color` + `position`, `unique(workspace_id, name)`) + `courses.category_id`
+  (nullable FK, `ON DELETE SET NULL` — deleting a category un-categorizes its courses, never
+  deletes or hides them). RLS mirrors the existing two-policy shape (workspace members manage;
+  public/anon read, matching the public content-blocks read policy) — real read path is still
+  the service-role admin client everywhere else in this app, so this is defense-in-depth.
+  Seeds the generic starter list into every workspace that has at least one real course,
+  `ON CONFLICT DO NOTHING` (safe to re-run).
+- **Admin UI:** new `CourseCategoryField` (select + inline create with an 8-swatch fixed
+  palette + delete-with-confirmation-free-because-`SET NULL`), embedded in the course's
+  existing General settings (`CourseSettingsForm`) using the same `Field`/`Select`/
+  `TextInput`/`GhostButton` primitives every other settings panel in this project uses —
+  plugs into that form's existing dirty-tracking/save flow rather than a separate save
+  button. `/api/lms/course` PATCH validates `category_id` belongs to the caller's own
+  workspace before writing it (never trusted blindly, same discipline as every other
+  cross-entity reference in this app).
+- **Student-facing:** `getMarketplaceCourses()` now attaches `categoryName`/`categoryColor` to
+  each course and returns the relevant workspace(s)' category list; `MarketplaceClient.tsx`
+  gets a new category `<select>` in the existing control bar (same `controlBase` styling as
+  the sort dropdown), a category badge on each course card, and composes with search + price
+  filter + sort in the same `useMemo` — a student can genuinely combine all four
+  simultaneously. The dropdown only lists categories that actually have a course in the
+  current result set, plus "Uncategorized" only when at least one course has no category — no
+  dead filter options.
+- Uncategorized courses (`category_id IS NULL` — the default for every existing course pre-
+  migration) render under "All categories" normally and get an explicit "Uncategorized" filter
+  option; never hidden, never erroring.
+
+### STEP 3 — verification
+
+- **Real, live-checked graceful degradation** (this session's DB, migration not yet applied):
+  ran the exact query shape `getMarketplaceCourses()` now uses against the current live
+  database — `course_categories` doesn't exist yet, the query's error is absorbed by the
+  `{data} = await …` destructure (never thrown), `categories` resolves to `[]`, and every real
+  published course's `categoryName` comes out `null` (Uncategorized) — confirming the function
+  does not break today, before the migration lands, and that "no category" renders exactly as
+  intended.
+- `npx tsc --noEmit` clean; `npx vitest run` 226/226 unchanged; `eslint` clean (0 errors, 0
+  warnings) across every touched file.
+- **Not run:** creating a real category, assigning it to a real course, and confirming the
+  catalog narrows correctly + composes with search/price/sort — needs the migration applied
+  to a real environment. Runbook: `docs/lms-course-categories-batch6-verification.md`.
+
+### Files changed (Batch 6)
+
+- Migration: `20260903000028_course_categories.sql`.
+- New: `src/app/actions/courseCategories.ts`,
+  `src/app/courses/[id]/components/CourseCategoryField.tsx`.
+- `src/app/courses/[id]/components/CourseSettingsForm.tsx` — category field wired into the
+  existing save flow.
+- `src/app/api/lms/course/route.ts` — `category_id` in the PATCH whitelist, workspace-validated.
+- `src/app/actions/studentEnrollments.ts` — `getMarketplaceCourses()` attaches category
+  name/color + returns the category list.
+- `src/app/student/marketplace/page.tsx`, `MarketplaceClient.tsx` — category filter, badge,
+  composed filtering.
+
+### Known limitations / honest notes (Batch 6)
+
+- **Not live-verified end-to-end** — migration not applied to any DB this pass; the one real
+  check possible without it (graceful degradation) was run and passed.
+- Categories are workspace-scoped with no cross-workspace sharing — a chain running many
+  workspaces re-creates the same starter list per workspace rather than sharing one global set.
+  Reasonable for this schema's existing multi-tenant pattern; not revisited.
+- No icon picker, only a small fixed 8-color swatch palette — matches the "simple list — name,
+  maybe a color" scope explicitly requested, not a gap.
+- Catalog search itself remains client-side over the already-loaded course list (G9's original
+  "search is client-side" note) — unchanged, out of this batch's scope, which was specifically
+  the missing taxonomy/filter, not search architecture.
 
 ---
 

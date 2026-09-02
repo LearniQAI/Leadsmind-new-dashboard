@@ -12,13 +12,21 @@ import {
   Search,
   X,
   SlidersHorizontal,
+  Tag,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { enrollStudent } from '@/app/actions/studentEnrollments';
 import { DashCard } from '@/components/dashboard-ui';
 
+interface MarketplaceCategory {
+  id: string;
+  name: string;
+  color: string;
+}
+
 interface MarketplaceClientProps {
   courses: any[];
+  categories?: MarketplaceCategory[];
   enrolledCourseIds: string[];
   userRole?: string | null;
   activeWorkspaceId?: string | null;
@@ -26,6 +34,8 @@ interface MarketplaceClientProps {
 
 type PriceFilter = 'all' | 'free' | 'paid';
 type SortKey = 'newest' | 'price_asc' | 'price_desc' | 'title_az';
+/** 'all' = every course, 'uncategorized' = no category assigned, else a real category id. */
+const UNCATEGORIZED = '__uncategorized__';
 
 const SORTS: { key: SortKey; label: string }[] = [
   { key: 'newest', label: 'Newest' },
@@ -39,6 +49,7 @@ const controlBase =
 
 export default function MarketplaceClient({
   courses,
+  categories = [],
   enrolledCourseIds,
   userRole,
   activeWorkspaceId,
@@ -49,15 +60,28 @@ export default function MarketplaceClient({
 
   const [query, setQuery] = useState('');
   const [priceFilter, setPriceFilter] = useState<PriceFilter>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [sortKey, setSortKey] = useState<SortKey>('newest');
 
   const isCourseFree = (c: any) => !(c.price > 0);
+
+  // Only offer categories that actually have at least one course in THIS catalog result —
+  // a workspace's full category list can outgrow what's actually published/visible here.
+  const availableCategories = useMemo(
+    () => categories.filter((cat) => courses.some((c: any) => c.category_id === cat.id)),
+    [categories, courses]
+  );
+  const hasUncategorized = useMemo(() => courses.some((c: any) => !c.category_id), [courses]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = courses.filter((c: any) => {
       if (priceFilter === 'free' && !isCourseFree(c)) return false;
       if (priceFilter === 'paid' && isCourseFree(c)) return false;
+      if (categoryFilter === UNCATEGORIZED && c.category_id) return false;
+      if (categoryFilter !== 'all' && categoryFilter !== UNCATEGORIZED && c.category_id !== categoryFilter) {
+        return false;
+      }
       if (!q) return true;
       const hay = `${c.title || ''} ${c.description || ''}`.toLowerCase();
       return hay.includes(q);
@@ -79,12 +103,13 @@ export default function MarketplaceClient({
       }
     });
     return list;
-  }, [courses, query, priceFilter, sortKey]);
+  }, [courses, query, priceFilter, categoryFilter, sortKey]);
 
-  const isFiltering = query.trim() !== '' || priceFilter !== 'all';
+  const isFiltering = query.trim() !== '' || priceFilter !== 'all' || categoryFilter !== 'all';
   const clearFilters = () => {
     setQuery('');
     setPriceFilter('all');
+    setCategoryFilter('all');
   };
 
   const handleEnroll = (courseId: string) => {
@@ -153,6 +178,34 @@ export default function MarketplaceClient({
               </button>
             ))}
           </div>
+
+          {/* Category */}
+          {(availableCategories.length > 0 || hasUncategorized) && (
+            <div className="relative">
+              <Tag
+                size={14}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 !text-dash-textMuted"
+              />
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                aria-label="Filter by category"
+                className={`${controlBase} cursor-pointer appearance-none pl-8 pr-8 font-medium`}
+              >
+                <option value="all">All categories</option>
+                {availableCategories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+                {hasUncategorized && <option value={UNCATEGORIZED}>Uncategorized</option>}
+              </select>
+              <ChevronRight
+                size={14}
+                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rotate-90 !text-dash-textMuted"
+              />
+            </div>
+          )}
 
           {/* Sort */}
           <div className="relative">
@@ -248,6 +301,17 @@ export default function MarketplaceClient({
                     </div>
                   )}
                   <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/25 to-transparent" />
+                  {course.categoryName && (
+                    <span
+                      className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-lg border border-white/60 bg-white/90 px-2 py-0.5 text-[10.5px] font-semibold !text-dash-text backdrop-blur-sm"
+                    >
+                      <span
+                        className="h-1.5 w-1.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: course.categoryColor || '#0284c7' }}
+                      />
+                      {course.categoryName}
+                    </span>
+                  )}
                   <span
                     className={`absolute bottom-3 right-3 rounded-lg border px-2 py-0.5 text-[11px] font-bold backdrop-blur-sm ${
                       isFree

@@ -324,7 +324,34 @@ export async function getMarketplaceCourses(overrideWorkspaceId?: string) {
       }
     }
 
-    return { data: Array.from(byId.values()) };
+    const courses = Array.from(byId.values());
+
+    // Batch 6 (G9) — attach real category name/color to each course (category_id itself is
+    // already on the row via select('*') above) and return the workspace(s)' own category
+    // list for the catalog's filter dropdown. A course with no category, or whose category
+    // was deleted (ON DELETE SET NULL), simply gets no categoryName — the catalog treats that
+    // as "Uncategorized", never hides it or errors.
+    const courseWorkspaceIds = Array.from(new Set(courses.map((c: any) => c.workspace_id).filter(Boolean)));
+    let categories: { id: string; name: string; color: string }[] = [];
+    if (courseWorkspaceIds.length > 0) {
+      const { data: cats } = await adminClient
+        .from('course_categories')
+        .select('id, name, color, workspace_id')
+        .in('workspace_id', courseWorkspaceIds)
+        .order('position', { ascending: true });
+      categories = cats || [];
+    }
+    const categoryById = new Map(categories.map((c: any) => [c.id, c]));
+    for (const c of courses as any[]) {
+      const cat = c.category_id ? categoryById.get(c.category_id) : null;
+      c.categoryName = cat?.name || null;
+      c.categoryColor = cat?.color || null;
+    }
+
+    return {
+      data: courses,
+      categories: categories.map(({ id, name, color }) => ({ id, name, color })),
+    };
   } catch (err: any) {
     logger.error({ err }, 'student_enrollments.marketplace_courses.fetch.failed');
     return { error: 'Failed to fetch marketplace courses.' };

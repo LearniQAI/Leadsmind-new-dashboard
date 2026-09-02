@@ -20,6 +20,7 @@ import {
   PrimaryButton,
   GhostButton,
 } from "./settings/primitives";
+import CourseCategoryField from "./CourseCategoryField";
 
 interface CourseSettingsFormProps {
   course: any;
@@ -38,6 +39,7 @@ export default function CourseSettingsForm({ course, onSaved }: CourseSettingsFo
     price: course.price || "0.00",
     status: course.status || (course.published ? "published" : "draft"),
     thumbnail: course.thumbnail_url || "",
+    categoryId: course.category_id || null,
   };
 
   const [editTitle, setEditTitle] = useState(initial.title);
@@ -45,6 +47,7 @@ export default function CourseSettingsForm({ course, onSaved }: CourseSettingsFo
   const [editPrice, setEditPrice] = useState(initial.price);
   const [editStatus, setEditStatus] = useState(initial.status);
   const [editThumbnail, setEditThumbnail] = useState(initial.thumbnail);
+  const [editCategoryId, setEditCategoryId] = useState<string | null>(initial.categoryId);
   const [isSavingCourse, setIsSavingCourse] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -53,7 +56,8 @@ export default function CourseSettingsForm({ course, onSaved }: CourseSettingsFo
     editDesc !== initial.desc ||
     String(editPrice) !== String(initial.price) ||
     editStatus !== initial.status ||
-    editThumbnail !== initial.thumbnail;
+    editThumbnail !== initial.thumbnail ||
+    editCategoryId !== initial.categoryId;
 
   const resetForm = () => {
     setEditTitle(initial.title);
@@ -61,6 +65,7 @@ export default function CourseSettingsForm({ course, onSaved }: CourseSettingsFo
     setEditPrice(initial.price);
     setEditStatus(initial.status);
     setEditThumbnail(initial.thumbnail);
+    setEditCategoryId(initial.categoryId);
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -127,6 +132,7 @@ export default function CourseSettingsForm({ course, onSaved }: CourseSettingsFo
           price: editPrice,
           status: editStatus,
           thumbnail_url: editThumbnail,
+          category_id: editCategoryId,
         }),
       });
       const dataJson = await res.json();
@@ -191,6 +197,15 @@ export default function CourseSettingsForm({ course, onSaved }: CourseSettingsFo
                 <option value="draft">Draft</option>
                 <option value="published">Published</option>
               </Select>
+            </Field>
+
+            <Field
+              label="Category"
+              htmlFor="cs-category"
+              align="start"
+              hint="Shown as a filter in the student catalog. Optional — courses with no category still appear under 'All'."
+            >
+              <CourseCategoryField value={editCategoryId} onChange={setEditCategoryId} />
             </Field>
 
             <Field
