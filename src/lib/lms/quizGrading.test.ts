@@ -6,6 +6,8 @@ import {
   buildClientQuestion,
   normalizeCodeSubmission,
   matchesAccepted,
+  levenshtein,
+  typoTolerance,
   LIVE_GRADED_TYPES,
   MANUAL_REVIEW_TYPES,
 } from './quizGrading';
@@ -241,13 +243,61 @@ describe('helpers', () => {
   it('normalizeCodeSubmission', () => {
     expect(normalizeCodeSubmission('  a  b \n\n  c ')).toBe('a b\nc');
   });
-  it('matchesAccepted', () => {
+  it('matchesAccepted — tier 1 exact still works (regression)', () => {
     expect(matchesAccepted('Foo', ['foo', 'bar'])).toBe(true);
-    expect(matchesAccepted('Foo', ['foo'], true)).toBe(false);
+    expect(matchesAccepted('Foo', ['foo'], true)).toBe(false); // case-sensitive tier-1
   });
   it('type sets', () => {
     expect(LIVE_GRADED_TYPES.has('code')).toBe(true);
     expect(LIVE_GRADED_TYPES.has('file_upload')).toBe(false);
     expect(MANUAL_REVIEW_TYPES.has('file_upload')).toBe(true);
+  });
+  it('levenshtein', () => {
+    expect(levenshtein('kitten', 'sitting')).toBe(3);
+    expect(levenshtein('abc', 'abc')).toBe(0);
+    expect(levenshtein('', 'abc')).toBe(3);
+  });
+  it('typoTolerance scales and caps at 2', () => {
+    expect(typoTolerance(3)).toBe(0);
+    expect(typoTolerance(6)).toBe(1);
+    expect(typoTolerance(20)).toBe(2);
+  });
+});
+
+/* ---------- G6a: deterministic fuzzy matching ---------- */
+
+describe('matchesAccepted — Batch 3 fuzzy tiers', () => {
+  it('accepts a single-character typo on a medium word', () => {
+    expect(matchesAccepted('mitochondira', ['mitochondria'])).toBe(true); // transposition, len 12 -> tol 2
+    expect(matchesAccepted('recieve', ['receive'])).toBe(true);
+  });
+  it('accepts casing + punctuation variants', () => {
+    expect(matchesAccepted("Newton's 2nd Law.", ['newtons 2nd law'])).toBe(true);
+    expect(matchesAccepted('  photosynthesis!!! ', ['photosynthesis'])).toBe(true);
+  });
+  it('does NOT over-tolerate short words', () => {
+    expect(matchesAccepted('cat', ['cot'])).toBe(false); // len 3 -> tol 0
+    expect(matchesAccepted('ion', ['eon'])).toBe(false);
+  });
+  it('rejects a genuinely different answer (no false positive)', () => {
+    expect(matchesAccepted('respiration', ['photosynthesis'])).toBe(false);
+    expect(matchesAccepted('France', ['Germany', 'Spain'])).toBe(false);
+    expect(matchesAccepted('42', ['24'])).toBe(false); // len 2 -> tol 0
+  });
+  it('{ fuzzy: false } restores pure exact behaviour', () => {
+    expect(matchesAccepted('recieve', ['receive'], false, { fuzzy: false })).toBe(false);
+    expect(matchesAccepted('receive', ['receive'], false, { fuzzy: false })).toBe(true);
+  });
+  it('short_answer / fill_blank grading picks up the fuzzy tolerance', () => {
+    const sa = { id: 's', question_type: 'short_answer', points: 1, correct_answer: { synonyms: ['mitochondria'] } };
+    expect(gradeSingleQuestion(sa, 'Mitochondrion').earned).toBe(1); // close variant
+    expect(gradeSingleQuestion(sa, 'nucleus').earned).toBe(0);
+
+    const fb = {
+      id: 'f', question_type: 'fill_blank', points: 1,
+      metadata: { text_with_blanks: 'Water is [blank].', blanks: [{ accepted: ['dihydrogen monoxide'] }] },
+    };
+    expect(gradeSingleQuestion(fb, ['Dihydrogen Monoxide!']).earned).toBe(1);
+    expect(gradeSingleQuestion(fb, ['carbon dioxide']).earned).toBe(0);
   });
 });

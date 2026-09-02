@@ -42,16 +42,89 @@ const normalizeText = (s: unknown, caseSensitive = false): string => {
   return caseSensitive ? t : t.toLowerCase();
 };
 
-/** Shared accepted-answers match — the SAME rule short_answer already used (case-insensitive
- *  exact match against a list), reused verbatim for each fill_blank blank. */
+// Batch 3 (G6a): fuzzy normalization — strip surrounding/embedded punctuation and collapse
+// space, so "Newton's-2nd law." matches "newtons 2nd law". Respects the per-question
+// case_sensitive flag: when the instructor set case-sensitive, the fuzzy tiers keep case too
+// (they only forgive punctuation + typos, not a deliberate casing rule).
+const normalizeForFuzzy = (s: unknown, caseSensitive = false): string => {
+  let t = String(s ?? '');
+  if (!caseSensitive) t = t.toLowerCase();
+  return t.replace(/[.,;:!?'"`´’‘“”()\[\]{}<>/\\|@#%^*_~+=-]/g, ' ').replace(/\s+/g, ' ').trim();
+};
+
+/** Edit distance — Optimal String Alignment (Damerau-Levenshtein), so an adjacent
+ *  transposition ("recieve"→"receive", "teh"→"the") counts as ONE edit, which is what a typo
+ *  actually is. Iterative three-row DP, dependency-free. */
+export function levenshtein(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const m = a.length;
+  const n = b.length;
+  let twoAgo: number[] = [];
+  let prev: number[] = Array.from({ length: n + 1 }, (_, j) => j);
+  let curr: number[] = new Array(n + 1).fill(0);
+  for (let i = 1; i <= m; i++) {
+    curr[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      let v = Math.min(curr[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        v = Math.min(v, twoAgo[j - 2] + 1);
+      }
+      curr[j] = v;
+    }
+    twoAgo = prev;
+    prev = curr;
+    curr = new Array(n + 1).fill(0);
+  }
+  return prev[n];
+}
+
+/** Typo tolerance that scales with length and is CAPPED at 2 — long enough to catch a slip
+ *  (incl. one transposition), short enough that "cat" never matches "cot", "42" never matches
+ *  "24", and two genuinely different short words never collide. */
+export function typoTolerance(len: number): number {
+  if (len <= 4) return 0;
+  if (len <= 7) return 1;
+  return 2;
+}
+
+/**
+ * Shared accepted-answers match, used by BOTH short_answer and every fill_blank blank.
+ *
+ * Tiers (first hit wins):
+ *   1. exact match after trim + whitespace-collapse (+ case-fold unless caseSensitive) —
+ *      identical to the pre-Batch-3 behaviour, so nothing that passed before regresses.
+ *   2. punctuation-insensitive match (always case-folded).
+ *   3. Levenshtein distance within typoTolerance() of the longer string — catches typos.
+ * Pass `{ fuzzy: false }` to get tier 1 only (used to prove the exact path is intact).
+ */
 export const matchesAccepted = (
   answer: unknown,
   accepted: unknown[],
   caseSensitive = false,
+  opts: { fuzzy?: boolean } = {},
 ): boolean => {
-  const a = normalizeText(answer, caseSensitive);
-  if (!a) return false;
-  return (accepted || []).some((acc) => normalizeText(acc, caseSensitive) === a);
+  const fuzzy = opts.fuzzy !== false;
+  const exactAns = normalizeText(answer, caseSensitive);
+  if (!exactAns) return false;
+  const list = accepted || [];
+
+  // Tier 1 — exact (unchanged)
+  if (list.some((acc) => normalizeText(acc, caseSensitive) === exactAns)) return true;
+  if (!fuzzy) return false;
+
+  // Tiers 2 & 3 — punctuation-insensitive, then edit-distance
+  const fa = normalizeForFuzzy(answer, caseSensitive);
+  if (!fa) return false;
+  return list.some((acc) => {
+    const fb = normalizeForFuzzy(acc, caseSensitive);
+    if (!fb) return false;
+    if (fa === fb) return true;
+    const tol = typoTolerance(Math.max(fa.length, fb.length));
+    return tol > 0 && levenshtein(fa, fb) <= tol;
+  });
 };
 
 /** Whitespace-normalized code compare (NOT execution): trims each line, collapses interior

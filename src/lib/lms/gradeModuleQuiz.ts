@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { gradeQuestionSet } from './quizGrading';
+import { applyAiGradingPass } from './aiGradeAnswer';
 import type { QuizGradeResult } from './gradeQuiz';
 
 // Module-Level Quiz — exact mirror of gradeQuizAttempt, reading module_quiz_questions /
@@ -17,5 +18,7 @@ export async function gradeModuleQuizAttempt(
     adminClient.from('module_quiz_settings').select('pass_percentage').eq('module_id', moduleId).maybeSingle(),
   ]);
 
-  return gradeQuestionSet(questions || [], answers || {}, settings?.pass_percentage ?? 70);
+  const passPct = settings?.pass_percentage ?? 70;
+  const base = gradeQuestionSet(questions || [], answers || {}, passPct);
+  return applyAiGradingPass(base, questions || [], answers || {}, passPct);
 }

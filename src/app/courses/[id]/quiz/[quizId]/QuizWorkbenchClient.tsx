@@ -31,6 +31,27 @@ const QUESTION_TYPE_LABELS: Record<string, string> = {
   file_upload: "File upload",
 };
 
+// Batch 3 (G6b) — opt-in AI-assisted acceptance toggle, shared by the short_answer and
+// fill_blank editors. Default off; writes metadata.ai_grading.
+function AiGradingToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex items-start gap-2 rounded-lg border border-sky-200 bg-sky-50/60 p-2.5">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="mt-0.5 accent-sky-600"
+      />
+      <span className="text-[10px] leading-relaxed text-sky-800">
+        <strong className="font-semibold">AI-assisted acceptance (opt-in)</strong> — if a
+        student answer isn&apos;t matched by the accepted list or typo tolerance, ask the AI
+        whether it&apos;s an acceptable synonym / paraphrase. Costs AI credits per graded
+        answer and its verdict can vary between attempts. Off by default.
+      </span>
+    </label>
+  );
+}
+
 interface QuizWorkbenchClientProps {
   course: any;
   quiz: any;
@@ -89,6 +110,10 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
   // Type-specific payloads (stored inside metadata or correct_answer JSONB fields)
   const [synonyms, setSynonyms] = useState<string>("");
   const [caseSensitive, setCaseSensitive] = useState(false);
+  // Batch 3 (G6b): opt-in AI-assisted acceptance for short_answer / fill_blank. Default OFF.
+  // Stored at metadata.ai_grading; used only as a fallback for answers the deterministic
+  // fuzzy matcher rejects, and only when a real OpenAI key is configured.
+  const [aiGrading, setAiGrading] = useState(false);
   const [matchingPairs, setMatchingPairs] = useState<{ left: string; right: string }[]>([{ left: "", right: "" }]);
   const [orderingItems, setOrderingItems] = useState<string[]>(["", ""]);
   const [blankText, setBlankText] = useState("JavaScript is a [blank] scripting language.");
@@ -175,6 +200,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
     } else if (q.question_type === "short_answer") {
       setSynonyms((correct.synonyms || []).join(", "));
       setCaseSensitive(meta.case_sensitive || false);
+      setAiGrading(meta.ai_grading === true);
     } else if (q.question_type === "matching") {
       setMatchingPairs(meta.pairs || [{ left: "", right: "" }]);
     } else if (q.question_type === "ordering") {
@@ -183,6 +209,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
       setBlankText(meta.text_with_blanks || "");
       setBlankAnswers((meta.blanks || []).map((b: any) => (b.accepted || []).join(", ")));
       setBlankCaseSensitive(!!meta.case_sensitive);
+      setAiGrading(meta.ai_grading === true);
     } else if (q.question_type === "code") {
       setStarterCode(meta.starter_template || "");
       setAcceptedSolutions(meta.accepted_solutions?.length ? meta.accepted_solutions : [""]);
@@ -203,6 +230,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
     ]);
     setSynonyms("");
     setCaseSensitive(false);
+    setAiGrading(false);
     setMatchingPairs([{ left: "", right: "" }]);
     setOrderingItems(["", ""]);
     setBlankText("Write sentence using [blank] placeholder.");
@@ -262,6 +290,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
       }
       correct_answer.synonyms = synList;
       metadata.case_sensitive = caseSensitive;
+      metadata.ai_grading = aiGrading;
     } else if (type === "matching") {
       metadata.pairs = matchingPairs.filter(p => p.left && p.right);
     } else if (type === "ordering") {
@@ -282,6 +311,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
       metadata.text_with_blanks = blankText;
       metadata.blanks = blanks;
       metadata.case_sensitive = blankCaseSensitive;
+      metadata.ai_grading = aiGrading;
     } else if (type === "code_challenge") {
       const solutions = acceptedSolutions.map(s => s.trim()).filter(Boolean);
       if (solutions.length === 0) {
@@ -793,6 +823,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
                     />
                     <label htmlFor="case_sens" className="text-[10px] !text-dash-textMuted">Case-sensitive matches</label>
                   </div>
+                  <AiGradingToggle checked={aiGrading} onChange={setAiGrading} />
                 </div>
               )}
 
@@ -891,6 +922,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
                           <input type="checkbox" checked={blankCaseSensitive} onChange={(e) => setBlankCaseSensitive(e.target.checked)} className="accent-primary" />
                           Case-sensitive matches
                         </label>
+                        <AiGradingToggle checked={aiGrading} onChange={setAiGrading} />
                       </div>
                     )}
                   </div>

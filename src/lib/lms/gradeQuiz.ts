@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { gradeQuestionSet, type QuizGradeResult } from './quizGrading';
+import { applyAiGradingPass } from './aiGradeAnswer';
 
 export type { QuizGradeResult } from './quizGrading';
 
@@ -22,5 +23,9 @@ export async function gradeQuizAttempt(
     adminClient.from('quiz_settings').select('pass_percentage').eq('lesson_id', lessonId).maybeSingle(),
   ]);
 
-  return gradeQuestionSet(questions || [], answers || {}, settings?.pass_percentage ?? 70);
+  const passPct = settings?.pass_percentage ?? 70;
+  const base = gradeQuestionSet(questions || [], answers || {}, passPct);
+  // Opt-in AI grading pass (default off; only calls OpenAI for ai_grading questions the
+  // deterministic pass scored 0). A no-op when no question has metadata.ai_grading.
+  return applyAiGradingPass(base, questions || [], answers || {}, passPct);
 }

@@ -312,14 +312,20 @@ message. The admin preview player also links to `/courses/[id]/module-quiz/...`.
 
 ### 3.3 AI-assisted question generation — ⚠️ real, MCQ-only
 
-`api/ai/generate-questions/route.ts` (`requireLmsInstructor`). Lesson scope: context =
-`course_lessons.content` (**note:** live lesson `content` is `{}` — real lesson body lives in
-`content_blocks`, which this route does not read, so lesson-scoped generation can be
-thin-context). Module scope: context = concatenated `content` of every lesson in the module
-(6000-char window). Prompt asks for **exactly 5 MCQs**; inserts `question_type: 'mcq'` into
-`quiz_questions` / `module_quiz_questions`. Real OpenAI call (`gpt-4o-mini`, temp 0.5) with a
-canned-5-question mock fallback when the key is missing / placeholder
-(`sk_mock_key` / contains `PLACEHOLDER` / starts `sk-proj-O15jtbs`). No non-MCQ generation.
+`api/ai/generate-questions/route.ts` (`requireLmsInstructor`). **Original audit state:**
+context for both scopes was `course_lessons.content` (`{}` in practice) — see 3.3 history.
+**Batch 3 (2026-09-02, code-complete — see STEP 6.3):** both scopes now assemble real text
+from `content_blocks` via `src/lib/lms/lessonContentForAI.ts` — `rich_text`, `reading`/
+`slides` text, `assignment` instructions, `flashcards`, video/audio titles (no transcript
+field exists), `html_code` visible text — with `course_lessons.content` kept as a legacy
+string fallback. Lesson window 1500→4000 chars, module window 6000→8000 chars. Confirmed
+(STEP 6.3) that module-scope's old apparent edge was never real body content — it was
+leaking every lesson's *title* into the prompt while lesson-scope leaked only one. Prompt
+asks for **exactly 5 MCQs**; inserts `question_type: 'mcq'` into `quiz_questions` /
+`module_quiz_questions`. Real OpenAI call (`gpt-4o-mini`, temp 0.5) with a canned-5-question
+mock fallback when the key is missing / placeholder (`sk_mock_key` / contains `PLACEHOLDER` /
+starts `sk-proj-O15jtbs`, now `src/lib/ai/openaiKey.ts::getUsableOpenAIKey`). **Still MCQ-only**
+— unchanged, out of Batch 3 scope.
 
 ### 3.4 Admin quiz analytics — ✅ (reads real attempt data — prior legacy-table issue fixed)
 
@@ -420,8 +426,8 @@ Fonts `css2` URL (not `next/font`).
 | G2 | Automations | Rules are workspace-wide, not per-course, despite living on a per-course tab | ~~Medium~~ → **Resolved in code (2026-09-02, Batch 1); live verification pending** — see STEP 6.1 |
 | G3 | Automations | `enroll_bundle` + `assign_certificate` actions are unhandled stubs; `grant_community` is a no-op | ~~Medium~~ → **Partially resolved in code (2026-09-02, Batch 1); live verification pending** — `enroll_bundle` + `assign_certificate` now real; `grant_community` intentionally partial (no forum-ACL concept exists). See STEP 6.1 |
 | G4 | Quizzes | 5 of 8 question types (`matching`, `ordering`, `fill_blank`, `code`, `file_upload`) have no student answer UI and always grade 0; the "8 question types" label in the lesson picker overstates it | ~~Medium~~ → **Resolved in code (2026-09-02, Batch 2); live verification pending** — all 8 now have real student UI + server grading (`code` by normalized-text match, not execution; `file_upload` by instructor review). Label is now accurate. See STEP 6.2 |
-| G5 | AI quiz gen | MCQ only; lesson-scoped generation reads `course_lessons.content` (`{}` in practice) not the actual `content_blocks`, so lesson-scoped output can be generic | Medium |
-| G6 | AI quiz gen | Short-answer grading is exact string match vs a synonyms list — no fuzzy/AI marking | Low |
+| G5 | AI quiz gen | MCQ only; lesson-scoped generation reads `course_lessons.content` (`{}` in practice) not the actual `content_blocks`, so lesson-scoped output can be generic | ~~Medium~~ → **Content source resolved in code (2026-09-02, Batch 3); live verification pending** — both scopes now assemble real text from `content_blocks`. Still MCQ-only (out of Batch 3 scope). See STEP 6.3 |
+| G6 | AI quiz gen | Short-answer grading is exact string match vs a synonyms list — no fuzzy/AI marking | ~~Low~~ → **Resolved in code (2026-09-02, Batch 3); live verification pending** — deterministic fuzzy matching (punctuation-insensitive + capped edit-distance) now default for `short_answer` + `fill_blank`; opt-in per-question AI-semantic grading added, **default off**. See STEP 6.3 |
 | G7 | Certificates | No automatic issue/email on course completion — pull-only download | Medium (roadmap item) |
 | G8 | Certificates | Design templates real, but no live "preview with real course data" beyond the form; custom-upload placement UX not exercised in this audit | Low |
 | G9 | Catalog | No category / tag filter or taxonomy (no `course_categories` table); search is client-side over the already-loaded list | Low |
@@ -645,6 +651,155 @@ flagged, not changed (marketing copy, separate decision).
   review is still pending. Minor; left as-is (it is a real attempt).
 - `ordering` uses pointer drag (`@hello-pangea/dnd`); no keyboard-only reorder fallback was
   added.
+
+---
+
+## STEP 6.3 — Batch 3 resolution log ("AI Generation Content Source + Fuzzy Grading", 2026-09-02)
+
+> Same status vocabulary as 6.1 / 6.2: **code-complete** = wired, `npx tsc --noEmit` clean,
+> `npx vitest run` **226/226** (8 new fuzzy-matching tests in `quizGrading.test.ts`), plus a
+> live read of the real `content_blocks` to confirm the new AI context source (below). A real
+> end-to-end OpenAI generation run + a real student fuzzy/AI-graded submission need a running
+> app — runbook: `docs/lms-quiz-types-batch3-verification.md`. **No migrations in this batch.**
+
+### STEP 0 re-confirm (drift check, 2026-09-02)
+
+- `api/ai/generate-questions/route.ts` (unchanged since the original audit): **lesson scope**
+  read `course_lessons.content`, `JSON.stringify`'d it, `contentLimit = 1500`. **Module
+  scope** read `course_lessons.content` for every lesson in the module and joined them as
+  ``Lesson "<title>": <stringified content>``, `contentLimit = 6000`. Neither read
+  `content_blocks`. MCQ-only.
+- Live DB: **0 of 3** `course_lessons` rows have non-empty `content` (all `{}`). No legacy
+  non-empty `content` anywhere on this workspace — the audit's "maybe some pre-canvas lessons
+  still have body text" hypothesis is **not** confirmed here (kept as a cheap fallback anyway
+  for other workspaces).
+- `content_blocks` (15 live rows) has **no** `rich_text` / `assignment` / `slides` rows on
+  this workspace; the real text present is video-block `content.title`
+  ("Adverb | 5 Types of Adverb | Parts of speech"), `html_code` `content.html`, and one audio
+  embed. No `transcript` field exists on `video` or `audio` blocks (confirmed) — video/audio
+  contribute only their title/description.
+- Grading matcher (post-Batch-2 `quizGrading.ts::matchesAccepted`, shared by `short_answer`
+  **and** every `fill_blank` blank): `String(x).trim().replace(/\s+/g,' ')` + `.toLowerCase()`
+  unless `case_sensitive`, then **exact `===`** against each accepted string. **No**
+  punctuation handling, **no** edit-distance.
+
+### G5 — why module-scope "seemed to work better" (confirmed)
+
+Both scopes read the same empty `course_lessons.content`. The difference is entirely in the
+string each handed the model:
+
+- **Lesson scope** put `JSON.stringify(lesson.content)` — literally `"{}"` — into the `content`
+  variable. The lesson *title* went only into the separate `title` var / the prompt's
+  `"${title}"`. So the model got **one title + "{}"**.
+- **Module scope** built ``Lesson "${l.title}": {}`` for **every** lesson in the module. That
+  string carries **every lesson title** in the module — 6–10 real topic phrases
+  ("Adverbs", "Present perfect", "Phrasal verbs", …) — which is genuine content signal a
+  model can write plausible questions from.
+
+So module-scope was never reading lesson *bodies* either; it just leaked far more **titles**.
+Neither was using real content.
+
+### G5 — fix (code-complete)
+
+- New `src/lib/lms/lessonContentForAI.ts` → `assembleLessonContext(db, lessonIds[])`. Per
+  lesson it gathers, in block order: `rich_text` (HTML-stripped prose — primary signal),
+  `reading`/`slides` (`content.text/.body/.caption` + title; **PDF binaries are not text-
+  extracted anywhere in the codebase — a file-only reading block contributes just its
+  title/caption, stated**), `assignment` (`content.instructions`), `flashcards` (front/back
+  pairs), `video`/`audio` (**title + description only — no transcript field exists**),
+  `html_code` (HTML-stripped *visible* text, capped), `embed`/`download`/`live_session`
+  (author label if set). Plus `course_lessons.content` as a legacy string fallback. `htmlToText`
+  helper (tag strip + the ~6 entities that actually occur), 2000-char cap per block.
+- `api/ai/generate-questions/route.ts`: **lesson scope** → `assembleLessonContext([lesson_id])`,
+  `contentLimit` 1500 → **4000**. **Module scope** → `assembleLessonContext(<all module
+  lesson ids>)` (replacing the `Lesson "title": {}` join with the real per-lesson assembled
+  text, still headed `Lesson "<title>":`), `contentLimit` 6000 → **8000** (~2k tokens, well
+  inside gpt-4o-mini). Prompt now says "base every question strictly on the provided content"
+  — or, when the assembled body is < ~120 real chars, "content is sparse — base on the title
+  + general knowledge" (so a thin course still generates something usable rather than
+  hallucinating detail).
+- **Live check (2026-09-02):** ran the assembler's logic against the 3 real lessons — the AI
+  now receives, e.g., `Adverb | 5 Types of Adverb | Parts of speech` (video title) and the
+  `html_code` visible text ("My First Webpage", "Welcome to My Website", …) where it
+  previously received `"{}"`. On a genuinely content-rich course (real `rich_text` / reading
+  prose) it would pull substantial body text; output quality is now bounded by **what authors
+  put in blocks**, not by a hardcoded empty column.
+- **Not changed:** still MCQ-only, still `gpt-4o-mini` temp 0.5, still the same placeholder-key
+  mock fallback. Non-MCQ generation is a separate item, not in Batch 3's scope.
+
+### G6 — deterministic fuzzy matching (code-complete, DEFAULT ON)
+
+`quizGrading.ts::matchesAccepted` is now three tiers, first hit wins:
+
+1. **exact** after trim + whitespace-collapse (+ case-fold unless `case_sensitive`) —
+   byte-identical to the pre-Batch-3 rule, so nothing that passed before regresses.
+2. **punctuation-insensitive** — `normalizeForFuzzy` strips `.,;:!?'"()[]{}<>/\|@#%^*_~+=-`
+   and quote variants, collapses space (respects `case_sensitive`).
+3. **edit-distance** — `levenshtein()` is Optimal String Alignment (Damerau-Levenshtein: an
+   adjacent transposition = 1 edit, e.g. `recieve`→`receive`), accepted when
+   `distance ≤ typoTolerance(max(len))` where tolerance is **0 for ≤4 chars, 1 for 5–7,
+   2 for ≥8** (capped at 2).
+
+Verified (unit): `mitochondira`→`mitochondria`, `recieve`→`receive`, `Newton's 2nd Law.`→
+`newtons 2nd law`, ` photosynthesis!!! `→`photosynthesis` all accept; `cat`↛`cot`,
+`42`↛`24`, `ion`↛`eon`, `respiration`↛`photosynthesis`, `France`↛`Germany` all still reject.
+`matchesAccepted(..., { fuzzy: false })` restores pure exact. `mcq`/`true_false` grading is
+untouched (they never call this matcher).
+
+### G6 — opt-in AI-semantic grading (code-complete, DEFAULT OFF)
+
+- **Toggle:** per-question, `quiz_questions.metadata.ai_grading` (the `metadata` column added
+  in Batch 2 — **no new migration**). Surfaced only for `short_answer` + `fill_blank` in
+  `QuizWorkbenchClient` as an explicit opt-in checkbox with a plain-language cost/
+  non-determinism warning. `handleNewQuestion` resets it to `false`.
+- **Path:** new `src/lib/lms/aiGradeAnswer.ts` → `applyAiGradingPass(base, questions, answers,
+  passPct)`, called by `gradeQuizAttempt` / `gradeModuleQuizAttempt` / the file-upload
+  `gradeQuizAttemptManualReview` **after** the deterministic grade. It only calls OpenAI for a
+  question that is (a) `short_answer`/`fill_blank`, (b) `metadata.ai_grading === true`, (c)
+  scored **0** deterministically, and (d) has a non-empty answer. So a correct answer never
+  costs a call; the non-determinism only ever affects an answer the cheap path already
+  rejected. `aiJudgeAnswer` uses the established raw-fetch `gpt-4o-mini` pattern at
+  **temperature 0**, `response_format: json_object`, `{ "correct": true|false }`.
+- **Mock fallback** (`getUsableOpenAIKey()` — the same `sk_mock_key`/`PLACEHOLDER`/
+  `sk-proj-O15jtbs` guard, factored into `src/lib/ai/openaiKey.ts`): returns `false`, i.e.
+  AI grading contributes nothing without a real key and the deterministic result stands. It
+  never silently accepts.
+- `fill_blank` with AI on: each still-failing blank is judged against its own accepted list;
+  the question is awarded only if **every** blank ends up acceptable.
+
+### Files changed (Batch 3)
+
+- New: `src/lib/lms/lessonContentForAI.ts`, `src/lib/lms/aiGradeAnswer.ts`,
+  `src/lib/ai/openaiKey.ts`.
+- `src/lib/lms/quizGrading.ts` — 3-tier `matchesAccepted` + `levenshtein` (OSA) +
+  `typoTolerance` + `normalizeForFuzzy`; `quizGrading.test.ts` +8.
+- `src/lib/lms/gradeQuiz.ts`, `gradeModuleQuiz.ts` — `await applyAiGradingPass(...)` after the
+  deterministic grade.
+- `src/app/actions/quizzes.ts` — `gradeQuizAttemptManualReview` runs the AI pass too.
+- `src/app/api/ai/generate-questions/route.ts` — `assembleLessonContext` for both scopes;
+  4000 / 8000 char windows; sparse-content prompt branch.
+- `src/app/courses/[id]/quiz/[quizId]/QuizWorkbenchClient.tsx` — `AiGradingToggle` for
+  `short_answer` + `fill_blank`; `metadata.ai_grading` load/save/reset.
+
+### Known limitations / honest notes (Batch 3)
+
+- **Not live-verified.** Assembler logic was run against live `content_blocks`; no live OpenAI
+  generation run and no live student submission this pass.
+- On the current demo workspace the block text is genuinely thin (no `rich_text`/reading
+  prose authored) — the assembler extracts every real signal that exists (video titles,
+  html_code text) but can't manufacture content that authors didn't write. The sparse-content
+  prompt branch handles this.
+- Fuzzy tolerance is deliberately conservative (cap 2, 0 for short answers): it will still
+  reject a 3-edit typo on a long answer and any 1-edit difference on a ≤4-char answer. A
+  numeric answer like `42` gets zero tolerance (correct — `24` must not match).
+- AI-semantic grading is genuinely **non-deterministic** at the margin — the same borderline
+  answer *can* be graded differently on a retake. This is why it's opt-in, default off, and
+  fallback-only. It is also not retro-applied: turning it on doesn't re-grade past attempts.
+- The AI judge makes **one call per still-wrong AI-enabled question per submission**; a
+  `fill_blank` with several wrong blanks makes one call per wrong blank. No batching.
+- `applyAiGradingPass` has no unit test that exercises a real model (would be non-
+  deterministic); it's covered by the "no candidates → returns base unchanged, zero calls"
+  path via the existing grader tests.
 
 ---
 

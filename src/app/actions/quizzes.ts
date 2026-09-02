@@ -4,6 +4,7 @@ import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { requireLmsInstructor } from '@/lib/lms/access';
 import { gradeWithManualAwards, MANUAL_REVIEW_TYPES } from '@/lib/lms/quizGrading';
+import { applyAiGradingPass } from '@/lib/lms/aiGradeAnswer';
 import { markLessonCompleteForContact } from '@/lib/lms/completeLesson';
 import { logger } from '@/shared/logger';
 
@@ -244,11 +245,12 @@ export async function gradeQuizAttemptManualReview(input: {
       if (manualIds.has(qid)) cleanAwards[qid] = Number(pts) || 0;
     }
 
-    const result = gradeWithManualAwards(
+    const passPct = settings?.pass_percentage ?? 70;
+    const result = await applyAiGradingPass(
+      gradeWithManualAwards(questions || [], attempt.answers || {}, cleanAwards, passPct),
       questions || [],
       attempt.answers || {},
-      cleanAwards,
-      settings?.pass_percentage ?? 70,
+      passPct,
     );
 
     const { error: uErr } = await db
