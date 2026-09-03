@@ -3,22 +3,36 @@ import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ShieldAlert } from 'lucide-react';
 import { createAdminClient } from '@/lib/supabase/server';
-import { requireAuth, getCurrentProfile } from '@/lib/auth';
+import { getUser, getCurrentProfile } from '@/lib/auth';
 import { getOrCreateStudentContact } from '@/app/actions/studentEnrollments';
 import { getCompletedLessons } from '@/app/actions/studentProgress';
 import { isEnrolmentActive } from '@/lib/lms/enrolment';
 import StudentPlayerClient from './StudentPlayerClient';
+import PreviewLessonClient from '@/components/lms/PreviewLessonClient';
+import { resolveCoursePreview } from '@/lib/lms/resolveCoursePreview';
 import { flattenLessonCanvas } from '@/lib/lms/flattenLessonCanvas';
 
 interface StudentCoursePlayerPageProps {
   params: {
     id: string;
   };
+  searchParams: {
+    lessonId?: string;
+  };
 }
 
-export default async function StudentCoursePlayerPage({ params }: StudentCoursePlayerPageProps) {
+export default async function StudentCoursePlayerPage({ params, searchParams }: StudentCoursePlayerPageProps) {
   const courseId = params.id;
-  const user = await requireAuth();
+  // requireAuth() -> getUser() (nullable). This route still lives under student/layout.tsx,
+  // which hard-gates on requireAuth(), so a genuinely anonymous visitor never actually
+  // reaches here — they're sent to /preview/courses/[id] (its own route, its own gate). This
+  // getUser() nullability matters for the belt-and-braces redirect just below and so the
+  // logged-in-but-not-enrolled branch can render the real Method 3 preview/paywall inline.
+  const user = await getUser();
+  if (!user) {
+    const qs = searchParams.lessonId ? `?lessonId=${searchParams.lessonId}` : '';
+    redirect(`/preview/courses/${courseId}${qs}`);
+  }
 
   const adminClient = createAdminClient();
 
@@ -33,48 +47,69 @@ export default async function StudentCoursePlayerPage({ params }: StudentCourseP
     notFound();
   }
 
-  // 2. Fetch student contact and enrollment using admin client to bypass RLS
-  const contactId = await getOrCreateStudentContact(course.workspace_id);
-  if (!contactId) {
-    redirect('/student/marketplace');
-  }
+  // 2. Fetch student contact and enrollment using admin client to bypass RLS. Both are
+  // null for a genuinely anonymous visitor — getOrCreateStudentContact() already returns
+  // null when there's no signed-in user (see studentEnrollments.ts), so this never creates a
+  // contact for someone just previewing.
+  const contactId = user ? await getOrCreateStudentContact(course.workspace_id) : null;
 
-  const { data: enrollment } = await adminClient
-    .from('enrollments')
-    .select('*')
-    .eq('course_id', courseId)
-    .eq('contact_id', contactId)
-    .maybeSingle();
+  const { data: enrollment } = contactId
+    ? await adminClient
+        .from('enrollments')
+        .select('*')
+        .eq('course_id', courseId)
+        .eq('contact_id', contactId)
+        .maybeSingle()
+    : { data: null as any };
 
   // Access gate — content is served ONLY to a currently-active enrolment. A row that exists
   // but has been deactivated by an admin (active:false / status:'inactive' etc.) must not
   // open the player: previously this check was just `if (!enrollment)`, so a deactivated
   // student kept full read access to every lesson via the URL while showing as "removed" in
   // the admin roster. isEnrolmentActive() is the same predicate the mark-complete action uses.
-  if (!enrollment || !isEnrolmentActive(enrollment)) {
-    const wasEnrolled = !!enrollment;
-    return (
-      <div className="mx-auto mt-24 max-w-md rounded-2xl border border-dash-border bg-white p-8 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-500 ring-1 ring-inset ring-rose-500/15">
-          <ShieldAlert size={26} />
+  const wasEnrolled = !!enrollment;
+  const hasAccess = wasEnrolled && isEnrolmentActive(enrollment);
+
+  if (!hasAccess) {
+    // A REAL enrollment that exists but is deactivated (cancelled/suspended/pending_approval/
+    // etc.) is a genuinely different state from "never enrolled" — keep this exact existing
+    // card, unchanged, rather than folding it into the new preview/paywall branch below.
+    if (wasEnrolled) {
+      return (
+        <div className="mx-auto mt-24 max-w-md rounded-2xl border border-dash-border bg-white p-8 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-500 ring-1 ring-inset ring-rose-500/15">
+            <ShieldAlert size={26} />
+          </div>
+          <h3 className="mt-4 font-display text-[16px] font-semibold !text-dash-text">Access paused</h3>
+          <p className="mt-1.5 text-[13px] leading-relaxed !text-dash-textMuted">
+            Your enrolment in <strong className="!text-dash-text">{course.title}</strong> is no longer active. Contact the course team if you think this is a mistake.
+          </p>
+          <Link
+            href="/student/marketplace"
+            className="mt-5 inline-flex h-10 w-full items-center justify-center rounded-lg bg-dash-accent px-6 text-[13px] font-semibold text-white transition-colors hover:bg-dash-accent/90"
+          >
+            Browse catalog
+          </Link>
         </div>
-        <h3 className="mt-4 font-display text-[16px] font-semibold !text-dash-text">
-          {wasEnrolled ? 'Access paused' : 'Not enrolled'}
-        </h3>
-        <p className="mt-1.5 text-[13px] leading-relaxed !text-dash-textMuted">
-          {wasEnrolled ? (
-            <>Your enrolment in <strong className="!text-dash-text">{course.title}</strong> is no longer active. Contact the course team if you think this is a mistake.</>
-          ) : (
-            <>You're not enrolled in <strong className="!text-dash-text">{course.title}</strong>. Enrol from the catalog to start.</>
-          )}
-        </p>
-        <Link
-          href="/student/marketplace"
-          className="mt-5 inline-flex h-10 w-full items-center justify-center rounded-lg bg-dash-accent px-6 text-[13px] font-semibold text-white transition-colors hover:bg-dash-accent/90"
-        >
-          Browse catalog
-        </Link>
-      </div>
+      );
+    }
+
+    // Signed in, but no active enrollment for this course — Course Start Method 3: the same
+    // real read-only preview / real paywall an anonymous visitor gets at /preview/courses/[id],
+    // rendered inline here since this viewer is authenticated (student/layout.tsx is happy).
+    // resolveCoursePreview() fetches ONLY the one requested lesson's content, and ONLY when
+    // it's genuinely is_preview. No progress/completion/contact write happens on this branch.
+    const previewRes = await resolveCoursePreview(courseId, searchParams.lessonId);
+    if (!previewRes) notFound();
+    return (
+      <PreviewLessonClient
+        course={previewRes.course}
+        modules={previewRes.modules}
+        lessons={previewRes.lessons}
+        activeLesson={previewRes.activeLesson}
+        pricing={previewRes.pricing}
+        isSignedIn
+      />
     );
   }
 

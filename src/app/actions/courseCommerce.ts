@@ -20,6 +20,13 @@ export async function updateCoursePricing(
     price: number;
     subscription_interval?: 'month' | 'year' | null;
     enrolment_cap?: number | null;
+    // Course Start Methods — all optional so existing callers (and older client bundles
+    // mid-deploy) keep working unchanged; undefined = "don't touch this field".
+    start_method?: 'email_access_link' | 'instant_payment' | 'free_preview_then_paywall' | 'payment_plan';
+    email_access_auto_send?: boolean;
+    free_lesson_count?: number | null;
+    number_of_payments?: number | null;
+    payment_failure_policy?: 'pause_immediately' | 'grace_period' | 'retry_keep_access' | null;
   }
 ) {
   try {
@@ -38,18 +45,38 @@ export async function updateCoursePricing(
 
     if (fetchErr || !course) return { error: 'Course node not found or unauthorized' };
 
+    const updatePayload: Record<string, any> = {
+      pricing_model: payload.pricing_model,
+      price: payload.price,
+      subscription_interval: payload.pricing_model === 'subscription' ? payload.subscription_interval : null,
+      enrolment_cap: payload.enrolment_cap || null,
+      updated_at: new Date().toISOString()
+    };
+    if (payload.start_method !== undefined) updatePayload.start_method = payload.start_method;
+    if (payload.email_access_auto_send !== undefined) updatePayload.email_access_auto_send = payload.email_access_auto_send;
+    if (payload.free_lesson_count !== undefined) updatePayload.free_lesson_count = payload.free_lesson_count;
+    if (payload.number_of_payments !== undefined) updatePayload.number_of_payments = payload.number_of_payments;
+    if (payload.payment_failure_policy !== undefined) updatePayload.payment_failure_policy = payload.payment_failure_policy;
+
     const { error: updateErr } = await supabase
       .from('courses')
-      .update({
-        pricing_model: payload.pricing_model,
-        price: payload.price,
-        subscription_interval: payload.pricing_model === 'subscription' ? payload.subscription_interval : null,
-        enrolment_cap: payload.enrolment_cap || null,
-        updated_at: new Date().toISOString()
-      })
+      .update(updatePayload)
       .eq("id", courseId).eq("workspace_id", workspaceId);
 
     if (updateErr) throw updateErr;
+
+    // Course Start Method 3: a changed start_method or free_lesson_count can change which
+    // lessons are derived-preview. recomputeCoursePreviewLessons() is a no-op for any course
+    // not currently on free_preview_then_paywall — including one that just switched AWAY
+    // from it, which is deliberate: is_preview simply reverts to being the plain,
+    // independent, hand-editable marketing flag it always was for every other start method,
+    // rather than this save silently mass-clearing values an admin may now want to set
+    // manually. Switching TO Method 3 with no free_lesson_count yet is handled inside that
+    // function (clears is_preview until a real count is saved).
+    if (payload.start_method !== undefined || payload.free_lesson_count !== undefined) {
+      const { recomputeCoursePreviewLessons } = await import('@/lib/lms/coursePreview');
+      await recomputeCoursePreviewLessons(courseId);
+    }
 
     return { success: true };
   } catch (error: any) {

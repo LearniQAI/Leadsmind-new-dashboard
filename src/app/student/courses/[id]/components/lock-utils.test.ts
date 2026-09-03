@@ -55,3 +55,29 @@ describe('getLessonLockReason – drip scheduling', () => {
     expect(reason?.diffDays).toBe(7);
   });
 });
+
+// Course Start Method 3 (free preview lessons, then paywall) — the "no enrollment at all"
+// branch, distinct from every other lock reason above (all of which assume a real, if
+// deactivated, enrollment).
+describe('getLessonLockReason – no enrollment (Course Start Method 3)', () => {
+  it('an is_preview lesson is genuinely open to a visitor with no enrollment', () => {
+    const p = baseParams();
+    (p.lesson as any).is_preview = true;
+    const reason = getLessonLockReason({ ...p, enrollment: null } as any);
+    expect(reason).toBeNull();
+  });
+
+  it('a non-preview lesson requires enrollment, not the drip/prerequisite styling', () => {
+    const p = baseParams();
+    (p.lesson as any).is_preview = false;
+    const reason = getLessonLockReason({ ...p, enrollment: null } as any);
+    expect(reason?.type).toBe('requires_enrollment');
+  });
+
+  it('never returns requires_enrollment when a real enrollment exists, even an old one', () => {
+    const p = baseParams();
+    (p.lesson as any).is_preview = false;
+    const reason = getLessonLockReason({ ...p, enrollment: { enrolled_at: daysAgo(30) } });
+    expect(reason?.type).not.toBe('requires_enrollment');
+  });
+});

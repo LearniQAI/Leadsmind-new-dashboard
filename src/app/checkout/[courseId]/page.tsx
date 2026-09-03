@@ -9,7 +9,7 @@ import CheckoutClient from '@/app/student/checkout/[courseId]/CheckoutClient';
 
 interface CheckoutPageProps {
   params: { courseId: string };
-  searchParams: { status?: string };
+  searchParams: { status?: string; session_id?: string };
 }
 
 /**
@@ -27,6 +27,7 @@ interface CheckoutPageProps {
 export default async function PublicCheckoutPage({ params, searchParams }: CheckoutPageProps) {
   const { courseId } = params;
   const status = searchParams?.status;
+  const sessionId = searchParams?.session_id;
 
   const user = await getUser();
 
@@ -67,6 +68,7 @@ export default async function PublicCheckoutPage({ params, searchParams }: Check
           isCapped={isCapped}
           isGuest
           postCheckoutStatus={status ?? null}
+          checkoutSessionId={sessionId ?? null}
         />
       </div>
     );

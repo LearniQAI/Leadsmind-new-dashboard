@@ -101,6 +101,29 @@ export async function findOrCreateContactByEmail(
 }
 
 /**
+ * Read-only counterpart to findOrCreateContactByEmail — used by the guest-checkout status
+ * poll (/api/checkout/guest-status), which must never itself create or change any real row.
+ * If the webhook hasn't run yet, no contact exists yet either; that's a legitimate "still
+ * pending" state, not an error.
+ */
+export async function findContactByEmail(
+  admin: SupabaseClient,
+  workspaceId: string,
+  email: string
+): Promise<string | null> {
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail || !cleanEmail.includes('@')) return null;
+  const { data } = await admin
+    .from('contacts')
+    .select('id')
+    .eq('workspace_id', workspaceId)
+    .eq('email', cleanEmail)
+    .limit(1)
+    .maybeSingle();
+  return data?.id || null;
+}
+
+/**
  * Rejects an email that belongs to a workspace admin/owner of THIS workspace — mirrors the
  * "administrators cannot self-enroll" guard in enrollStudent(), adapted to email (guests have
  * no user_id). Best-effort: if the users table has no row for the email, it's not an admin.
@@ -144,6 +167,8 @@ export async function insertEnrollmentIfAbsent(
     stripePaymentIntentId?: string | null;
     subscriptionInterval?: string | null;
     subscriptionEndsAt?: string | null;
+    /** Course Start Method 1 ("hold for manual approval"): defaults to 'active'. */
+    status?: string;
   }
 ): Promise<{ enrolled: boolean; alreadyEnrolled: boolean }> {
   const { courseId, contactId } = params;
@@ -161,7 +186,7 @@ export async function insertEnrollmentIfAbsent(
     course_id: courseId,
     contact_id: contactId,
     // enrollments has no workspace_id column — workspace derives via course_id -> courses.
-    status: 'active',
+    status: params.status || 'active',
     active: true,
     payment_status: params.paymentStatus,
     access_type: params.accessType || 'full',

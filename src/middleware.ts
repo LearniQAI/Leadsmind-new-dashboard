@@ -45,11 +45,18 @@ export async function middleware(request: NextRequest) {
   // student-facing landing page at /unauthenticated/courses/{slug}). Added for the New Course
   // modal's default-domain option — that page already exists and already works by slug, this
   // just gives it the clean URL a student actually sees, instead of the internal admin route
-  // shape. Reserved static children of /courses (currently just "certificates", the real admin
-  // page at src/app/courses/certificates/page.tsx) are excluded so this can never intercept an
+  // shape. Reserved static children of /courses are excluded so this can never intercept an
   // existing real page — and a UUID second segment is left alone too, since that's the existing
   // internal /courses/[id] admin route, not a public slug.
-  const RESERVED_COURSES_SEGMENTS = new Set(['certificates', 'components', 'utils'])
+  //
+  // Kept in sync with the real folders under src/app/courses/ (everything that isn't [id]):
+  // certificates, components, utils, needs-grading. "needs-grading" was missing here — the
+  // real cross-course assignment inbox at src/app/courses/needs-grading/page.tsx existed and
+  // worked, but every request to it was rewritten to /unauthenticated/courses/needs-grading
+  // (treating "needs-grading" as a public course slug) and 404'd before Next's own router
+  // ever got a chance to match the real static route. Confirmed live: the "Needs grading"
+  // button on /courses linked here and hit exactly this 404.
+  const RESERVED_COURSES_SEGMENTS = new Set(['certificates', 'components', 'utils', 'needs-grading'])
   if (
     segments.length === 2 &&
     segments[0] === 'courses' &&

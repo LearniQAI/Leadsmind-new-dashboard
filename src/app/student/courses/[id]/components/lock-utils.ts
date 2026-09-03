@@ -1,5 +1,5 @@
 export interface LockReason {
-  type: 'coming_soon' | 'paid_locked' | 'dripped' | 'prerequisite';
+  type: 'coming_soon' | 'paid_locked' | 'dripped' | 'prerequisite' | 'requires_enrollment';
   message: string;
   /** Whole calendar days until unlock (>= 1 while locked). Only set for `dripped`. */
   diffDays?: number;
@@ -34,6 +34,20 @@ export function getLessonLockReason({
 }: LockCheckParams): LockReason | null {
   if (module.publish_status === 'coming_soon') {
     return { type: 'coming_soon', message: 'This module is coming soon!' };
+  }
+
+  // Course Start Method 3 (free preview, then paywall): a visitor with NO real enrollment
+  // row at all (this is distinct from an enrolled-but-deactivated row, which
+  // student/courses/[id]/page.tsx already handles separately as "Access paused" before this
+  // function is ever reached for that case). Any is_preview lesson is genuinely open; every
+  // other lesson needs a real paywall, not the drip/prerequisite placeholder styling below —
+  // this is a different real state ("never enrolled"), not "enrolled but this one's locked".
+  if (!enrollment) {
+    if (lesson.is_preview) return null;
+    return {
+      type: 'requires_enrollment',
+      message: 'Enroll in this course to unlock this lesson.',
+    };
   }
 
   const isPaidCourse =
