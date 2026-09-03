@@ -48,7 +48,7 @@ export default function LandingReviewsEditor({ reviews, onChange }: ReviewsEdito
 
       {reviews.length === 0 ? (
         <div className="text-xs !text-dash-textMuted italic p-4 bg-dash-surface rounded-xl border border-dash-border text-center">
-          No reviews added. Landing page will fall back to general defaults.
+          No reviews added. The description page will fall back to general defaults.
         </div>
       ) : (
         <div className="space-y-3">

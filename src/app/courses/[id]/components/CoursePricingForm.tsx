@@ -138,7 +138,7 @@ export default function CoursePricingForm({ course, onSaved }: CoursePricingForm
               <SectionLabel>Terms</SectionLabel>
               <FieldGroup>
                 {showPrice && (
-                  <Field label="Price" htmlFor="pr-price" hint="Amount charged in USD.">
+                  <Field label="Price" htmlFor="pr-price">
                     <InputAffix affix="$">
                       <TextInput
                         id="pr-price"
@@ -156,7 +156,7 @@ export default function CoursePricingForm({ course, onSaved }: CoursePricingForm
                 )}
 
                 {showInterval && (
-                  <Field label="Billing interval" htmlFor="pr-interval" hint="How often the subscription renews.">
+                  <Field label="Billing interval" htmlFor="pr-interval">
                     <Select
                       id="pr-interval"
                       value={subInterval}
@@ -169,11 +169,7 @@ export default function CoursePricingForm({ course, onSaved }: CoursePricingForm
                   </Field>
                 )}
 
-                <Field
-                  label="Enrolment cap"
-                  htmlFor="pr-cap"
-                  hint="Leave blank for unlimited seats."
-                >
+                <Field label="Enrolment cap" htmlFor="pr-cap">
                   <InputAffix affix={<Users className="size-3.5" />}>
                     <TextInput
                       id="pr-cap"

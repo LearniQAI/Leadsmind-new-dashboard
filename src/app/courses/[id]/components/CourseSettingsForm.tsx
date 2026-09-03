@@ -161,7 +161,7 @@ export default function CourseSettingsForm({ course, onSaved }: CourseSettingsFo
 
         <SettingsBody>
           <FieldGroup>
-            <Field label="Course title" htmlFor="cs-title" required hint="Shown to students and on the landing page.">
+            <Field label="Course title" htmlFor="cs-title" required>
               <TextInput
                 id="cs-title"
                 value={editTitle}
@@ -265,12 +265,7 @@ export default function CourseSettingsForm({ course, onSaved }: CourseSettingsFo
               </div>
             </Field>
 
-            <Field
-              label="Description"
-              htmlFor="cs-desc"
-              align="start"
-              hint="A short summary of what students will learn."
-            >
+            <Field label="Description" htmlFor="cs-desc" align="start">
               <TextArea
                 id="cs-desc"
                 value={editDesc}

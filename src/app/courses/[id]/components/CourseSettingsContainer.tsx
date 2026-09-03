@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Settings2,
@@ -27,13 +27,15 @@ import CourseSubmissionsTab from "./CourseSubmissionsTab";
 // state on ONE route, not separate URLs — except Automations, which was already a real
 // separate route (/courses/[id]/automations navigated via router.push, not activeTab state).
 //
-// Secondary-nav choice: a LEFT SIDEBAR, not a secondary tab row — this content is dense
-// (multi-field settings forms, a pricing form, an analytics dashboard, a submissions review
-// table) and a sidebar keeps each label readable and the active section unambiguous.
-//
-// UI pass: rebuilt on the shared Refined-SaaS primitives in ./settings/primitives.tsx —
-// hairline cards, label-left fields, one sky accent. Sidebar grouped into
-// Configuration / Audience so 7 items don't read as an undifferentiated stack.
+// Course Settings Navigation Restructure pass: this was a LEFT SIDEBAR grouped into
+// Configuration/Audience. Re-audited and moved to a horizontal top navbar per that pass —
+// see the per-line notes below for exactly what changed and why. The "landing-page" id is
+// UNCHANGED on purpose (only its visible label became "Description"): it was never a URL
+// segment — this whole shell is one route (/courses/[id]?tab=settings), with `section` as a
+// query param carrying this same id string (see CourseWorkspaceClient.tsx and the
+// "Needs grading" deep link to ?section=submissions) — renaming the id would silently break
+// that deep link and the "View and customize theme" quick-action button, for zero benefit
+// since no bookmarkable /landing-page URL ever existed to clean up.
 export type SettingsSectionId =
   | "general"
   | "landing-page"
@@ -47,30 +49,21 @@ export type SettingsSectionId =
 type NavItem = {
   id: SettingsSectionId;
   label: string;
-  description: string;
   icon: any;
   external?: boolean;
+  /** Visually separates the "Audience" items from "Configuration" without a text label. */
+  separatorBefore?: boolean;
 };
 
-const NAV_GROUPS: { heading: string; items: NavItem[] }[] = [
-  {
-    heading: "Configuration",
-    items: [
-      { id: "general", label: "General", description: "Title, cover, launch state", icon: Settings2 },
-      { id: "landing-page", label: "Landing page", description: "Theme, sections, copy", icon: Palette },
-      { id: "pricing", label: "Pricing", description: "Model, checkout, caps", icon: DollarSign },
-      { id: "emails", label: "Emails", description: "Onboarding template", icon: Mail },
-      { id: "certificate", label: "Certificate", description: "Design & branding", icon: Award },
-      { id: "automations", label: "Automations", description: "Triggers & flows", icon: Zap, external: true },
-    ],
-  },
-  {
-    heading: "Audience",
-    items: [
-      { id: "submissions", label: "Submissions", description: "Grade student work", icon: ClipboardList },
-      { id: "analytics", label: "Analytics", description: "Enrolment & progress", icon: BarChart3 },
-    ],
-  },
+const NAV_ITEMS: NavItem[] = [
+  { id: "general", label: "General", icon: Settings2 },
+  { id: "landing-page", label: "Description", icon: Palette },
+  { id: "pricing", label: "Pricing", icon: DollarSign },
+  { id: "emails", label: "Emails", icon: Mail },
+  { id: "certificate", label: "Certificate", icon: Award },
+  { id: "automations", label: "Automations", icon: Zap, external: true },
+  { id: "submissions", label: "Submissions", icon: ClipboardList, separatorBefore: true },
+  { id: "analytics", label: "Analytics", icon: BarChart3 },
 ];
 
 interface CourseSettingsContainerProps {
@@ -89,81 +82,103 @@ export default function CourseSettingsContainer({
   setActiveSection,
 }: CourseSettingsContainerProps) {
   const router = useRouter();
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  // Drives the left/right fade masks on the horizontal scroller (narrow-viewport pattern —
+  // 8 items don't fit under ~640px). Recomputed on scroll and on resize.
+  const updateScrollFades = () => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 4);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  };
+
+  useEffect(() => {
+    updateScrollFades();
+    const el = scrollerRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", updateScrollFades, { passive: true });
+    window.addEventListener("resize", updateScrollFades);
+    return () => {
+      el.removeEventListener("scroll", updateScrollFades);
+      window.removeEventListener("resize", updateScrollFades);
+    };
+  }, []);
 
   return (
-    <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
-      {/* Sub-navigation sidebar */}
-      <nav className="w-full shrink-0 lg:sticky lg:top-6 lg:w-60">
-        <div className="mb-4 px-1">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-600">
-            Course settings
-          </div>
-          <p className="mt-0.5 text-[12px] text-dash-textMuted">
-            Everything about how this course is sold and delivered.
-          </p>
+    <div className="flex flex-col gap-6">
+      <div className="px-1">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-600">
+          Course settings
+        </div>
+        <p className="mt-0.5 text-[12px] text-dash-textMuted">
+          Everything about how this course is sold and delivered.
+        </p>
+      </div>
+
+      {/* Horizontal top navbar — replaces the old left sidebar. Same items, same order, same
+          icons; the Configuration/Audience text headings are gone, replaced by a thin
+          divider (separatorBefore) before Submissions so that group still reads as visually
+          distinct. */}
+      <div className="relative">
+        <div
+          ref={scrollerRef}
+          className="flex items-center gap-1 overflow-x-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-dash-border"
+        >
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            const isActive = !item.external && activeSection === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  if (item.external) {
+                    router.push(`/courses/${courseId}/automations`);
+                  } else {
+                    setActiveSection(item.id);
+                  }
+                }}
+                className={cn(
+                  "group relative flex shrink-0 items-center gap-2 whitespace-nowrap rounded-t-lg px-3.5 py-2.5 text-[13px] font-semibold transition-colors outline-none focus-visible:ring-4 focus-visible:ring-sky-500/20",
+                  item.separatorBefore && "ml-3 pl-[18px] before:absolute before:-left-1.5 before:top-1/2 before:h-5 before:-translate-y-1/2 before:border-l before:border-dash-border",
+                  isActive
+                    ? "text-sky-700"
+                    : "text-dash-textMuted hover:text-dash-text hover:bg-dash-surface"
+                )}
+              >
+                <Icon className={cn("size-4 shrink-0", isActive ? "text-sky-600" : "text-dash-textMuted group-hover:text-dash-text")} />
+                {item.label}
+                {item.external && <ArrowUpRight className="size-3 text-dash-textMuted" />}
+                {/* Active-tab underline, matching the app's sky accent used elsewhere in this
+                    same shell (previously a filled pill on the sidebar; an underline is the
+                    natural equivalent for a horizontal row). */}
+                <span
+                  className={cn(
+                    "absolute inset-x-2 -bottom-px h-[2px] rounded-full bg-sky-500 transition-opacity",
+                    isActive ? "opacity-100" : "opacity-0"
+                  )}
+                />
+              </button>
+            );
+          })}
         </div>
 
-        <div className="space-y-5">
-          {NAV_GROUPS.map((group) => (
-            <div key={group.heading}>
-              <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-dash-textMuted/70">
-                {group.heading}
-              </div>
-              <div className="space-y-0.5">
-                {group.items.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = !item.external && activeSection === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        if (item.external) {
-                          router.push(`/courses/${courseId}/automations`);
-                        } else {
-                          setActiveSection(item.id);
-                        }
-                      }}
-                      className={cn(
-                        "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors outline-none focus-visible:ring-4 focus-visible:ring-sky-500/20",
-                        isActive
-                          ? "bg-sky-50 ring-1 ring-inset ring-sky-500/20"
-                          : "hover:bg-dash-surface"
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors [&_svg]:size-4",
-                          isActive
-                            ? "border-sky-200 bg-white text-sky-600"
-                            : "border-dash-border bg-dash-surface text-dash-textMuted group-hover:text-dash-text"
-                        )}
-                      >
-                        <Icon />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span
-                          className={cn(
-                            "flex items-center gap-1 text-[13px] font-semibold",
-                            isActive ? "text-sky-700" : "text-dash-text"
-                          )}
-                        >
-                          {item.label}
-                          {item.external && (
-                            <ArrowUpRight className="size-3 text-dash-textMuted" />
-                          )}
-                        </span>
-                        <span className="block truncate text-[11px] text-dash-textMuted">
-                          {item.description}
-                        </span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      </nav>
+        {/* Fade edges — only visible while there's more to scroll in that direction. */}
+        <div
+          className={cn(
+            "pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-white to-transparent transition-opacity",
+            canScrollLeft ? "opacity-100" : "opacity-0"
+          )}
+        />
+        <div
+          className={cn(
+            "pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-white to-transparent transition-opacity",
+            canScrollRight ? "opacity-100" : "opacity-0"
+          )}
+        />
+      </div>
 
       {/* Sub-section content. Most sections are single-column forms and read best
           capped to a comfortable measure; Landing / Submissions / Analytics are
