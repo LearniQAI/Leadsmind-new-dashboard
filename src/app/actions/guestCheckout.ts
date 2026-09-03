@@ -1,12 +1,10 @@
 'use server';
 
 import { headers } from 'next/headers';
-import Stripe from 'stripe';
 import { createAdminClient } from '@/lib/supabase/server';
-import { stripe as defaultStripe } from '@/lib/stripe';
-import { getGatewayCredentials } from '@/lib/paymentGateways/credentials';
 import { checkRateLimit } from '@/lib/security/rateLimit';
 import { logger } from '@/shared/logger';
+import { stripeForWorkspace } from '@/lib/paymentGateways/stripeForWorkspace';
 import {
   findOrCreateContactByEmail,
   insertEnrollmentIfAbsent,
@@ -45,14 +43,6 @@ function appUrl(): string {
     process.env.NEXT_PUBLIC_SITE_URL ||
     'http://localhost:3000'
   ).replace(/\/$/, '');
-}
-
-async function stripeForWorkspace(workspaceId: string): Promise<Stripe> {
-  const creds = await getGatewayCredentials(workspaceId, 'stripe');
-  if (creds) {
-    return new Stripe(creds.accessToken, { apiVersion: '2026-04-22.dahlia' as any });
-  }
-  return defaultStripe;
 }
 
 type GuestFreeInput = {
@@ -264,8 +254,13 @@ export async function createGuestCourseCheckoutSession(input: GuestPaidInput) {
         guest: 'true',
       },
       // NOTE: reaching this URL is just navigation, NOT proof of payment. No enrollment logic
-      // is attached to it — the webhook is the only thing that enrolls.
-      success_url: `${appUrl()}/checkout/${course.id}?status=pending`,
+      // is attached to it — the webhook is the only thing that enrolls. `session_id` is
+      // Stripe's own literal placeholder (substituted server-side by Stripe before the
+      // redirect) — it lets the success page poll /api/checkout/guest-status, which
+      // independently re-fetches this exact session FROM STRIPE'S API before trusting
+      // anything about it. The id is a long, cryptographically random Stripe-generated
+      // value; carrying it in the URL does not let anyone guess another buyer's session.
+      success_url: `${appUrl()}/checkout/${course.id}?status=pending&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl()}/checkout/${course.id}?status=canceled`,
     });
 

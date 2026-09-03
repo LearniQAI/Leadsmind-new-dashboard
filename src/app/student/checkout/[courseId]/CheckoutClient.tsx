@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition } from 'react';
+import React, { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   CreditCard, ShieldCheck, Loader2, Sparkles, AlertCircle, CheckCircle2, ShieldAlert, BookOpen
@@ -21,7 +21,12 @@ interface CheckoutClientProps {
   isGuest?: boolean;
   /** ?status= on return from Stripe hosted checkout ('pending' | 'canceled'). Guest paid flow only. */
   postCheckoutStatus?: string | null;
+  /** ?session_id= (Stripe's own {CHECKOUT_SESSION_ID} substitution) — drives the real
+   *  enrollment-confirmation poll below. Absent on any pre-existing/bookmarked success link. */
+  checkoutSessionId?: string | null;
 }
+
+type GuestPaidStatus = 'polling' | 'ready' | 'timed_out' | 'failed';
 
 export default function CheckoutClient({
   course,
@@ -31,6 +36,7 @@ export default function CheckoutClient({
   isCapped,
   isGuest = false,
   postCheckoutStatus = null,
+  checkoutSessionId = null,
 }: CheckoutClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -42,6 +48,67 @@ export default function CheckoutClient({
   const [hp, setHp] = useState(''); // honeypot — real users never fill this
   const [guestEmailSent, setGuestEmailSent] = useState<boolean | null>(null);
   const [guestAlreadyEnrolled, setGuestAlreadyEnrolled] = useState(false);
+
+  // Real post-payment confirmation poll (guest paid flow only) — see
+  // /api/checkout/guest-status. Never grants anything itself; it only ever repeats back what
+  // that route already independently verified against Stripe's API + the real enrollments row.
+  const [guestPaidStatus, setGuestPaidStatus] = useState<GuestPaidStatus>('polling');
+  const pollStartRef = useRef<number>(Date.now());
+  const POLL_INTERVAL_MS = 3000;
+  const POLL_TIMEOUT_MS = 90_000; // real webhook latency is usually 1-5s; generous ceiling for slow/retried deliveries
+
+  useEffect(() => {
+    if (!isGuest || postCheckoutStatus !== 'pending' || !checkoutSessionId) return;
+
+    let cancelled = false;
+    pollStartRef.current = Date.now();
+
+    const poll = async () => {
+      if (cancelled) return;
+      try {
+        const res = await fetch(
+          `/api/checkout/guest-status?courseId=${encodeURIComponent(course.id)}&session_id=${encodeURIComponent(checkoutSessionId)}`
+        );
+        const data = await res.json();
+        if (cancelled) return;
+
+        if (data.status === 'ready' && data.redirectUrl) {
+          setGuestPaidStatus('ready');
+          // Same generateLink('magiclink') redirect /auth/student/verify already uses to
+          // establish a real Supabase session — this page never sets a session itself.
+          window.location.href = data.redirectUrl;
+          return;
+        }
+
+        if (data.status === 'failed' || data.status === 'invalid') {
+          setGuestPaidStatus('failed');
+          return;
+        }
+
+        // status === 'pending' — the real, expected async gap. Keep polling until the
+        // timeout, at which point the backup email link (already sent by the webhook,
+        // independent of this poll) becomes the primary path.
+        if (Date.now() - pollStartRef.current > POLL_TIMEOUT_MS) {
+          setGuestPaidStatus('timed_out');
+          return;
+        }
+        setTimeout(poll, POLL_INTERVAL_MS);
+      } catch {
+        if (cancelled) return;
+        if (Date.now() - pollStartRef.current > POLL_TIMEOUT_MS) {
+          setGuestPaidStatus('timed_out');
+        } else {
+          setTimeout(poll, POLL_INTERVAL_MS);
+        }
+      }
+    };
+
+    poll();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGuest, postCheckoutStatus, checkoutSessionId, course.id]);
 
   // South African Rand approximation (1 USD ~ 18.5 ZAR)
   const priceZar = (course.price * 18.5).toFixed(2);
@@ -177,23 +244,84 @@ export default function CheckoutClient({
     </div>
   );
 
-  // Guest returning from Stripe hosted checkout. This screen carries NO enrollment logic —
-  // arriving here is just navigation; the webhook is what actually enrolls.
+  // Guest returning from Stripe hosted checkout. This screen carries NO enrollment logic
+  // itself — the webhook is what actually enrolls; this only ever reflects what the real
+  // /api/checkout/guest-status poll reports back.
   if (isGuest && postCheckoutStatus === 'pending' && !success) {
+    // No session_id (a pre-existing/bookmarked success link, or Stripe didn't substitute
+    // it) — nothing to poll against. Same static message this screen always showed; the
+    // email is still the real path here.
+    if (!checkoutSessionId) {
+      return (
+        <div className="bg-[#080f28] border border-white/5 rounded-3xl p-12 text-center space-y-6 max-w-lg mx-auto shadow-2xl flex flex-col items-center justify-center py-20">
+          <div className="w-20 h-20 bg-primary/10 border border-primary/20 text-primary rounded-full flex items-center justify-center">
+            <CheckCircle2 size={40} />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-space-grotesk font-black uppercase text-white tracking-tight">Payment Received</h2>
+            <p className="text-xs text-white/50 leading-relaxed max-w-sm">
+              Thanks! Once your payment is confirmed by our payment provider, we'll email{' '}
+              <strong className="text-white">account setup instructions</strong> for{' '}
+              <strong className="text-white">"{course.title}"</strong> to the address you entered at checkout.
+              This usually happens within a minute.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    if (guestPaidStatus === 'failed') {
+      return (
+        <div className="bg-[#080f28] border border-red-500/10 rounded-3xl p-12 text-center space-y-6 max-w-lg mx-auto shadow-2xl flex flex-col items-center justify-center py-20">
+          <div className="w-20 h-20 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full flex items-center justify-center">
+            <ShieldAlert size={40} />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-space-grotesk font-black uppercase text-white tracking-tight">Something's Not Right</h2>
+            <p className="text-xs text-white/50 leading-relaxed max-w-sm">
+              We couldn't confirm this checkout. If you were charged, check your email for a
+              receipt and access link — or contact support with your payment confirmation.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    if (guestPaidStatus === 'timed_out') {
+      return (
+        <div className="bg-[#080f28] border border-white/5 rounded-3xl p-12 text-center space-y-6 max-w-lg mx-auto shadow-2xl flex flex-col items-center justify-center py-20">
+          <div className="w-20 h-20 bg-primary/10 border border-primary/20 text-primary rounded-full flex items-center justify-center">
+            <CheckCircle2 size={40} />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-space-grotesk font-black uppercase text-white tracking-tight">Almost There</h2>
+            <p className="text-xs text-white/50 leading-relaxed max-w-sm">
+              Your payment is taking a little longer than usual to confirm. We've already sent{' '}
+              <strong className="text-white">account setup instructions</strong> to the address you
+              entered at checkout for <strong className="text-white">"{course.title}"</strong> —
+              use that link to get in whenever it arrives.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // guestPaidStatus === 'polling' (and the brief 'ready' instant before the redirect fires)
     return (
       <div className="bg-[#080f28] border border-white/5 rounded-3xl p-12 text-center space-y-6 max-w-lg mx-auto shadow-2xl flex flex-col items-center justify-center py-20">
         <div className="w-20 h-20 bg-primary/10 border border-primary/20 text-primary rounded-full flex items-center justify-center">
-          <CheckCircle2 size={40} />
+          <Loader2 size={40} className="animate-spin" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-2xl font-space-grotesk font-black uppercase text-white tracking-tight">Payment Received</h2>
+          <h2 className="text-2xl font-space-grotesk font-black uppercase text-white tracking-tight">Finalizing Your Enrollment</h2>
           <p className="text-xs text-white/50 leading-relaxed max-w-sm">
-            Thanks! Once your payment is confirmed by our payment provider, we'll email{' '}
-            <strong className="text-white">account setup instructions</strong> for{' '}
-            <strong className="text-white">"{course.title}"</strong> to the address you entered at checkout.
-            This usually happens within a minute.
+            Confirming your payment for <strong className="text-white">"{course.title}"</strong> and
+            setting up your account. This takes a few seconds — do not close this tab.
           </p>
         </div>
+        <p className="text-[10px] text-white/30 max-w-sm">
+          We've also emailed a backup access link in case you close this page before it finishes.
+        </p>
       </div>
     );
   }
