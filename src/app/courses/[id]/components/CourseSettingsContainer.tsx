@@ -12,6 +12,7 @@ import {
   BarChart3,
   ArrowUpRight,
   Award,
+  UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CourseSettingsForm from "./CourseSettingsForm";
@@ -21,6 +22,7 @@ import CoursePricingForm from "./CoursePricingForm";
 import EmailTemplateForm from "./EmailTemplateForm";
 import CourseCertificateForm from "./CourseCertificateForm";
 import CourseSubmissionsTab from "./CourseSubmissionsTab";
+import CourseEnrollmentsTab from "./CourseEnrollmentsTab";
 
 // Nav restructure (Systeme-parity Master Prompt, Section 2): the 6 tabs other than Modules/
 // Settings move here as sub-sections. Audit confirmed (Step 0) all 6 were client-side tab
@@ -42,6 +44,7 @@ export type SettingsSectionId =
   | "pricing"
   | "emails"
   | "certificate"
+  | "enrollments"
   | "submissions"
   | "automations"
   | "analytics";
@@ -62,7 +65,10 @@ const NAV_ITEMS: NavItem[] = [
   { id: "emails", label: "Emails", icon: Mail },
   { id: "certificate", label: "Certificate", icon: Award },
   { id: "automations", label: "Automations", icon: Zap, external: true },
-  { id: "submissions", label: "Submissions", icon: ClipboardList, separatorBefore: true },
+  // Course Start Methods pass (Method 1): pending_approval enrollments live under Audience,
+  // not Configuration — this is about real people signing up, same category as Submissions.
+  { id: "enrollments", label: "Enrollments", icon: UserCheck, separatorBefore: true },
+  { id: "submissions", label: "Submissions", icon: ClipboardList },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
 ];
 
@@ -186,6 +192,8 @@ export default function CourseSettingsContainer({
       <div className="min-w-0 flex-1">
         {activeSection === "landing-page" ? (
           <CourseLandingForm course={course} onSaved={onCourseSaved} />
+        ) : activeSection === "enrollments" ? (
+          <CourseEnrollmentsTab courseId={courseId} startMethod={course.start_method || "instant_payment"} />
         ) : activeSection === "submissions" ? (
           <CourseSubmissionsTab courseId={courseId} />
         ) : activeSection === "analytics" ? (

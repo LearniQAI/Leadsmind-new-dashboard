@@ -79,7 +79,7 @@ export async function guestFreeEnroll(input: GuestFreeInput) {
 
     const { data: course } = await admin
       .from('courses')
-      .select('id, workspace_id, pricing_model, published, status, enrolment_cap')
+      .select('id, workspace_id, pricing_model, published, status, enrolment_cap, start_method, email_access_auto_send')
       .eq('id', courseId)
       .maybeSingle();
 
@@ -117,16 +117,27 @@ export async function guestFreeEnroll(input: GuestFreeInput) {
     const { contactId } = await findOrCreateContactByEmail(admin, workspaceId, email, name);
     if (!contactId) return { error: 'Could not create your student profile. Please try again.' };
 
+    // Course Start Method 1 (email access link, "hold for manual approval"): no real access
+    // and no email until an admin approves — see courseEnrollmentApproval.ts. Every other
+    // start_method (including the default instant_payment) keeps today's exact behavior.
+    const isHeldForApproval =
+      course.start_method === 'email_access_link' && !course.email_access_auto_send;
+
     const { enrolled, alreadyEnrolled } = await insertEnrollmentIfAbsent(admin, {
       courseId,
       contactId,
       workspaceId,
       paymentStatus: 'free',
       accessType,
+      status: isHeldForApproval ? 'pending_approval' : 'active',
     });
 
     if (alreadyEnrolled) {
       return { success: true, alreadyEnrolled: true, emailSent: false };
+    }
+
+    if (isHeldForApproval) {
+      return { success: true, alreadyEnrolled: false, emailSent: false, pendingApproval: true };
     }
 
     if (enrolled) {

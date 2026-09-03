@@ -167,6 +167,8 @@ export async function insertEnrollmentIfAbsent(
     stripePaymentIntentId?: string | null;
     subscriptionInterval?: string | null;
     subscriptionEndsAt?: string | null;
+    /** Course Start Method 1 ("hold for manual approval"): defaults to 'active'. */
+    status?: string;
   }
 ): Promise<{ enrolled: boolean; alreadyEnrolled: boolean }> {
   const { courseId, contactId } = params;
@@ -184,7 +186,7 @@ export async function insertEnrollmentIfAbsent(
     course_id: courseId,
     contact_id: contactId,
     // enrollments has no workspace_id column — workspace derives via course_id -> courses.
-    status: 'active',
+    status: params.status || 'active',
     active: true,
     payment_status: params.paymentStatus,
     access_type: params.accessType || 'full',

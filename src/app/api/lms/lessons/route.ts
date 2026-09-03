@@ -6,6 +6,7 @@ import { logger } from '@/shared/logger';
 import { processLessonForRAG } from '@/lib/lms/ragPipeline';
 import { processLessonSummary } from '@/lib/lms/summaryPipeline';
 import { getLessonTemplateById, BLANK_LESSON_CANVAS } from '@/lib/builder/lessonTemplates';
+import { recomputeCoursePreviewLessons } from '@/lib/lms/coursePreview';
 
 export const dynamic = 'force-dynamic';
 
@@ -114,6 +115,10 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) throw error;
+
+    // Course Start Method 3: a new lesson shifts every later lesson's real course-wide
+    // position — recompute() is a no-op for any course not on free_preview_then_paywall.
+    await recomputeCoursePreviewLessons(course_id);
 
     if (create_builder_page) {
       const template = template_id ? getLessonTemplateById(template_id) : null;
@@ -230,6 +235,12 @@ export async function PATCH(req: NextRequest) {
 
     if (error) throw error;
 
+    // Course Start Method 3: a reorder (position) or cross-module move (module_id) can change
+    // which lessons fall within the free count — recompute() is a no-op otherwise.
+    if (position !== undefined || module_id !== undefined) {
+      await recomputeCoursePreviewLessons(lesson.course_id);
+    }
+
     // Same best-effort re-chunk/re-embed as POST, only worth doing when
     // content actually changed (title/position-only edits don't affect
     // what's embedded, and processLessonForRAG's own content_hash check
@@ -271,6 +282,15 @@ export async function DELETE(req: NextRequest) {
     const { workspaceId } = await requireLmsInstructor();
     const adminClient = createAdminClient();
 
+    // Fetched before the delete — course_id is needed for the post-delete recompute below
+    // and there is no row left to read it from afterward.
+    const { data: existing } = await adminClient
+      .from('course_lessons')
+      .select('course_id')
+      .eq('id', id)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+
     const { error } = await adminClient
       .from('course_lessons')
       .delete()
@@ -278,6 +298,13 @@ export async function DELETE(req: NextRequest) {
       .eq('workspace_id', workspaceId);
 
     if (error) throw error;
+
+    // Course Start Method 3: removing a lesson shifts real course-wide position for every
+    // lesson after it — recompute() is a no-op for any course not on free_preview_then_paywall.
+    if (existing?.course_id) {
+      await recomputeCoursePreviewLessons(existing.course_id);
+    }
+
     return NextResponse.json({ success: true });
   } catch (err: any) {
     logger.error({ err }, 'lms.lessons.delete.failed');

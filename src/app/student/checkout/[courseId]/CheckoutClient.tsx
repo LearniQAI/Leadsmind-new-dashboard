@@ -48,6 +48,10 @@ export default function CheckoutClient({
   const [hp, setHp] = useState(''); // honeypot — real users never fill this
   const [guestEmailSent, setGuestEmailSent] = useState<boolean | null>(null);
   const [guestAlreadyEnrolled, setGuestAlreadyEnrolled] = useState(false);
+  // Course Start Method 1 ("hold for manual approval") — real, distinct outcome from a normal
+  // free enrollment: no access yet, no email yet, found live while verifying this build (the
+  // success screen previously said "You're Enrolled" / "Check your email" regardless).
+  const [guestPendingApproval, setGuestPendingApproval] = useState(false);
 
   // Real post-payment confirmation poll (guest paid flow only) — see
   // /api/checkout/guest-status. Never grants anything itself; it only ever repeats back what
@@ -169,9 +173,19 @@ export default function CheckoutClient({
           return;
         }
 
+        // Course Start Method 1 ("hold for manual approval"): a real signup with no real
+        // access yet — do NOT redirect into the player, it would just hit the real "Access
+        // paused" gate. Found live while verifying this build.
+        if ((enrollRes as any).pendingApproval) {
+          setSuccess(true);
+          setGuestPendingApproval(true);
+          toast.success('Signed up! Your enrollment is awaiting approval.');
+          return;
+        }
+
         setSuccess(true);
         toast.success("Enrolled in free course successfully!");
-        
+
         setTimeout(() => {
           router.push(`/student/courses/${course.id}`);
         }, 1500);
@@ -195,11 +209,15 @@ export default function CheckoutClient({
           return;
         }
         const alreadyEnrolled = Boolean((res as any).alreadyEnrolled);
+        const pendingApproval = Boolean((res as any).pendingApproval);
         setGuestAlreadyEnrolled(alreadyEnrolled);
-        setGuestEmailSent(alreadyEnrolled ? null : (((res as any).emailSent ?? null) as boolean | null));
+        setGuestPendingApproval(pendingApproval);
+        setGuestEmailSent(alreadyEnrolled || pendingApproval ? null : (((res as any).emailSent ?? null) as boolean | null));
         setSuccess(true);
         if (alreadyEnrolled) {
           toast.success('You were already enrolled — check your email to sign in.');
+        } else if (pendingApproval) {
+          toast.success('Signed up! Your enrollment is awaiting approval.');
         } else {
           toast.success('Enrolled! Check your email to set up your account.');
         }
@@ -358,15 +376,27 @@ export default function CheckoutClient({
             <CheckCircle2 size={40} />
           </div>
           <div className="space-y-2">
-            <h2 className="text-2xl font-space-grotesk font-black uppercase text-white tracking-tight">You're Enrolled</h2>
+            <h2 className="text-2xl font-space-grotesk font-black uppercase text-white tracking-tight">
+              {guestPendingApproval ? 'Awaiting Approval' : "You're Enrolled"}
+            </h2>
             <p className="text-xs text-white/50 leading-relaxed max-w-sm">
-              You're enrolled in <strong className="text-white">"{course.title}"</strong>.{' '}
-              {guestAlreadyEnrolled ? (
-                <>You were already enrolled in this course — sign in any time from the student login page using this email address.</>
-              ) : guestEmailSent === false ? (
-                <>We couldn't send your welcome email right now — you can sign in any time from the student login page using this email address.</>
+              {guestPendingApproval ? (
+                <>
+                  Your signup for <strong className="text-white">"{course.title}"</strong> is real and on file, but this
+                  course requires manual approval. You'll get a real access-link email the moment an admin approves you —
+                  there's nothing more to do right now.
+                </>
               ) : (
-                <>Check <strong className="text-white">{guestEmail}</strong> for a link to set up your account and start learning.</>
+                <>
+                  You're enrolled in <strong className="text-white">"{course.title}"</strong>.{' '}
+                  {guestAlreadyEnrolled ? (
+                    <>You were already enrolled in this course — sign in any time from the student login page using this email address.</>
+                  ) : guestEmailSent === false ? (
+                    <>We couldn't send your welcome email right now — you can sign in any time from the student login page using this email address.</>
+                  ) : (
+                    <>Check <strong className="text-white">{guestEmail}</strong> for a link to set up your account and start learning.</>
+                  )}
+                </>
               )}
             </p>
           </div>
@@ -376,6 +406,24 @@ export default function CheckoutClient({
           >
             Go to student login
           </a>
+        </div>
+      );
+    }
+    if (guestPendingApproval) {
+      // Course Start Method 1 ("hold for manual approval"), authenticated student — same
+      // real distinct outcome as the guest branch above: a real signup, no real access yet.
+      return (
+        <div className="bg-[#080f28] border border-white/5 rounded-3xl p-12 text-center space-y-6 max-w-lg mx-auto shadow-2xl flex flex-col items-center justify-center py-20">
+          <div className="w-20 h-20 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center animate-bounce">
+            <CheckCircle2 size={40} />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-space-grotesk font-black uppercase text-white tracking-tight">Awaiting Approval</h2>
+            <p className="text-xs text-white/50 leading-relaxed max-w-sm">
+              Your signup for <strong className="text-white">"{course.title}"</strong> is real and on file, but this
+              course requires manual approval. You'll get a real access-link email the moment an admin approves you.
+            </p>
+          </div>
         </div>
       );
     }

@@ -79,7 +79,7 @@ export async function enrollStudent(courseId: string) {
     // Fetch the course to find its workspace_id, price, and pricing_model
     const { data: course, error: courseError } = await adminClient
       .from('courses')
-      .select('workspace_id, price, pricing_model')
+      .select('workspace_id, price, pricing_model, start_method, email_access_auto_send')
       .eq('id', courseId)
       .single();
 
@@ -145,15 +145,28 @@ export async function enrollStudent(courseId: string) {
       }
     }
 
+    // Course Start Method 1 (email access link): a course explicitly configured this way
+    // either grants access immediately (auto-send) or holds the enrollment as
+    // pending_approval until an admin approves it — see courseEnrollmentApproval.ts. Every
+    // other start_method (including the default instant_payment) keeps today's exact
+    // behavior: status 'active' immediately.
+    const isHeldForApproval =
+      course.start_method === 'email_access_link' && !course.email_access_auto_send;
+
     const { error } = await adminClient
       .from('enrollments')
       .insert({
         course_id: courseId,
         contact_id: contactId,
-        status: 'active'
+        status: isHeldForApproval ? 'pending_approval' : 'active'
       });
 
     if (error) throw error;
+
+    if (isHeldForApproval) {
+      // No access yet, no onboarding email yet — both wait for a real admin Approve action.
+      return { success: true, pendingApproval: true, message: 'Your enrollment is awaiting approval.' };
+    }
 
     // Hook telemetry triggers
     // Trigger string is 'enrollment_created' — the exact value the automation-rule
@@ -174,6 +187,17 @@ export async function enrollStudent(courseId: string) {
       }).catch(() => {});
     } catch (e) {
       logger.error({ err: e, workspaceId, contactId, courseId }, 'student_enrollments.enrolment.webhook_dispatch.failed');
+    }
+
+    // Method 1 auto-send fires the same real onboarding-email path every other free
+    // enrollment already uses — no second email mechanism.
+    if (course.start_method === 'email_access_link') {
+      try {
+        const { sendCourseOnboardingEmail } = await import('@/lib/lms/onboardingEmail');
+        await sendCourseOnboardingEmail({ courseId, contactId, workspaceId, accessType: 'full' });
+      } catch (e) {
+        logger.error({ err: e, workspaceId, contactId, courseId }, 'student_enrollments.access_link_email.failed');
+      }
     }
 
     return { success: true };

@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { requireLmsInstructor } from '@/lib/lms/access';
 import { ForbiddenError, NotFoundError, toClientError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger';
+import { recomputeCoursePreviewLessons } from '@/lib/lms/coursePreview';
 
 export const dynamic = 'force-dynamic';
 
@@ -145,6 +146,14 @@ export async function PATCH(req: NextRequest) {
       .single();
 
     if (error) throw error;
+
+    // Course Start Method 3: reordering a module changes real course-wide lesson order for
+    // every lesson in it — recompute() is a no-op for any course not on
+    // free_preview_then_paywall.
+    if (position !== undefined && moduleRow?.course_id) {
+      await recomputeCoursePreviewLessons(moduleRow.course_id);
+    }
+
     return NextResponse.json({ data: moduleRow });
   } catch (err: any) {
     logger.error({ err }, 'lms.modules.patch.failed');
@@ -162,6 +171,15 @@ export async function DELETE(req: NextRequest) {
     const { workspaceId } = await requireLmsInstructor();
     const adminClient = createAdminClient();
 
+    // Fetched before the delete (which cascades to every lesson in this module) — course_id
+    // is needed for the post-delete recompute below.
+    const { data: existing } = await adminClient
+      .from('course_modules')
+      .select('course_id')
+      .eq('id', id)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+
     const { error } = await adminClient
       .from('course_modules')
       .delete()
@@ -169,6 +187,11 @@ export async function DELETE(req: NextRequest) {
       .eq('workspace_id', workspaceId);
 
     if (error) throw error;
+
+    if (existing?.course_id) {
+      await recomputeCoursePreviewLessons(existing.course_id);
+    }
+
     return NextResponse.json({ success: true });
   } catch (err: any) {
     logger.error({ err }, 'lms.modules.delete.failed');

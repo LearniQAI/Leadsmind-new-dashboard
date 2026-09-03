@@ -13,6 +13,12 @@ export const INACTIVE_ENROLMENT_STATUSES = [
   'expired',
   'suspended',
   'revoked',
+  // Course Start Method 1 (email access link, "hold for manual approval"): a real signup
+  // that exists but has not been approved yet. Added here rather than left to fall through
+  // to the "unrecognized status = active" default below — a pending_approval row must never
+  // grant real access before an admin approves it.
+  'pending_approval',
+  'rejected',
 ] as const;
 
 export function isEnrolmentActive(

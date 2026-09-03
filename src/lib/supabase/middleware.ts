@@ -126,6 +126,11 @@ export async function updateSession(request: NextRequest) {
    // Public, guest-capable course checkout (src/app/checkout/[courseId]). The page itself
    // decides authed-vs-guest; it must be reachable logged-out so landing-page "Enrol" converts.
    request.nextUrl.pathname.startsWith('/checkout') ||
+   // Course Start Method 3 (free preview, then paywall): the anonymous preview route
+   // (src/app/preview/courses/[id]). The page itself fetches ONLY an is_preview lesson's
+   // content and otherwise renders the real paywall — it must be reachable with no session
+   // so the landing page's "Preview" badges actually work for a prospective student.
+   request.nextUrl.pathname.startsWith('/preview/courses') ||
    request.nextUrl.pathname.startsWith('/public/forms') ||
    request.nextUrl.pathname.startsWith('/public/events') ||
    request.nextUrl.pathname.startsWith('/public/unsubscribe') ||

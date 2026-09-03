@@ -286,16 +286,18 @@ export default function TemplatePremium({ course, modules, lessons, previewData,
                                     <span className="text-[10px] text-white/30">{formatDuration(les.time_estimate_minutes)}</span>
                                   )}
                                   {les.is_preview ? (
-                                    // Informational only — matches the existing 3 landing
-                                    // templates' real behaviour today. NOT wired as a click-
-                                    // to-view link: the player has no real "view without
-                                    // enrolling" path yet (verified live — the student route
-                                    // hard-redirects any unenrolled visitor). Building that
-                                    // click-through is the parallel course-start-methods
-                                    // Method 3 work, not this page.
-                                    <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/15 text-primary">
+                                    // Real click-through (Course Start Methods, Method 3):
+                                    // the student route now genuinely renders this exact
+                                    // lesson read-only for an unenrolled visitor — see
+                                    // student/courses/[id]/page.tsx's no-enrollment branch +
+                                    // PreviewLessonClient. Closes the gap this comment used
+                                    // to flag as still-open.
+                                    <a
+                                      href={`/preview/courses/${course.id}?lessonId=${les.id}`}
+                                      className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/15 text-primary hover:bg-primary/25 transition-colors"
+                                    >
                                       <Eye className="w-2.5 h-2.5" /> Preview
-                                    </span>
+                                    </a>
                                   ) : (
                                     <Lock className="w-3.5 h-3.5 text-white/25" />
                                   )}
