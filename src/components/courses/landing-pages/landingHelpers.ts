@@ -71,15 +71,38 @@ export interface CourseFacts {
   previewCount: number;
   /** Whether the course row points at a certificate template. */
   hasCertificate: boolean;
+  /**
+   * Total minutes across every lesson, or null when it can't be trusted. course_lessons.
+   * time_estimate_minutes is nullable with no default (migration 20260903000007) — most
+   * lessons in an older course simply don't have one set. Summing only the lessons that
+   * happen to have a value would understate the real total and mislead a buyer, so this is
+   * only ever a number when EVERY real lesson has one; otherwise null, and callers must
+   * degrade to showing just the lesson/module counts instead of a fabricated duration.
+   */
+  totalMinutes: number | null;
 }
 
 export function getCourseFacts(course: any, modules: any[], lessons: any[]): CourseFacts {
   const realModules = (modules || []).filter(Boolean);
   const realLessons = (lessons || []).filter(Boolean);
+  const allHaveEstimates =
+    realLessons.length > 0 && realLessons.every((l) => typeof l?.time_estimate_minutes === 'number');
   return {
     moduleCount: realModules.length,
     lessonCount: realLessons.length,
     previewCount: realLessons.filter((l) => l?.is_preview).length,
     hasCertificate: !!course?.certificate_template_id,
+    totalMinutes: allHaveEstimates
+      ? realLessons.reduce((sum, l) => sum + (l.time_estimate_minutes || 0), 0)
+      : null,
   };
+}
+
+/** "5hr 34min" / "45min" — only called when totalMinutes is a real number. */
+export function formatDuration(totalMinutes: number): string {
+  const hrs = Math.floor(totalMinutes / 60);
+  const mins = totalMinutes % 60;
+  if (hrs === 0) return `${mins}min`;
+  if (mins === 0) return `${hrs}hr`;
+  return `${hrs}hr ${mins}min`;
 }

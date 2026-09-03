@@ -55,14 +55,18 @@ export function SettingsHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-dash-border px-6 py-5 md:px-7">
-      <div className="min-w-0 space-y-1">
+    <div className="flex items-start justify-between gap-4 border-b border-dash-border px-6 py-6 md:px-8 md:py-7">
+      <div className="min-w-0 space-y-1.5">
         {eyebrow && (
-          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-600">
+          <div className="text-[12px] font-bold uppercase tracking-[0.16em] text-sky-600">
             {eyebrow}
           </div>
         )}
-        <h2 className="text-[15px] font-semibold leading-tight text-dash-text">
+        {/* Premium heading treatment: the app's own real display face (Space Grotesk,
+            tailwind.config `font-display` — the same token course titles use elsewhere,
+            e.g. CoursesClient.tsx's course-name cells), not a new font. Sized to read as
+            a real page title against the field labels below it, not a card sub-heading. */}
+        <h2 className="font-display text-[26px] font-bold leading-tight tracking-tight text-dash-text md:text-[28px]">
           {title}
         </h2>
         {description && (
@@ -84,7 +88,7 @@ export function SettingsBody({
   className?: string;
 }) {
   return (
-    <div className={cn("px-6 py-6 md:px-7 md:py-7", className)}>{children}</div>
+    <div className={cn("px-6 py-7 md:px-8 md:py-8", className)}>{children}</div>
   );
 }
 
@@ -139,7 +143,10 @@ export function Field({
   return (
     <div
       className={cn(
-        "grid gap-x-10 gap-y-2 py-5 first:pt-0 last:pb-0 md:grid-cols-[minmax(0,220px)_minmax(0,1fr)]",
+        // Most fields now carry a label + control only (no hint line) — py-5 was tuned
+        // for a 2-line label column; py-[18px] keeps the same divided-row rhythm without
+        // reading as gappy now that the column is usually a single line.
+        "grid gap-x-12 gap-y-1.5 py-[18px] first:pt-0 last:pb-0 md:grid-cols-[minmax(0,220px)_minmax(0,1fr)]",
         align === "start" ? "md:items-start" : "md:items-center",
         className
       )}
@@ -147,7 +154,7 @@ export function Field({
       <div className="space-y-1 md:pt-1.5">
         <label
           htmlFor={htmlFor}
-          className="block text-[12px] font-semibold text-dash-text"
+          className="block text-[13px] font-semibold text-dash-text"
         >
           {label}
           {required && <span className="ml-0.5 text-sky-600">*</span>}

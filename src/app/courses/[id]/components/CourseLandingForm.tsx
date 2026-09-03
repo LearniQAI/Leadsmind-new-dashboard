@@ -7,6 +7,7 @@ import { updateCourseLandingSettings, updateCourseSlug } from "@/app/actions/cou
 import { sanitizeSlug } from "@/lib/slug";
 import { createClient } from "@/lib/supabase/client";
 import LandingOutcomesEditor from "./LandingOutcomesEditor";
+import LandingRequirementsEditor from "./LandingRequirementsEditor";
 import LandingFaqEditor from "./LandingFaqEditor";
 import LandingReviewsEditor from "./LandingReviewsEditor";
 import {
@@ -15,7 +16,6 @@ import {
   TextInput,
   TextArea,
   OptionCard,
-  Toggle,
   PrimaryButton,
   GhostButton,
 } from "./settings/primitives";
@@ -84,6 +84,7 @@ export default function CourseLandingForm({ course, onSaved }: CourseLandingForm
   const [template, setTemplate] = useState(settings.template || "clean_minimal");
   const [tagline, setTagline] = useState(settings.tagline || "");
   const [outcomes, setOutcomes] = useState<string[]>(settings.outcomes || []);
+  const [requirements, setRequirements] = useState<string[]>(settings.requirements || []);
   const [faq, setFaq] = useState<any[]>(settings.faq || []);
   const [reviews, setReviews] = useState<any[]>(settings.reviews || []);
 
@@ -116,6 +117,7 @@ export default function CourseLandingForm({ course, onSaved }: CourseLandingForm
       template,
       tagline,
       outcomes,
+      requirements,
       faq,
       reviews,
       visible_sections: visibleSections,
@@ -131,7 +133,7 @@ export default function CourseLandingForm({ course, onSaved }: CourseLandingForm
 
   useEffect(() => {
     syncPreview();
-  }, [title, slug, thumbnailUrl, template, tagline, outcomes, faq, reviews, visibleSections, instructor]);
+  }, [title, slug, thumbnailUrl, template, tagline, outcomes, requirements, faq, reviews, visibleSections, instructor]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, isAvatar: boolean) => {
     const file = e.target.files?.[0];
@@ -185,6 +187,7 @@ export default function CourseLandingForm({ course, onSaved }: CourseLandingForm
         template,
         tagline,
         outcomes,
+        requirements,
         faq,
         reviews,
         visible_sections: visibleSections,
@@ -202,7 +205,7 @@ export default function CourseLandingForm({ course, onSaved }: CourseLandingForm
         .eq("id", course.id);
       if (directErr) throw directErr;
 
-      toast.success("Landing page saved.");
+      toast.success("Course description saved.");
       onSaved({
         ...course,
         title,
@@ -221,11 +224,15 @@ export default function CourseLandingForm({ course, onSaved }: CourseLandingForm
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-1">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-600">
-            Landing page
+        <div className="space-y-1.5">
+          <div className="text-[12px] font-bold uppercase tracking-[0.16em] text-sky-600">
+            Description
           </div>
-          <h2 className="text-[15px] font-semibold text-dash-text">Design & content</h2>
+          {/* Same premium heading treatment as SettingsHeader (settings/primitives.tsx) —
+              real display face already used across the app, not a new font. */}
+          <h2 className="font-display text-[26px] font-bold leading-tight tracking-tight text-dash-text md:text-[28px]">
+            Design &amp; content
+          </h2>
           <p className="text-[13px] text-dash-textMuted">
             Edit on the left, watch it update live on the right.
           </p>
@@ -249,7 +256,12 @@ export default function CourseLandingForm({ course, onSaved }: CourseLandingForm
         <SettingsPanel className="max-h-[80vh] overflow-y-auto">
           <div className="space-y-6 p-6">
             <LGroup title="Layout">
-              <div className="grid grid-cols-3 gap-2.5">
+              <div className="rounded-lg border border-dash-border bg-dash-surface px-3 py-2.5 text-[12px] text-dash-textMuted leading-relaxed">
+                Every course now uses LeadsMind's single premium description page — the
+                per-course Clean/Bold/Cohort layout choice below no longer affects the live
+                page. Kept here only so nothing is lost if per-course layouts come back later.
+              </div>
+              <div className="grid grid-cols-3 gap-2.5 opacity-50 pointer-events-none">
                 {TEMPLATES.map((t) => (
                   <OptionCard
                     key={t.id}
@@ -260,12 +272,6 @@ export default function CourseLandingForm({ course, onSaved }: CourseLandingForm
                   />
                 ))}
               </div>
-              <Toggle
-                checked={useCustomLandingPage}
-                onChange={setUseCustomLandingPage}
-                label="Use custom landing page"
-                description="Render the selected layout instead of the default page."
-              />
             </LGroup>
 
             <LGroup title="Basics">
@@ -284,7 +290,7 @@ export default function CourseLandingForm({ course, onSaved }: CourseLandingForm
               <LField label="Display title" htmlFor="lp-title">
                 <TextInput id="lp-title" value={title} onChange={(e) => setTitle(e.target.value)} />
               </LField>
-              <LField label="Tagline" htmlFor="lp-tagline" hint="One line under the title.">
+              <LField label="Tagline" htmlFor="lp-tagline">
                 <TextInput
                   id="lp-tagline"
                   value={tagline}
@@ -385,6 +391,9 @@ export default function CourseLandingForm({ course, onSaved }: CourseLandingForm
 
             <LGroup title="Outcomes">
               <LandingOutcomesEditor outcomes={outcomes} onChange={setOutcomes} />
+            </LGroup>
+            <LGroup title="Requirements">
+              <LandingRequirementsEditor requirements={requirements} onChange={setRequirements} />
             </LGroup>
             <LGroup title="FAQ">
               <LandingFaqEditor faq={faq} onChange={setFaq} />
