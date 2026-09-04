@@ -27,6 +27,7 @@ export async function updateCoursePricing(
     free_lesson_count?: number | null;
     number_of_payments?: number | null;
     payment_failure_policy?: 'pause_immediately' | 'grace_period' | 'retry_keep_access' | null;
+    grace_period_days?: number | null;
   }
 ) {
   try {
@@ -57,6 +58,7 @@ export async function updateCoursePricing(
     if (payload.free_lesson_count !== undefined) updatePayload.free_lesson_count = payload.free_lesson_count;
     if (payload.number_of_payments !== undefined) updatePayload.number_of_payments = payload.number_of_payments;
     if (payload.payment_failure_policy !== undefined) updatePayload.payment_failure_policy = payload.payment_failure_policy;
+    if (payload.grace_period_days !== undefined) updatePayload.grace_period_days = payload.grace_period_days;
 
     const { error: updateErr } = await supabase
       .from('courses')
@@ -214,6 +216,104 @@ export async function createDirectCourseCheckoutSession(courseId: string) {
     return { url: session.url };
   } catch (err: any) {
     logger.error({ err, courseId }, 'course_commerce.direct_checkout.create.failed');
+    const clientError = toClientError(err);
+    return { error: clientError.error };
+  }
+}
+
+/**
+ * Course Start Method 4 (payment_plan) — authenticated installment checkout.
+ *
+ * Sits ALONGSIDE createDirectCourseCheckoutSession, not replacing it: open-ended
+ * subscriptions and one-time payments still go through that one. This forces
+ * mode: 'subscription' (the first installment IS the first billing cycle) and tags the
+ * session so the webhook's checkout.session.completed handler knows to attach a fixed-term
+ * Subscription Schedule and persist the plan metadata onto the enrolment it already creates
+ * — the enrolment-creation path is NOT duplicated here.
+ */
+export async function createCourseInstallmentCheckoutSession(courseId: string) {
+  try {
+    const user = await getUser();
+    if (!user) return { error: 'Not authenticated' };
+
+    const adminClient = createAdminClient();
+    const { data: course, error: courseError } = await adminClient
+      .from('courses')
+      .select('*')
+      .eq('id', courseId)
+      .single();
+
+    if (courseError || !course) return { error: 'Course not found' };
+    if (course.start_method !== 'payment_plan') {
+      return { error: 'This course is not set up as a payment plan.' };
+    }
+    const n = Number(course.number_of_payments);
+    if (!Number.isInteger(n) || n < 2) {
+      return { error: 'This payment plan is missing a valid number of payments.' };
+    }
+    if (!course.price || course.price <= 0) {
+      return { error: 'This payment plan has no per-instalment price set.' };
+    }
+
+    const workspaceId = course.workspace_id;
+    if (!workspaceId) return { error: 'Course workspace invalid' };
+
+    if (course.enrolment_cap !== null && course.enrolment_cap > 0) {
+      const { count } = await adminClient
+        .from('enrollments')
+        .select('*', { count: 'exact', head: true })
+        .eq('course_id', courseId);
+      if (count !== null && count >= course.enrolment_cap) {
+        return { error: 'Enrolment cap reached. Course is closed.' };
+      }
+    }
+
+    const contactId = await getOrCreateStudentContact(workspaceId);
+    if (!contactId) return { error: 'Failed to resolve student contact details' };
+
+    // Same Connect-aware helper Method 2's status-poll route uses — not a second copy.
+    const { stripeForWorkspace } = await import('@/lib/paymentGateways/stripeForWorkspace');
+    const stripeClient = await stripeForWorkspace(workspaceId);
+
+    const interval: 'month' | 'year' = course.subscription_interval === 'year' ? 'year' : 'month';
+
+    const session = await stripeClient.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'subscription',
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `${course.title} — ${n}-payment plan`,
+              description: course.description || undefined,
+              images: course.thumbnail_url ? [course.thumbnail_url] : undefined,
+            },
+            unit_amount: Math.round(course.price * 100),
+            recurring: { interval },
+          },
+          quantity: 1,
+        },
+      ],
+      subscription_data: {
+        metadata: { courseId: course.id, contactId, workspaceId, leadsmind_payment_plan: 'true' },
+      },
+      metadata: {
+        courseId: course.id,
+        contactId,
+        workspaceId,
+        pricingModel: 'payment_plan',
+        numberOfPayments: String(n),
+        subscriptionInterval: interval,
+      },
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/courses/${course.id}?payment=success`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/checkout/${course.id}?payment=canceled`,
+      customer_email: user.email || undefined,
+    });
+
+    return { url: session.url };
+  } catch (err: any) {
+    logger.error({ err, courseId }, 'course_commerce.installment_checkout.create.failed');
     const clientError = toClientError(err);
     return { error: clientError.error };
   }

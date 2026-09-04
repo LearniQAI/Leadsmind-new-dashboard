@@ -101,6 +101,9 @@ export default function CoursePricingForm({ course, onSaved }: CoursePricingForm
   const [paymentFailurePolicy, setPaymentFailurePolicy] = useState<
     "pause_immediately" | "grace_period" | "retry_keep_access"
   >((course.payment_failure_policy as any) || "grace_period");
+  const [gracePeriodDays, setGracePeriodDays] = useState<string>(
+    course.grace_period_days != null ? String(course.grace_period_days) : "7"
+  );
 
   const [gatewayStatus, setGatewayStatus] = useState<{ connected: boolean }>({ connected: false });
   const [checkingGateway, setCheckingGateway] = useState(true);
@@ -163,6 +166,10 @@ export default function CoursePricingForm({ course, onSaved }: CoursePricingForm
         free_lesson_count: parsedFreeLessonCount,
         number_of_payments: parsedNumberOfPayments,
         payment_failure_policy: startMethod === "payment_plan" ? paymentFailurePolicy : undefined,
+        grace_period_days:
+          startMethod === "payment_plan" && paymentFailurePolicy === "grace_period"
+            ? (parseInt(gracePeriodDays) > 0 ? parseInt(gracePeriodDays) : 7)
+            : undefined,
       });
 
       if (res.error) {
@@ -180,6 +187,7 @@ export default function CoursePricingForm({ course, onSaved }: CoursePricingForm
           free_lesson_count: parsedFreeLessonCount,
           number_of_payments: parsedNumberOfPayments,
           payment_failure_policy: paymentFailurePolicy,
+          grace_period_days: parseInt(gracePeriodDays) > 0 ? parseInt(gracePeriodDays) : 7,
         });
       }
     });
@@ -303,11 +311,30 @@ export default function CoursePricingForm({ course, onSaved }: CoursePricingForm
                     <option value="retry_keep_access">Keep access, just retry the charge</option>
                   </Select>
                 </Field>
-                <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-[12px] leading-relaxed text-amber-800">
+                {paymentFailurePolicy === "grace_period" && (
+                  <Field
+                    label="Grace period (days)"
+                    htmlFor="pr-grace-days"
+                    hint="How long a student keeps access after a failed payment before it's cut. A later successful charge restores access and clears this."
+                  >
+                    <TextInput
+                      id="pr-grace-days"
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={gracePeriodDays}
+                      onChange={(e) => setGracePeriodDays(e.target.value)}
+                      placeholder="7"
+                      className="max-w-[220px] font-mono"
+                    />
+                  </Field>
+                )}
+                <div className="flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50/70 px-4 py-3 text-[12px] leading-relaxed text-emerald-800">
                   <Info className="mt-0.5 size-3.5 shrink-0" />
-                  Checkout for this method (the real Stripe Subscription Schedule + webhook
-                  handling) is a separate, larger build — see the Method 4 report. Saving these
-                  fields does not yet change what happens at checkout.
+                  Live: checkout runs a real fixed-term Stripe Subscription Schedule
+                  ({numberOfPayments || "N"} charges, then access continues), with real
+                  webhook handling for failed / recovered / completed payments per the policy
+                  above.
                 </div>
               </FieldGroup>
             )}

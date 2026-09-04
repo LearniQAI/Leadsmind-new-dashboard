@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { enrollStudent } from '@/app/actions/studentEnrollments';
-import { createDirectCourseCheckoutSession } from '@/app/actions/courseCommerce';
+import { createDirectCourseCheckoutSession, createCourseInstallmentCheckoutSession } from '@/app/actions/courseCommerce';
 import { guestFreeEnroll, createGuestCourseCheckoutSession } from '@/app/actions/guestCheckout';
 import { Button } from '@/components/ui/button';
 
@@ -121,8 +121,12 @@ export default function CheckoutClient({
     startTransition(async () => {
       try {
         if (paymentMethod === 'stripe') {
-          // Direct Stripe Connect checkout integration
-          const res = await createDirectCourseCheckoutSession(course.id);
+          // Course Start Method 4: a payment_plan course goes through the fixed-term
+          // installment session (mode: subscription + a capped Subscription Schedule); every
+          // other paid course keeps the existing one-time / open-ended-subscription session.
+          const res = course.start_method === 'payment_plan'
+            ? await createCourseInstallmentCheckoutSession(course.id)
+            : await createDirectCourseCheckoutSession(course.id);
           if (res.error) {
             toast.error(res.error);
             return;
