@@ -48,3 +48,35 @@ export function retryBackoffSeconds(failedAttemptNumber: number): number {
 export function nextAttemptAt(failedAttemptNumber: number, from: Date = new Date()): string {
   return new Date(from.getTime() + retryBackoffSeconds(failedAttemptNumber) * 1000).toISOString();
 }
+
+// --- Delivery-health alerting (Part 4, PRD 5.5) -----------------------------
+function floatFromEnv(name: string, fallback: number): number {
+  const n = process.env[name] ? parseFloat(process.env[name] as string) : NaN;
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
+
+/** Rolling window (minutes) the failure-rate alert looks back over. */
+export const DELIVERY_ALERT_WINDOW_MIN = intFromEnv('MESSAGE_DELIVERY_ALERT_WINDOW_MIN', 15);
+/** Failure fraction (0-1) that trips the alert. PRD: 10%. */
+export const DELIVERY_ALERT_THRESHOLD = floatFromEnv('MESSAGE_DELIVERY_ALERT_THRESHOLD', 0.1);
+/** Minimum outbound volume in the window before a rate is meaningful. */
+export const DELIVERY_ALERT_MIN_VOLUME = intFromEnv('MESSAGE_DELIVERY_ALERT_MIN_VOLUME', 5);
+/** Per-workspace-per-platform cooldown (minutes) between repeat alerts. */
+export const DELIVERY_ALERT_COOLDOWN_MIN = intFromEnv('MESSAGE_DELIVERY_ALERT_COOLDOWN_MIN', 60);
+
+/**
+ * Pure predicate for "this window is unhealthy enough to alert". Extracted so the
+ * threshold/volume logic is unit-testable without a DB.
+ */
+export function shouldAlertOnFailureRate(params: {
+  failed: number;
+  total: number;
+  threshold?: number;
+  minVolume?: number;
+}): boolean {
+  const threshold = params.threshold ?? DELIVERY_ALERT_THRESHOLD;
+  const minVolume = params.minVolume ?? DELIVERY_ALERT_MIN_VOLUME;
+  if (params.total < minVolume) return false;
+  if (params.failed <= 0) return false;
+  return params.failed / params.total > threshold;
+}

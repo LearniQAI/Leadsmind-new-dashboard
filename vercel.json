@@ -45,6 +45,10 @@
       "schedule": "* * * * *"
     },
     {
+      "path": "/api/cron/workers/message-delivery-health",
+      "schedule": "*/15 * * * *"
+    },
+    {
       "path": "/api/cron/workers/sms-dispatch",
       "schedule": "*/5 * * * *"
     },

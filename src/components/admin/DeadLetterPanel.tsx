@@ -56,6 +56,7 @@ export default function DeadLetterPanel({ initialData }: { initialData: any[] })
           <option value="email_deliverability">Deliverability</option>
           <option value="meta">Meta (inbound routing)</option>
           <option value="message_send">Message send (outbound)</option>
+          <option value="message_delivery_alert">Delivery failure-rate alert</option>
         </select>
         <select className="border border-gray-300 rounded px-3 py-1.5" onChange={e => setFilterState(e.target.value)}>
           <option value="">All States</option>
