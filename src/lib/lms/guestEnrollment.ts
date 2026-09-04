@@ -216,10 +216,21 @@ export async function insertEnrollmentIfAbsent(
 }
 
 /**
- * Ensures a real LeadsMind auth user exists for `email` and returns a login link they can use
- * to set up / access their account. Uses the same admin.generateLink('magiclink') mechanism as
- * /auth/student/verify — it creates the user if absent. Fail-soft: on any error returns the
- * plain student-login page URL so the onboarding email still has a usable call to action.
+ * Ensures a real LeadsMind auth user exists for `email` and returns a login link that
+ * establishes a REAL server-side (cookie) session and lands the buyer in /student.
+ *
+ * Uses the same admin.generateLink('magiclink') mechanism as /auth/student/verify (creates
+ * the user if absent), but returns a link that goes through our own /auth/callback route with
+ * the one-time `token_hash`, NOT GoTrue's raw `action_link`. Why: `action_link` redirects to
+ * `redirect_to` with the tokens in the URL **fragment** (implicit flow) — the Next.js
+ * middleware runs server-side, never sees a fragment, finds no session cookie, and bounces
+ * /student -> /auth/signin-basic with the tokens stranded in the hash. /auth/callback instead
+ * calls `verifyOtp({ type, token_hash })` server-side, which sets the SSR auth cookies on the
+ * response, then 302s to `next` — so the buyer genuinely lands logged-in in /student. This
+ * also fixes the same broken hop for the backup onboarding email link.
+ *
+ * Fail-soft: on any error returns the plain student-login page URL so the onboarding email
+ * still has a usable call to action.
  */
 export async function provisionAccountLink(email: string): Promise<string> {
   const fallback = `${appUrl()}/auth/student/login`;
@@ -233,11 +244,14 @@ export async function provisionAccountLink(email: string): Promise<string> {
       email: email.trim().toLowerCase(),
       options: { redirectTo: `${appUrl()}/student` },
     });
-    if (error || !data?.properties?.action_link) {
+    const tokenHash = data?.properties?.hashed_token;
+    if (error || !tokenHash) {
       logger.warn({ err: error }, 'guest_enrollment.account_link.generate.failed');
-      return fallback;
+      // Last resort: the raw action_link still works client-side (fragment flow) even if the
+      // cookie-setting path above is unavailable for some reason.
+      return data?.properties?.action_link || fallback;
     }
-    return data.properties.action_link;
+    return `${appUrl()}/auth/callback?token_hash=${encodeURIComponent(tokenHash)}&type=magiclink&next=${encodeURIComponent('/student')}`;
   } catch (err) {
     logger.warn({ err }, 'guest_enrollment.account_link.generate.threw');
     return fallback;
