@@ -41,6 +41,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/workers/message-dispatch",
+      "schedule": "* * * * *"
+    },
+    {
       "path": "/api/cron/workers/sms-dispatch",
       "schedule": "*/5 * * * *"
     },

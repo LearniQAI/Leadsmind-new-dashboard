@@ -1,11 +1,18 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { sendMessage } from '@/app/actions/messaging';
+import { sendMessage, getMetaAuthUrl } from '@/app/actions/messaging';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
+import { AlertTriangle } from 'lucide-react';
+
+// Graph error codes / types that mean "this account's token is dead" — a send
+// failing with one of these is what lights the top-of-inbox re-auth banner.
+const AUTH_ERROR_CODES = new Set([10, 102, 190, 200]);
+const META_MESSAGING = ['facebook', 'instagram', 'whatsapp'];
+const CHANNEL_LABEL: Record<string, string> = { facebook: 'Messenger', instagram: 'Instagram', whatsapp: 'WhatsApp' };
 import { ConversationList } from '@/components/conversations/ConversationList';
 import { ConversationThread } from '@/components/conversations/ConversationThread';
 import { ContactInfoPanel } from '@/components/conversations/ContactInfoPanel';
@@ -40,6 +47,18 @@ export default function ConversationsClient({
   // Mobile/tablet layout: only one pane is visible at a time below `lg`.
   const [mobileView, setMobileView] = useState<'list' | 'thread'>('list');
 
+  // Live per-message status overlay (Message Delivery Reliability Part 3). Realtime
+  // UPDATEs on `messages` land here keyed by message id and are merged over the
+  // server-rendered rows in the memo below — so a bubble goes
+  // sending -> sent -> delivered -> read (or -> retrying -> failed) in place, with
+  // NO full-page router.refresh() flash. INSERTs / new conversations still refresh.
+  const [liveMessagePatches, setLiveMessagePatches] = useState<Map<string, any>>(() => new Map());
+
+  // A fresh server render is authoritative — drop stale overlays when it arrives.
+  useEffect(() => {
+    setLiveMessagePatches(new Map());
+  }, [initialConversations]);
+
   // Fetch current user on mount
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -54,6 +73,13 @@ export default function ConversationsClient({
     const contactMap: Record<string, any> = {};
     const singleConvs: any[] = [];
 
+    // Merge any live status overlay onto a raw message row. Identity is preserved
+    // for unpatched rows so React only re-renders the bubbles that actually moved.
+    const withPatch = (m: any) => {
+      const p = m?.id ? liveMessagePatches.get(m.id) : undefined;
+      return p ? { ...m, ...p } : m;
+    };
+
     initialConversations.forEach((conv) => {
       const contact = Array.isArray(conv.contacts) ? conv.contacts[0] : conv.contacts;
       const contactId = contact?.id;
@@ -65,7 +91,7 @@ export default function ConversationsClient({
           isConsolidated: false,
           availablePlatforms: [{ platform: conv.platform, conversationId: conv.id }],
           messages: (conv.messages || []).map((m: any) => ({
-            ...m,
+            ...withPatch(m),
             platform: conv.platform,
             conversationId: conv.id
           })),
@@ -120,7 +146,7 @@ export default function ConversationsClient({
       }
 
       const convMessages = (conv.messages || []).map((m: any) => ({
-        ...m,
+        ...withPatch(m),
         platform: conv.platform,
         conversationId: conv.id
       }));
@@ -135,7 +161,28 @@ export default function ConversationsClient({
     });
 
     return allConsolidated.sort((a: any, b: any) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime());
-  }, [initialConversations]);
+  }, [initialConversations, liveMessagePatches]);
+
+  // Channels whose token looks dead — either the connection row is in 'error', or
+  // a visible outbound message failed with a Graph auth error. Drives the
+  // top-of-inbox re-auth banner (PRD 5.4).
+  const reauthPlatforms = React.useMemo(() => {
+    const set = new Set<string>();
+    connectedPlatforms.forEach((c) => {
+      if (c.status === 'error' && META_MESSAGING.includes(c.platform)) set.add(c.platform);
+    });
+    consolidatedConversations.forEach((conv: any) => {
+      (conv.messages || []).forEach((m: any) => {
+        if (m.direction !== 'outbound' || m.status !== 'failed') return;
+        const code = m.metadata?.error_code;
+        if (m.metadata?.error_type === 'OAuthException' || (typeof code === 'number' && AUTH_ERROR_CODES.has(code))) {
+          const p = m.platform || conv.platform;
+          if (META_MESSAGING.includes(p)) set.add(p);
+        }
+      });
+    });
+    return Array.from(set);
+  }, [connectedPlatforms, consolidatedConversations]);
 
   // Channel tabs are derived, not hardcoded: a platform shows up only if the
   // workspace has it live-connected (platform_connections) OR there's already
@@ -174,10 +221,12 @@ export default function ConversationsClient({
   // simply yields zero events because RLS rejects the non-member.
   //
   // The channel name is workspace-scoped so two workspaces open in the same
-  // browser (multi-account) never share a channel. On any insert/update we
-  // debounce a single `router.refresh()` — `sendMessage` writes several status
-  // updates ('sending' -> 'sent' -> 'delivered') in quick succession and we
-  // don't want a refresh storm.
+  // browser (multi-account) never share a channel.
+  //
+  // messages UPDATE  -> targeted per-bubble patch (status/metadata), no refresh.
+  // messages INSERT   -> debounced router.refresh() (a new row needs the contact
+  //                      join + re-consolidation the patch overlay can't do).
+  // conversations *   -> debounced router.refresh().
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!workspaceId) return;
@@ -223,7 +272,15 @@ export default function ConversationsClient({
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'messages', filter: wsFilter },
-        () => scheduleRefresh()
+        (payload) => {
+          const row: any = payload.new;
+          if (!row?.id) { scheduleRefresh(); return; }
+          setLiveMessagePatches((prev) => {
+            const next = new Map(prev);
+            next.set(row.id, { status: row.status, metadata: row.metadata, external_id: row.external_id });
+            return next;
+          });
+        }
       )
       .on(
         'postgres_changes',
@@ -264,6 +321,10 @@ export default function ConversationsClient({
     if (res.error) {
       toast.error(res.error);
     } else {
+      if ((res as { retrying?: boolean }).retrying) {
+        // Recoverable send hiccup — a background retry is queued. Keep it low-key.
+        toast('Delivery is taking longer than usual — retrying automatically.');
+      }
       setSearchQuery('');
       router.refresh();
     }
@@ -275,8 +336,64 @@ export default function ConversationsClient({
     setMobileView('thread');
   };
 
+  // One-tap retry on a failed bubble: re-send the SAME text through the SAME
+  // path with the SAME client_message_uuid (Part 1 reactivates the failed row in
+  // place — no duplicate, no retype).
+  const handleRetryMessage = (msg: any) => {
+    if (!msg?.conversationId || !msg?.content) return;
+    if (msg.id) {
+      // Optimistic flip to 'sending' so the bubble responds instantly.
+      setLiveMessagePatches((prev) => {
+        const next = new Map(prev);
+        next.set(msg.id, { status: 'sending', metadata: { ...(msg.metadata || {}), error_message: null }, external_id: msg.external_id ?? null });
+        return next;
+      });
+    }
+    void handleSend(msg.content, msg.conversationId, undefined, undefined, msg.metadata?.client_message_uuid);
+  };
+
+  const handleReconnect = async (platform: string) => {
+    try {
+      const url = await getMetaAuthUrl(platform);
+      if (url) window.location.href = url;
+      else toast.error('Could not start reconnection — open Settings → Integrations.');
+    } catch {
+      toast.error('Could not start reconnection — open Settings → Integrations.');
+    }
+  };
+
   return (
-    <div className="flex h-[calc(100vh-140px)] bg-white rounded-[24px] overflow-hidden border border-[#EFEFEF] shadow-sm mx-6 relative">
+    <div className="flex flex-col h-[calc(100vh-140px)]">
+      {/* Re-auth banner — top of inbox, PRD 5.4. Shown when a channel's token
+          looks dead so the agent sees it once, not once per failed message. */}
+      {reauthPlatforms.length > 0 && (
+        <div className="mx-6 mt-3 rounded-2xl bg-[#FFF4E5] border border-[#FDE4BB] px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 shrink-0">
+          <div className="flex items-start gap-2 flex-1 min-w-0">
+            <AlertTriangle className="w-4 h-4 text-[#B45309] shrink-0 mt-0.5" />
+            <p className="text-[12.5px] text-[#B45309] leading-snug">
+              {reauthPlatforms.map((p) => CHANNEL_LABEL[p] || p).join(' & ')}{' '}
+              {reauthPlatforms.length > 1 ? 'connections need' : 'connection needs'} re-authorization — new messages on{' '}
+              {reauthPlatforms.length > 1 ? 'these channels' : 'this channel'} may fail to send until you reconnect.
+            </p>
+          </div>
+          <div className="flex gap-2 shrink-0 flex-wrap">
+            {reauthPlatforms.map((p) => (
+              <button
+                key={p}
+                onClick={() => handleReconnect(p)}
+                className="text-[11.5px] font-semibold bg-white hover:bg-[#FDE4BB]/40 text-[#B45309] border border-[#FDE4BB] rounded-full px-3 py-1.5 transition-colors motion-reduce:transition-none"
+              >
+                Reconnect {CHANNEL_LABEL[p] || p}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className={cn(
+        "flex flex-1 min-h-0 bg-white rounded-[24px] overflow-hidden border border-[#EFEFEF] shadow-sm mx-6 relative",
+        reauthPlatforms.length > 0 && "mt-3"
+      )}>
       {/* 1. Conversation List — full-width takeover below lg, fixed rail above it */}
       <div className={cn(
         "w-full lg:w-[320px] lg:shrink-0",
@@ -304,6 +421,7 @@ export default function ConversationsClient({
         <ConversationThread
           conversation={activeConv}
           onSendMessage={handleSend}
+          onRetryMessage={handleRetryMessage}
           isSending={isSending}
           onTogglePanel={() => setShowPanel(p => !p)}
           onBack={() => setMobileView('list')}
@@ -322,6 +440,7 @@ export default function ConversationsClient({
           </div>
         </>
       )}
+      </div>
     </div>
   );
 }

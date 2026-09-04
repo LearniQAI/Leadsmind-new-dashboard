@@ -37,9 +37,39 @@ function graphErrorResult(data: any, httpStatus: number, fallback: string): Meta
 
 export class MetaAdapter {
   private credentials: any;
+  private timeoutMs?: number;
 
-  constructor(credentials: any) {
+  constructor(credentials: any, opts?: { timeoutMs?: number }) {
     this.credentials = credentials;
+    this.timeoutMs = opts?.timeoutMs;
+  }
+
+  /**
+   * fetch() wrapper that enforces `this.timeoutMs` via AbortController when set
+   * (Message Delivery Reliability Part 2 — the interactive send path passes
+   * MESSAGE_SEND_TIMEOUT_MS so a hung Graph call becomes a fast, retryable
+   * failure instead of the agent staring at a spinner). An abort surfaces as an
+   * AbortError, which the send methods map to `errorType: 'timeout'`.
+   */
+  private async doFetch(url: string, init: RequestInit): Promise<Response> {
+    if (!this.timeoutMs) return fetch(url, init);
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), this.timeoutMs);
+    try {
+      return await fetch(url, { ...init, signal: ac.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /** Maps a thrown fetch error to a structured MetaSendResult. */
+  private transportError(e: any): MetaSendResult {
+    const isAbort = e?.name === 'AbortError';
+    return {
+      success: false,
+      error: isAbort ? `Send timed out after ${this.timeoutMs}ms` : (e?.message || 'Network error'),
+      errorType: isAbort ? 'timeout' : 'transport',
+    };
   }
 
   /**
@@ -62,7 +92,7 @@ export class MetaAdapter {
     try {
       const pageAccessToken = decrypt(encryptedToken);
 
-      const response = await fetch(`https://graph.facebook.com/v18.0/me/messages`, {
+      const response = await this.doFetch(`https://graph.facebook.com/v18.0/me/messages`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${pageAccessToken}`,
@@ -90,8 +120,8 @@ export class MetaAdapter {
 
       return { success: true, externalId: data.message_id };
     } catch (e: any) {
-      logger.error({ err: e.message }, 'meta_adapter.facebook.failed');
-      return { success: false, error: e.message, errorType: 'transport' };
+      logger.error({ err: e?.message, name: e?.name }, 'meta_adapter.facebook.failed');
+      return this.transportError(e);
     }
   }
 
@@ -115,7 +145,7 @@ export class MetaAdapter {
     try {
       const pageAccessToken = decrypt(encryptedToken);
 
-      const response = await fetch(`https://graph.facebook.com/v18.0/me/messages`, {
+      const response = await this.doFetch(`https://graph.facebook.com/v18.0/me/messages`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${pageAccessToken}`,
@@ -143,8 +173,8 @@ export class MetaAdapter {
 
       return { success: true, externalId: data.message_id };
     } catch (e: any) {
-      logger.error({ err: e.message }, 'meta_adapter.instagram.failed');
-      return { success: false, error: e.message, errorType: 'transport' };
+      logger.error({ err: e?.message, name: e?.name }, 'meta_adapter.instagram.failed');
+      return this.transportError(e);
     }
   }
 
@@ -237,7 +267,7 @@ export class MetaAdapter {
 
       let textResId = '';
       if (text) {
-        const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+        const response = await this.doFetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${systemToken}`,
@@ -262,7 +292,7 @@ export class MetaAdapter {
       }
 
       if (audioUrl) {
-        const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+        const response = await this.doFetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${systemToken}`,
@@ -288,8 +318,8 @@ export class MetaAdapter {
 
       return { success: true, externalId: textResId };
     } catch (e: any) {
-      logger.error({ err: e.message }, 'meta_adapter.whatsapp.failed');
-      return { success: false, error: e.message, errorType: 'transport' };
+      logger.error({ err: e?.message, name: e?.name }, 'meta_adapter.whatsapp.failed');
+      return this.transportError(e);
     }
   }
 
@@ -328,7 +358,7 @@ export class MetaAdapter {
         ? [{ type: 'body', parameters: bodyParams.map((text) => ({ type: 'text', text })) }]
         : [];
 
-      const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+      const response = await this.doFetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${systemToken}`,
@@ -359,8 +389,8 @@ export class MetaAdapter {
 
       return { success: true, externalId: data.messages?.[0]?.id };
     } catch (e: any) {
-      logger.error({ err: e.message, templateName }, 'meta_adapter.whatsapp_template.failed');
-      return { success: false, error: e.message, errorType: 'transport' };
+      logger.error({ err: e?.message, name: e?.name, templateName }, 'meta_adapter.whatsapp_template.failed');
+      return this.transportError(e);
     }
   }
 }
