@@ -15,7 +15,7 @@ import { format, isToday, isYesterday } from 'date-fns';
 
 interface ConversationThreadProps {
   conversation: any;
-  onSendMessage: (text: string, targetConvId: string, audioUrl?: string, transcript?: string) => void;
+  onSendMessage: (text: string, targetConvId: string, audioUrl?: string, transcript?: string, clientMessageUuid?: string) => void;
   isSending: boolean;
   onTogglePanel?: () => void;
   onBack?: () => void;
@@ -296,7 +296,7 @@ export function ConversationThread({ conversation, onSendMessage, isSending, onT
 
       {/* Input Area */}
       <MessageInput
-        onSend={async (text, isNote, audioUrl, transcript) => {
+        onSend={async (text, isNote, audioUrl, transcript, clientMessageUuid) => {
           if (isNote) {
             setIsNoteSending(true);
             const res = await sendInternalNote(conversation.id, text, 'Agent');
@@ -309,7 +309,7 @@ export function ConversationThread({ conversation, onSendMessage, isSending, onT
             setIsNoteSending(false);
           } else {
             const target = availablePlatforms.find((p: any) => p.platform === selectedPlatform) || availablePlatforms[0];
-            onSendMessage(text, target?.conversationId || conversation.id, audioUrl, transcript);
+            onSendMessage(text, target?.conversationId || conversation.id, audioUrl, transcript, clientMessageUuid);
           }
         }}
         disabled={isSending || isNoteSending}

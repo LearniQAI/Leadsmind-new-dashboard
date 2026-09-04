@@ -57,7 +57,7 @@ export function getPricingView(course: any, previewData?: any): PricingView {
     default:
       return {
         headline: price > 0 ? money : 'Free',
-        qualifier: price > 0 ? 'one-time payment · lifetime access' : 'no payment required',
+        qualifier: price > 0 ? 'one-time payment for lifetime access' : 'no payment required',
         modelLabel: price > 0 ? 'One-time' : 'Free access',
         cta: price > 0 ? 'Enroll Now' : 'Enroll for Free',
         isFree: price <= 0,

@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { X, Loader2, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
+import { isReleasedStatus } from "@/lib/lms/cohorts";
 import { Avatar, StatusPill, EmptyState } from "./settings/primitives";
 
 interface Enrollment {
@@ -27,6 +28,19 @@ export default function StudentsRosterModal({ courseId, onClose, cohortId, cohor
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  // Display-only: the default roster hides members whose enrolment has been released
+  // (cancelled / rejected / revoked / expired / inactive) — the same rows the cohort
+  // seat-cap trigger already ignores, so the count here matches the seats actually held.
+  const [showCancelled, setShowCancelled] = useState(false);
+
+  const cancelledCount = useMemo(
+    () => enrollments.filter((e) => isReleasedStatus(e.status)).length,
+    [enrollments],
+  );
+  const visibleEnrollments = useMemo(
+    () => (showCancelled ? enrollments : enrollments.filter((e) => !isReleasedStatus(e.status))),
+    [enrollments, showCancelled],
+  );
 
   const load = () => {
     setIsLoading(true);
@@ -81,8 +95,20 @@ export default function StudentsRosterModal({ courseId, onClose, cohortId, cohor
               {cohortName ? cohortName : "Students"}
             </h2>
             <p className="text-[12px] text-dash-textMuted">
-              {enrollments.length} {enrollments.length === 1 ? "student" : "students"} enrolled
+              {visibleEnrollments.length} {visibleEnrollments.length === 1 ? "student" : "students"}
+              {showCancelled ? " (including cancelled)" : " enrolled"}
             </p>
+            {cancelledCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowCancelled((v) => !v)}
+                className="mt-1 text-[11px] font-medium text-sky-600 underline-offset-2 hover:underline"
+              >
+                {showCancelled
+                  ? "Hide cancelled"
+                  : `Show cancelled (${cancelledCount})`}
+              </button>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -99,15 +125,19 @@ export default function StudentsRosterModal({ courseId, onClose, cohortId, cohor
             <div className="flex items-center justify-center gap-2 py-14 text-[12px] text-dash-textMuted">
               <Loader2 size={14} className="animate-spin" /> Loading students…
             </div>
-          ) : enrollments.length === 0 ? (
+          ) : visibleEnrollments.length === 0 ? (
             <EmptyState
               icon={<Users />}
-              title="No students yet"
-              description="Enrol someone from the Add a student panel and they’ll show up here."
+              title={cancelledCount > 0 ? "No active students" : "No students yet"}
+              description={
+                cancelledCount > 0
+                  ? "Every enrolment here has been cancelled. Use “Show cancelled” to see them."
+                  : "Enrol someone from the Add a student panel and they’ll show up here."
+              }
             />
           ) : (
             <div className="divide-y divide-dash-border overflow-hidden rounded-xl border border-dash-border">
-              {enrollments.map((e) => {
+              {visibleEnrollments.map((e) => {
                 const name = e.contact
                   ? [e.contact.first_name, e.contact.last_name].filter(Boolean).join(" ") ||
                     "Unnamed contact"

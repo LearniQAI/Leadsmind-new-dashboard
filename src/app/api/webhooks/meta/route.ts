@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { decrypt } from '@/lib/encryption';
 import { logger } from '@/shared/logger';
 import { MetaAdapter } from '@/lib/meta/MetaAdapter';
+import { statusesReadReceiptAdvancesFrom } from '@/lib/meta/deliveryStatus';
 
 export const dynamic = 'force-dynamic';
 
@@ -111,9 +112,10 @@ export async function POST(req: Request) {
 
           // Handle read status update
           if (messagingEvent.read) {
-            const watermark = messagingEvent.read.watermark;
             const senderId = messagingEvent.sender.id;
-            // Update all outbound messages in this conversation to 'read' up to watermark
+            // Update outbound messages in this conversation to 'read'. Advance from
+            // both 'sent' and 'delivered' — a fast read receipt can beat the
+            // message_deliveries webhook.
             const { data: conv } = await supabase
               .from('conversations')
               .select('id')
@@ -127,7 +129,7 @@ export async function POST(req: Request) {
                 .update({ status: 'read' })
                 .eq('conversation_id', conv.id)
                 .eq('direction', 'outbound')
-                .eq('status', 'delivered');
+                .in('status', statusesReadReceiptAdvancesFrom('facebook'));
               logger.info({ senderId }, 'webhook.meta.facebook.read_processed');
             }
           }
@@ -147,7 +149,12 @@ export async function POST(req: Request) {
             continue;
           }
 
-          // Handle delivery status update
+          // NOTE: Instagram Messaging has NO delivery-confirmation webhook — the IG
+          // Messenger Platform only emits messages / messaging_postbacks /
+          // messaging_seen / message_reactions / messaging_referral / standby
+          // (confirmed against Meta's current docs). This `delivery` branch is
+          // defensive-only and effectively never fires for object=instagram; an IG
+          // outbound message legitimately moves sending -> sent -> read.
           if (messagingEvent.delivery) {
             const mids = messagingEvent.delivery.mids || [];
             for (const mid of mids) {
@@ -159,7 +166,9 @@ export async function POST(req: Request) {
             logger.info({ mids }, 'webhook.meta.instagram.delivery_processed');
           }
 
-          // Handle read status update
+          // Handle read status update (messaging_seen). Previously required
+          // status='delivered' first — a state IG messages never reach — so IG read
+          // receipts silently no-op'd. Advance straight from 'sent'.
           if (messagingEvent.read) {
             const senderId = messagingEvent.sender.id;
             const { data: conv } = await supabase
@@ -170,13 +179,17 @@ export async function POST(req: Request) {
               .maybeSingle();
 
             if (conv) {
-              await supabase
+              const { error: readErr } = await supabase
                 .from('messages')
                 .update({ status: 'read' })
                 .eq('conversation_id', conv.id)
                 .eq('direction', 'outbound')
-                .eq('status', 'delivered');
-              logger.info({ senderId }, 'webhook.meta.instagram.read_processed');
+                .in('status', statusesReadReceiptAdvancesFrom('instagram'));
+              if (readErr) {
+                logger.error({ err: readErr, senderId }, 'webhook.meta.instagram.read_update.failed');
+              } else {
+                logger.info({ senderId }, 'webhook.meta.instagram.read_processed');
+              }
             }
           }
 

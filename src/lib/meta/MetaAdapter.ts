@@ -1,6 +1,40 @@
 import { decrypt } from '@/lib/encryption';
 import { logger } from '@/shared/logger';
 
+/**
+ * Result of a provider send. `error` stays a human-readable string for
+ * backwards-compatibility, but the structured Graph error fields
+ * (`errorCode` / `errorSubcode` / `errorType` / `fbtraceId` / `httpStatus`) are
+ * now preserved so the caller can (a) store a real diagnostic against the
+ * message row instead of a generic "Failed to dispatch message" and (b) classify
+ * recoverable vs non-recoverable failures for the Part 2 retry queue.
+ * `errorType: 'transport'` means `fetch` itself threw (no HTTP response).
+ */
+export interface MetaSendResult {
+  success: boolean;
+  externalId?: string;
+  error?: string;
+  errorCode?: number;
+  errorSubcode?: number;
+  errorType?: string;
+  fbtraceId?: string;
+  httpStatus?: number;
+}
+
+/** Builds a failed MetaSendResult from a Graph API JSON body + HTTP status. */
+function graphErrorResult(data: any, httpStatus: number, fallback: string): MetaSendResult {
+  const gerr = data?.error || {};
+  return {
+    success: false,
+    error: gerr.message || `${fallback} (HTTP ${httpStatus})`,
+    errorCode: typeof gerr.code === 'number' ? gerr.code : undefined,
+    errorSubcode: typeof gerr.error_subcode === 'number' ? gerr.error_subcode : undefined,
+    errorType: gerr.type || undefined,
+    fbtraceId: gerr.fbtrace_id || undefined,
+    httpStatus,
+  };
+}
+
 export class MetaAdapter {
   private credentials: any;
 
@@ -14,7 +48,7 @@ export class MetaAdapter {
   async sendFacebook(
     recipientId: string,
     text: string
-  ): Promise<{ success: boolean; externalId?: string; error?: string }> {
+  ): Promise<MetaSendResult> {
     logger.info({ recipientId }, 'meta_adapter.facebook.dispatching');
 
     const pageId = this.credentials?.page_id || '';
@@ -45,14 +79,19 @@ export class MetaAdapter {
       });
 
       const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error?.message || 'Failed Facebook Messenger request');
+      if (!response.ok || data?.error) {
+        const result = graphErrorResult(data, response.status, 'Failed Facebook Messenger request');
+        logger.error(
+          { err: result.error, code: result.errorCode, subcode: result.errorSubcode, fbtrace: result.fbtraceId, httpStatus: result.httpStatus },
+          'meta_adapter.facebook.failed'
+        );
+        return result;
       }
 
       return { success: true, externalId: data.message_id };
     } catch (e: any) {
       logger.error({ err: e.message }, 'meta_adapter.facebook.failed');
-      return { success: false, error: e.message };
+      return { success: false, error: e.message, errorType: 'transport' };
     }
   }
 
@@ -62,7 +101,7 @@ export class MetaAdapter {
   async sendInstagram(
     recipientId: string,
     text: string
-  ): Promise<{ success: boolean; externalId?: string; error?: string }> {
+  ): Promise<MetaSendResult> {
     logger.info({ recipientId }, 'meta_adapter.instagram.dispatching');
 
     const instagramId = this.credentials?.instagram_id || '';
@@ -93,14 +132,19 @@ export class MetaAdapter {
       });
 
       const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error?.message || 'Failed Instagram request');
+      if (!response.ok || data?.error) {
+        const result = graphErrorResult(data, response.status, 'Failed Instagram request');
+        logger.error(
+          { err: result.error, code: result.errorCode, subcode: result.errorSubcode, fbtrace: result.fbtraceId, httpStatus: result.httpStatus },
+          'meta_adapter.instagram.failed'
+        );
+        return result;
       }
 
       return { success: true, externalId: data.message_id };
     } catch (e: any) {
       logger.error({ err: e.message }, 'meta_adapter.instagram.failed');
-      return { success: false, error: e.message };
+      return { success: false, error: e.message, errorType: 'transport' };
     }
   }
 
@@ -176,7 +220,7 @@ export class MetaAdapter {
     to: string,
     text: string,
     audioUrl?: string
-  ): Promise<{ success: boolean; externalId?: string; error?: string }> {
+  ): Promise<MetaSendResult> {
     logger.info({ to }, 'meta_adapter.whatsapp.dispatching');
 
     const phoneNumberId = this.credentials?.phone_number_id || '';
@@ -209,8 +253,10 @@ export class MetaAdapter {
         });
 
         const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.error?.message || 'Failed WhatsApp request');
+        if (!response.ok || data?.error) {
+          const result = graphErrorResult(data, response.status, 'Failed WhatsApp request');
+          logger.error({ err: result.error, code: result.errorCode, fbtrace: result.fbtraceId }, 'meta_adapter.whatsapp.failed');
+          return result;
         }
         textResId = data.messages?.[0]?.id;
       }
@@ -232,8 +278,10 @@ export class MetaAdapter {
         });
 
         const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.error?.message || 'Failed WhatsApp audio request');
+        if (!response.ok || data?.error) {
+          const result = graphErrorResult(data, response.status, 'Failed WhatsApp audio request');
+          logger.error({ err: result.error, code: result.errorCode, fbtrace: result.fbtraceId }, 'meta_adapter.whatsapp.failed');
+          return result;
         }
         return { success: true, externalId: data.messages?.[0]?.id || textResId };
       }
@@ -241,7 +289,7 @@ export class MetaAdapter {
       return { success: true, externalId: textResId };
     } catch (e: any) {
       logger.error({ err: e.message }, 'meta_adapter.whatsapp.failed');
-      return { success: false, error: e.message };
+      return { success: false, error: e.message, errorType: 'transport' };
     }
   }
 
@@ -261,7 +309,7 @@ export class MetaAdapter {
     templateName: string,
     languageCode: string,
     bodyParams?: string[]
-  ): Promise<{ success: boolean; externalId?: string; error?: string }> {
+  ): Promise<MetaSendResult> {
     logger.info({ to, templateName, languageCode }, 'meta_adapter.whatsapp_template.dispatching');
 
     const phoneNumberId = this.credentials?.phone_number_id || '';
@@ -300,14 +348,19 @@ export class MetaAdapter {
       });
 
       const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error?.message || 'Failed WhatsApp template request');
+      if (!response.ok || data?.error) {
+        const result = graphErrorResult(data, response.status, 'Failed WhatsApp template request');
+        logger.error(
+          { err: result.error, code: result.errorCode, subcode: result.errorSubcode, fbtrace: result.fbtraceId, templateName },
+          'meta_adapter.whatsapp_template.failed'
+        );
+        return result;
       }
 
       return { success: true, externalId: data.messages?.[0]?.id };
     } catch (e: any) {
       logger.error({ err: e.message, templateName }, 'meta_adapter.whatsapp_template.failed');
-      return { success: false, error: e.message };
+      return { success: false, error: e.message, errorType: 'transport' };
     }
   }
 }
