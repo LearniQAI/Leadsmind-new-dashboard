@@ -68,7 +68,7 @@ export async function getOrCreateStudentContact(workspaceId: string) {
 /**
  * Enrolls a student in a course.
  */
-export async function enrollStudent(courseId: string) {
+export async function enrollStudent(courseId: string, opts?: { cohortId?: string | null }) {
   let workspaceId: string | null = null;
   try {
     const user = await getUser();
@@ -79,7 +79,7 @@ export async function enrollStudent(courseId: string) {
     // Fetch the course to find its workspace_id, price, and pricing_model
     const { data: course, error: courseError } = await adminClient
       .from('courses')
-      .select('workspace_id, price, pricing_model, start_method, email_access_auto_send')
+      .select('workspace_id, price, pricing_model, start_method, email_access_auto_send, cohorts_enabled')
       .eq('id', courseId)
       .single();
 
@@ -153,15 +153,36 @@ export async function enrollStudent(courseId: string) {
     const isHeldForApproval =
       course.start_method === 'email_access_link' && !course.email_access_auto_send;
 
+    // Cohorts, Part 1: a cohort course requires a real cohort choice, and the chosen cohort
+    // must still have a seat. Pre-check for a clean message; the DB trigger backstops a race.
+    let cohortId: string | null = null;
+    if (course.cohorts_enabled) {
+      const { listOpenCohortsForCourse, checkCohortSeatAvailable } = await import('@/lib/lms/cohorts');
+      const open = await listOpenCohortsForCourse(adminClient, courseId);
+      if (open.length > 0) {
+        if (!opts?.cohortId) return { error: 'Please choose a cohort to join.' };
+        const seat = await checkCohortSeatAvailable(adminClient, opts.cohortId, courseId);
+        if (!seat.ok) return { error: seat.reason };
+        cohortId = opts.cohortId;
+      }
+      // open.length === 0 -> every cohort full; fall through to a normal (cohort-less)
+      // enrolment rather than hard-blocking. Part 2 revisits this with waitlisting.
+    }
+
     const { error } = await adminClient
       .from('enrollments')
       .insert({
         course_id: courseId,
         contact_id: contactId,
+        cohort_id: cohortId,
         status: isHeldForApproval ? 'pending_approval' : 'active'
       });
 
-    if (error) throw error;
+    if (error) {
+      const { isCohortFullError } = await import('@/lib/lms/cohorts');
+      if (isCohortFullError(error)) return { error: 'That cohort just filled up. Pick another cohort.' };
+      throw error;
+    }
 
     if (isHeldForApproval) {
       // No access yet, no onboarding email yet — both wait for a real admin Approve action.

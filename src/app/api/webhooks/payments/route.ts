@@ -170,7 +170,7 @@ export async function POST(req: NextRequest) {
 
   if (eventType === 'checkout.session.completed') {
     const session = event.data.object;
-    const { courseId, contactId, workspaceId, pricingModel, subscriptionInterval } = session.metadata || {};
+    const { courseId, contactId, workspaceId, pricingModel, subscriptionInterval, cohortId } = session.metadata || {};
 
     // Guest (logged-out) course checkout — no contactId in metadata. Contact + enrollment +
     // account provisioning are done here, gated on Stripe's own session.payment_status, in this
@@ -200,6 +200,16 @@ export async function POST(req: NextRequest) {
         subscriptionEndsAt = date.toISOString();
       }
 
+      // Cohorts, Part 1: session carries the chosen cohort. Seat availability was checked at
+      // checkout-session creation; re-check here (defensive) and let the DB trigger backstop.
+      let cohortIdToSet: string | null = null;
+      if (cohortId) {
+        const { checkCohortSeatAvailable } = await import('@/lib/lms/cohorts');
+        const seat = await checkCohortSeatAvailable(supabaseAdmin, cohortId, courseId);
+        cohortIdToSet = seat.ok ? cohortId : null;
+        if (!seat.ok) logger.warn({ courseId, cohortId, reason: seat.reason }, 'webhook.payments.cohort_full_at_finalize');
+      }
+
       // Check if enrollment exists
       const { data: existing } = await supabaseAdmin
         .from('enrollments')
@@ -218,7 +228,8 @@ export async function POST(req: NextRequest) {
             subscription_interval: pricingModel === 'subscription' ? subscriptionInterval : null,
             subscription_ends_at: subscriptionEndsAt,
             active: true,
-            status: 'active'
+            status: 'active',
+            ...(cohortIdToSet ? { cohort_id: cohortIdToSet } : {}),
           })
           .eq('id', existing.id);
 
@@ -232,6 +243,7 @@ export async function POST(req: NextRequest) {
           .insert({
             course_id: courseId,
             contact_id: contactId,
+            cohort_id: cohortIdToSet,
             // enrollments has no workspace_id column — workspace is derived via
             // course_id -> courses.workspace_id. The telemetry emits below still use the
             // workspaceId from the session metadata directly.

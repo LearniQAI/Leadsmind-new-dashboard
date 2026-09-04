@@ -169,6 +169,8 @@ export async function insertEnrollmentIfAbsent(
     subscriptionEndsAt?: string | null;
     /** Course Start Method 1 ("hold for manual approval"): defaults to 'active'. */
     status?: string;
+    /** Cohorts, Part 1: the chosen cohort id (already seat-checked by the caller). */
+    cohortId?: string | null;
   }
 ): Promise<{ enrolled: boolean; alreadyEnrolled: boolean }> {
   const { courseId, contactId } = params;
@@ -192,6 +194,7 @@ export async function insertEnrollmentIfAbsent(
     access_type: params.accessType || 'full',
     subscription_interval: params.subscriptionInterval || null,
     subscription_ends_at: params.subscriptionEndsAt || null,
+    cohort_id: params.cohortId || null,
     enrolled_at: new Date().toISOString(),
   };
   // Populated for paid guest enrollments so the existing charge.refunded webhook branch can
@@ -294,6 +297,7 @@ export async function handleGuestCheckoutSessionCompleted(session: any): Promise
   const workspaceId: string | undefined = md.workspaceId;
   const pricingModel: string | undefined = md.pricingModel;
   const subscriptionInterval: string | null = md.subscriptionInterval || null;
+  const cohortIdMeta: string | null = md.cohortId || null; // Cohorts, Part 1
 
   if (!courseId || !workspaceId) return; // not a guest course-checkout session
 
@@ -362,6 +366,15 @@ export async function handleGuestCheckoutSessionCompleted(session: any): Promise
     .eq('course_id', courseId);
   const hasDrip = (modules || []).some((m: any) => (m.drip_days || 0) > 0);
 
+  // Cohorts, Part 1: seat re-check at finalize (checkout-time check already passed).
+  let cohortIdToSet: string | null = null;
+  if (cohortIdMeta) {
+    const { checkCohortSeatAvailable } = await import('@/lib/lms/cohorts');
+    const seat = await checkCohortSeatAvailable(admin, cohortIdMeta, courseId!);
+    cohortIdToSet = seat.ok ? cohortIdMeta : null;
+    if (!seat.ok) logger.warn({ courseId, cohortId: cohortIdMeta }, 'guest_enrollment.webhook.cohort_full_at_finalize');
+  }
+
   try {
     const { alreadyEnrolled } = await insertEnrollmentIfAbsent(admin, {
       courseId,
@@ -372,6 +385,7 @@ export async function handleGuestCheckoutSessionCompleted(session: any): Promise
       stripePaymentIntentId: paymentIntentId,
       subscriptionInterval: pricingModel === 'subscription' ? subscriptionInterval : null,
       subscriptionEndsAt,
+      cohortId: cohortIdToSet,
     });
 
     if (alreadyEnrolled) {

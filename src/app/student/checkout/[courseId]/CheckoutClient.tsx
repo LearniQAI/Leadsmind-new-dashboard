@@ -53,6 +53,27 @@ export default function CheckoutClient({
   // success screen previously said "You're Enrolled" / "Check your email" regardless).
   const [guestPendingApproval, setGuestPendingApproval] = useState(false);
 
+  // Cohorts, Part 1: when the course has cohorts enabled, the student picks one before
+  // completing enrolment — whichever start_method flow is active. Only non-full cohorts are
+  // offered (getOpenCohorts filters on the server).
+  const [cohorts, setCohorts] = useState<Array<{ id: string; name: string; start_date: string; end_date: string | null; seats_left: number }>>([]);
+  const [selectedCohortId, setSelectedCohortId] = useState<string>('');
+  const cohortsRequired = !!course?.cohorts_enabled && cohorts.length > 0;
+  useEffect(() => {
+    if (!course?.cohorts_enabled) return;
+    import('@/app/actions/courseCohorts').then(({ getOpenCohorts }) =>
+      getOpenCohorts(course.id).then((r: any) => setCohorts(r.data || []))
+    );
+  }, [course?.id, course?.cohorts_enabled]);
+  const cohortArg = () => (cohortsRequired ? { cohortId: selectedCohortId } : undefined);
+  const cohortGuard = () => {
+    if (cohortsRequired && !selectedCohortId) {
+      toast.error('Please choose a cohort first.');
+      return false;
+    }
+    return true;
+  };
+
   // Real post-payment confirmation poll (guest paid flow only) — see
   // /api/checkout/guest-status. Never grants anything itself; it only ever repeats back what
   // that route already independently verified against Stripe's API + the real enrollments row.
@@ -118,6 +139,7 @@ export default function CheckoutClient({
   const priceZar = (course.price * 18.5).toFixed(2);
 
   const handleCheckout = () => {
+    if (!cohortGuard()) return;
     startTransition(async () => {
       try {
         if (paymentMethod === 'stripe') {
@@ -125,8 +147,8 @@ export default function CheckoutClient({
           // installment session (mode: subscription + a capped Subscription Schedule); every
           // other paid course keeps the existing one-time / open-ended-subscription session.
           const res = course.start_method === 'payment_plan'
-            ? await createCourseInstallmentCheckoutSession(course.id)
-            : await createDirectCourseCheckoutSession(course.id);
+            ? await createCourseInstallmentCheckoutSession(course.id, cohortArg())
+            : await createDirectCourseCheckoutSession(course.id, cohortArg());
           if (res.error) {
             toast.error(res.error);
             return;
@@ -148,7 +170,7 @@ export default function CheckoutClient({
         // not itself verify payment — that's a separate, pre-existing gap outside this fix.)
 
         // Perform enrollment registration
-        const enrollRes = await enrollStudent(course.id);
+        const enrollRes = await enrollStudent(course.id, cohortArg());
         
         if (enrollRes.error) {
           toast.error(enrollRes.error);
@@ -169,9 +191,10 @@ export default function CheckoutClient({
   };
 
   const handleFreeEnrollment = () => {
+    if (!cohortGuard()) return;
     startTransition(async () => {
       try {
-        const enrollRes = await enrollStudent(course.id);
+        const enrollRes = await enrollStudent(course.id, cohortArg());
         if (enrollRes.error) {
           toast.error(enrollRes.error);
           return;
@@ -200,6 +223,7 @@ export default function CheckoutClient({
   };
 
   const handleGuestFree = () => {
+    if (!cohortGuard()) return;
     startTransition(async () => {
       try {
         const res = await guestFreeEnroll({
@@ -207,6 +231,7 @@ export default function CheckoutClient({
           name: guestName,
           email: guestEmail,
           hp,
+          ...(cohortArg() || {}),
         });
         if ((res as any).error) {
           toast.error((res as any).error);
@@ -232,9 +257,10 @@ export default function CheckoutClient({
   };
 
   const handleGuestPaid = () => {
+    if (!cohortGuard()) return;
     startTransition(async () => {
       try {
-        const res = await createGuestCourseCheckoutSession({ courseId: course.id, hp });
+        const res = await createGuestCourseCheckoutSession({ courseId: course.id, hp, ...(cohortArg() || {}) });
         if ((res as any).error) {
           toast.error((res as any).error);
           return;
@@ -249,6 +275,29 @@ export default function CheckoutClient({
       }
     });
   };
+
+  // Cohorts, Part 1: real "choose your cohort" step. Rendered in every active start_method
+  // CTA section when the course has cohorts enabled and at least one non-full cohort is open.
+  // getOpenCohorts already filters to real, currently-open, non-full cohorts server-side.
+  const cohortPicker = cohortsRequired ? (
+    <div className="space-y-2 text-left max-w-sm mx-auto">
+      <label className="text-[10px] font-black uppercase tracking-wider text-primary block">
+        Choose your cohort
+      </label>
+      <select
+        value={selectedCohortId}
+        onChange={(e) => setSelectedCohortId(e.target.value)}
+        className="w-full bg-[#111d47]/40 border border-white/10 rounded-xl h-11 px-4 text-xs text-white outline-none focus:border-primary/50"
+      >
+        <option value="" className="bg-[#080f28]">Select a cohort…</option>
+        {cohorts.map((c) => (
+          <option key={c.id} value={c.id} className="bg-[#080f28]">
+            {c.name} — starts {new Date(c.start_date).toLocaleDateString()} ({c.seats_left} seat{c.seats_left === 1 ? '' : 's'} left)
+          </option>
+        ))}
+      </select>
+    </div>
+  ) : null;
 
   // Hidden honeypot input reused by both guest sub-flows.
   const honeypotField = (
@@ -578,6 +627,8 @@ export default function CheckoutClient({
               </div>
             )}
 
+            {cohortPicker}
+
             <button
               onClick={isGuest ? handleGuestFree : handleFreeEnrollment}
               disabled={isPending || (isGuest && (!guestName.trim() || !guestEmail.trim()))}
@@ -615,6 +666,7 @@ export default function CheckoutClient({
                   we&apos;ll email account-setup instructions to the address you give Stripe.
                 </span>
               </div>
+              {cohortPicker}
               <button
                 onClick={handleGuestPaid}
                 disabled={isPending}
@@ -689,6 +741,8 @@ export default function CheckoutClient({
                 <span>🇿🇦</span> PayFast Sandbox (ZAR)
               </button>
             </div>
+
+            {cohortPicker}
 
             {paymentMethod === 'stripe' ? (
               /* Stripe Redirect */

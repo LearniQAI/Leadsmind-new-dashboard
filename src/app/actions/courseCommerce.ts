@@ -140,7 +140,7 @@ async function getStripeClientForWorkspace(workspaceId: string): Promise<Stripe>
 /**
  * Creates a checkout session routing payments directly through the creator's Stripe gateway.
  */
-export async function createDirectCourseCheckoutSession(courseId: string) {
+export async function createDirectCourseCheckoutSession(courseId: string, opts?: { cohortId?: string | null }) {
   try {
     const user = await getUser();
     if (!user) return { error: 'Not authenticated' };
@@ -207,6 +207,7 @@ export async function createDirectCourseCheckoutSession(courseId: string) {
         workspaceId: workspaceId,
         pricingModel: course.pricing_model,
         subscriptionInterval: course.subscription_interval || null,
+        ...(opts?.cohortId ? { cohortId: opts.cohortId } : {}), // Cohorts, Part 1
       },
       success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/courses/${course.id}?payment=success`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/checkout/${course.id}?payment=canceled`,
@@ -231,7 +232,7 @@ export async function createDirectCourseCheckoutSession(courseId: string) {
  * Subscription Schedule and persist the plan metadata onto the enrolment it already creates
  * — the enrolment-creation path is NOT duplicated here.
  */
-export async function createCourseInstallmentCheckoutSession(courseId: string) {
+export async function createCourseInstallmentCheckoutSession(courseId: string, opts?: { cohortId?: string | null }) {
   try {
     const user = await getUser();
     if (!user) return { error: 'Not authenticated' };
@@ -305,6 +306,7 @@ export async function createCourseInstallmentCheckoutSession(courseId: string) {
         pricingModel: 'payment_plan',
         numberOfPayments: String(n),
         subscriptionInterval: interval,
+        ...(opts?.cohortId ? { cohortId: opts.cohortId } : {}), // Cohorts, Part 1
       },
       success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/courses/${course.id}?payment=success`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/checkout/${course.id}?payment=canceled`,

@@ -4,6 +4,7 @@ import { requireLmsInstructor } from '@/lib/lms/access';
 import { sendCourseOnboardingEmail } from '@/lib/lms/onboardingEmail';
 import { ForbiddenError, NotFoundError, toClientError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger';
+import { checkCohortSeatAvailable, isCohortFullError } from '@/lib/lms/cohorts';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,7 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const courseId = searchParams.get('courseId');
+    const cohortId = searchParams.get('cohortId'); // Cohorts, Part 1 — optional roster filter
     if (!courseId) {
       return NextResponse.json({ error: 'Missing courseId parameter' }, { status: 400 });
     }
@@ -32,11 +34,14 @@ export async function GET(req: NextRequest) {
     if (courseErr) throw courseErr;
     if (!courseRow) throw new NotFoundError('Course');
 
-    const { data: enrollments, error } = await adminClient
+    let query = adminClient
       .from('enrollments')
-      .select('id, contact_id, status, active, enrolled_at, access_type, contact:contacts(id, first_name, last_name, email)')
+      .select('id, contact_id, status, active, enrolled_at, access_type, cohort_id, contact:contacts(id, first_name, last_name, email)')
       .eq('course_id', courseId)
       .order('enrolled_at', { ascending: false });
+    if (cohortId) query = query.eq('cohort_id', cohortId);
+
+    const { data: enrollments, error } = await query;
 
     if (error) throw error;
     return NextResponse.json({ data: enrollments });
@@ -53,7 +58,7 @@ export async function POST(req: NextRequest) {
     const adminClient = createAdminClient();
 
     const body = await req.json();
-    const { course_id, contact_id } = body;
+    const { course_id, contact_id, cohort_id } = body;
 
     if (!course_id || !contact_id) {
       return NextResponse.json({ error: 'Missing required fields: course_id, contact_id' }, { status: 400 });
@@ -91,21 +96,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'This contact is already enrolled in this course' }, { status: 409 });
     }
 
-    const { data: enrollment, error } = await adminClient
-      .from('enrollments')
-      .insert({
-        course_id,
-        contact_id,
-        status: 'active',
-        active: true,
-        access_type: 'full',
-        payment_status: 'free',
-        enrolled_at: new Date().toISOString()
-      })
-      .select('id, contact_id, status, active, enrolled_at, access_type, contact:contacts(id, first_name, last_name, email)')
-      .single();
+    // Cohorts, Part 1 — pre-check the seat cap for a friendly message; the DB trigger
+    // tr_enforce_cohort_seat_cap is the authoritative guard against a race.
+    if (cohort_id) {
+      const seat = await checkCohortSeatAvailable(adminClient, cohort_id, course_id);
+      if (!seat.ok) return NextResponse.json({ error: seat.reason }, { status: 409 });
+    }
 
-    if (error) throw error;
+    let enrollment;
+    try {
+      const res = await adminClient
+        .from('enrollments')
+        .insert({
+          course_id,
+          contact_id,
+          cohort_id: cohort_id || null,
+          status: 'active',
+          active: true,
+          access_type: 'full',
+          payment_status: 'free',
+          enrolled_at: new Date().toISOString()
+        })
+        .select('id, contact_id, status, active, enrolled_at, access_type, cohort_id, contact:contacts(id, first_name, last_name, email)')
+        .single();
+      if (res.error) throw res.error;
+      enrollment = res.data;
+    } catch (err: any) {
+      if (isCohortFullError(err)) {
+        return NextResponse.json({ error: 'That cohort just filled up. Pick another cohort.' }, { status: 409 });
+      }
+      throw err;
+    }
 
     // Real invitation email — uses the course's onboarding template (Settings → Emails) with
     // {{variable}} interpolation, delivered via the workspace's own Resend config. Never let

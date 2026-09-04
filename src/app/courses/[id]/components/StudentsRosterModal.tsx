@@ -18,16 +18,20 @@ interface Enrollment {
 interface StudentsRosterModalProps {
   courseId: string;
   onClose: () => void;
+  /** Cohorts, Part 1: when set, the roster is scoped to one cohort's enrolments. */
+  cohortId?: string;
+  cohortName?: string;
 }
 
-export default function StudentsRosterModal({ courseId, onClose }: StudentsRosterModalProps) {
+export default function StudentsRosterModal({ courseId, onClose, cohortId, cohortName }: StudentsRosterModalProps) {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
   const load = () => {
     setIsLoading(true);
-    fetch(`/api/lms/enrollments?courseId=${courseId}`)
+    const qs = `courseId=${courseId}${cohortId ? `&cohortId=${cohortId}` : ""}`;
+    fetch(`/api/lms/enrollments?${qs}`)
       .then((res) => res.json())
       .then((data) => setEnrollments(data.data || []))
       .finally(() => setIsLoading(false));
@@ -35,7 +39,7 @@ export default function StudentsRosterModal({ courseId, onClose }: StudentsRoste
 
   useEffect(() => {
     load();
-  }, [courseId]);
+  }, [courseId, cohortId]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -71,10 +75,10 @@ export default function StudentsRosterModal({ courseId, onClose }: StudentsRoste
         <div className="flex items-start justify-between gap-4 border-b border-dash-border px-6 py-5">
           <div className="space-y-1">
             <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-600">
-              Enrolment
+              {cohortName ? "Cohort roster" : "Enrolment"}
             </div>
             <h2 className="font-display text-[17px] font-semibold leading-tight tracking-[-0.01em] text-dash-text">
-              Students
+              {cohortName ? cohortName : "Students"}
             </h2>
             <p className="text-[12px] text-dash-textMuted">
               {enrollments.length} {enrollments.length === 1 ? "student" : "students"} enrolled
