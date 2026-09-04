@@ -192,3 +192,7 @@ Given IG has no `DELIVERED` signal, over-showing status will *increase* "did it 
 - [Instagram Messaging Webhooks — Meta for Developers](https://developers.facebook.com/docs/messenger-platform/instagram/features/webhook) — supported fields: `messages`, `messaging_postbacks`, `messaging_seen`, `message_reactions`, `messaging_referral`, `standby`; no delivery event.
 - [Send messages — Messenger Platform](https://developers.facebook.com/documentation/business-messaging/messenger-platform/send-messages)
 - [Instagram messaging — `message_deliveries` is Messenger-only; Instagram uses `messaging_seen`](https://developers.sinch.com/docs/conversation/channel-support/instagram/message-support) (third-party summary corroborating Meta docs)
+
+---
+
+**Implementation:** Parts 1–4 were built on 2026-09-04 — see [`message-delivery-reliability-build-log.md`](message-delivery-reliability-build-log.md) for what shipped, remaining gaps, and new env vars.

@@ -19,6 +19,8 @@ interface ConversationThreadProps {
   isSending: boolean;
   onTogglePanel?: () => void;
   onBack?: () => void;
+  /** Re-dispatch a failed outbound message (same text, same idempotency key). */
+  onRetryMessage?: (msg: any) => void;
 }
 
 const GROUP_WINDOW_MS = 3 * 60 * 1000; // messages within 3 min of each other, same direction/platform, cluster together
@@ -29,7 +31,7 @@ function dateDividerLabel(date: Date) {
   return format(date, 'MMMM d, yyyy');
 }
 
-export function ConversationThread({ conversation, onSendMessage, isSending, onTogglePanel, onBack }: ConversationThreadProps) {
+export function ConversationThread({ conversation, onSendMessage, isSending, onTogglePanel, onBack, onRetryMessage }: ConversationThreadProps) {
   const router = useRouter();
   const [isNoteSending, setIsNoteSending] = useState(false);
   const availablePlatforms = conversation?.availablePlatforms || [];
@@ -287,6 +289,11 @@ export function ConversationThread({ conversation, onSendMessage, isSending, onT
                 metadata={msg.metadata}
                 isFirstInGroup={msg.isFirstInGroup}
                 isLastInGroup={msg.isLastInGroup}
+                onRetry={
+                  msg.direction === 'outbound' && msg.status === 'failed' && onRetryMessage
+                    ? () => onRetryMessage(msg)
+                    : undefined
+                }
               />
               {dateDivider}
             </React.Fragment>

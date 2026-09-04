@@ -74,4 +74,32 @@ describe('MetaAdapter — Graph error preservation (Message Delivery Reliability
     expect(res.success).toBe(false);
     expect(res.errorCode).toBe(190);
   });
+
+  it('sendInstagram: an AbortController timeout surfaces as errorType=timeout (Part 2)', async () => {
+    (global.fetch as any).mockImplementation((_url: string, init: any) =>
+      new Promise((_resolve, reject) => {
+        // Emulate fetch honouring the abort signal.
+        init?.signal?.addEventListener('abort', () => {
+          const e = new Error('The operation was aborted');
+          e.name = 'AbortError';
+          reject(e);
+        });
+      }),
+    );
+
+    const res = await new MetaAdapter(IG_CREDS, { timeoutMs: 20 }).sendInstagram('igsid_123', 'hi');
+    expect(res.success).toBe(false);
+    expect(res.errorType).toBe('timeout');
+    expect(res.error).toMatch(/timed out/i);
+  });
+
+  it('no timeoutMs → no AbortSignal is attached (back-compat)', async () => {
+    let sawSignal = true;
+    (global.fetch as any).mockImplementation((_url: string, init: any) => {
+      sawSignal = 'signal' in (init || {});
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({ message_id: 'mid.x' }) });
+    });
+    await new MetaAdapter(IG_CREDS).sendInstagram('igsid_123', 'hi');
+    expect(sawSignal).toBe(false);
+  });
 });

@@ -4,7 +4,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId, requireWorkspaceAccess } from '@/lib/auth';
 import { createOAuthStateNonce } from '@/lib/oauth/stateNonce';
 import { sendEmail } from '@/lib/email';
-import { MetaAdapter } from '@/lib/meta/MetaAdapter';
+import { dispatchOutboundMessage } from '@/lib/messaging/dispatchOutboundMessage';
 import { encrypt, decrypt } from '@/lib/encryption';
 import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
 import { EmailAutomationService } from '@/lib/automations/EmailAutomationService';
@@ -226,7 +226,7 @@ export async function getConversations() {
     tags,
     last_customer_message_at,
     contacts (id, first_name, last_name, avatar_url, phone, email, opted_in, opted_out, opt_out_date),
-    messages (content, direction, sent_at, status, metadata, sender_handle)
+    messages (id, external_id, content, direction, sent_at, status, metadata, sender_handle)
    `)
    .eq('workspace_id', workspaceId)
    .order('last_message_at', { ascending: false });
@@ -350,16 +350,12 @@ export async function sendMessage(
 
   let messageFailed = false;
   let errorMessage = '';
-  // Structured provider error (Graph API code/subcode/fbtrace) preserved for a real
-  // diagnostic on the message row instead of a generic string, and for the Part 2
-  // retry queue's recoverable-vs-permanent classification.
-  let providerError: {
-    error_code?: number;
-    error_subcode?: number;
-    error_type?: string;
-    fbtrace_id?: string;
-    http_status?: number;
-  } | null = null;
+  // Part 2: set when dispatchOutboundMessage() has already written the final
+  // messages.status + metadata (+ dead letter), so the tail must not double-write.
+  let dispatchHandled = false;
+  // Part 2: set when the send failed recoverably and a retry is queued — this is
+  // NOT an error to the agent (the bubble shows amber "Retrying…", not red).
+  let retryScheduled = false;
 
   if (conv?.platform === 'email') {
    const contact = Array.isArray(conv.contacts) ? conv.contacts[0] : conv.contacts;
@@ -445,62 +441,65 @@ export async function sendMessage(
     .maybeSingle();
 
    if (conn?.credentials) {
-    const adapter = new MetaAdapter(conn.credentials);
-    let res;
-    if (conv!.platform === 'facebook') {
-      res = await adapter.sendFacebook(conv!.external_thread_id || '', content);
-    } else if (conv!.platform === 'instagram') {
-      res = await adapter.sendInstagram(conv!.external_thread_id || '', content);
-    } else if (conv!.platform === 'whatsapp') {
-      if (audioUrl) {
-         const { data: { user: currentUser } } = await supabase.auth.getUser();
-         const { data: sender } = await supabase
-           .from('users')
-           .select('first_name, last_name, profile_photo_url, job_title, identity_color, avatar_preset_id')
-           .eq('id', currentUser?.id)
-           .maybeSingle();
+    if (conv!.platform === 'whatsapp' && audioUrl) {
+      // WhatsApp voice notes keep their bespoke sender path and are not routed
+      // through the retry queue (Part 2 covers text sends — the PRD's scope).
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const { data: sender } = await supabase
+        .from('users')
+        .select('first_name, last_name, profile_photo_url, job_title, identity_color, avatar_preset_id')
+        .eq('id', currentUser?.id)
+        .maybeSingle();
 
-         const senderData = {
-           first_name: sender?.first_name || null,
-           last_name: sender?.last_name || null,
-           full_name: sender ? `${sender.first_name || ''} ${sender.last_name || ''}`.trim() : 'Team Member',
-           job_title: sender?.job_title || null,
-           identity_color: sender?.identity_color || null,
-           profile_photo_url: sender?.profile_photo_url || null,
-           avatar_preset_id: sender?.avatar_preset_id || null
-         };
-
-         const { sendVoiceNoteWhatsApp } = await import('@/lib/voicenotes/voiceNoteWhatsApp');
-         res = await sendVoiceNoteWhatsApp({
-           workspaceId,
-           toNumber: conv!.external_thread_id || '',
-           sender: senderData,
-           audioUrl
-         });
-       } else {
-        res = await adapter.sendWhatsApp(conv!.external_thread_id || '', content);
-      }
-    }
-
-    if (res && res.success) {
-      await supabase.from('messages').update({ status: 'sent', external_id: res.externalId }).eq("id", msgData.id).eq("workspace_id", workspaceId);
-    } else {
-      const r: any = res || {};
-      logger.error(
-        { err: r.error, errorCode: r.errorCode, errorSubcode: r.errorSubcode, fbtraceId: r.fbtraceId, httpStatus: r.httpStatus, workspaceId, conversationId: targetConvId, platform: conv!.platform },
-        'messaging.meta_adapter.dispatch.failed',
-      );
-      messageFailed = true;
-      // Keep the real provider message (e.g. "(#10) Message failed to send because
-      // this person isn't available right now.") rather than a generic string.
-      errorMessage = r.error || 'Failed to dispatch message';
-      providerError = {
-        error_code: r.errorCode,
-        error_subcode: r.errorSubcode,
-        error_type: r.errorType,
-        fbtrace_id: r.fbtraceId,
-        http_status: r.httpStatus,
+      const senderData = {
+        first_name: sender?.first_name || null,
+        last_name: sender?.last_name || null,
+        full_name: sender ? `${sender.first_name || ''} ${sender.last_name || ''}`.trim() : 'Team Member',
+        job_title: sender?.job_title || null,
+        identity_color: sender?.identity_color || null,
+        profile_photo_url: sender?.profile_photo_url || null,
+        avatar_preset_id: sender?.avatar_preset_id || null
       };
+
+      const { sendVoiceNoteWhatsApp } = await import('@/lib/voicenotes/voiceNoteWhatsApp');
+      const res: any = await sendVoiceNoteWhatsApp({
+        workspaceId,
+        toNumber: conv!.external_thread_id || '',
+        sender: senderData,
+        audioUrl
+      });
+
+      if (res && res.success) {
+        await supabase.from('messages').update({ status: 'sent', external_id: res.externalId }).eq("id", msgData.id).eq("workspace_id", workspaceId);
+      } else {
+        logger.error({ err: res?.error, workspaceId, conversationId: targetConvId, platform: 'whatsapp' }, 'messaging.meta_adapter.dispatch.failed');
+        messageFailed = true;
+        errorMessage = res?.error || 'Failed to dispatch message';
+      }
+    } else {
+      // Text send — the single retry-aware path shared with the cron worker.
+      // Attempt 1 is inline (10s timeout). A recoverable failure schedules a
+      // background retry (status 'retrying'); a permanent one fails now with a
+      // real Graph error + a dead-letter row. The helper owns the messages.status
+      // + metadata writes for this branch.
+      const outcome = await dispatchOutboundMessage(
+        { messagesClient: supabase },
+        {
+          message: msgData,
+          platform: conv!.platform,
+          recipient: conv!.external_thread_id || '',
+          credentials: conn.credentials,
+          attemptNumber: 1,
+          context: 'inline',
+        },
+      );
+      dispatchHandled = true;
+      if (outcome.outcome === 'failed') {
+        messageFailed = true;
+        errorMessage = outcome.error;
+      } else if (outcome.outcome === 'retrying') {
+        retryScheduled = true;
+      }
     }
    } else {
      messageFailed = true;
@@ -539,20 +538,25 @@ export async function sendMessage(
   }
 
     if (messageFailed) {
-    if (msgData) {
-      // Merge onto the existing metadata (was a full replace, which dropped
-      // transcript / audio_url / client_message_uuid), and carry the structured
-      // Graph error alongside the human message.
+    // dispatchOutboundMessage() already wrote status='failed' + merged metadata +
+    // the dead-letter row for the Meta text path; only the legacy branches
+    // (email / sms / whatsapp voice note / connection-not-configured) fall here.
+    if (msgData && !dispatchHandled) {
+      // Merge onto the existing metadata (a full replace here previously dropped
+      // transcript / audio_url / client_message_uuid).
       const failedMetadata = {
         ...(msgData.metadata || {}),
         error_message: errorMessage,
-        ...(providerError
-          ? Object.fromEntries(Object.entries(providerError).filter(([, v]) => v !== undefined && v !== null))
-          : {}),
       };
       await supabase.from('messages').update({ status: 'failed', metadata: failedMetadata }).eq("id", msgData.id).eq("workspace_id", workspaceId);
     }
     return { error: errorMessage };
+  }
+
+  if (retryScheduled) {
+    // Not an error — the message is queued for an automatic retry and the UI
+    // shows it as "Retrying…". Realtime will push the next status change.
+    return { retrying: true };
   }
 
   return { success: true };
