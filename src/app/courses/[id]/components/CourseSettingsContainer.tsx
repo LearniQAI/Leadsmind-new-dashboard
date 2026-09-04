@@ -13,6 +13,7 @@ import {
   ArrowUpRight,
   Award,
   UserCheck,
+  CalendarClock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CourseSettingsForm from "./CourseSettingsForm";
@@ -23,6 +24,7 @@ import EmailTemplateForm from "./EmailTemplateForm";
 import CourseCertificateForm from "./CourseCertificateForm";
 import CourseSubmissionsTab from "./CourseSubmissionsTab";
 import CourseEnrollmentsTab from "./CourseEnrollmentsTab";
+import CourseCohortsTab from "./CourseCohortsTab";
 
 // Nav restructure (Systeme-parity Master Prompt, Section 2): the 6 tabs other than Modules/
 // Settings move here as sub-sections. Audit confirmed (Step 0) all 6 were client-side tab
@@ -44,6 +46,7 @@ export type SettingsSectionId =
   | "pricing"
   | "emails"
   | "certificate"
+  | "cohorts"
   | "enrollments"
   | "submissions"
   | "automations"
@@ -64,6 +67,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: "pricing", label: "Pricing", icon: DollarSign },
   { id: "emails", label: "Emails", icon: Mail },
   { id: "certificate", label: "Certificate", icon: Award },
+  { id: "cohorts", label: "Cohorts", icon: CalendarClock },
   { id: "automations", label: "Automations", icon: Zap, external: true },
   // Course Start Methods pass (Method 1): pending_approval enrollments live under Audience,
   // not Configuration — this is about real people signing up, same category as Submissions.
@@ -211,6 +215,9 @@ export default function CourseSettingsContainer({
             )}
             {activeSection === "certificate" && (
               <CourseCertificateForm course={course} onSaved={onCourseSaved} />
+            )}
+            {activeSection === "cohorts" && (
+              <CourseCohortsTab course={course} onSaved={onCourseSaved} />
             )}
           </div>
         )}

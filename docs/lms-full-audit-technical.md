@@ -32,7 +32,7 @@
 | `course_content_chunks` / `lesson_summaries` | 0 | pgvector RAG + AI lesson summaries |
 | `lms_certificate_templates`, `lms_certificates`, `lms_quizzes` | 0 | **Legacy / dead.** Zero code references — see §9 |
 
-Tables that do **not** exist: `lesson_blocks`, `enrolments` (single-L), `quizzes`, `course_automations` / `lms_automations`, `cohorts` / `course_cohorts`, `course_reviews`, `student_portal_assignments`, `lesson_completions`, `assignments`, `flashcards`, `certificates` (bare).
+Tables that do **not** exist: `lesson_blocks`, `enrolments` (single-L), `quizzes`, `course_automations` / `lms_automations`, `cohorts` (bare), `course_reviews`, `student_portal_assignments`, `lesson_completions`, `assignments`, `flashcards`, `certificates` (bare). — **`course_cohorts` now exists**, added 2026-09-04; see the dated update at the end of this document.
 
 ### Route map
 
@@ -176,7 +176,7 @@ Canvas / `content_blocks` (§2) is the **only** lesson-authoring model in the pr
 
 `lms_certificates`, `lms_certificate_templates`, and `lms_quizzes` remain in the live database with zero rows and zero code references anywhere in the app. Their removal is a deliberate, standing product decision to defer schema cleanup to a later milestone (ADR-0005) — they are inert, not a functional risk, and left in place on purpose rather than by oversight.
 
-`cohorts` / `course_cohorts` do not exist — there is no cohort or group-of-students functionality anywhere in the product today. This is a planned area, not a partially-built one.
+~~`cohorts` / `course_cohorts` do not exist — there is no cohort or group-of-students functionality anywhere in the product today. This is a planned area, not a partially-built one.~~ **Superseded 2026-09-04** — Cohorts Part 1 is now built: `course_cohorts` table, `courses.cohorts_enabled`, `enrollments.cohort_id`, a DB-level seat-cap trigger, an admin Cohorts tab, and a student-facing cohort picker. See the dated update at the end of this document.
 
 ---
 
@@ -196,7 +196,7 @@ Compounding this: the Stripe key configured in this environment is a **live-mode
 
 ## 11 — Everything not yet built, in one place
 
-- **Cohorts** — no cohort/group functionality; `cohorts`/`course_cohorts` tables don't exist.
+- ~~**Cohorts** — no cohort/group functionality; `cohorts`/`course_cohorts` tables don't exist.~~ **Built 2026-09-04 (Part 1)** — schema, admin management, and real server-side seat enforcement now exist. Part 2 (waitlisting, per-cohort drip/scheduling) is still not built. See the dated update at the end of this document.
 - **`code`-question grading is string-matching, not execution** — a correct-but-differently-written answer can score 0 unless the instructor listed it as an accepted variant.
 - **A `file_upload` question makes its quiz non-instant** — the attempt sits `pending_review` until an instructor grades it; the lesson doesn't complete and no pass/fail event fires until then.
 - **AI question generation is multiple-choice only**, regardless of scope.
@@ -226,3 +226,40 @@ Course creation and theming; module/lesson curriculum with real drip, sequential
 - Automation engine: `libs/core/src/events/{lms-event-bus,lms-rule-matching}.ts`, `libs/workers/src/automation-executor.ts`.
 - Admin: `src/app/courses/components/CreateCourseWizard.tsx`, `courses/[id]/components/{blocks/*,CourseCategoryField.tsx,LessonCreatorModal.tsx}`, `courses/[id]/automations/*`, `courses/[id]/lessons/[lessonId]/builder/page.tsx`, `courses/certificates/*`, `courses/needs-grading/*`, `src/components/courses/landing-pages/Template*.tsx`.
 - Checkout: `src/app/checkout/[id]/*`, `src/lib/lms/guestEnrollment.ts`, `src/lib/stripe.ts`, `docs/LIVE_TEST_CHECKLIST.md`.
+- Cohorts (Part 1): `supabase/migrations/20260903000031_course_cohorts.sql`, `src/lib/lms/cohorts.ts`, `src/app/actions/courseCohorts.ts`, `src/app/courses/[id]/components/{CourseCohortsTab.tsx,StudentsRosterModal.tsx}`.
+
+---
+
+## Update — 2026-09-04 — Cohorts, Part 1 (schema, admin management, real seat enforcement)
+
+**Supersedes** the "cohorts do not exist / planned, not partially-built" statements in §1, §9, and §11. Cohorts are now a real, partially-built area: Part 1 (below) is live and verified; Part 2 (waitlisting, per-cohort drip/scheduling, calendar) is still not built.
+
+### What was built
+
+**Schema — `supabase/migrations/20260903000031_course_cohorts.sql` (applied to the linked project).**
+- `courses.cohorts_enabled BOOLEAN NOT NULL DEFAULT false` — orthogonal opt-in, combinable with any `start_method`. When off, nothing about enrolment changes.
+- `public.course_cohorts` — `id, course_id (FK courses, CASCADE), workspace_id (FK workspaces, CASCADE), name, start_date, end_date (nullable), seat_cap (CHECK > 0), created_at`. RLS on, single policy `FOR ALL TO authenticated USING/WITH CHECK (public.check_workspace_access(workspace_id))` — same workspace-scoping every other LMS admin table uses.
+- `public.enrollments.cohort_id UUID` — nullable FK to `course_cohorts(id) ON DELETE SET NULL` (releasing a cohort never deletes a student's enrolment). Indexed.
+- `enforce_cohort_seat_cap()` — `SECURITY DEFINER` trigger `BEFORE INSERT OR UPDATE ON enrollments`. NULL `cohort_id` → passes straight through (zero effect on non-cohort enrolment). Otherwise counts live enrolments on that cohort (statuses `cancelled/canceled/rejected/revoked/expired/inactive` do **not** hold a seat) and `RAISE EXCEPTION 'cohort_full: …' USING ERRCODE = 'check_violation'` if `taken >= seat_cap`. This is the authoritative, path-independent guard.
+
+**App layer.**
+- `src/lib/lms/cohorts.ts` — `listCohortsWithSeats`, `listOpenCohortsForCourse` (filters `is_full`), `checkCohortSeatAvailable` (friendly pre-check, returns `{ ok, reason? }`), `cohortHasEnrollments`, `isCohortFullError`.
+- `src/app/actions/courseCohorts.ts` — instructor-gated CRUD. Lifecycle rule enforced server-side: `name` + `end_date` editable anytime; `start_date` + `seat_cap` locked once the cohort has any live enrolment; a cohort with enrolments cannot be deleted. `getOpenCohorts` is the one un-gated (student-facing) export and returns `[]` unless `cohorts_enabled`.
+- Admin UI — new **Cohorts** tab in `CourseSettingsContainer` (`CourseCohortsTab.tsx`): enable toggle, list/create/edit per the lifecycle rule, per-cohort roster via the existing `StudentsRosterModal` (now takes an optional `cohortId`/`cohortName`; `/api/lms/enrollments?cohortId=` filters the roster).
+- Enrolment paths threaded for `cohort_id` + seat pre-check, no new parallel path: `studentEnrollments.ts:enrollStudent`, `guestCheckout.ts` (free + paid), `guestEnrollment.ts:insertEnrollmentIfAbsent`/`handleGuestCheckoutSessionCompleted`, `/api/lms/enrollments POST`, `courseCommerce.ts` (both Stripe session creators pass `cohortId` in metadata), `webhooks/payments/route.ts` (re-checks the seat at finalize, drops `cohort_id` to NULL and logs `webhook.payments.cohort_full_at_finalize` if the cohort filled during checkout rather than failing the paid enrolment).
+- Student picker — `CheckoutClient.tsx` renders a "Choose your cohort" `<select>` (open, non-full cohorts only) in every active start_method CTA when `cohorts_enabled` and ≥1 open cohort exists; each enrol/pay handler guards on a selection before proceeding. If cohorts are enabled but every cohort is full, the flow falls through to a normal cohort-less enrolment (Part 2 replaces this with waitlisting).
+
+### Verification (2026-09-04, linked Supabase project, service-role)
+
+Direct-insert test (bypasses all app code — proves the trigger itself):
+- 2 cohorts, `seat_cap 1` each, on a fresh cohort-enabled course; 1 real contact enrolled into each → both succeed.
+- 3rd enrolment into either full cohort → **rejected** `cohort_full: cohort <id> is at capacity (1/1)`.
+- `UPDATE`-ing an existing enrolment's `cohort_id` into a full cohort → **also rejected** (trigger fires on UPDATE).
+- Cancelling one enrolment then re-enrolling into that cohort → succeeds (released statuses free the seat).
+- `enrollments.cohort_id` filter returns exactly the right members per cohort.
+
+App-helper test (`listOpenCohortsForCourse` hides the full cohort; `checkCohortSeatAvailable` returns `ok:false` for a full cohort and for a cohort/course mismatch; `cohortHasEnrollments` correct). `npx tsc --noEmit` clean; `npx vitest run` 235/235 (unchanged baseline) — no regression to non-cohort enrolment.
+
+### Still not built (Part 2)
+
+Waitlisting (a full cohort just stops accepting in Part 1), per-cohort drip/unlock scheduling, cohort calendar / start-date automation, and moving a student between cohorts from the roster UI.

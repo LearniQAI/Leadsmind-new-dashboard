@@ -50,6 +50,7 @@ type GuestFreeInput = {
   name: string;
   email: string;
   hp?: string; // honeypot
+  cohortId?: string | null; // Cohorts, Part 1
 };
 
 export async function guestFreeEnroll(input: GuestFreeInput) {
@@ -79,7 +80,7 @@ export async function guestFreeEnroll(input: GuestFreeInput) {
 
     const { data: course } = await admin
       .from('courses')
-      .select('id, workspace_id, pricing_model, published, status, enrolment_cap, start_method, email_access_auto_send')
+      .select('id, workspace_id, pricing_model, published, status, enrolment_cap, start_method, email_access_auto_send, cohorts_enabled')
       .eq('id', courseId)
       .maybeSingle();
 
@@ -123,6 +124,19 @@ export async function guestFreeEnroll(input: GuestFreeInput) {
     const isHeldForApproval =
       course.start_method === 'email_access_link' && !course.email_access_auto_send;
 
+    // Cohorts, Part 1: a cohort course needs a real, still-open cohort choice.
+    let cohortId: string | null = null;
+    if ((course as any).cohorts_enabled) {
+      const { listOpenCohortsForCourse, checkCohortSeatAvailable } = await import('@/lib/lms/cohorts');
+      const open = await listOpenCohortsForCourse(admin, courseId);
+      if (open.length > 0) {
+        if (!input.cohortId) return { error: 'Please choose a cohort to join.' };
+        const seat = await checkCohortSeatAvailable(admin, input.cohortId, courseId);
+        if (!seat.ok) return { error: seat.reason };
+        cohortId = input.cohortId;
+      }
+    }
+
     const { enrolled, alreadyEnrolled } = await insertEnrollmentIfAbsent(admin, {
       courseId,
       contactId,
@@ -130,6 +144,7 @@ export async function guestFreeEnroll(input: GuestFreeInput) {
       paymentStatus: 'free',
       accessType,
       status: isHeldForApproval ? 'pending_approval' : 'active',
+      cohortId,
     });
 
     if (alreadyEnrolled) {
@@ -180,6 +195,7 @@ export async function guestFreeEnroll(input: GuestFreeInput) {
 type GuestPaidInput = {
   courseId: string;
   hp?: string; // honeypot
+  cohortId?: string | null; // Cohorts, Part 1
 };
 
 export async function createGuestCourseCheckoutSession(input: GuestPaidInput) {
@@ -262,6 +278,7 @@ export async function createGuestCourseCheckoutSession(input: GuestPaidInput) {
         ...(course.subscription_interval
           ? { subscriptionInterval: String(course.subscription_interval) }
           : {}),
+        ...(input.cohortId ? { cohortId: String(input.cohortId) } : {}), // Cohorts, Part 1
         guest: 'true',
       },
       // NOTE: reaching this URL is just navigation, NOT proof of payment. No enrollment logic
