@@ -149,7 +149,9 @@ export function MessageBubble({
           <span className={cn("text-[10.5px] whitespace-nowrap", isOutbound ? "text-white/80" : "text-[#8E8E8E]")}>
             {format(new Date(sentAt), 'hh:mm a')}
           </span>
-          {isOutbound && isLastInGroup && status === 'pending' && (
+          {/* In-flight: queued / sending / retrying (the DB emits 'sending', never
+              'pending' — the old check here silently never matched). */}
+          {isOutbound && isLastInGroup && (status === 'queued' || status === 'sending' || status === 'pending' || status === 'retrying') && (
             <Clock className="w-2.5 h-2.5 text-white/80" />
           )}
           {isOutbound && isLastInGroup && (status === 'sent' || status === 'delivered' || status === 'read') && (

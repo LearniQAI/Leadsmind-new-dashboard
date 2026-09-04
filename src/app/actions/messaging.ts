@@ -241,7 +241,13 @@ export async function getConversations() {
  }
 }
 
-export async function sendMessage(conversationId: string, content: string, audioUrl?: string, transcript?: string) {
+export async function sendMessage(
+  conversationId: string,
+  content: string,
+  audioUrl?: string,
+  transcript?: string,
+  clientMessageUuid?: string,
+) {
   const ids = await resolveConversationIds(conversationId);
   const targetConvId = ids[0] || conversationId;
 
@@ -253,24 +259,84 @@ export async function sendMessage(conversationId: string, content: string, audio
   const { workspaceId } = await requireWorkspaceAccess();
 
   const supabase = await createServerClient();
-  const { data: msgData, error } = await supabase
-   .from('messages')
-   .insert({
-    workspace_id: workspaceId,
-    conversation_id: targetConvId,
-    direction: 'outbound',
-    content,
-    audio_url: audioUrl || null,
-    status: 'sending',
-    metadata: {
-      transcript: transcript || null,
-      audio_url: audioUrl || null
-    }
-   })
-   .select()
-   .single();
 
-  if (error) throw error;
+  // Idempotency (Message Delivery Reliability Part 1). The client stamps a UUID at
+  // compose time and re-sends it on any retry / re-click. If we already have a row
+  // for this (conversation, uuid):
+  //   - still in flight or already succeeded  -> no-op, return success (never a 2nd
+  //     Graph API call to a real contact).
+  //   - previously FAILED                     -> reuse that same row (flip back to
+  //     'sending') so the one-tap Retry re-dispatches in place instead of stacking a
+  //     duplicate bubble.
+  // The partial unique index unique_client_message_uuid is the race backstop below.
+  let msgData: any = null;
+  const baseMetadata = {
+    transcript: transcript || null,
+    audio_url: audioUrl || null,
+    ...(clientMessageUuid ? { client_message_uuid: clientMessageUuid } : {}),
+  };
+
+  if (clientMessageUuid) {
+    const { data: existing } = await supabase
+      .from('messages')
+      .select('id, status, metadata')
+      .eq('workspace_id', workspaceId)
+      .eq('conversation_id', targetConvId)
+      .eq('client_message_uuid', clientMessageUuid)
+      .maybeSingle();
+
+    if (existing) {
+      if (existing.status !== 'failed') {
+        logger.info(
+          { workspaceId, conversationId: targetConvId, clientMessageUuid, existingStatus: existing.status },
+          'messaging.message.send.idempotent_skip',
+        );
+        return { success: true, deduped: true };
+      }
+      const { error_message, error_code, error_subcode, error_type, fbtrace_id, http_status, ...cleanMeta } = (existing.metadata || {}) as Record<string, unknown>;
+      const { data: reactivated, error: reactivateErr } = await supabase
+        .from('messages')
+        .update({
+          status: 'sending',
+          metadata: { ...cleanMeta, ...baseMetadata, retry_of_failed: true },
+        })
+        .eq('id', existing.id)
+        .eq('workspace_id', workspaceId)
+        .select()
+        .single();
+      if (reactivateErr) throw reactivateErr;
+      msgData = reactivated;
+    }
+  }
+
+  if (!msgData) {
+    const { data: inserted, error } = await supabase
+      .from('messages')
+      .insert({
+        workspace_id: workspaceId,
+        conversation_id: targetConvId,
+        direction: 'outbound',
+        content,
+        audio_url: audioUrl || null,
+        status: 'sending',
+        client_message_uuid: clientMessageUuid || null,
+        metadata: baseMetadata,
+      })
+      .select()
+      .single();
+
+    // Concurrent duplicate submit lost the race to the unique index — the winning
+    // row is already dispatching, so this call is an idempotent no-op.
+    if (error && (error as any).code === '23505') {
+      logger.info(
+        { workspaceId, conversationId: targetConvId, clientMessageUuid },
+        'messaging.message.send.idempotent_skip_race',
+      );
+      return { success: true, deduped: true };
+    }
+    if (error) throw error;
+    msgData = inserted;
+  }
   
   // Update conversation last_message_at
   await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).in('id', ids);
@@ -284,6 +350,16 @@ export async function sendMessage(conversationId: string, content: string, audio
 
   let messageFailed = false;
   let errorMessage = '';
+  // Structured provider error (Graph API code/subcode/fbtrace) preserved for a real
+  // diagnostic on the message row instead of a generic string, and for the Part 2
+  // retry queue's recoverable-vs-permanent classification.
+  let providerError: {
+    error_code?: number;
+    error_subcode?: number;
+    error_type?: string;
+    fbtrace_id?: string;
+    http_status?: number;
+  } | null = null;
 
   if (conv?.platform === 'email') {
    const contact = Array.isArray(conv.contacts) ? conv.contacts[0] : conv.contacts;
@@ -409,9 +485,22 @@ export async function sendMessage(conversationId: string, content: string, audio
     if (res && res.success) {
       await supabase.from('messages').update({ status: 'sent', external_id: res.externalId }).eq("id", msgData.id).eq("workspace_id", workspaceId);
     } else {
-      logger.error({ err: res?.error, workspaceId, conversationId: targetConvId, platform: conv!.platform }, 'messaging.meta_adapter.dispatch.failed');
+      const r: any = res || {};
+      logger.error(
+        { err: r.error, errorCode: r.errorCode, errorSubcode: r.errorSubcode, fbtraceId: r.fbtraceId, httpStatus: r.httpStatus, workspaceId, conversationId: targetConvId, platform: conv!.platform },
+        'messaging.meta_adapter.dispatch.failed',
+      );
       messageFailed = true;
-      errorMessage = 'Failed to dispatch message';
+      // Keep the real provider message (e.g. "(#10) Message failed to send because
+      // this person isn't available right now.") rather than a generic string.
+      errorMessage = r.error || 'Failed to dispatch message';
+      providerError = {
+        error_code: r.errorCode,
+        error_subcode: r.errorSubcode,
+        error_type: r.errorType,
+        fbtrace_id: r.fbtraceId,
+        http_status: r.httpStatus,
+      };
     }
    } else {
      messageFailed = true;
@@ -451,7 +540,17 @@ export async function sendMessage(conversationId: string, content: string, audio
 
     if (messageFailed) {
     if (msgData) {
-      await supabase.from('messages').update({ status: 'failed', metadata: { error_message: errorMessage } }).eq("id", msgData.id).eq("workspace_id", workspaceId);
+      // Merge onto the existing metadata (was a full replace, which dropped
+      // transcript / audio_url / client_message_uuid), and carry the structured
+      // Graph error alongside the human message.
+      const failedMetadata = {
+        ...(msgData.metadata || {}),
+        error_message: errorMessage,
+        ...(providerError
+          ? Object.fromEntries(Object.entries(providerError).filter(([, v]) => v !== undefined && v !== null))
+          : {}),
+      };
+      await supabase.from('messages').update({ status: 'failed', metadata: failedMetadata }).eq("id", msgData.id).eq("workspace_id", workspaceId);
     }
     return { error: errorMessage };
   }

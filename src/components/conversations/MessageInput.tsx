@@ -9,7 +9,7 @@ import { Mic, Trash2, Check, Loader2, History, Zap, Send, Lock, Smile } from 'lu
 import { getPlatformMeta } from './platformMeta';
 
 interface MessageInputProps {
-  onSend: (text: string, isNote: boolean, audioUrl?: string, transcript?: string) => void;
+  onSend: (text: string, isNote: boolean, audioUrl?: string, transcript?: string, clientMessageUuid?: string) => void;
   placeholder?: string;
   disabled?: boolean;
   availablePlatforms?: any[];
@@ -69,6 +69,31 @@ export function MessageInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const emojiRef = useRef<HTMLDivElement>(null);
+
+  // --- Message Delivery Reliability Part 1: outbound idempotency ---------------
+  // A UUID minted once per compose buffer and handed to sendMessage(). The server
+  // dedupes on it, so a double Enter / double-click / retry can't double-send to a
+  // real contact. `guardedFire()` is the fast client-side backstop for the tiny
+  // window before React clears the input or `disabled` propagates from the parent.
+  const composeUuidRef = useRef<string | null>(null);
+  const lastFireRef = useRef<number>(0);
+
+  const getComposeUuid = () => {
+    if (!composeUuidRef.current) {
+      composeUuidRef.current =
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `cmu-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    return composeUuidRef.current;
+  };
+
+  const guardedFire = () => {
+    const now = Date.now();
+    if (now - lastFireRef.current < 1200) return false;
+    lastFireRef.current = now;
+    return true;
+  };
 
   // Voice Recording States
   const [isRecording, setIsRecording] = useState(false);
@@ -163,7 +188,8 @@ export function MessageInput({
             const audioUrl = uploadData.url;
             const transcript = transcriptRef.current || '';
 
-            onSend(transcript || 'Voice note', false, audioUrl, transcript);
+            onSend(transcript || 'Voice note', false, audioUrl, transcript, getComposeUuid());
+            composeUuidRef.current = null;
             toast.success('Voice note sent!');
           } catch (err: any) {
             console.error('Failed to process voice note:', err);
@@ -275,20 +301,25 @@ export function MessageInput({
         toast.error('WhatsApp 24-hour compliance window is closed. Please select an approved template.');
         return;
       }
+      if (!guardedFire()) return;
       // Construct message text from variables
       let finalMsg = selectedTemplate.text;
       selectedTemplate.variables.forEach((_: any, index: number) => {
         const val = templateVars[index + 1] || `[${selectedTemplate.variables[index]}]`;
         finalMsg = finalMsg.replace(`{{${index + 1}}}`, val);
       });
-      onSend(finalMsg, false);
+      onSend(finalMsg, false, undefined, undefined, getComposeUuid());
+      composeUuidRef.current = null;
       setSelectedTemplate(null);
       setTemplateVars({});
       return;
     }
 
     if (!text.trim() || disabled) return;
-    onSend(text, isNote);
+    if (!guardedFire()) return;
+    // Internal notes are local-only and don't need send idempotency.
+    onSend(text, isNote, undefined, undefined, isNote ? undefined : getComposeUuid());
+    if (!isNote) composeUuidRef.current = null;
     setText('');
   };
 

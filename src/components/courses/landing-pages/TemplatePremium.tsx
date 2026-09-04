@@ -216,7 +216,7 @@ export default function TemplatePremium({ course, modules, lessons, previewData,
         </div>
       </div>
 
-      <div className="mx-auto grid max-w-6xl grid-cols-1 items-start gap-12 px-6 py-14 lg:grid-cols-[1fr_380px]">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 items-start gap-12 px-6 pb-28 pt-14 lg:grid-cols-[1fr_380px] lg:pb-14">
         {/* ---------------- LEFT COLUMN: hero + everything below ---------------- */}
         <div className="space-y-14">
           <div ref={heroSentinelRef} className="space-y-5">
@@ -243,6 +243,22 @@ export default function TemplatePremium({ course, modules, lessons, previewData,
               {lastUpdated && <span>Updated {lastUpdated}</span>}
               {/* Language / rating summary: omitted — no language field is tracked, and there
                   is no real aggregated rating anywhere in this codebase. */}
+            </div>
+
+            {/* Mobile only — the sticky bottom bar carries the price + CTA, so the hero just
+                needs the qualifier and what's-included line for context. Desktop shows all of
+                this in the sticky side card instead. */}
+            <div className="space-y-1 pt-1 lg:hidden">
+              {pricing.qualifier && (
+                <p className="text-[14px] font-medium" style={{ color: INK }}>
+                  {pricing.headline} — {pricing.qualifier}
+                </p>
+              )}
+              {summaryText && (
+                <p className="text-[13px]" style={{ color: INK_SOFT }}>
+                  Includes {summaryText}.
+                </p>
+              )}
             </div>
           </div>
 
@@ -505,10 +521,7 @@ export default function TemplatePremium({ course, modules, lessons, previewData,
         </div>
       </div>
 
-      {/* ---------------- MOBILE: purchase card inline, then a fixed action bar ---------------- */}
-      <div className="px-6 pb-28 lg:hidden">
-        <PurchaseCard hideThumb />
-      </div>
+      {/* ---------------- MOBILE: fixed bottom action bar ---------------- */}
       <div
         className="fixed inset-x-0 bottom-0 z-40 border-t bg-white/95 px-5 py-3 backdrop-blur lg:hidden"
         style={{ borderColor: LINE }}
