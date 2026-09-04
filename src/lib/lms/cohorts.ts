@@ -5,8 +5,14 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 // student is told "this cohort is full" before anything charges them, and so any real cohort
 // picker only ever shows genuinely-open cohorts.
 
-// An enrolment in one of these statuses is not holding a live seat.
-const RELEASED_STATUSES = ['cancelled', 'canceled', 'rejected', 'revoked', 'expired', 'inactive'];
+// An enrolment in one of these statuses is not holding a live seat. Exported so the admin
+// roster view can hide the same rows the seat-cap trigger already ignores.
+export const RELEASED_STATUSES = ['cancelled', 'canceled', 'rejected', 'revoked', 'expired', 'inactive'];
+
+/** True if this enrolment status does not hold a live cohort seat. */
+export function isReleasedStatus(status: string | null | undefined): boolean {
+  return !!status && RELEASED_STATUSES.includes(status.toLowerCase());
+}
 
 export interface CohortWithSeats {
   id: string;

@@ -260,6 +260,8 @@ Direct-insert test (bypasses all app code — proves the trigger itself):
 
 App-helper test (`listOpenCohortsForCourse` hides the full cohort; `checkCohortSeatAvailable` returns `ok:false` for a full cohort and for a cohort/course mismatch; `cohortHasEnrollments` correct). `npx tsc --noEmit` clean; `npx vitest run` 235/235 (unchanged baseline) — no regression to non-cohort enrolment.
 
+**Roster display fix (2026-09-04, same day):** the per-cohort roster (`StudentsRosterModal`) now hides released enrolments by default (`status` ∈ `cancelled/canceled/rejected/revoked/expired/inactive` — the exact set the seat-cap trigger ignores), with a "Show cancelled (n)" toggle for historical visibility. Display-only: the API still returns every `cohort_id` row, the enrolments schema is untouched, and the seat-cap trigger's behaviour (a cancelled member's seat freeing up for a new enrolment) was re-verified unchanged.
+
 ### Still not built (Part 2)
 
 Waitlisting (a full cohort just stops accepting in Part 1), per-cohort drip/unlock scheduling, cohort calendar / start-date automation, and moving a student between cohorts from the roster UI.

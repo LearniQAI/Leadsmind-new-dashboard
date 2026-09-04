@@ -2,14 +2,24 @@
 
 import React, { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  CreditCard, ShieldCheck, Loader2, Sparkles, AlertCircle, CheckCircle2, ShieldAlert, BookOpen
-} from 'lucide-react';
+import { ShieldCheck, Loader2, CheckCircle2, AlertTriangle, BookOpen, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { enrollStudent } from '@/app/actions/studentEnrollments';
 import { createDirectCourseCheckoutSession, createCourseInstallmentCheckoutSession } from '@/app/actions/courseCommerce';
 import { guestFreeEnroll, createGuestCourseCheckoutSession } from '@/app/actions/guestCheckout';
 import { Button } from '@/components/ui/button';
+
+// Light, warm-paper checkout — same palette/type as the public course description page
+// (TemplatePremium) so the funnel reads as one product. Card payments run through Stripe's
+// hosted checkout; that is the only real paid path (the old PayFast "sandbox" option never
+// processed a real payment and has been removed), and the old hardcoded ~18.5 ZAR estimate
+// went with it — prices show in their real USD.
+
+const INK = '#0B1367';
+const INK_SOFT = '#5A6478';
+const PAPER = '#FBFAF7';
+const LINE = '#E8E4DC';
+const BRAND = '#1359FF';
 
 interface CheckoutClientProps {
   course: any;
@@ -28,6 +38,52 @@ interface CheckoutClientProps {
 
 type GuestPaidStatus = 'polling' | 'ready' | 'timed_out' | 'failed';
 
+/** Shared shell for every full-page status screen (success / pending / capped / error). */
+function StatusScreen({
+  tone = 'neutral',
+  icon,
+  title,
+  children,
+  footer,
+}: {
+  tone?: 'neutral' | 'good' | 'warn' | 'bad';
+  icon: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+}) {
+  const ring =
+    tone === 'good'
+      ? { bg: '#ECFDF3', fg: '#047857', bd: '#A7F3D0' }
+      : tone === 'warn'
+      ? { bg: '#FFFBEB', fg: '#B45309', bd: '#FDE68A' }
+      : tone === 'bad'
+      ? { bg: '#FEF2F2', fg: '#B91C1C', bd: '#FECACA' }
+      : { bg: 'rgba(19,89,255,0.08)', fg: BRAND, bd: 'rgba(19,89,255,0.2)' };
+  return (
+    <div
+      className="mx-auto flex max-w-lg flex-col items-center justify-center gap-5 rounded-2xl border bg-white px-10 py-16 text-center shadow-[0_20px_50px_-24px_rgba(11,19,103,0.25)]"
+      style={{ borderColor: LINE }}
+    >
+      <div
+        className="flex h-16 w-16 items-center justify-center rounded-full border"
+        style={{ backgroundColor: ring.bg, color: ring.fg, borderColor: ring.bd }}
+      >
+        {icon}
+      </div>
+      <div className="space-y-2">
+        <h2 className="font-display text-xl font-semibold" style={{ color: INK }}>
+          {title}
+        </h2>
+        <div className="text-[13px] leading-relaxed" style={{ color: INK_SOFT }}>
+          {children}
+        </div>
+      </div>
+      {footer}
+    </div>
+  );
+}
+
 export default function CheckoutClient({
   course,
   user,
@@ -40,7 +96,6 @@ export default function CheckoutClient({
 }: CheckoutClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [paymentMethod, setPaymentMethod] = useState<'payfast' | 'stripe'>('stripe');
   const [success, setSuccess] = useState(false);
   // Guest-flow state
   const [guestName, setGuestName] = useState('');
@@ -49,8 +104,7 @@ export default function CheckoutClient({
   const [guestEmailSent, setGuestEmailSent] = useState<boolean | null>(null);
   const [guestAlreadyEnrolled, setGuestAlreadyEnrolled] = useState(false);
   // Course Start Method 1 ("hold for manual approval") — real, distinct outcome from a normal
-  // free enrollment: no access yet, no email yet, found live while verifying this build (the
-  // success screen previously said "You're Enrolled" / "Check your email" regardless).
+  // free enrollment: no access yet, no email yet.
   const [guestPendingApproval, setGuestPendingApproval] = useState(false);
 
   // Cohorts, Part 1: when the course has cohorts enabled, the student picks one before
@@ -99,8 +153,6 @@ export default function CheckoutClient({
 
         if (data.status === 'ready' && data.redirectUrl) {
           setGuestPaidStatus('ready');
-          // Same generateLink('magiclink') redirect /auth/student/verify already uses to
-          // establish a real Supabase session — this page never sets a session itself.
           window.location.href = data.redirectUrl;
           return;
         }
@@ -135,57 +187,33 @@ export default function CheckoutClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isGuest, postCheckoutStatus, checkoutSessionId, course.id]);
 
-  // South African Rand approximation (1 USD ~ 18.5 ZAR)
-  const priceZar = (course.price * 18.5).toFixed(2);
+  const isFreeModel = course.pricing_model === 'free';
+  const isHybridModel = course.pricing_model === 'hybrid';
+  const isSubscriptionModel = course.pricing_model === 'subscription';
+  const priceLabel = course.price ? `$${Number(course.price).toFixed(2)}` : null;
+  const intervalSuffix = isSubscriptionModel ? `/${course.subscription_interval || 'month'}` : '';
 
+  // ---- Handlers ---------------------------------------------------------------------------
   const handleCheckout = () => {
     if (!cohortGuard()) return;
     startTransition(async () => {
       try {
-        if (paymentMethod === 'stripe') {
-          // Course Start Method 4: a payment_plan course goes through the fixed-term
-          // installment session (mode: subscription + a capped Subscription Schedule); every
-          // other paid course keeps the existing one-time / open-ended-subscription session.
-          const res = course.start_method === 'payment_plan'
-            ? await createCourseInstallmentCheckoutSession(course.id, cohortArg())
-            : await createDirectCourseCheckoutSession(course.id, cohortArg());
-          if (res.error) {
-            toast.error(res.error);
-            return;
-          }
-          if (res.url) {
-            window.location.href = res.url;
-          } else {
-            toast.error("Failed to generate checkout session url.");
-          }
+        // Course Start Method 4: a payment_plan course goes through the fixed-term installment
+        // session; every other paid course keeps the one-time / open-ended-subscription session.
+        const res = course.start_method === 'payment_plan'
+          ? await createCourseInstallmentCheckoutSession(course.id, cohortArg())
+          : await createDirectCourseCheckoutSession(course.id, cohortArg());
+        if (res.error) {
+          toast.error(res.error);
           return;
         }
-
-        // NOTE: this used to self-construct a fake PayFast ITN payload (payment_status:
-        // "COMPLETE", no signature) and POST it directly to the real production webhook route —
-        // a genuine payment-completion callback must only ever come from PayFast's own
-        // server-to-server call, never from the client claiming its own payment succeeded. That
-        // self-POST has been removed; it is not this checkout flow's place to fabricate a payment
-        // confirmation. (enrollStudent() below finalizes enrollment for this flow; note it does
-        // not itself verify payment — that's a separate, pre-existing gap outside this fix.)
-
-        // Perform enrollment registration
-        const enrollRes = await enrollStudent(course.id, cohortArg());
-        
-        if (enrollRes.error) {
-          toast.error(enrollRes.error);
-          return;
+        if (res.url) {
+          window.location.href = res.url;
+        } else {
+          toast.error('We could not start the checkout. Please try again.');
         }
-
-        setSuccess(true);
-        toast.success(`Payment of $${course.price.toFixed(2)} completed successfully!`);
-        
-        setTimeout(() => {
-          router.push(`/student/courses/${course.id}`);
-        }, 1500);
-
-      } catch (err) {
-        toast.error("An error occurred processing payment.");
+      } catch {
+        toast.error('Something went wrong starting the payment. Please try again.');
       }
     });
   };
@@ -200,24 +228,22 @@ export default function CheckoutClient({
           return;
         }
 
-        // Course Start Method 1 ("hold for manual approval"): a real signup with no real
-        // access yet — do NOT redirect into the player, it would just hit the real "Access
-        // paused" gate. Found live while verifying this build.
+        // Course Start Method 1 ("hold for manual approval"): a real signup with no access
+        // yet — do NOT redirect into the player, it would just hit the "Access paused" gate.
         if ((enrollRes as any).pendingApproval) {
           setSuccess(true);
           setGuestPendingApproval(true);
-          toast.success('Signed up! Your enrollment is awaiting approval.');
+          toast.success('You’re signed up — your enrolment is awaiting approval.');
           return;
         }
 
         setSuccess(true);
-        toast.success("Enrolled in free course successfully!");
-
+        toast.success('You’re enrolled.');
         setTimeout(() => {
           router.push(`/student/courses/${course.id}`);
         }, 1500);
-      } catch (err) {
-        toast.error("Failed to process free enrollment.");
+      } catch {
+        toast.error('We could not complete your free enrolment. Please try again.');
       }
     });
   };
@@ -246,12 +272,12 @@ export default function CheckoutClient({
         if (alreadyEnrolled) {
           toast.success('You were already enrolled — check your email to sign in.');
         } else if (pendingApproval) {
-          toast.success('Signed up! Your enrollment is awaiting approval.');
+          toast.success('You’re signed up — your enrolment is awaiting approval.');
         } else {
-          toast.success('Enrolled! Check your email to set up your account.');
+          toast.success('You’re enrolled — check your email to set up your account.');
         }
       } catch {
-        toast.error('Failed to complete enrolment.');
+        toast.error('We could not complete your enrolment. Please try again.');
       }
     });
   };
@@ -268,30 +294,44 @@ export default function CheckoutClient({
         if ((res as any).url) {
           window.location.href = (res as any).url;
         } else {
-          toast.error('Failed to generate checkout session url.');
+          toast.error('We could not start the checkout. Please try again.');
         }
       } catch {
-        toast.error('An error occurred starting checkout.');
+        toast.error('Something went wrong starting the payment. Please try again.');
       }
     });
   };
 
-  // Cohorts, Part 1: real "choose your cohort" step. Rendered in every active start_method
-  // CTA section when the course has cohorts enabled and at least one non-full cohort is open.
-  // getOpenCohorts already filters to real, currently-open, non-full cohorts server-side.
+  // Hidden honeypot input reused by both guest sub-flows.
+  const honeypotField = (
+    <div aria-hidden="true" className="absolute left-[-9999px] top-[-9999px] h-0 w-0 overflow-hidden">
+      <label>
+        Do not fill this in
+        <input type="text" tabIndex={-1} autoComplete="off" value={hp} onChange={(e) => setHp(e.target.value)} />
+      </label>
+    </div>
+  );
+
+  const textInput =
+    'w-full rounded-xl border bg-white px-4 h-11 text-sm outline-none transition-colors focus:border-[#1359FF] focus-visible:ring-2 focus-visible:ring-[#1359FF]/30';
+
+  // Cohorts, Part 1: real "choose your cohort" step, shown in every active start_method CTA
+  // section when the course has cohorts enabled and at least one non-full cohort is open.
   const cohortPicker = cohortsRequired ? (
-    <div className="space-y-2 text-left max-w-sm mx-auto">
-      <label className="text-[10px] font-black uppercase tracking-wider text-primary block">
+    <div className="mx-auto max-w-sm space-y-1.5 text-left">
+      <label htmlFor="cohort-select" className="block text-[13px] font-semibold" style={{ color: INK }}>
         Choose your cohort
       </label>
       <select
+        id="cohort-select"
         value={selectedCohortId}
         onChange={(e) => setSelectedCohortId(e.target.value)}
-        className="w-full bg-[#111d47]/40 border border-white/10 rounded-xl h-11 px-4 text-xs text-white outline-none focus:border-primary/50"
+        className={textInput}
+        style={{ borderColor: LINE, color: INK }}
       >
-        <option value="" className="bg-[#080f28]">Select a cohort…</option>
+        <option value="">Select a cohort…</option>
         {cohorts.map((c) => (
-          <option key={c.id} value={c.id} className="bg-[#080f28]">
+          <option key={c.id} value={c.id}>
             {c.name} — starts {new Date(c.start_date).toLocaleDateString()} ({c.seats_left} seat{c.seats_left === 1 ? '' : 's'} left)
           </option>
         ))}
@@ -299,534 +339,423 @@ export default function CheckoutClient({
     </div>
   ) : null;
 
-  // Hidden honeypot input reused by both guest sub-flows.
-  const honeypotField = (
-    <div aria-hidden="true" className="absolute left-[-9999px] top-[-9999px] h-0 w-0 overflow-hidden">
-      <label>
-        Do not fill this in
-        <input
-          type="text"
-          tabIndex={-1}
-          autoComplete="off"
-          value={hp}
-          onChange={(e) => setHp(e.target.value)}
-        />
-      </label>
-    </div>
-  );
+  const primaryBtn =
+    'inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-sm font-semibold text-white transition-opacity hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1359FF] focus-visible:ring-offset-2 disabled:opacity-50';
 
-  // Guest returning from Stripe hosted checkout. This screen carries NO enrollment logic
-  // itself — the webhook is what actually enrolls; this only ever reflects what the real
-  // /api/checkout/guest-status poll reports back.
+  // ======================================================================================
+  // Guest returning from Stripe hosted checkout. NO enrollment logic here — the webhook is
+  // what enrolls; this only reflects what the real /api/checkout/guest-status poll reports.
+  // ======================================================================================
   if (isGuest && postCheckoutStatus === 'pending' && !success) {
-    // No session_id (a pre-existing/bookmarked success link, or Stripe didn't substitute
-    // it) — nothing to poll against. Same static message this screen always showed; the
-    // email is still the real path here.
     if (!checkoutSessionId) {
       return (
-        <div className="bg-[#080f28] border border-white/5 rounded-3xl p-12 text-center space-y-6 max-w-lg mx-auto shadow-2xl flex flex-col items-center justify-center py-20">
-          <div className="w-20 h-20 bg-primary/10 border border-primary/20 text-primary rounded-full flex items-center justify-center">
-            <CheckCircle2 size={40} />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-2xl font-space-grotesk font-black uppercase text-white tracking-tight">Payment Received</h2>
-            <p className="text-xs text-white/50 leading-relaxed max-w-sm">
-              Thanks! Once your payment is confirmed by our payment provider, we'll email{' '}
-              <strong className="text-white">account setup instructions</strong> for{' '}
-              <strong className="text-white">"{course.title}"</strong> to the address you entered at checkout.
-              This usually happens within a minute.
-            </p>
-          </div>
-        </div>
+        <StatusScreen tone="good" icon={<CheckCircle2 size={30} />} title="Payment received">
+          Once your payment clears, we’ll email account setup instructions for{' '}
+          <strong style={{ color: INK }}>{course.title}</strong> to the address you used at checkout. This usually
+          takes about a minute.
+        </StatusScreen>
       );
     }
-
     if (guestPaidStatus === 'failed') {
       return (
-        <div className="bg-[#080f28] border border-red-500/10 rounded-3xl p-12 text-center space-y-6 max-w-lg mx-auto shadow-2xl flex flex-col items-center justify-center py-20">
-          <div className="w-20 h-20 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full flex items-center justify-center">
-            <ShieldAlert size={40} />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-2xl font-space-grotesk font-black uppercase text-white tracking-tight">Something's Not Right</h2>
-            <p className="text-xs text-white/50 leading-relaxed max-w-sm">
-              We couldn't confirm this checkout. If you were charged, check your email for a
-              receipt and access link — or contact support with your payment confirmation.
-            </p>
-          </div>
-        </div>
+        <StatusScreen tone="bad" icon={<AlertTriangle size={30} />} title="We couldn’t confirm this payment">
+          If you were charged, check your email for a receipt and access link, or contact support with your payment
+          confirmation and we’ll sort it out.
+        </StatusScreen>
       );
     }
-
     if (guestPaidStatus === 'timed_out') {
       return (
-        <div className="bg-[#080f28] border border-white/5 rounded-3xl p-12 text-center space-y-6 max-w-lg mx-auto shadow-2xl flex flex-col items-center justify-center py-20">
-          <div className="w-20 h-20 bg-primary/10 border border-primary/20 text-primary rounded-full flex items-center justify-center">
-            <CheckCircle2 size={40} />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-2xl font-space-grotesk font-black uppercase text-white tracking-tight">Almost There</h2>
-            <p className="text-xs text-white/50 leading-relaxed max-w-sm">
-              Your payment is taking a little longer than usual to confirm. We've already sent{' '}
-              <strong className="text-white">account setup instructions</strong> to the address you
-              entered at checkout for <strong className="text-white">"{course.title}"</strong> —
-              use that link to get in whenever it arrives.
-            </p>
-          </div>
-        </div>
+        <StatusScreen tone="neutral" icon={<CheckCircle2 size={30} />} title="Almost there">
+          Your payment is taking a little longer than usual to confirm. We’ve already emailed account setup
+          instructions for <strong style={{ color: INK }}>{course.title}</strong> to the address you used at
+          checkout — use that link to get in whenever it arrives.
+        </StatusScreen>
       );
     }
-
-    // guestPaidStatus === 'polling' (and the brief 'ready' instant before the redirect fires)
     return (
-      <div className="bg-[#080f28] border border-white/5 rounded-3xl p-12 text-center space-y-6 max-w-lg mx-auto shadow-2xl flex flex-col items-center justify-center py-20">
-        <div className="w-20 h-20 bg-primary/10 border border-primary/20 text-primary rounded-full flex items-center justify-center">
-          <Loader2 size={40} className="animate-spin" />
-        </div>
-        <div className="space-y-2">
-          <h2 className="text-2xl font-space-grotesk font-black uppercase text-white tracking-tight">Finalizing Your Enrollment</h2>
-          <p className="text-xs text-white/50 leading-relaxed max-w-sm">
-            Confirming your payment for <strong className="text-white">"{course.title}"</strong> and
-            setting up your account. This takes a few seconds — do not close this tab.
+      <StatusScreen
+        tone="neutral"
+        icon={<Loader2 size={30} className="animate-spin" />}
+        title="Finishing your enrolment"
+        footer={
+          <p className="max-w-sm text-[11px]" style={{ color: INK_SOFT }}>
+            We’ve also emailed a backup access link in case you close this page before it finishes.
           </p>
-        </div>
-        <p className="text-[10px] text-white/30 max-w-sm">
-          We've also emailed a backup access link in case you close this page before it finishes.
-        </p>
-      </div>
+        }
+      >
+        Confirming your payment for <strong style={{ color: INK }}>{course.title}</strong> and setting up your
+        account. This takes a few seconds — please don’t close this tab.
+      </StatusScreen>
     );
   }
 
-  // Case 1: Enrollment Closed Cap Gatekeeper
+  // Enrolment closed (capacity reached)
   if (isCapped) {
     return (
-      <div className="bg-[#080f28] border border-red-500/10 rounded-3xl p-12 text-center space-y-6 max-w-lg mx-auto shadow-2xl flex flex-col items-center justify-center py-20">
-        <div className="w-20 h-20 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full flex items-center justify-center animate-pulse">
-          <ShieldAlert size={40} />
-        </div>
-        <div className="space-y-2">
-          <h2 className="text-2xl font-space-grotesk font-black uppercase text-white tracking-tight">Enrolment Closed</h2>
-          <p className="text-xs text-white/50 leading-relaxed max-w-sm">
-            We are sorry, but enrollment for <strong className="text-white">"{course.title}"</strong> has reached its maximum structural capacity. Registrations are currently closed.
-          </p>
-        </div>
-        <Button
-          onClick={() => router.push('/student/marketplace')}
-          className="bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 px-8"
-        >
-          Return to Catalog
-        </Button>
-      </div>
+      <StatusScreen
+        tone="warn"
+        icon={<Lock size={28} />}
+        title="Enrolment is closed"
+        footer={
+          <Button
+            onClick={() => router.push('/student/marketplace')}
+            className="h-11 rounded-xl border bg-white px-8 text-[13px] font-semibold text-[#0B1367] hover:bg-[#FBFAF7]"
+            style={{ borderColor: LINE }}
+          >
+            Browse other courses
+          </Button>
+        }
+      >
+        Enrolment for <strong style={{ color: INK }}>{course.title}</strong> has reached its limit, so registrations
+        are closed for now.
+      </StatusScreen>
     );
   }
 
-  // Case 2: Checkout Success Screen
+  // Success screens
   if (success) {
     if (isGuest) {
       return (
-        <div className="bg-[#080f28] border border-white/5 rounded-3xl p-12 text-center space-y-6 max-w-lg mx-auto shadow-2xl flex flex-col items-center justify-center py-20">
-          <div className="w-20 h-20 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center animate-bounce">
-            <CheckCircle2 size={40} />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-2xl font-space-grotesk font-black uppercase text-white tracking-tight">
-              {guestPendingApproval ? 'Awaiting Approval' : "You're Enrolled"}
-            </h2>
-            <p className="text-xs text-white/50 leading-relaxed max-w-sm">
-              {guestPendingApproval ? (
-                <>
-                  Your signup for <strong className="text-white">"{course.title}"</strong> is real and on file, but this
-                  course requires manual approval. You'll get a real access-link email the moment an admin approves you —
-                  there's nothing more to do right now.
-                </>
+        <StatusScreen
+          tone="good"
+          icon={<CheckCircle2 size={30} />}
+          title={guestPendingApproval ? 'Awaiting approval' : 'You’re enrolled'}
+          footer={
+            <a href="/auth/student/login" className="text-[13px] font-semibold" style={{ color: BRAND }}>
+              Go to student login
+            </a>
+          }
+        >
+          {guestPendingApproval ? (
+            <>
+              Your signup for <strong style={{ color: INK }}>{course.title}</strong> is on file, but this course
+              needs manual approval. You’ll get an access-link email as soon as an admin approves you — nothing more
+              to do right now.
+            </>
+          ) : (
+            <>
+              You’re enrolled in <strong style={{ color: INK }}>{course.title}</strong>.{' '}
+              {guestAlreadyEnrolled ? (
+                <>You were already enrolled — sign in any time from the student login page with this email address.</>
+              ) : guestEmailSent === false ? (
+                <>We couldn’t send your welcome email just now — you can sign in any time from the student login page with this email address.</>
               ) : (
-                <>
-                  You're enrolled in <strong className="text-white">"{course.title}"</strong>.{' '}
-                  {guestAlreadyEnrolled ? (
-                    <>You were already enrolled in this course — sign in any time from the student login page using this email address.</>
-                  ) : guestEmailSent === false ? (
-                    <>We couldn't send your welcome email right now — you can sign in any time from the student login page using this email address.</>
-                  ) : (
-                    <>Check <strong className="text-white">{guestEmail}</strong> for a link to set up your account and start learning.</>
-                  )}
-                </>
+                <>Check <strong style={{ color: INK }}>{guestEmail}</strong> for a link to set up your account and start learning.</>
               )}
-            </p>
-          </div>
-          <a
-            href="/auth/student/login"
-            className="text-[10px] font-black text-primary hover:text-primary-light uppercase tracking-wider"
-          >
-            Go to student login
-          </a>
-        </div>
+            </>
+          )}
+        </StatusScreen>
       );
     }
     if (guestPendingApproval) {
-      // Course Start Method 1 ("hold for manual approval"), authenticated student — same
-      // real distinct outcome as the guest branch above: a real signup, no real access yet.
       return (
-        <div className="bg-[#080f28] border border-white/5 rounded-3xl p-12 text-center space-y-6 max-w-lg mx-auto shadow-2xl flex flex-col items-center justify-center py-20">
-          <div className="w-20 h-20 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center animate-bounce">
-            <CheckCircle2 size={40} />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-2xl font-space-grotesk font-black uppercase text-white tracking-tight">Awaiting Approval</h2>
-            <p className="text-xs text-white/50 leading-relaxed max-w-sm">
-              Your signup for <strong className="text-white">"{course.title}"</strong> is real and on file, but this
-              course requires manual approval. You'll get a real access-link email the moment an admin approves you.
-            </p>
-          </div>
-        </div>
+        <StatusScreen tone="good" icon={<CheckCircle2 size={30} />} title="Awaiting approval">
+          Your signup for <strong style={{ color: INK }}>{course.title}</strong> is on file, but this course needs
+          manual approval. You’ll get an access-link email the moment an admin approves you.
+        </StatusScreen>
       );
     }
     return (
-      <div className="bg-[#080f28] border border-white/5 rounded-3xl p-12 text-center space-y-6 max-w-lg mx-auto shadow-2xl flex flex-col items-center justify-center py-20">
-        <div className="w-20 h-20 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center animate-bounce">
-          <CheckCircle2 size={40} />
-        </div>
-        <div className="space-y-2">
-          <h2 className="text-2xl font-space-grotesk font-black uppercase text-white tracking-tight">Payment Verified</h2>
-          <p className="text-xs text-white/50 leading-relaxed max-w-sm">
-            Thank you! Your transaction for <strong className="text-white">"{course.title}"</strong> has been successfully processed. Access keys activated.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 text-[10px] text-emerald-400 font-mono uppercase tracking-widest font-black">
-          <Loader2 className="animate-spin" size={12} /> Syncing automation engines...
-        </div>
-      </div>
+      <StatusScreen
+        tone="good"
+        icon={<CheckCircle2 size={30} />}
+        title="You’re enrolled"
+        footer={
+          <div className="flex items-center gap-2 text-[11px] font-medium" style={{ color: INK_SOFT }}>
+            <Loader2 className="animate-spin" size={12} /> Taking you to the course…
+          </div>
+        }
+      >
+        Your payment for <strong style={{ color: INK }}>{course.title}</strong> went through and your access is
+        active.
+      </StatusScreen>
     );
   }
 
-  const isFreeModel = course.pricing_model === 'free';
-  const isHybridModel = course.pricing_model === 'hybrid';
-  const isSubscriptionModel = course.pricing_model === 'subscription';
+  // ======================================================================================
+  // Main checkout view
+  // ======================================================================================
+  const guestNameEmailFields = (
+    <div className="mx-auto max-w-sm space-y-3 text-left">
+      {honeypotField}
+      <input
+        type="text"
+        placeholder="Full name"
+        value={guestName}
+        onChange={(e) => setGuestName(e.target.value)}
+        autoComplete="name"
+        className={textInput}
+        style={{ borderColor: LINE, color: INK }}
+      />
+      <input
+        type="email"
+        placeholder="you@example.com"
+        value={guestEmail}
+        onChange={(e) => setGuestEmail(e.target.value)}
+        autoComplete="email"
+        className={textInput}
+        style={{ borderColor: LINE, color: INK }}
+      />
+    </div>
+  );
 
   return (
-    <div className="space-y-4">
-    {isGuest && postCheckoutStatus === 'canceled' && (
-      <div className="bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded-xl px-4 py-3 text-[11px] max-w-2xl mx-auto text-center">
-        Payment was cancelled — you have not been charged and no enrolment was created. You can try again below.
-      </div>
-    )}
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-      {/* Course Details Panel */}
-      <div className="lg:col-span-5 bg-[#080f28] border border-white/5 rounded-2xl overflow-hidden shadow-xl space-y-6">
-        <div className="h-44 relative bg-gradient-to-br from-indigo-950 to-slate-900 border-b border-white/5 flex items-center justify-center overflow-hidden">
-          {course.thumbnail_url ? (
-            <img 
-              src={course.thumbnail_url} 
-              alt={course.title}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-accent/10 flex items-center justify-center">
-              <span className="text-4xl text-white/20">📚</span>
-            </div>
-          )}
-          <div className="absolute top-4 left-4 bg-[#3b82f6]/95 text-white text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md">
-            LMS Premium Node
-          </div>
-        </div>
-
-        <div className="p-6 space-y-6">
-          <div className="space-y-2">
-            <h3 className="text-lg font-space-grotesk font-black uppercase text-white tracking-tight leading-snug">
-              {course.title}
-            </h3>
-            <p className="text-xs text-white/50 leading-relaxed">
-              {course.description || "Unlock full modular access to all curriculum units, assessment tests, and automated certification."}
-            </p>
-          </div>
-
-          <div className="border-t border-white/5 pt-4 space-y-3">
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-white/40">Pricing Model</span>
-              <span className="font-bold text-white uppercase tracking-wider text-[10px]">
-                {isFreeModel && "Free Entry"}
-                {isHybridModel && "Hybrid (Free Preview + Upgrade)"}
-                {isSubscriptionModel && `Subscription (${course.subscription_interval || 'month'})`}
-                {course.pricing_model === 'one_time' && "One-time Payment"}
-              </span>
-            </div>
-            
-            {!isFreeModel && (
-              <>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-white/40">Subtotal</span>
-                  <span className="font-mono text-white/80 font-bold">${course.price?.toFixed(2)} USD</span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-white/40">Tax / Processing</span>
-                  <span className="font-mono text-white/40">R0.00</span>
-                </div>
-                <div className="flex justify-between items-center border-t border-white/5 pt-3">
-                  <span className="text-xs font-bold uppercase tracking-wider text-white">Total Due</span>
-                  <div className="text-right">
-                    <div className="font-mono text-base font-black text-emerald-400">
-                      ${course.price?.toFixed(2)} USD
-                      {isSubscriptionModel && <span className="text-[10px] text-white/40 lowercase font-normal">/{course.subscription_interval || 'month'}</span>}
-                    </div>
-                    <div className="text-[10px] text-white/30 font-mono font-bold">~ R{priceZar} ZAR</div>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="bg-[#111d47]/20 border border-white/5 p-4 rounded-xl space-y-3">
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-primary">
-              <Sparkles size={12} /> Included in Purchase
-            </div>
-            <ul className="space-y-2 text-[10px] text-white/60 leading-normal">
-              <li className="flex items-center gap-1.5">✓ Lifetime modular player access</li>
-              <li className="flex items-center gap-1.5">✓ Native AI grading & LENA explanations</li>
-              <li className="flex items-center gap-1.5">✓ Bandwidth profiles optimized for 3G</li>
-              <li className="flex items-center gap-1.5">✓ Automated certification validation</li>
-            </ul>
-          </div>
-        </div>
+    <div className="space-y-5">
+      <div className="flex items-center gap-2 text-[12px] font-medium" style={{ color: INK_SOFT }}>
+        <span>Checkout</span>
       </div>
 
-      {/* Payment Processing Panel */}
-      <div className="lg:col-span-7 bg-[#080f28] border border-white/5 rounded-2xl p-6 space-y-6 shadow-xl">
-        {isFreeModel ? (
-          /* Free Enrollment View */
-          <div className="space-y-5 py-6 text-center">
-            <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary">
-              <BookOpen size={24} />
-            </div>
-            <div className="space-y-1.5">
-              <h4 className="text-base font-bold text-white uppercase tracking-wider">Free Access Entry</h4>
-              <p className="text-xs text-white/40 max-w-sm mx-auto leading-relaxed">
-                {isGuest
-                  ? 'Enter your name and email to enrol. No password needed now — we’ll email you a link to set up your account.'
-                  : 'This course is set to Free Access. You do not need to enter any payment credentials to enroll and begin learning.'}
-              </p>
-            </div>
+      {isGuest && postCheckoutStatus === 'canceled' && (
+        <div
+          className="mx-auto max-w-2xl rounded-xl border px-4 py-3 text-center text-[12px]"
+          style={{ borderColor: '#FDE68A', backgroundColor: '#FFFBEB', color: '#B45309' }}
+        >
+          Payment was cancelled — you have not been charged and no enrolment was created. You can try again below.
+        </div>
+      )}
 
-            {isGuest && (
-              <div className="space-y-3 text-left max-w-sm mx-auto">
-                {honeypotField}
-                <input
-                  type="text"
-                  placeholder="Full name"
-                  value={guestName}
-                  onChange={(e) => setGuestName(e.target.value)}
-                  autoComplete="name"
-                  className="w-full bg-[#111d47]/40 border border-white/10 rounded-xl h-11 px-4 text-xs text-white placeholder:text-white/30 outline-none focus:border-primary/50"
-                />
-                <input
-                  type="email"
-                  placeholder="you@example.com"
-                  value={guestEmail}
-                  onChange={(e) => setGuestEmail(e.target.value)}
-                  autoComplete="email"
-                  className="w-full bg-[#111d47]/40 border border-white/10 rounded-xl h-11 px-4 text-xs text-white placeholder:text-white/30 outline-none focus:border-primary/50"
-                />
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
+        {/* -------------------- ORDER SUMMARY -------------------- */}
+        <div
+          className="overflow-hidden rounded-2xl border bg-white shadow-[0_20px_50px_-24px_rgba(11,19,103,0.2)] lg:col-span-5"
+          style={{ borderColor: LINE }}
+        >
+          <div className="aspect-[16/7] w-full overflow-hidden" style={{ background: PAPER }}>
+            {course.thumbnail_url ? (
+              <img src={course.thumbnail_url} alt={course.title} className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center">
+                <BookOpen size={32} style={{ color: INK_SOFT, opacity: 0.4 }} />
               </div>
             )}
-
-            {cohortPicker}
-
-            <button
-              onClick={isGuest ? handleGuestFree : handleFreeEnrollment}
-              disabled={isPending || (isGuest && (!guestName.trim() || !guestEmail.trim()))}
-              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-12 flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-emerald-500/15 disabled:opacity-50"
-            >
-              {isPending ? (
-                <>
-                  <Loader2 size={13} className="animate-spin" /> Registering Enrollment...
-                </>
-              ) : (
-                "Enroll for Free Now"
-              )}
-            </button>
           </div>
-        ) : (
-          /* Paid / Hybrid Checkout View */
-          <>
-          {isGuest ? (
-            /* Guest paid checkout — Stripe hosted (guest mode) only. Email is collected on
-               Stripe's own page, not here. Enrollment happens in the webhook, never on return. */
-            <div className="space-y-5 py-4">
-              {honeypotField}
-              <div className="border-b border-white/5 pb-4">
-                <h4 className="text-sm font-black font-space-grotesk uppercase tracking-wider text-white">Secure Checkout</h4>
-                <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest mt-1">
-                  You&apos;ll enter your email &amp; card details on Stripe&apos;s secure page
+
+          <div className="space-y-5 p-6">
+            <div className="space-y-1.5">
+              <h3 className="font-display text-[17px] font-semibold leading-snug" style={{ color: INK }}>
+                {course.title}
+              </h3>
+              {course.description && (
+                <p className="text-[13px] leading-relaxed" style={{ color: INK_SOFT }}>
+                  {course.description}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2.5 border-t pt-4" style={{ borderColor: LINE }}>
+              <Row label="Plan" value={
+                isFreeModel ? 'Free access'
+                : isHybridModel ? 'Free preview, upgrade anytime'
+                : isSubscriptionModel ? `Subscription, billed ${course.subscription_interval || 'month'}ly`
+                : 'One-time payment'
+              } />
+              {priceLabel && !isFreeModel && (
+                <>
+                  <Row label="Subtotal" value={`${priceLabel}${intervalSuffix} USD`} muted />
+                  <div className="flex items-center justify-between border-t pt-3" style={{ borderColor: LINE }}>
+                    <span className="text-[13px] font-semibold" style={{ color: INK }}>Total due</span>
+                    <span className="font-display text-lg font-bold" style={{ color: INK }}>
+                      {priceLabel}
+                      <span className="text-[11px] font-normal" style={{ color: INK_SOFT }}>{intervalSuffix} USD</span>
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* "What's included" — only structural facts that are genuinely true for every
+                LeadsMind course. No numbers, no claims that need a policy that doesn't exist. */}
+            <div className="space-y-2 rounded-xl border p-4" style={{ borderColor: LINE, background: PAPER }}>
+              <div className="text-[12px] font-semibold" style={{ color: INK }}>What you get</div>
+              <ul className="space-y-1.5 text-[12px]" style={{ color: INK_SOFT }}>
+                <li>Full access to every published lesson in this course</li>
+                <li>Quizzes and assignments with automatic grading where set up</li>
+                <li>A certificate on completion, when the course offers one</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* -------------------- PAYMENT PANEL -------------------- */}
+        <div
+          className="space-y-6 rounded-2xl border bg-white p-6 shadow-[0_20px_50px_-24px_rgba(11,19,103,0.2)] lg:col-span-7"
+          style={{ borderColor: LINE }}
+        >
+          {isFreeModel ? (
+            <div className="space-y-5 py-4 text-center">
+              <div
+                className="mx-auto flex h-12 w-12 items-center justify-center rounded-full"
+                style={{ backgroundColor: 'rgba(19,89,255,0.08)', color: BRAND }}
+              >
+                <BookOpen size={22} />
+              </div>
+              <div className="space-y-1.5">
+                <h4 className="font-display text-[16px] font-semibold" style={{ color: INK }}>
+                  This course is free
+                </h4>
+                <p className="mx-auto max-w-sm text-[13px] leading-relaxed" style={{ color: INK_SOFT }}>
+                  {isGuest
+                    ? 'Enter your name and email to enrol. No payment and no password needed — we’ll email you a link to set up your account.'
+                    : 'No payment needed. Enrol and start learning right away.'}
                 </p>
               </div>
-              <div className="bg-[#0f2d4a]/20 border border-[#0f2d4a] rounded-xl p-4 flex items-start gap-3">
-                <ShieldCheck className="text-primary shrink-0 mt-0.5" size={16} />
-                <span className="text-[9px] text-white/50 block leading-relaxed">
-                  Redirecting to Stripe to pay{' '}
-                  <strong className="text-white">${course.price?.toFixed(2)} USD</strong>
-                  {isSubscriptionModel && <>/{course.subscription_interval || 'month'}</>}. After payment,
-                  we&apos;ll email account-setup instructions to the address you give Stripe.
-                </span>
-              </div>
+
+              {isGuest && guestNameEmailFields}
               {cohortPicker}
+
               <button
-                onClick={handleGuestPaid}
-                disabled={isPending}
-                className="w-full bg-primary hover:bg-primary/95 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-12 flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-primary/20 disabled:opacity-50"
+                onClick={isGuest ? handleGuestFree : handleFreeEnrollment}
+                disabled={isPending || (isGuest && (!guestName.trim() || !guestEmail.trim()))}
+                className={primaryBtn}
+                style={{ backgroundColor: INK }}
               >
                 {isPending ? (
                   <>
-                    <Loader2 size={13} className="animate-spin" /> Redirecting to Stripe...
+                    <Loader2 size={14} className="animate-spin" /> Enrolling…
                   </>
                 ) : (
-                  'Continue to Secure Stripe Checkout'
+                  'Enrol for free'
                 )}
               </button>
+            </div>
+          ) : isGuest ? (
+            /* Guest paid — Stripe hosted checkout (guest mode). Email is collected on
+               Stripe's page; enrolment happens in the webhook, never on return. */
+            <div className="space-y-5">
+              {honeypotField}
+              <div className="border-b pb-4" style={{ borderColor: LINE }}>
+                <h4 className="font-display text-[15px] font-semibold" style={{ color: INK }}>
+                  How you’ll pay
+                </h4>
+                <p className="mt-1 text-[12px]" style={{ color: INK_SOFT }}>
+                  You’ll enter your email and card details on Stripe’s secure page.
+                </p>
+              </div>
+
+              <PaymentMethodRow />
+
+              {cohortPicker}
+
+              <button onClick={handleGuestPaid} disabled={isPending} className={primaryBtn} style={{ backgroundColor: INK }}>
+                {isPending ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" /> Taking you to Stripe…
+                  </>
+                ) : (
+                  <>Pay {priceLabel}{intervalSuffix} and enrol</>
+                )}
+              </button>
+
+              <TrustLine />
+
               {isHybridModel && (
-                <div className="border-t border-white/5 pt-4 text-center space-y-3">
-                  <span className="text-[10px] text-white/40 block">Or start the free preview section first</span>
-                  <div className="space-y-3 text-left max-w-sm mx-auto">
-                    <input
-                      type="text"
-                      placeholder="Full name"
-                      value={guestName}
-                      onChange={(e) => setGuestName(e.target.value)}
-                      autoComplete="name"
-                      className="w-full bg-[#111d47]/40 border border-white/10 rounded-xl h-11 px-4 text-xs text-white placeholder:text-white/30 outline-none focus:border-primary/50"
-                    />
-                    <input
-                      type="email"
-                      placeholder="you@example.com"
-                      value={guestEmail}
-                      onChange={(e) => setGuestEmail(e.target.value)}
-                      autoComplete="email"
-                      className="w-full bg-[#111d47]/40 border border-white/10 rounded-xl h-11 px-4 text-xs text-white placeholder:text-white/30 outline-none focus:border-primary/50"
-                    />
-                  </div>
+                <div className="space-y-3 border-t pt-4 text-center" style={{ borderColor: LINE }}>
+                  <span className="block text-[12px]" style={{ color: INK_SOFT }}>
+                    Or start with the free preview first
+                  </span>
+                  {guestNameEmailFields}
                   <button
                     onClick={handleGuestFree}
                     disabled={isPending || !guestName.trim() || !guestEmail.trim()}
-                    className="text-[10px] font-black text-primary hover:text-primary-light uppercase tracking-wider outline-none disabled:opacity-40"
+                    className="text-[13px] font-semibold disabled:opacity-40"
+                    style={{ color: BRAND }}
                   >
-                    Enrol in Free Preview Mode
+                    Enrol in the free preview
                   </button>
                 </div>
               )}
             </div>
           ) : (
-          <>
-            <div className="border-b border-white/5 pb-4">
-              <h4 className="text-sm font-black font-space-grotesk uppercase tracking-wider text-white">Payment Method</h4>
-              <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest mt-1">Select a secure processing node to authenticate enrollment</p>
-            </div>
+            /* Authenticated paid checkout */
+            <div className="space-y-5">
+              <div className="border-b pb-4" style={{ borderColor: LINE }}>
+                <h4 className="font-display text-[15px] font-semibold" style={{ color: INK }}>
+                  How you’ll pay
+                </h4>
+                <p className="mt-1 text-[12px]" style={{ color: INK_SOFT }}>
+                  We’ll redirect you to Stripe to complete your payment securely, then bring you back.
+                </p>
+              </div>
 
-            {/* Payment tabs */}
-            <div className="grid grid-cols-2 gap-3 bg-[#111d47]/20 border border-white/5 p-1 rounded-xl">
-              <button
-                onClick={() => setPaymentMethod('stripe')}
-                className={`py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
-                  paymentMethod === 'stripe'
-                    ? "bg-primary text-white border border-primary/20 shadow-lg"
-                    : "text-white/40 hover:text-white/60"
-                }`}
-              >
-                <CreditCard size={12} /> Stripe Card (USD)
+              <PaymentMethodRow />
+
+              {cohortPicker}
+
+              <button onClick={handleCheckout} disabled={isPending} className={primaryBtn} style={{ backgroundColor: INK }}>
+                {isPending ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" /> Taking you to Stripe…
+                  </>
+                ) : (
+                  <>Continue to secure payment{priceLabel ? ` · ${priceLabel}${intervalSuffix}` : ''}</>
+                )}
               </button>
-              <button
-                onClick={() => setPaymentMethod('payfast')}
-                className={`py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
-                  paymentMethod === 'payfast'
-                    ? "bg-primary text-white border border-primary/20 shadow-lg"
-                    : "text-white/40 hover:text-white/60"
-                }`}
-              >
-                <span>🇿🇦</span> PayFast Sandbox (ZAR)
-              </button>
+
+              <TrustLine />
+
+              {isHybridModel && (
+                <div className="border-t pt-4 text-center" style={{ borderColor: LINE }}>
+                  <span className="block text-[12px]" style={{ color: INK_SOFT }}>
+                    Or start with the free preview first
+                  </span>
+                  <button
+                    onClick={handleFreeEnrollment}
+                    disabled={isPending}
+                    className="mt-2 text-[13px] font-semibold"
+                    style={{ color: BRAND }}
+                  >
+                    Enrol in the free preview
+                  </button>
+                </div>
+              )}
             </div>
-
-            {cohortPicker}
-
-            {paymentMethod === 'stripe' ? (
-              /* Stripe Redirect */
-              <div className="space-y-5">
-                <div className="bg-[#0f2d4a]/20 border border-[#0f2d4a] rounded-xl p-4 flex items-start gap-3">
-                  <ShieldCheck className="text-primary shrink-0 mt-0.5" size={16} />
-                  <div className="space-y-1">
-                    <span className="text-[11px] font-bold text-white block">Secure Stripe checkout integration</span>
-                    <span className="text-[9px] text-white/50 block leading-relaxed">
-                      You will be securely redirected to Stripe's hosted checkout gateway to complete your payment of **${course.price?.toFixed(2)} USD**.
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleCheckout}
-                  disabled={isPending}
-                  className="w-full bg-primary hover:bg-primary/95 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-12 flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 mt-4"
-                >
-                  {isPending ? (
-                    <>
-                      <Loader2 size={13} className="animate-spin" /> Redirecting to Stripe...
-                    </>
-                  ) : (
-                    <>
-                      Redirect to Secure Stripe Checkout
-                    </>
-                  )}
-                </button>
-              </div>
-            ) : (
-              /* PayFast Sandbox */
-              <div className="space-y-5">
-                <div className="bg-[#0f2d4a]/20 border border-[#0f2d4a] rounded-xl p-4 flex items-start gap-3">
-                  <AlertCircle className="text-[#3b82f6] shrink-0 mt-0.5" size={16} />
-                  <div className="space-y-1">
-                    <span className="text-[11px] font-bold text-white block">Secure simulated PayFast Gateway</span>
-                    <span className="text-[9px] text-white/50 block leading-relaxed">
-                      The billing processor will convert your checkout subtotal to South African Rand (**R{priceZar} ZAR**). Click the button below to submit a successful simulated transaction callback.
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleCheckout}
-                  disabled={isPending}
-                  className="w-full bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-12 flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-emerald-500/15 disabled:opacity-50 mt-4"
-                >
-                  {isPending ? (
-                    <>
-                      <Loader2 size={13} className="animate-spin" /> Verifying callback...
-                    </>
-                  ) : (
-                    <>
-                      Pay R{priceZar} ZAR via PayFast
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
-
-            {isHybridModel && (
-              <div className="border-t border-white/5 pt-4 text-center">
-                <span className="text-[10px] text-white/40 block">Or start studying the free preview section first</span>
-                <button
-                  onClick={handleFreeEnrollment}
-                  disabled={isPending}
-                  className="text-[10px] font-black text-primary hover:text-primary-light uppercase tracking-wider mt-2 outline-none"
-                >
-                  Enroll in Free Preview Mode
-                </button>
-              </div>
-            )}
-          </>
           )}
-          </>
-        )}
-
-        <div className="border-t border-white/5 pt-4 flex items-center justify-between text-white/30 text-[9px] font-bold uppercase tracking-widest">
-          <span className="flex items-center gap-1"><ShieldCheck size={11} className="text-emerald-400" /> SSL 256-bit encryption</span>
-          <span>Gateway: ACTIVE</span>
         </div>
       </div>
     </div>
+  );
+}
+
+function Row({ label, value, muted = false }: { label: string; value: string; muted?: boolean }) {
+  return (
+    <div className="flex items-center justify-between text-[13px]">
+      <span style={{ color: '#5A6478' }}>{label}</span>
+      <span style={{ color: muted ? '#5A6478' : '#0B1367', fontWeight: muted ? 400 : 600 }}>{value}</span>
     </div>
+  );
+}
+
+/** The one payment method LeadsMind actually processes. Not a toggle — there is nothing to
+ *  toggle between now that the PayFast sandbox option is gone. */
+function PaymentMethodRow() {
+  return (
+    <div
+      className="flex items-center gap-3 rounded-xl border px-4 py-3.5"
+      style={{ borderColor: BRAND, backgroundColor: 'rgba(19,89,255,0.05)' }}
+    >
+      <span
+        className="flex h-4 w-4 items-center justify-center rounded-full border-[5px]"
+        style={{ borderColor: BRAND }}
+        aria-hidden
+      />
+      <div className="min-w-0">
+        <div className="text-[13px] font-semibold" style={{ color: INK }}>
+          Card
+        </div>
+        <div className="text-[11px]" style={{ color: INK_SOFT }}>
+          Visa, Mastercard and Amex, processed by Stripe
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TrustLine() {
+  return (
+    <p className="flex items-start justify-center gap-1.5 text-[11px]" style={{ color: INK_SOFT }}>
+      <ShieldCheck size={13} className="mt-0.5 shrink-0" style={{ color: '#047857' }} />
+      <span>Payments are handled on Stripe’s secure checkout page. LeadsMind never sees your card number.</span>
+    </p>
   );
 }
