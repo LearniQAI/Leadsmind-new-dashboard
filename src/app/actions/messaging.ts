@@ -6,6 +6,7 @@ import { createOAuthStateNonce } from '@/lib/oauth/stateNonce';
 import { sendEmail } from '@/lib/email';
 import { dispatchOutboundMessage } from '@/lib/messaging/dispatchOutboundMessage';
 import { workspaceInboundAddress } from '@/lib/email/inboundAddress';
+import { withSmsConnectionStatus } from '@/lib/messaging/smsConnectionStatus';
 import { encrypt, decrypt } from '@/lib/encryption';
 import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
 import { EmailAutomationService } from '@/lib/automations/EmailAutomationService';
@@ -165,7 +166,10 @@ export async function getConnectedPlatforms() {
    .eq('workspace_id', workspaceId);
 
   if (error) throw error;
-  return data || [];
+  const rows = data || [];
+
+  const { data: ws } = await supabase.from('workspaces').select('twilio_number').eq('id', workspaceId).maybeSingle();
+  return withSmsConnectionStatus(rows, ws?.twilio_number);
  } catch (error) {
   logger.error({ err: error, workspaceId }, 'messaging.platforms.fetch.failed');
   return [];

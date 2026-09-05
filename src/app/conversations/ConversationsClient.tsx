@@ -13,16 +13,14 @@ import { AlertTriangle } from 'lucide-react';
 const AUTH_ERROR_CODES = new Set([10, 102, 190, 200]);
 const META_MESSAGING = ['facebook', 'instagram', 'whatsapp'];
 const CHANNEL_LABEL: Record<string, string> = { facebook: 'Messenger', instagram: 'Instagram', whatsapp: 'WhatsApp' };
+// Every channel tab always renders (regardless of connection/conversation
+// history) so an agent can always see what's available and what still needs
+// connecting — fixed order, not derived from whatever happens to exist today.
+const ALL_CHANNELS = ['instagram', 'facebook', 'whatsapp', 'email', 'sms'];
 import { ConversationList } from '@/components/conversations/ConversationList';
 import { ConversationThread } from '@/components/conversations/ConversationThread';
 import { ContactInfoPanel } from '@/components/conversations/ContactInfoPanel';
 import { ComposeEmailModal } from '@/components/conversations/ComposeEmailModal';
-
-// Messaging channels actually built for the Communications Hub. LinkedIn/
-// TikTok/YouTube are Social Planner (publishing) integrations, not
-// messaging channels here — kept out of the derived tab set below even if
-// stray conversation/connection rows exist for them.
-const SUPPORTED_MESSAGING_CHANNELS = new Set(['facebook', 'instagram', 'whatsapp', 'email', 'sms']);
 
 export default function ConversationsClient({
   initialConversations,
@@ -194,26 +192,38 @@ export default function ConversationsClient({
     return Array.from(set);
   }, [connectedPlatforms, consolidatedConversations]);
 
-  // Channel tabs are derived, not hardcoded: a platform shows up only if the
-  // workspace has it live-connected (platform_connections) OR there's already
-  // real conversation history on it. This is what naturally hides an unused
-  // channel (e.g. SMS/Email with no active bridge) without us guessing.
+  // Channel tabs ALWAYS render, regardless of connection status or existing
+  // conversation history — an agent needs to see every channel to know what's
+  // available and what still needs connecting, not just the ones that already
+  // happen to have data. (Previously this only showed a channel once it had a
+  // live platform_connections row or at least one conversation — which meant
+  // Email, needing neither, could never be discovered before a first
+  // conversation existed. Fixed uniformly for all channels, not as an
+  // Email-only special case.)
   //
   // Capped to the messaging channels actually built for this hub — LinkedIn/
   // TikTok/YouTube are social-publishing integrations (Social Planner), not
   // messaging channels here, and were explicitly not built for the
   // Communications Hub. Stray/legacy conversation rows on those platforms
   // must never surface a tab for a channel that doesn't exist here.
-  const activeChannels = React.useMemo(() => {
-    const set = new Set<string>();
-    connectedPlatforms.forEach((c) => {
-      if (c.status === 'connected' && SUPPORTED_MESSAGING_CHANNELS.has(c.platform)) set.add(c.platform);
-    });
-    initialConversations.forEach((c: any) => {
-      if (c.platform && SUPPORTED_MESSAGING_CHANNELS.has(c.platform)) set.add(c.platform);
-    });
-    return Array.from(set);
-  }, [connectedPlatforms, initialConversations]);
+  const activeChannels = ALL_CHANNELS;
+
+  // Real per-channel connection status, used to pick the right empty state
+  // (a "Connect" prompt vs. a plain "no conversations yet"):
+  //  - facebook/instagram/whatsapp: platform_connections.status.
+  //  - sms: synthesized in getConnectedPlatforms() from workspaces.twilio_number
+  //    (there's no platform_connections row for SMS today).
+  //  - email: needs no external connection at all — just the workspace's
+  //    existing send configuration — so it's never "disconnected" here; its
+  //    empty state is the Compose prompt, not a connect prompt.
+  const channelStatus = React.useMemo(() => {
+    const status: Record<string, 'connected' | 'disconnected'> = { email: 'connected' };
+    for (const platform of ['facebook', 'instagram', 'whatsapp', 'sms']) {
+      const row = connectedPlatforms.find((c: any) => c.platform === platform);
+      status[platform] = row?.status === 'connected' ? 'connected' : 'disconnected';
+    }
+    return status;
+  }, [connectedPlatforms]);
 
   useEffect(() => {
     if (consolidatedConversations.length > 0 && !activeConvId) {
@@ -440,7 +450,9 @@ export default function ConversationsClient({
           assigneeFilter={assigneeFilter}
           onAssigneeFilterChange={setAssigneeFilter}
           activeChannels={activeChannels}
+          channelStatus={channelStatus}
           onComposeEmail={() => setShowComposeModal(true)}
+          onConnectChannel={handleReconnect}
         />
       </div>
 

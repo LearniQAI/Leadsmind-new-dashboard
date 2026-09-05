@@ -18,11 +18,20 @@ interface ConversationListProps {
   assigneeFilter: string;
   onAssigneeFilterChange: (filter: string) => void;
   activeChannels?: string[];
+  /** Real per-channel connection status — drives which empty state a channel
+   *  tab shows (a "Connect" prompt vs. plain "no conversations yet"). email
+   *  needs no external connection, so it's never 'disconnected' here. */
+  channelStatus?: Record<string, 'connected' | 'disconnected'>;
   /** Only meaningful for the email channel — Instagram/Messenger/WhatsApp
    *  don't support cold-messaging a stranger the way email does, so there is
    *  no equivalent "start fresh" action for them. */
   onComposeEmail?: () => void;
+  /** Reuses the real existing Meta OAuth connect flow (facebook/instagram/
+   *  whatsapp). SMS has no OAuth step — its empty state links to Settings. */
+  onConnectChannel?: (platform: string) => void;
 }
+
+const OAUTH_CHANNELS = new Set(['facebook', 'instagram', 'whatsapp']);
 
 function formatThreadTimestamp(dateStr: string) {
   const date = new Date(dateStr);
@@ -42,7 +51,9 @@ export function ConversationList({
   assigneeFilter,
   onAssigneeFilterChange,
   activeChannels = [],
+  channelStatus = {},
   onComposeEmail,
+  onConnectChannel,
 }: ConversationListProps) {
   const channelTabs = [
     { id: 'all', label: 'All' },
@@ -136,12 +147,55 @@ export function ConversationList({
       {/* List */}
       <div className="flex-1 overflow-y-auto common-scrollbar">
         {conversations.length === 0 ? (
-          <DashEmptyState
-            icon={MessagesSquare}
-            title="No conversations found"
-            description={searchQuery ? "Try a different search term or clear your filters." : "New messages from your connected channels will show up here."}
-            className="mt-4"
-          />
+          searchQuery ? (
+            <DashEmptyState
+              icon={MessagesSquare}
+              title="No conversations found"
+              description="Try a different search term or clear your filters."
+              className="mt-4"
+            />
+          ) : filter === 'email' ? (
+            <DashEmptyState
+              icon={getPlatformMeta('email').Icon}
+              title="No email conversations yet"
+              description="Start a new conversation with any email address — no connection needed."
+              actionLabel="New email"
+              onAction={onComposeEmail}
+              className="mt-4"
+            />
+          ) : filter === 'sms' && channelStatus.sms !== 'connected' ? (
+            <DashEmptyState
+              icon={getPlatformMeta('sms').Icon}
+              title="SMS isn't configured yet"
+              description="Add a Twilio number in Settings to send and receive text messages here."
+              actionLabel="Go to Settings"
+              actionHref="/settings"
+              className="mt-4"
+            />
+          ) : OAUTH_CHANNELS.has(filter) && channelStatus[filter] !== 'connected' ? (
+            <DashEmptyState
+              icon={getPlatformMeta(filter).Icon}
+              title={`${getPlatformMeta(filter).label} isn't connected yet`}
+              description={`Connect your ${getPlatformMeta(filter).label} account to start sending and receiving messages here.`}
+              actionLabel={`Connect ${getPlatformMeta(filter).label}`}
+              onAction={onConnectChannel ? () => onConnectChannel(filter) : undefined}
+              className="mt-4"
+            />
+          ) : filter === 'all' ? (
+            <DashEmptyState
+              icon={MessagesSquare}
+              title="No conversations found"
+              description="New messages from your connected channels will show up here."
+              className="mt-4"
+            />
+          ) : (
+            <DashEmptyState
+              icon={getPlatformMeta(filter).Icon}
+              title="No conversations yet"
+              description={`Messages on ${getPlatformMeta(filter).label} will show up here.`}
+              className="mt-4"
+            />
+          )
         ) : (
           conversations.map((conv) => {
             const isActive = activeId === conv.id;

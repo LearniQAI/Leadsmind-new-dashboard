@@ -149,3 +149,86 @@ error propagation, reuse-vs-create). 330 total tests green (32→34 files,
 4. **Subject is not used for any reply threading** (`In-Reply-To`/
    `References`) — per the standing decision from Part 1's audit, real
    RFC 5322 threading was never in scope for this build.
+
+---
+
+## 2026-09-05 — Post-launch gap found and closed: channel tabs hidden until first connection/conversation
+
+**Gap:** channel tabs in the Communications Hub were derived — a platform only
+appeared once it had a live `platform_connections` row **or** at least one
+existing conversation. This is what made the "Compose new email" gap (above)
+worse than it needed to be: an agent in a fresh workspace couldn't even find
+the Email tab to discover Compose, since no email conversation existed yet to
+make the tab appear. Per your decision, fixed uniformly for **every** channel
+(Instagram, Messenger, WhatsApp, Email, SMS), not as an Email-only special
+case — every channel should always be visible so an agent can see what's
+available and what still needs connecting.
+
+**Audit before building confirmed:**
+- The exact derivation was `activeChannels` in `ConversationsClient.tsx`:
+  `platform_connections.status==='connected'` **union** any platform already
+  present on an existing `conversations` row, capped to
+  `SUPPORTED_MESSAGING_CHANNELS`.
+- The real, existing "connect" flow for Instagram/Messenger/WhatsApp is
+  `getMetaAuthUrl(platform)` → redirect — already used by the re-auth banner's
+  `handleReconnect()`, now reused verbatim for this fix rather than building a
+  second connect action.
+- **SMS has no `platform_connections` row at all** — it's never written by
+  `connectPlatformManually`/`saveMetaConnections` (only facebook/instagram/
+  whatsapp are). Its real, existing connection signal is
+  `workspaces.twilio_number` (the same field the `sms-dispatch` cron worker
+  already reads to send).
+- **Email needs no external connection** — just the workspace's existing send
+  configuration — so it has no "disconnected" state at all; its empty state is
+  the Compose prompt already built, not a connect prompt.
+
+**Built:**
+- `activeChannels` is now a fixed, always-rendered list (`ALL_CHANNELS` in
+  `ConversationsClient.tsx`) instead of a derived set.
+- A real `channelStatus` map (`connected`/`disconnected` per platform) drives
+  which empty state a channel shows when it has zero conversations:
+  - **Instagram/Messenger/WhatsApp, disconnected:** "{Channel} isn't connected
+    yet" + a real "Connect {Channel}" button wired to the exact same
+    `getMetaAuthUrl()`/redirect flow the re-auth banner uses.
+  - **Instagram/Messenger/WhatsApp, connected, zero conversations:** a plain
+    "No conversations yet" empty state — no connect prompt for a channel
+    that's already working.
+  - **Email:** the existing "No email conversations yet" + "New email" Compose
+    prompt (unchanged from the Compose build) — never a connect prompt.
+  - **SMS, not configured:** "SMS isn't configured yet" + a real link to
+    `/settings` (SMS has no OAuth step, so no "Connect" button — added a
+    synthetic, non-fabricated `sms` connection-status row via
+    `src/lib/messaging/smsConnectionStatus.ts`, derived from the real
+    `workspaces.twilio_number` column, in `getConnectedPlatforms()`).
+  - **SMS, configured, zero conversations:** plain "No conversations yet".
+  - **"All" tab / an active search query:** unchanged generic empty states.
+- A real conversation list for a channel still renders its actual
+  conversations exactly as before — the empty-state logic only replaces what
+  used to render when the list was empty, and does not touch the
+  conversation-rendering branch at all.
+
+**Tests:** `smsConnectionStatus.test.ts` (4 — disconnected/connected
+synthesis, no-op when a real row exists, no mutation) +
+`ConversationList.test.tsx` (9 — all 5 tabs always render; email shows
+Compose not Connect; disconnected OAuth channel shows Connect; connected OAuth
+channel with zero conversations shows plain empty state, not Connect; SMS
+not-configured links to Settings; SMS configured shows plain empty state; the
+"all" tab keeps its original empty state; a search query always wins over any
+channel-specific state; **regression check** — a channel with real
+conversation history still renders its list, not any empty state). 343 total
+tests green (36 files, +13), `tsc` clean, `next lint` clean.
+
+**Not done / caveats:**
+1. **No live click-through test** — no running browser here to actually load
+   a fresh workspace and confirm all 5 tabs render with the right empty
+   states, or click "Connect Instagram" through to the real OAuth redirect.
+   Verified by code trace + the render-based unit tests above.
+2. **Per-channel empty-state icons use `getPlatformMeta(...).Icon`**, which
+   are brand marks/`<img>` elements sized via their own CSS classes, not the
+   `size`/`strokeWidth` props `DashEmptyState` normally passes to a lucide
+   icon — those props are silently ignored (confirmed harmless, not a
+   crash), but the exact visual sizing inside the empty-state circle was not
+   visually verified in a browser.
+3. **SMS's "Connect" path is a generic `/settings` link**, not a deep link to
+   the specific Twilio configuration tab — this project has no URL-addressable
+   settings-tab convention to link to more precisely.
