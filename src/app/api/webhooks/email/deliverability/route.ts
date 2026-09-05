@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Webhook } from 'svix';
 import { logger } from '@/shared/logger';
+import { recordVoiceNoteClick } from '@/lib/voicenotes/voiceClickTracking';
 
 export const runtime = 'nodejs';
 
@@ -100,6 +101,15 @@ export async function POST(req: NextRequest) {
       linkUrl = body.link_url;
       userAgent = body.user_agent;
       ipAddress = body.ip_address;
+    }
+
+    // Voice-note waveform clicks are handled independently of the
+    // campaign-scoped path below — see recordVoiceNoteClick()'s comment.
+    if (eventType === 'click' && linkUrl) {
+      const handled = await recordVoiceNoteClick(linkUrl);
+      if (handled) {
+        return NextResponse.json({ received: true, status: 'processed' });
+      }
     }
 
     // Validation

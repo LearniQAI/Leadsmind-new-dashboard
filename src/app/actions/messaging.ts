@@ -5,6 +5,7 @@ import { getCurrentWorkspaceId, requireWorkspaceAccess } from '@/lib/auth';
 import { createOAuthStateNonce } from '@/lib/oauth/stateNonce';
 import { sendEmail } from '@/lib/email';
 import { dispatchOutboundMessage } from '@/lib/messaging/dispatchOutboundMessage';
+import { workspaceInboundAddress } from '@/lib/email/inboundAddress';
 import { encrypt, decrypt } from '@/lib/encryption';
 import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
 import { EmailAutomationService } from '@/lib/automations/EmailAutomationService';
@@ -360,6 +361,19 @@ export async function sendMessage(
   if (conv?.platform === 'email') {
    const contact = Array.isArray(conv.contacts) ? conv.contacts[0] : conv.contacts;
    if (contact?.email) {
+    // Email Channel Part 1: a Reply-To on this workspace's inbound receiving
+    // address so a recipient's reply lands back in this conversation instead
+    // of at the generic send-from address. Best-effort — a missing slug
+    // (shouldn't happen; workspaces.slug is NOT NULL) just skips the header
+    // rather than failing the send.
+    let replyTo: string | undefined;
+    try {
+      const { data: wsRow } = await supabase.from('workspaces').select('slug').eq('id', workspaceId).maybeSingle();
+      if (wsRow?.slug) replyTo = workspaceInboundAddress(wsRow.slug);
+    } catch (slugErr) {
+      logger.error({ err: slugErr, workspaceId }, 'messaging.email.reply_to_lookup.failed');
+    }
+
     try {
      if (audioUrl) {
         const { data: { user: currentUser } } = await supabase.auth.getUser();
@@ -383,11 +397,13 @@ export async function sendMessage(
           const { sendVoiceNoteEmail } = await import('@/lib/voicenotes/voiceNoteEmail');
           await sendVoiceNoteEmail({
             workspaceId,
+            messageId: msgData.id,
             toEmail: contact.email,
             sender: senderData,
             audioUrl,
             audioDuration: undefined,
-            message: content || undefined
+            message: content || undefined,
+            replyTo
           });
         } catch (emailErr) {
           logger.error({ err: emailErr, workspaceId, conversationId: targetConvId }, 'messaging.voice_note_email.send.failed');
@@ -397,6 +413,7 @@ export async function sendMessage(
         to: contact.email,
         subject: 'New message from LeadsMind Support',
         text: content,
+        config: replyTo ? { headers: { 'Reply-To': replyTo } } : undefined,
        });
      }
     await supabase.from('messages').update({ status: 'delivered' }).eq("id", msgData.id).eq("workspace_id", workspaceId);

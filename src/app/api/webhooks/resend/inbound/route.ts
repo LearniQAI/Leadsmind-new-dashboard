@@ -3,6 +3,8 @@ import { Webhook } from 'svix';
 import { createClient } from '@supabase/supabase-js';
 import { sendSMS } from '@/lib/sms';
 import { logger } from '@/shared/logger';
+import { extractWorkspaceSlugFromAddress } from '@/lib/email/inboundAddress';
+import { resolveInboundEmailContent, deadLetterResendEvent, insertWebhookDeadLetter, handleInboundWorkspaceEmail } from '@/lib/email/inboundEmailProcessing';
 
 export const runtime = 'nodejs';
 
@@ -33,13 +35,7 @@ export async function POST(req: NextRequest) {
       event = wh.verify(payload, headers);
     } catch (err: any) {
       logger.error({ err }, 'webhook.resend_inbound.verification.failed');
-      try {
-        await supabaseAdmin.from('webhook_dead_letters').insert({
-           provider: 'resend', payload: { headers, body: payload }, error: err.message, error_type: 'verification_failed', retry_state: 'dropped'
-        });
-      } catch (dbErr: any) {
-        logger.error({ err: dbErr, provider: 'resend' }, 'webhook.resend_inbound.dead_letter_insert.failed');
-      }
+      await deadLetterResendEvent({ headers, body: payload }, err.message, 'verification_failed', 'dropped');
       return NextResponse.json({ error: 'Verification failed' }, { status: 200 }); // Return 200 to drop
     }
 
@@ -48,23 +44,46 @@ export async function POST(req: NextRequest) {
       const from = emailData.from;
       const toArray = Array.isArray(emailData.to) ? emailData.to : (emailData.to ? [emailData.to] : []);
       const toAddresses = [...toArray];
-      
+
       if (emailData.headers?.['Delivered-To']) toAddresses.push(emailData.headers['Delivered-To']);
       if (emailData.headers?.['X-Forwarded-To']) toAddresses.push(emailData.headers['X-Forwarded-To']);
-      
+
       let messageId = String(emailData.headers?.['Message-ID'] || emailData.id || '').trim();
       if (!messageId) {
         logger.error({}, 'webhook.resend_inbound.message_id.missing');
-        try {
-          await supabaseAdmin.from('webhook_dead_letters').insert({
-             provider: 'resend', payload: emailData, error: 'Missing Message-ID', error_type: 'validation_failed', retry_state: 'dropped'
-          });
-        } catch (dbErr: any) {
-          logger.error({ err: dbErr, provider: 'resend' }, 'webhook.resend_inbound.dead_letter_insert.failed');
-        }
+        await deadLetterResendEvent(emailData, 'Missing Message-ID', 'validation_failed', 'dropped');
         return NextResponse.json({ received: true, error: 'Missing Message-ID ignored' }, { status: 200 });
       }
-      
+
+      // --- Email Channel Part 1: does this address belong to a workspace's ---
+      // --- real inbound alias ({slug}@INBOUND_EMAIL_DOMAIN)? Checked FIRST ---
+      // --- and returns early — the existing +phone@sms.leadsmind.io bridge ---
+      // --- below is completely untouched and only reached when no ---
+      // --- workspace alias matches. ---
+      let workspaceSlug: string | null = null;
+      for (const address of toAddresses) {
+        workspaceSlug = extractWorkspaceSlugFromAddress(address);
+        if (workspaceSlug) break;
+      }
+
+      if (workspaceSlug) {
+        const { data: existingMsg } = await supabaseAdmin
+          .from('messages')
+          .select('id')
+          .eq('bridge_metadata->>resend_message_id', messageId)
+          .limit(1)
+          .single();
+
+        if (existingMsg) {
+          logger.warn({ messageId, workspaceSlug }, 'webhook.resend_inbound.email_channel.duplicate_message_skipped');
+          return NextResponse.json({ received: true, duplicate: true });
+        }
+
+        await handleInboundWorkspaceEmail({ emailData, from, messageId, workspaceSlug });
+        return NextResponse.json({ received: true });
+      }
+
+      // --- Existing Email→SMS bridge (unchanged) -----------------------------
       // Extract target phone number robustly
       let targetPhone = '';
       for (const address of toAddresses) {
@@ -78,9 +97,7 @@ export async function POST(req: NextRequest) {
 
       if (!targetPhone) {
         logger.error({ toAddresses }, 'webhook.resend_inbound.target_address.invalid');
-        await supabaseAdmin.from('webhook_dead_letters').insert({
-           provider: 'resend', payload: emailData, error: 'Invalid target address format', error_type: 'validation_failed', retry_state: 'dropped'
-        });
+        await deadLetterResendEvent(emailData, 'Invalid target address format', 'validation_failed', 'dropped');
         return NextResponse.json({ received: true, error: 'Invalid target address ignored' }, { status: 200 });
       }
 
@@ -91,70 +108,19 @@ export async function POST(req: NextRequest) {
         .eq('bridge_metadata->>resend_message_id', messageId)
         .limit(1)
         .single();
-        
+
       if (existingMsg) {
         logger.warn({ messageId }, 'webhook.resend_inbound.duplicate_message_skipped');
         return NextResponse.json({ received: true, duplicate: true });
       }
-      // Inbound webhooks do NOT contain the body. We must fetch it using the email_id.
-      // Note: Test events from the Resend Dashboard will return 404 because the fake ID doesn't exist.
-      let fetchedText = '';
-      let fetchedHtml = '';
-      if (emailData.email_id) {
-        try {
-          const resendResponse = await fetch(`https://api.resend.com/emails/receiving/${emailData.email_id}`, {
-            headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}` }
-          });
-          
-          if (resendResponse.ok) {
-            const emailJson = await resendResponse.json();
-            fetchedText = emailJson.text || '';
-            fetchedHtml = emailJson.html || '';
-          } else {
-            logger.error({ status: resendResponse.status }, 'webhook.resend_inbound.receiving_api.failed');
-          }
-        } catch (err) {
-           logger.error({ err }, 'webhook.resend_inbound.email_fetch.failed');
-        }
-      }
 
-      // 2. Extract body
-      let bodyText = '';
-      if (fetchedText && fetchedText.trim().length > 0) {
-        bodyText = fetchedText.trim();
-      } else if (fetchedHtml && fetchedHtml.trim().length > 0) {
-        bodyText = fetchedHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-      } else if (emailData.text) {
-        bodyText = emailData.text.trim();
-      } else if (emailData.html) {
-        bodyText = emailData.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-      }
-
-      // 3. Clean message body (strip forwarded quotes and signatures)
-      if (bodyText) {
-        bodyText = bodyText.split(/On\s+.*wrote:/i)[0]; // Gmail style
-        bodyText = bodyText.split(/From:/i)[0]; // Outlook style
-        bodyText = bodyText.split(/_{10,}/)[0]; // Underscore separators
-        bodyText = bodyText.trim();
-      }
-
-      // 4. Combine Subject and Body
-      let rawText = '';
-      if (emailData.subject && bodyText) {
-        rawText = `Subj: ${emailData.subject}\n\n${bodyText}`;
-      } else if (bodyText) {
-        rawText = bodyText;
-      } else if (emailData.subject) {
-        rawText = `Subj: ${emailData.subject}`;
-      }
-
+      // 1-4. Fetch + clean + combine the email body (shared helper).
+      const { rawText } = await resolveInboundEmailContent(emailData);
       const forcedMessage = rawText || '[BODY COMPLETELY EMPTY]';
 
       if (!rawText && forcedMessage === '[BODY COMPLETELY EMPTY]') {
         logger.error({}, 'webhook.resend_inbound.body.empty');
-        await supabaseAdmin.from('webhook_dead_letters').insert({
-           provider: 'resend', payload: emailData, error: 'Empty body after strip', error_type: 'validation_failed', retry_state: 'dropped'
-        });
+        await deadLetterResendEvent(emailData, 'Empty body after strip', 'validation_failed', 'dropped');
         return NextResponse.json({ received: true, error: 'Empty message body ignored' }, { status: 200 });
       }
 
@@ -170,7 +136,7 @@ export async function POST(req: NextRequest) {
 
       if (contact) {
         let conversationId = null;
-        
+
         // Find existing SMS conversation
         const { data: conv } = await supabaseAdmin
           .from('conversations')
@@ -199,7 +165,7 @@ export async function POST(req: NextRequest) {
             })
             .select('id')
             .single();
-            
+
           if (newConv) conversationId = newConv.id;
         }
 
@@ -218,7 +184,7 @@ export async function POST(req: NextRequest) {
                 sender_email: from
               }
             }).select('id').single();
-            
+
           if (insertErr) {
              logger.error({ err: insertErr }, 'webhook.resend_inbound.predispatch_persistence.failed');
              throw insertErr; // Will trigger 500 infra retry
@@ -262,13 +228,7 @@ export async function POST(req: NextRequest) {
 
       if (smsStatus === 'failed') {
          logger.error({ smsError, targetPhone }, 'webhook.resend_inbound.sms_relay.failed');
-         try {
-           await supabaseAdmin.from('webhook_dead_letters').insert({
-              provider: 'twilio_outbound', payload: { to: targetPhone, message: forcedMessage }, error: String(smsError), error_type: 'operational_failure', retry_state: 'dropped'
-           });
-         } catch(dbErr: any) {
-           logger.error({ err: dbErr, provider: 'twilio_outbound' }, 'webhook.resend_inbound.dead_letter_insert.failed');
-         }
+         await insertWebhookDeadLetter('twilio_outbound', { to: targetPhone, message: forcedMessage }, String(smsError), 'operational_failure', 'dropped');
       }
     }
 
