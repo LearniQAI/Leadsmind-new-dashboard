@@ -16,6 +16,7 @@ const CHANNEL_LABEL: Record<string, string> = { facebook: 'Messenger', instagram
 import { ConversationList } from '@/components/conversations/ConversationList';
 import { ConversationThread } from '@/components/conversations/ConversationThread';
 import { ContactInfoPanel } from '@/components/conversations/ContactInfoPanel';
+import { ComposeEmailModal } from '@/components/conversations/ComposeEmailModal';
 
 // Messaging channels actually built for the Communications Hub. LinkedIn/
 // TikTok/YouTube are Social Planner (publishing) integrations, not
@@ -58,6 +59,15 @@ export default function ConversationsClient({
   useEffect(() => {
     setLiveMessagePatches(new Map());
   }, [initialConversations]);
+
+  // Compose ("New email") gap fix — a brand-new conversation has no prior
+  // message to carry a subject line, so the subject picked in the Compose
+  // modal is stashed here and applied to exactly the FIRST send into that
+  // conversation (via handleSend below), then cleared. Every other channel/
+  // every subsequent reply is unaffected — MessageInput/ConversationThread
+  // need no changes at all for this.
+  const [showComposeModal, setShowComposeModal] = useState(false);
+  const [pendingComposeSubject, setPendingComposeSubject] = useState<{ conversationId: string; subject: string } | null>(null);
 
   // Fetch current user on mount
   useEffect(() => {
@@ -317,7 +327,12 @@ export default function ConversationsClient({
   const handleSend = async (text: string, targetConvId: string, audioUrl?: string, transcript?: string, clientMessageUuid?: string) => {
     if (!targetConvId) return;
     setIsSending(true);
-    const res = await sendMessage(targetConvId, text, audioUrl, transcript, clientMessageUuid);
+    // Compose gap fix: a subject picked in the "New email" modal applies only
+    // to the very first send into that brand-new conversation, then clears —
+    // every other channel and every subsequent reply is untouched.
+    const composeSubject = pendingComposeSubject?.conversationId === targetConvId ? pendingComposeSubject.subject : undefined;
+    if (composeSubject !== undefined) setPendingComposeSubject(null);
+    const res = await sendMessage(targetConvId, text, audioUrl, transcript, clientMessageUuid, composeSubject);
     if (res.error) {
       toast.error(res.error);
     } else {
@@ -334,6 +349,21 @@ export default function ConversationsClient({
   const handleSelectConversation = (id: string) => {
     setActiveConvId(id);
     setMobileView('thread');
+  };
+
+  // Compose gap fix — the modal only creates the real contact + conversation;
+  // the actual message (text or voice note) is composed exactly like any
+  // other conversation, through the existing ConversationThread/MessageInput
+  // UI, once we switch to it.
+  const handleComposeStarted = ({ conversationId, contactId, subject }: { conversationId: string; contactId: string; subject: string }) => {
+    if (subject) setPendingComposeSubject({ conversationId, subject });
+    // Consolidated list entries are keyed by `contact:${contactId}` for any
+    // conversation with a real contact (see consolidatedConversations above) —
+    // matching that convention is what makes the new thread selectable
+    // immediately once router.refresh() below lands it in initialConversations.
+    setActiveConvId(`contact:${contactId}`);
+    setMobileView('thread');
+    router.refresh();
   };
 
   // One-tap retry on a failed bubble: re-send the SAME text through the SAME
@@ -410,6 +440,7 @@ export default function ConversationsClient({
           assigneeFilter={assigneeFilter}
           onAssigneeFilterChange={setAssigneeFilter}
           activeChannels={activeChannels}
+          onComposeEmail={() => setShowComposeModal(true)}
         />
       </div>
 
@@ -441,6 +472,12 @@ export default function ConversationsClient({
         </>
       )}
       </div>
+
+      <ComposeEmailModal
+        open={showComposeModal}
+        onOpenChange={setShowComposeModal}
+        onStarted={handleComposeStarted}
+      />
     </div>
   );
 }

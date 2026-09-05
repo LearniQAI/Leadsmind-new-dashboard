@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { logger } from '@/shared/logger';
 import { parseFromHeader } from './inboundAddress';
+import { findOrCreateContactByEmail, findOrCreateEmailConversation } from './contactConversation';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -118,78 +119,22 @@ export async function handleInboundWorkspaceEmail(params: { emailData: any; from
     return;
   }
 
-  // Contact resolution by email — case-insensitive, same normalization
-  // convention as affiliates.ts's contact-by-email lookup elsewhere in this
-  // project. Creates a new contact on first contact, mirroring (in spirit,
-  // simplified — an email address IS the identity, no profile-fetch step
-  // needed) the Meta DM webhook's placeholder-contact-then-sync pattern.
-  let contactId: string;
-  const { data: existingContact } = await supabaseAdmin
-    .from('contacts')
-    .select('id')
-    .eq('workspace_id', workspaceId)
-    .eq('email', fromEmail)
-    .limit(1)
-    .maybeSingle();
-
-  if (existingContact) {
-    contactId = existingContact.id;
-  } else {
-    const { data: newContact, error: contactErr } = await supabaseAdmin
-      .from('contacts')
-      .insert({
-        workspace_id: workspaceId,
-        first_name: fromName || 'Email User',
-        last_name: '',
-        email: fromEmail,
-        source: 'email',
-      })
-      .select('id')
-      .single();
-
-    if (contactErr || !newContact) {
-      logger.error({ err: contactErr, workspaceId, fromEmail }, 'webhook.resend_inbound.email_channel.contact_create_failed');
-      await deadLetterResendEvent(emailData, `Contact creation failed: ${contactErr?.message}`, 'infrastructure_failure', 'pending');
-      return;
-    }
-    contactId = newContact.id;
+  // Contact + conversation resolution — the shared find-or-create logic
+  // (contact-based grouping, one platform:'email' conversation per contact)
+  // also used by the Communications Hub's Compose flow.
+  const contactResult = await findOrCreateContactByEmail(supabaseAdmin, workspaceId, fromEmail, fromName);
+  if ('error' in contactResult) {
+    await deadLetterResendEvent(emailData, `Contact creation failed: ${contactResult.error}`, 'infrastructure_failure', 'pending');
+    return;
   }
+  const contactId = contactResult.id;
 
-  // Conversation resolution — contact-based grouping. Same shape as
-  // sendDocumentToContact()/sendMessage()'s email branch: one platform:'email'
-  // conversation per (workspace, contact), no external_thread_id.
-  let conversationId: string;
-  const { data: existingConv } = await supabaseAdmin
-    .from('conversations')
-    .select('id')
-    .eq('workspace_id', workspaceId)
-    .eq('contact_id', contactId)
-    .eq('platform', 'email')
-    .maybeSingle();
-
-  if (existingConv) {
-    conversationId = existingConv.id;
-    await supabaseAdmin.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', conversationId);
-  } else {
-    const { data: newConv, error: convErr } = await supabaseAdmin
-      .from('conversations')
-      .insert({
-        workspace_id: workspaceId,
-        contact_id: contactId,
-        platform: 'email',
-        title: fromName || fromEmail,
-        last_message_at: new Date().toISOString(),
-      })
-      .select('id')
-      .single();
-
-    if (convErr || !newConv) {
-      logger.error({ err: convErr, workspaceId, contactId }, 'webhook.resend_inbound.email_channel.conversation_create_failed');
-      await deadLetterResendEvent(emailData, `Conversation creation failed: ${convErr?.message}`, 'infrastructure_failure', 'pending');
-      return;
-    }
-    conversationId = newConv.id;
+  const conversationResult = await findOrCreateEmailConversation(supabaseAdmin, workspaceId, contactId, fromName || fromEmail);
+  if ('error' in conversationResult) {
+    await deadLetterResendEvent(emailData, `Conversation creation failed: ${conversationResult.error}`, 'infrastructure_failure', 'pending');
+    return;
   }
+  const conversationId = conversationResult.id;
 
   // Insert the message — REPLICA IDENTITY FULL + the supabase_realtime
   // publication (20260903000011) means this INSERT reaches
@@ -202,8 +147,8 @@ export async function handleInboundWorkspaceEmail(params: { emailData: any; from
     content: rawText,
     sender_handle: fromEmail,
     status: 'delivered',
+    subject: emailData.subject || null,
     bridge_metadata: { resend_message_id: messageId, sender_email: from },
-    metadata: { subject: emailData.subject || null },
   });
 
   if (insertErr) {

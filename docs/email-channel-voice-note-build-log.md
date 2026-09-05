@@ -58,3 +58,94 @@ Real decisions made explicit before building (per the audit's own findings):
 ## Test / check status at build time
 
 `npx tsc --noEmit` → clean · `npx vitest run` → 318 passing (32 files), +39 across all three parts · `next lint` clean on every touched/new file.
+
+---
+
+## 2026-09-05 — Post-launch gap found and closed: "Compose new email"
+
+**Gap:** every path built across Parts 1–3 assumed a `platform:'email'` conversation
+already existed — created either by an inbound reply (Part 1) or by Content
+Studio's `sendDocumentToContact()`. There was no way for an agent to start a
+brand-new email conversation from the Communications Hub itself by typing a
+fresh recipient address (the Gmail "Compose" pattern). This is also why the
+Email tab never appeared in a workspace with zero prior email conversations —
+`activeChannels` only lists a channel once a real conversation exists for it.
+
+**Audit before building confirmed:**
+- **No existing channel has a "start fresh with a stranger" entry point.**
+  Instagram/Messenger/WhatsApp conversations are created exclusively by an
+  inbound webhook event — there is no UI anywhere in the Communications Hub to
+  originate a new outbound-first conversation with someone who has no prior
+  message history. This gap is not email-specific in origin; email is simply
+  the first channel where a "compose to a stranger" action makes product
+  sense (per the standing decision: no equivalent button is added for the
+  other three, since cold-messaging isn't how they work).
+- **Real subject-field decision (Step 0):** added a genuine, dedicated
+  `messages.subject` column (`20260905000000_messages_subject.sql`) — purely
+  for display/email-header purposes. This is explicitly **separate** from the
+  conversation-grouping decision made in Part 1, which stays contact-based.
+  Storing a real per-message subject does not reintroduce subject-based
+  threading; a reply in the same contact-scoped conversation simply carries
+  no subject (falls back to a sensible default: `New message from
+  {workspace name}`) unless the agent (or the original sender, for inbound)
+  supplied one.
+- **Contact/conversation find-or-create was duplicated inline** in Part 1's
+  `handleInboundWorkspaceEmail()`. Extracted into a shared, client-agnostic
+  module — `src/lib/email/contactConversation.ts`
+  (`findOrCreateContactByEmail`, `findOrCreateEmailConversation`) — used by
+  **both** the inbound webhook (admin client) and the new Compose action (RLS
+  client), so there is exactly one implementation of "resolve or create the
+  contact-based email thread," not two.
+
+**Built:**
+- **`src/app/actions/composeEmail.ts`** — `startEmailConversation({toEmail,
+  toName?})`: validates the address, calls the shared find-or-create
+  functions, returns `{conversationId, contactId, isNewConversation}`. Does
+  **not** send a message — the conversation is then driven through the
+  existing `sendMessage()` path exactly like any other conversation.
+- **`src/components/conversations/ComposeEmailModal.tsx`** — a real modal
+  (built on the existing Radix `Dialog` kit already used elsewhere in this
+  app) collecting `To` + `Subject`. On submit, starts the conversation and
+  hands control back to `ConversationsClient`, which switches to the new
+  thread — the actual message body, and the **exact same Part 2 voice-note
+  record → transcribe → review → send flow**, is composed through the
+  existing `ConversationThread`/`MessageInput` UI, unmodified.
+- **Entry point:** a "New email" pencil-icon button in
+  `ConversationList.tsx`'s search bar, rendered **only when the Email channel
+  tab is active** (`filter === 'email'`) — matching the standing decision that
+  this is an email-specific action, not a hub-wide one.
+- **Subject threading:** `ConversationsClient` stashes `{conversationId,
+  subject}` in `pendingComposeSubject` state; `handleSend()` applies it to
+  exactly the first send into that conversation, then clears it.
+  `sendMessage()` gained an optional 6th `subject` parameter (stored on the
+  message row and used as the real `Subject:` line for both the plain-text
+  and voice-note email send paths, replacing their previously hardcoded
+  subjects) — `MessageInput.tsx` and `ConversationThread.tsx` needed **zero**
+  changes.
+- **`voiceNoteEmail.ts` / `inboundEmailProcessing.ts`** updated to read/write
+  the new dedicated `messages.subject` column instead of the ad hoc
+  `metadata.subject` the inbound path used before (nothing read that key —
+  confirmed via search before removing it).
+
+**Tests:** `contactConversation.test.ts` (7 — existing-contact reuse, email
+normalization, default name, DB-error surfacing for both contact and
+conversation creation) + `composeEmail.test.ts` (5 — valid/invalid address,
+error propagation, reuse-vs-create). 330 total tests green (32→34 files,
++12), `tsc` clean, `next lint` clean on every touched file.
+
+**Not done / caveats (consistent with every other part of this build):**
+1. **No live click-through test** — no running app/browser here to actually
+   click "New email," submit the modal, and watch the conversation appear.
+   Verified by code trace + unit tests on the two new server-side pieces.
+2. **The brief "Select a thread" blip** after starting a conversation (until
+   `router.refresh()` lands the new row from the server) is a known, accepted
+   UX cost — consistent with how every other send in this app already
+   round-trips through a full refresh rather than a fully optimistic local
+   insert.
+3. **No de-duplication UI** if an agent composes to an address that already
+   has an open conversation — it silently reuses the existing thread (correct
+   behavior, verified by test), but nothing tells the agent "you already have
+   a conversation with this person" before they submit.
+4. **Subject is not used for any reply threading** (`In-Reply-To`/
+   `References`) — per the standing decision from Part 1's audit, real
+   RFC 5322 threading was never in scope for this build.

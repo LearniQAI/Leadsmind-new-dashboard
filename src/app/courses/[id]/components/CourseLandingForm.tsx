@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { Loader2, Save, ImagePlus, UserRound, Eye } from "lucide-react";
+import { Loader2, Save, ImagePlus, UserRound, Eye, Copy, Check, ExternalLink } from "lucide-react";
 import { updateCourseLandingSettings, updateCourseSlug } from "@/app/actions/courseLanding";
 import { sanitizeSlug } from "@/lib/slug";
 import { createClient } from "@/lib/supabase/client";
@@ -72,6 +72,7 @@ export default function CourseLandingForm({ course, onSaved }: CourseLandingForm
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [urlCopied, setUrlCopied] = useState(false);
 
   const [title, setTitle] = useState(course.title || "");
   const [slug, setSlug] = useState(course.slug || "");
@@ -221,8 +222,75 @@ export default function CourseLandingForm({ course, onSaved }: CourseLandingForm
     }
   };
 
+  // Real public URL for the live description page (src/middleware.ts rewrites
+  // leadsmind.io/courses/{slug} -> /unauthenticated/courses/{slug}). Falls back to the
+  // browser's own origin so this is correct in every environment (local/staging/prod)
+  // without needing NEXT_PUBLIC_APP_URL to be kept in sync everywhere.
+  const siteOrigin =
+    (process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "")).replace(
+      /\/$/,
+      ""
+    );
+  const publicUrl = slug ? `${siteOrigin}/courses/${slug}` : "";
+
+  const handleCopyUrl = async () => {
+    if (!publicUrl) return;
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      setUrlCopied(true);
+      toast.success("Link copied");
+      setTimeout(() => setUrlCopied(false), 1500);
+    } catch {
+      toast.error("Couldn't copy — select and copy the link manually.");
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Public description page URL — real, live link a course owner shares with students.
+          Shown up top so it's the first thing found on this tab, not buried in the form. */}
+      <div className="space-y-1.5 rounded-xl border border-dash-border bg-dash-surface p-3">
+        <label htmlFor="lp-public-url" className="block text-[11px] font-semibold uppercase tracking-wide text-dash-textMuted">
+          Public description page
+        </label>
+        <div className="flex items-center gap-2">
+          <input
+            id="lp-public-url"
+            readOnly
+            value={publicUrl || "Set a URL slug below to get a shareable link"}
+            onFocus={(e) => e.currentTarget.select()}
+            className="min-w-0 flex-1 truncate rounded-lg border border-dash-border bg-white px-3 py-2 font-mono text-[12px] text-dash-text outline-none focus:border-dash-accent"
+          />
+          <GhostButton
+            type="button"
+            onClick={handleCopyUrl}
+            disabled={!publicUrl}
+            className="h-9 shrink-0 px-3 text-[12px]"
+          >
+            {urlCopied ? (
+              <>
+                <Check className="text-emerald-600" /> Copied
+              </>
+            ) : (
+              <>
+                <Copy /> Copy
+              </>
+            )}
+          </GhostButton>
+          {publicUrl && (
+            <a
+              href={publicUrl}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Open the public description page in a new tab"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-dash-border text-dash-textMuted transition-colors hover:bg-white hover:text-dash-text"
+            >
+              <ExternalLink size={14} />
+            </a>
+          )}
+        </div>
+      </div>
+
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1.5">
           <div className="text-[12px] font-bold uppercase tracking-[0.16em] text-sky-600">
@@ -238,9 +306,6 @@ export default function CourseLandingForm({ course, onSaved }: CourseLandingForm
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="hidden rounded-lg border border-dash-border bg-dash-surface px-3 py-2 font-mono text-[11px] text-dash-textMuted sm:inline-block">
-            {slug ? `/courses/${slug}` : "no slug yet"}
-          </span>
           <PrimaryButton type="button" onClick={handleSave} loading={isSaving}>
             {isSaving ? "Saving…" : (
               <>

@@ -248,6 +248,11 @@ export async function sendMessage(
   audioUrl?: string,
   transcript?: string,
   clientMessageUuid?: string,
+  /** Compose gap fix — a real, display-only email subject (Step 0 decision:
+   *  separate from conversation grouping, which stays contact-based). Only
+   *  meaningful for a fresh email send; ignored for every other channel and
+   *  for a failed-row retry (which keeps its original subject). */
+  subject?: string,
 ) {
   const ids = await resolveConversationIds(conversationId);
   const targetConvId = ids[0] || conversationId;
@@ -321,6 +326,7 @@ export async function sendMessage(
         audio_url: audioUrl || null,
         status: 'sending',
         client_message_uuid: clientMessageUuid || null,
+        subject: subject || null,
         metadata: baseMetadata,
       })
       .select()
@@ -367,12 +373,18 @@ export async function sendMessage(
     // (shouldn't happen; workspaces.slug is NOT NULL) just skips the header
     // rather than failing the send.
     let replyTo: string | undefined;
+    let workspaceName = 'LeadsMind';
     try {
-      const { data: wsRow } = await supabase.from('workspaces').select('slug').eq('id', workspaceId).maybeSingle();
+      const { data: wsRow } = await supabase.from('workspaces').select('slug, name').eq('id', workspaceId).maybeSingle();
       if (wsRow?.slug) replyTo = workspaceInboundAddress(wsRow.slug);
+      if (wsRow?.name) workspaceName = wsRow.name;
     } catch (slugErr) {
       logger.error({ err: slugErr, workspaceId }, 'messaging.email.reply_to_lookup.failed');
     }
+    // Compose gap fix: a real agent-typed subject (Step 0 decision — display-
+    // only, doesn't touch conversation grouping). Falls back to a sensible
+    // default for a reply where no subject was carried through.
+    const emailSubject = subject?.trim() || `New message from ${workspaceName}`;
 
     try {
      if (audioUrl) {
@@ -403,7 +415,8 @@ export async function sendMessage(
             audioUrl,
             audioDuration: undefined,
             message: content || undefined,
-            replyTo
+            replyTo,
+            subject: subject?.trim() || undefined
           });
         } catch (emailErr) {
           logger.error({ err: emailErr, workspaceId, conversationId: targetConvId }, 'messaging.voice_note_email.send.failed');
@@ -411,7 +424,7 @@ export async function sendMessage(
       } else {
        await sendEmail({
         to: contact.email,
-        subject: 'New message from LeadsMind Support',
+        subject: emailSubject,
         text: content,
         config: replyTo ? { headers: { 'Reply-To': replyTo } } : undefined,
        });

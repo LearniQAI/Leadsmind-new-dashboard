@@ -3,7 +3,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { format, isToday, isYesterday } from 'date-fns';
-import { Search, MessagesSquare } from 'lucide-react';
+import { Search, MessagesSquare, SquarePen } from 'lucide-react';
 import { DashEmptyState } from '@/components/dashboard-ui/EmptyState';
 import { getPlatformMeta, PlatformBadge, type ConversationPlatform } from './platformMeta';
 
@@ -18,6 +18,10 @@ interface ConversationListProps {
   assigneeFilter: string;
   onAssigneeFilterChange: (filter: string) => void;
   activeChannels?: string[];
+  /** Only meaningful for the email channel — Instagram/Messenger/WhatsApp
+   *  don't support cold-messaging a stranger the way email does, so there is
+   *  no equivalent "start fresh" action for them. */
+  onComposeEmail?: () => void;
 }
 
 function formatThreadTimestamp(dateStr: string) {
@@ -38,6 +42,7 @@ export function ConversationList({
   assigneeFilter,
   onAssigneeFilterChange,
   activeChannels = [],
+  onComposeEmail,
 }: ConversationListProps) {
   const channelTabs = [
     { id: 'all', label: 'All' },
@@ -48,16 +53,29 @@ export function ConversationList({
     <div className="w-full border-r border-[#EFEFEF] flex flex-col bg-white h-full shrink-0">
       {/* Header & Tabs */}
       <div className="px-4 pt-4 pb-2 space-y-3">
-        {/* Search — pill, no border */}
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[15px] h-[15px] text-[#8E8E8E]" />
-          <input
-            type="text"
-            placeholder="Search"
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full bg-[#EFEFEF] border-none rounded-full pl-10 pr-4 py-2 text-[14px] text-black placeholder:text-[#8E8E8E] focus:outline-none focus:ring-1 focus:ring-black/10 transition-all motion-reduce:transition-none"
-          />
+        {/* Search — pill, no border. Compose is email-only: Instagram/
+            Messenger/WhatsApp don't support cold-messaging a stranger the
+            way email does, so there's no equivalent action for them. */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[15px] h-[15px] text-[#8E8E8E]" />
+            <input
+              type="text"
+              placeholder="Search"
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="w-full bg-[#EFEFEF] border-none rounded-full pl-10 pr-4 py-2 text-[14px] text-black placeholder:text-[#8E8E8E] focus:outline-none focus:ring-1 focus:ring-black/10 transition-all motion-reduce:transition-none"
+            />
+          </div>
+          {filter === 'email' && onComposeEmail && (
+            <button
+              onClick={onComposeEmail}
+              title="New email"
+              className="shrink-0 w-9 h-9 rounded-full bg-black hover:bg-black/85 text-white flex items-center justify-center transition-colors motion-reduce:transition-none"
+            >
+              <SquarePen className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Channel tabs — text-forward, Instagram tab-bar style */}

@@ -31,6 +31,10 @@ interface SendVoiceNoteEmailProps {
    *  Part 1) — without it, a recipient reply goes to the generic send-from
    *  address instead of back into this workspace's inbox. */
   replyTo?: string;
+  /** Real agent-typed subject (Compose gap fix). Falls back to the original
+   *  "Voice note from {sender}" default when not provided (e.g. a voice-note
+   *  reply in an existing thread). */
+  subject?: string;
 }
 
 function escapeHtml(s: string): string {
@@ -103,7 +107,8 @@ export async function sendVoiceNoteEmail({
   audioUrl,
   audioDuration,
   message,
-  replyTo
+  replyTo,
+  subject
 }: SendVoiceNoteEmailProps) {
   const supabase = createAdminClient();
 
@@ -259,7 +264,7 @@ export async function sendVoiceNoteEmail({
 
   return sendEmail({
     to: toEmail,
-    subject: `Voice note from ${fullName}`,
+    subject: subject?.trim() || `Voice note from ${fullName}`,
     html: htmlContent,
     config: Object.keys(mergedConfig).length > 0 ? mergedConfig : undefined
   });
