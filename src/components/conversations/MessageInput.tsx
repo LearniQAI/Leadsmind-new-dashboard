@@ -4,8 +4,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { getQuickReplies, createQuickReply } from '@/app/actions/messaging';
+import { transcribeVoiceNoteForEmail } from '@/app/actions/voiceTranscription';
 import { toast } from 'sonner';
-import { Mic, Trash2, Check, Loader2, History, Zap, Send, Lock, Smile } from 'lucide-react';
+import { Mic, Trash2, Check, Loader2, History, Zap, Send, Lock, Smile, Pencil, X } from 'lucide-react';
 import { getPlatformMeta } from './platformMeta';
 
 interface MessageInputProps {
@@ -101,6 +102,12 @@ export function MessageInput({
   const [transcriptText, setTranscriptText] = useState("");
   const [audioLevels, setAudioLevels] = useState<number[]>(new Array(16).fill(12));
   const [isUploading, setIsUploading] = useState(false);
+  // Email Channel Part 2 — a voice note composed for the email channel gets a
+  // real, reviewable transcript instead of auto-sending (PRD 4.3: transcripts
+  // are "rarely perfect first pass" and must be agent-editable before send).
+  // Other channels keep today's auto-send-on-stop behavior unchanged.
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [voiceReview, setVoiceReview] = useState<{ audioUrl: string; transcript: string; warning?: string } | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -187,6 +194,28 @@ export function MessageInput({
 
             const audioUrl = uploadData.url;
             const transcript = transcriptRef.current || '';
+
+            if (selectedPlatform === 'email') {
+              setIsUploading(false);
+              setIsTranscribing(true);
+              try {
+                const result = await transcribeVoiceNoteForEmail({ audioUrl, clientTranscript: transcript });
+                if ('error' in result) {
+                  toast.error(result.error);
+                  // Don't strand the recording behind a dead end — fall back to
+                  // the same auto-send other channels use, with whatever
+                  // on-device transcript exists.
+                  onSend(transcript || 'Voice note', false, audioUrl, transcript, getComposeUuid());
+                  composeUuidRef.current = null;
+                } else {
+                  if (result.warning) toast(result.warning);
+                  setVoiceReview({ audioUrl, transcript: result.transcript, warning: result.warning });
+                }
+              } finally {
+                setIsTranscribing(false);
+              }
+              return;
+            }
 
             onSend(transcript || 'Voice note', false, audioUrl, transcript, getComposeUuid());
             composeUuidRef.current = null;
@@ -506,7 +535,63 @@ export function MessageInput({
         )}
       </div>
 
-      {isUploading ? (
+      {voiceReview ? (
+        <div className="rounded-2xl border border-[#EFEFEF] bg-[#FAFAFA] p-3.5 space-y-2.5 animate-in fade-in slide-in-from-bottom-2 motion-reduce:animate-none">
+          <div className="flex items-center justify-between">
+            <span className="text-[10.5px] font-semibold text-[#8E8E8E] uppercase tracking-wide flex items-center gap-1.5">
+              <Pencil className="w-3 h-3" />
+              Review transcript before sending
+            </span>
+            <button
+              type="button"
+              onClick={() => setVoiceReview(null)}
+              className="w-6 h-6 rounded-full flex items-center justify-center text-[#8E8E8E] hover:text-black hover:bg-[#EFEFEF] transition-colors motion-reduce:transition-none"
+              title="Discard voice note"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <audio src={voiceReview.audioUrl} controls className="w-full h-9" />
+          <textarea
+            value={voiceReview.transcript}
+            onChange={(e) => setVoiceReview((v) => (v ? { ...v, transcript: e.target.value } : v))}
+            placeholder="Edit the transcribed text before sending..."
+            className="w-full bg-white border border-[#EFEFEF] rounded-xl px-3 py-2 text-[13.5px] text-black resize-none min-h-[80px] focus:outline-none focus:ring-1 focus:ring-black/10"
+          />
+          {voiceReview.warning && (
+            <p className="text-[11px] text-[#B45309]">{voiceReview.warning}</p>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setVoiceReview(null)}
+              className="h-8 px-3 text-[11.5px] font-semibold text-[#8E8E8E] hover:text-black"
+            >
+              Discard
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                if (!voiceReview) return;
+                const finalText = voiceReview.transcript.trim() || 'Voice note';
+                onSend(finalText, false, voiceReview.audioUrl, finalText, getComposeUuid());
+                composeUuidRef.current = null;
+                setVoiceReview(null);
+                toast.success('Voice note email sent!');
+              }}
+              className="h-8 px-4 text-[11.5px] font-semibold bg-black hover:bg-black/85 text-white rounded-full"
+            >
+              Send email
+            </Button>
+          </div>
+        </div>
+      ) : isTranscribing ? (
+        <div className="flex items-center justify-center gap-2 py-4 text-sm text-[#8E8E8E]">
+          <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" />
+          <span>Transcribing voice note...</span>
+        </div>
+      ) : isUploading ? (
         <div className="flex items-center justify-center gap-2 py-4 text-sm text-[#8E8E8E]">
           <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" />
           <span>Uploading voice note...</span>

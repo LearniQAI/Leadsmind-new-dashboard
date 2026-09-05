@@ -6,6 +6,33 @@ The Email ↔ SMS Bridge is a bidirectional relay that allows seamless communica
 1. **Inbound Email:** Customers send emails to a designated `sms.leadsmind.io` proxy address. Resend catches the email and forwards it to our Vercel Webhook. We parse the email, strip signatures, and use Twilio to text the user.
 2. **Outbound SMS (Reply):** The user receives the text and replies directly from their native SMS app. Twilio catches the reply and forwards it to our Twilio Webhook. We look up the original email sender in the CRM and use Resend to send an outbound email reply back to the customer.
 
+## Email Channel inbound (shares this same webhook)
+
+`/api/webhooks/resend/inbound` also powers the Communications Hub's Email
+channel (Email Channel Part 1, 2026-09-04) — an unrelated feature sharing only
+the webhook endpoint and its signature-verification/dead-lettering machinery.
+Before the phone-address branch above even runs, the handler checks whether
+the recipient address matches `{workspace-slug}@INBOUND_EMAIL_DOMAIN`
+(default `inbox.leadsmind.io`, see `src/lib/email/inboundAddress.ts`). If it
+matches, the email becomes a real `platform:'email'` conversation/message for
+that workspace (grouped **by contact**, matching every other channel — not by
+subject, a deliberate decision) instead of being routed to the SMS bridge.
+
+This needs its own, separate real DNS/ops step, exactly like the
+`sms.leadsmind.io` setup above:
+- **`INBOUND_EMAIL_DOMAIN`** env var (optional, defaults to
+  `inbox.leadsmind.io`) — the domain workspaces' contacts reply to.
+- **MX records** for that domain must point at Resend's inbound servers (same
+  as `sms.leadsmind.io`).
+- The **same** Resend `email.received` webhook (already configured for the
+  SMS bridge) covers both — no second webhook subscription needed, since both
+  paths live in one handler.
+- Outbound emails sent from the Communications Hub (`sendMessage()`'s email
+  branch, and `sendVoiceNoteEmail()`) set a `Reply-To` header to the sending
+  workspace's `{slug}@INBOUND_EMAIL_DOMAIN` address so a recipient's reply
+  actually reaches this inbound path rather than the workspace's own
+  `from_email` (which typically isn't a monitored inbox).
+
 ## Environment Variables Required
 The following environment variables MUST be present in the Vercel production environment:
 
