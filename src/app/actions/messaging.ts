@@ -371,11 +371,13 @@ export async function sendMessage(
   if (conv?.platform === 'email') {
    const contact = Array.isArray(conv.contacts) ? conv.contacts[0] : conv.contacts;
    if (contact?.email) {
-    // Email Channel Part 1: a Reply-To on this workspace's inbound receiving
-    // address so a recipient's reply lands back in this conversation instead
-    // of at the generic send-from address. Best-effort — a missing slug
-    // (shouldn't happen; workspaces.slug is NOT NULL) just skips the header
-    // rather than failing the send.
+    // Email Channel: a Reply-To on this workspace's inbound receiving address
+    // so a recipient's reply lands back in this conversation instead of at the
+    // generic no-reply `From`. Must be passed as sendEmail's dedicated
+    // `replyTo` param — Resend ignores a `Reply-To` key set via `headers`,
+    // which is why replies were previously bouncing to noreply@leadsmind.io.
+    // Best-effort — a missing slug (shouldn't happen; workspaces.slug is
+    // NOT NULL) just skips it rather than failing the send.
     let replyTo: string | undefined;
     let workspaceName = 'LeadsMind';
     try {
@@ -385,6 +387,7 @@ export async function sendMessage(
     } catch (slugErr) {
       logger.error({ err: slugErr, workspaceId }, 'messaging.email.reply_to_lookup.failed');
     }
+    logger.info({ workspaceId, conversationId: targetConvId, replyTo: replyTo || null, hasAudio: !!audioUrl }, 'messaging.email.dispatch');
     // Compose gap fix: a real agent-typed subject (Step 0 decision — display-
     // only, doesn't touch conversation grouping). Falls back to a sensible
     // default for a reply where no subject was carried through.
@@ -430,7 +433,7 @@ export async function sendMessage(
         to: contact.email,
         subject: emailSubject,
         text: content,
-        config: replyTo ? { headers: { 'Reply-To': replyTo } } : undefined,
+        replyTo,
        });
      }
     await supabase.from('messages').update({ status: 'delivered' }).eq("id", msgData.id).eq("workspace_id", workspaceId);

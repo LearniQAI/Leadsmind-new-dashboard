@@ -16,10 +16,12 @@ describe('transcribeAudioWithAssemblyAI', () => {
     vi.useRealTimers();
   });
 
-  it('returns a sandbox-safe mock transcript when no API key is configured (no network call)', async () => {
+  it('FAILS (no placeholder) when no API key is configured, and makes no network call', async () => {
     delete process.env.ASSEMBLYAI_API_KEY;
     const res = await transcribeAudioWithAssemblyAI('https://x/audio.webm');
-    expect(res).toMatchObject({ success: true, usedMock: true });
+    expect(res.success).toBe(false);
+    expect(res.error).toMatch(/not configured/i);
+    expect(res.transcript).toBeUndefined();
     expect(global.fetch).not.toHaveBeenCalled();
   });
 

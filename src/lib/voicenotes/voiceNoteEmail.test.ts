@@ -118,7 +118,7 @@ describe('sendVoiceNoteEmail — waveform template (Email Channel Part 3)', () =
     expect(state.updates[0].metadata.voice_playback_snapshot).toMatchObject({ sender_name: 'Jane Doe', workspace_name: 'World Teachers Academy' });
   });
 
-  it('sets a Reply-To header when provided (Email Channel Part 1 wiring)', async () => {
+  it('passes Reply-To via sendEmail\'s dedicated `replyTo` param, NOT config.headers (Resend drops a headers Reply-To)', async () => {
     await sendVoiceNoteEmail({
       workspaceId: 'ws-1',
       messageId: 'msg-1',
@@ -127,6 +127,7 @@ describe('sendVoiceNoteEmail — waveform template (Email Channel Part 3)', () =
       audioUrl: 'https://cdn.example.com/note.webm',
       replyTo: 'world-teachers-academy@inbox.leadsmind.io',
     });
-    expect(state.sendEmailCalls[0].config.headers['Reply-To']).toBe('world-teachers-academy@inbox.leadsmind.io');
+    expect(state.sendEmailCalls[0].replyTo).toBe('world-teachers-academy@inbox.leadsmind.io');
+    expect(state.sendEmailCalls[0].config?.headers).toBeUndefined();
   });
 });

@@ -281,6 +281,7 @@ export default function CourseCohortsTab({ course, onSaved }: Props) {
           cohortId={rosterCohort.id}
           cohortName={rosterCohort.name}
           onClose={() => setRosterCohort(null)}
+          onRosterChanged={load}
         />
       )}
     </SettingsPanel>

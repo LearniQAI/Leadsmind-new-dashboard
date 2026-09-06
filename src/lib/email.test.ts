@@ -50,6 +50,31 @@ describe('sendEmail', () => {
       .rejects.toThrow('Network unavailable');
   });
 
+  it('maps the `replyTo` param to Resend\'s dedicated replyTo field (NOT a headers Reply-To, which Resend drops)', async () => {
+    process.env.RESEND_API_KEY = 're_valid_test_key';
+    resendSend.mockResolvedValue({ data: { id: 'x' }, error: null });
+
+    await sendEmail({
+      to: 'recipient@example.com',
+      subject: 'Test',
+      text: 'Test',
+      replyTo: 'acme@inbox.leadsmind.io',
+    });
+
+    expect(resendSend).toHaveBeenCalledWith(
+      expect.objectContaining({ replyTo: 'acme@inbox.leadsmind.io' }),
+    );
+  });
+
+  it('omits replyTo entirely when not provided', async () => {
+    process.env.RESEND_API_KEY = 're_valid_test_key';
+    resendSend.mockResolvedValue({ data: { id: 'x' }, error: null });
+
+    await sendEmail({ to: 'recipient@example.com', subject: 'Test', text: 'Test' });
+
+    expect(resendSend.mock.calls[0][0].replyTo).toBeUndefined();
+  });
+
   afterAll(() => {
     if (originalApiKey === undefined) delete process.env.RESEND_API_KEY;
     else process.env.RESEND_API_KEY = originalApiKey;

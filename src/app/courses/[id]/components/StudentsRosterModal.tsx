@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { X, Loader2, Trash2, Users } from "lucide-react";
+import { X, Loader2, Trash2, Users, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { isReleasedStatus } from "@/lib/lms/cohorts";
 import { Avatar, StatusPill, EmptyState } from "./settings/primitives";
+import AddStudentModal from "./AddStudentModal";
 
 interface Enrollment {
   id: string;
@@ -22,9 +23,13 @@ interface StudentsRosterModalProps {
   /** Cohorts, Part 1: when set, the roster is scoped to one cohort's enrolments. */
   cohortId?: string;
   cohortName?: string;
+  /** Notifies the caller (e.g. CourseCohortsTab) that an enrolment was added/removed here, so
+   *  its own cohort list — which carries its own separately-fetched seat counts — can
+   *  refresh instead of showing a stale "seats_taken" until the tab is next reloaded. */
+  onRosterChanged?: () => void;
 }
 
-export default function StudentsRosterModal({ courseId, onClose, cohortId, cohortName }: StudentsRosterModalProps) {
+export default function StudentsRosterModal({ courseId, onClose, cohortId, cohortName, onRosterChanged }: StudentsRosterModalProps) {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -32,6 +37,10 @@ export default function StudentsRosterModal({ courseId, onClose, cohortId, cohor
   // (cancelled / rejected / revoked / expired / inactive) — the same rows the cohort
   // seat-cap trigger already ignores, so the count here matches the seats actually held.
   const [showCancelled, setShowCancelled] = useState(false);
+  // Closes the exact gap reported: opening a cohort's roster and finding it empty with no
+  // way to actually enrol someone into that cohort from here — "Add a student" previously
+  // only existed as a course-wide, cohort-unaware panel elsewhere.
+  const [isAddOpen, setIsAddOpen] = useState(false);
 
   const cancelledCount = useMemo(
     () => enrollments.filter((e) => isReleasedStatus(e.status)).length,
@@ -71,6 +80,7 @@ export default function StudentsRosterModal({ courseId, onClose, cohortId, cohor
       else {
         toast.success("Enrollment removed.");
         setEnrollments((prev) => prev.filter((e) => e.id !== enrollmentId));
+        onRosterChanged?.();
       }
     } catch {
       toast.error("Failed to remove enrollment");
@@ -110,13 +120,22 @@ export default function StudentsRosterModal({ courseId, onClose, cohortId, cohor
               </button>
             )}
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="-mr-1 -mt-1 rounded-lg p-1.5 text-dash-textMuted transition-colors hover:bg-dash-surface hover:text-dash-text"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setIsAddOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-dash-border px-2.5 py-1.5 text-[11px] font-semibold text-dash-textMuted transition-colors hover:text-dash-text"
+            >
+              <UserPlus className="size-3.5" /> Add student
+            </button>
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="-mr-1 -mt-1 rounded-lg p-1.5 text-dash-textMuted transition-colors hover:bg-dash-surface hover:text-dash-text"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Body */}
@@ -132,7 +151,7 @@ export default function StudentsRosterModal({ courseId, onClose, cohortId, cohor
               description={
                 cancelledCount > 0
                   ? "Every enrolment here has been cancelled. Use “Show cancelled” to see them."
-                  : "Enrol someone from the Add a student panel and they’ll show up here."
+                  : "Use “Add student” above to enrol someone — they’ll show up here."
               }
             />
           ) : (
@@ -176,6 +195,19 @@ export default function StudentsRosterModal({ courseId, onClose, cohortId, cohor
           )}
         </div>
       </div>
+
+      {isAddOpen && (
+        <AddStudentModal
+          courseId={courseId}
+          cohortId={cohortId}
+          cohortName={cohortName}
+          onClose={() => setIsAddOpen(false)}
+          onEnrolled={() => {
+            load();
+            onRosterChanged?.();
+          }}
+        />
+      )}
     </div>
   );
 }

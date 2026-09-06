@@ -232,3 +232,237 @@ tests green (36 files, +13), `tsc` clean, `next lint` clean.
 3. **SMS's "Connect" path is a generic `/settings` link**, not a deep link to
    the specific Twilio configuration tab — this project has no URL-addressable
    settings-tab convention to link to more precisely.
+
+---
+
+## 2026-09-05 — UI bug fix + redesign: Compose modal backdrop bleed-through
+
+**Bug (reported with a screenshot):** the "New email" modal's panel was
+visibly translucent — the blurred page behind it (workspace owner name/avatar)
+showed straight through the top of the dialog, overlapping the "New email"
+title.
+
+**Root cause confirmed:** `ComposeEmailModal` used the shared
+`DialogContent` from `src/components/ui/dialog.tsx` with no background
+override. That shared component's default class includes `bg-background`, a
+Tailwind/shadcn CSS variable — and this app's `globals.css` defines
+`--background: var(--n900)`, a dark, non-opaque theme token from the original
+admin-dashboard template, never intended for a light Instagram-style surface
+like the Communications Hub. Confirmed this is a known, already-worked-around
+issue: every other real consumer of this same shared dialog
+(`DealModal.tsx`, `TagsClient.tsx`, `CreateTaskModal.tsx`, and 20+ others)
+already overrides the background explicitly (`bg-white` or a specific dark
+color) in its own `className` — `ComposeEmailModal` was the one place that
+had been missed. Fixed at the point of use (`bg-white` + explicit `z-[1001]`,
+matching the established per-consumer convention), not in the shared
+primitive — changing the shared default would have risked visual regressions
+across the 20+ other real screens that depend on its current behavior, which
+this pass had no way to visually verify.
+
+**Redesign (asked for alongside the fix):** rebuilt the modal's visual
+language to match the Communications Hub's own aesthetic more deliberately
+(instead of generic default Dialog styling):
+- Icon-in-circle header (brand-blue `Mail` icon, matching `platformMeta`'s
+  email color) + title + a one-line subtitle explaining Compose needs no
+  connection.
+- Both fields got a leading icon (`Mail` / `PenLine`), larger `rounded-2xl`
+  inputs, and a proper focus state (ring + border + background lightening).
+- Inline validation — an invalid address now shows a real error message under
+  the field instead of only a toast, and clears as soon as the agent edits it.
+- A proper two-button footer (ghost "Cancel" + a black pill "Start
+  conversation" with a loading spinner while submitting and a disabled/greyed
+  state until a value is typed), replacing the single lone button.
+- The existing helper note ("You'll write the message... in the thread once
+  it's created") got an icon and its own subtly bordered card instead of
+  being a bare paragraph.
+
+**Tests:** `ComposeEmailModal.test.tsx` (4, new — **the first Radix-Dialog
+render test in this codebase**: uses a per-file `// @vitest-environment
+jsdom` override + `@testing-library/react`'s `render`/`fireEvent`, since
+Radix's Dialog portals into `document.body` and the project's default vitest
+environment is `node`; `jsdom` was already present as a transitive dependency
+and RTL was already wired in `src/test/setup.ts`, just unused elsewhere).
+Covers: the panel actually has `bg-white` and never `bg-background` (locks in
+the fix so this can't silently regress), the header/fields/buttons all
+render, inline validation blocks an invalid submit without calling
+`onStarted`, and the dialog renders nothing when closed. 347 total tests
+green (37 files, +4), `tsc` clean, `next lint` clean.
+
+**Not done / caveats:**
+1. **No live browser screenshot taken** to visually confirm the fixed modal
+   against the original bug report — verified by a real jsdom-rendered DOM
+   assertion on the actual CSS class (`bg-white`, not `bg-background`), which
+   is a genuine assertion on the fix, not a screenshot comparison.
+2. **The shared `dialog.tsx` primitive itself was left unchanged** — the
+   dark `bg-background` default still exists for any *future* consumer who
+   forgets to override it. Worth a follow-up to change the shared default
+   itself (or add a lint rule) so this class of bug can't recur elsewhere;
+   not done here since it would touch 20+ real screens without a way to
+   visually verify each one in this environment.
+
+---
+
+## 2026-09-06 — Two production bugs from a live manual test (Reply-To bounce + placeholder transcript)
+
+A live manual test (Hub → real Gmail → native Reply) surfaced two separate,
+confirmed bugs. Both got a **code fix**, but neither can be reported as fully
+fixed from this environment — there is no browser, deployed app, mail account,
+or deploy capability here to re-run the live send/reply test the prompt
+(correctly) requires.
+
+### Bug A — replies bounce to `noreply@leadsmind.io`
+
+**Root cause (code), confirmed:** `sendEmail()` (`src/lib/email.ts`) never
+passed a Reply-To to Resend at all. The Hub email path
+(`messaging.ts` email branch + `sendVoiceNoteEmail`) set it as
+`config.headers['Reply-To']` — but **Resend ignores a `Reply-To` key inside
+the generic `headers` object**; its SDK only maps a dedicated top-level
+`replyTo` field to the RFC `Reply-To:` header (verified in
+`node_modules/resend/dist/index.mjs`: `reply_to: email.replyTo`). So no
+Reply-To header was ever emitted, and Gmail's native Reply went to the
+`From` no-reply address → `550 5.1.1 User unknown`.
+
+**Fixed (code):**
+- `sendEmail()` gained a first-class `replyTo?: string | string[]` param that
+  maps to Resend's `replyTo`. A `Reply-To` in `config.headers` is no longer
+  the mechanism anywhere.
+- `messaging.ts` email branch and `sendVoiceNoteEmail()` now pass `replyTo`
+  through that param (was `config.headers`). A `messaging.email.dispatch` log
+  line now records the exact Reply-To used, so a live test's logs confirm it.
+- Tests: `email.test.ts` (+2 — `replyTo` reaches Resend's field; omitted when
+  absent), `voiceNoteEmail.test.ts` (updated — asserts `replyTo` param, not
+  `config.headers`).
+
+**NOT fixed — required ops step, cannot be done from here:** even with a
+correct `Reply-To: {slug}@inbox.leadsmind.io`, that domain does **not receive
+mail in production**. Per this same build log (Part 1 section), MX records for
+`INBOUND_EMAIL_DOMAIN` (`inbox.leadsmind.io`) pointing at Resend's inbound
+servers, plus a Resend inbound subscription for that domain routed to
+`/api/webhooks/resend/inbound`, were flagged as required and **never done**.
+The prompt's premise that "DNS/MX ... was confirmed live before" does not
+match this record. Until that ops step is completed, the code fix only
+changes the bounce address from `noreply@leadsmind.io` to
+`{slug}@inbox.leadsmind.io` — the reply still bounces. The inbound webhook
+*route* code is ready and already handles this address shape.
+
+**Sibling-send audit (Bug A, prompt Step 1.5):** ~60 `sendEmail()` call sites.
+All the transactional ones (magic links, reminders, KYC, payroll, affiliate,
+certificate/access-link, courier, etc.) set no Reply-To — which is correct
+and intentional for no-reply mail. The only two-way senders are the Hub email
+channel (fixed) and the `send_email` automation action /
+`EmailAutomationService` (workspace → contact automated emails) — those also
+send no Reply-To. **Deliberately deferred**: whether an automation email
+should thread replies back into a conversation is a separate product question
+and a different code path from the reported bug; left for its own prompt.
+
+### Bug B — placeholder transcript shipped as real message content
+
+**Root cause, confirmed:** with `ASSEMBLYAI_API_KEY` unset,
+`transcribeAudioWithAssemblyAI()` returned `{ success: true, usedMock: true,
+transcript: "This is a placeholder transcript — ASSEMBLYAI_API_KEY is not
+configured in this environment." }`. `transcribeVoiceNoteForEmail()` passed
+that straight through with no warning; `MessageInput`'s review panel showed it
+as normal editable text; on send it became the real message body + email
+content. The "sandbox-safe mock" was meant for local/CI, but in a real
+deployment with a missing key it shipped debug text to a real contact.
+
+**Fixed (code):**
+- `transcribeAudioWithAssemblyAI()`: missing key → `{ success: false, error }`
+  (no placeholder). `usedMock` removed from the type entirely.
+- `transcribeVoiceNoteForEmail()`: any AssemblyAI failure / missing key →
+  **hard block** `{ error: "Transcription failed — the voice note was not
+  sent…" }`. The one remaining soft-degrade is **AI-credits-exhausted** →
+  the genuine on-device Web Speech transcript + an explicit warning banner
+  (real content the agent reviews, an expected limit, not a
+  misconfiguration).
+- `MessageInput.tsx`: on `{ error }` it now shows the error toast and **does
+  not send** — the recording is discarded, the agent re-records or types.
+  (Previously it fell back to auto-sending "Voice note" / the rough on-device
+  text.)
+- Tests: `transcribeAudio.test.ts` (updated — no-key now asserts
+  `{ success: false }`, no network call), `voiceTranscription.test.ts`
+  (updated — failure path asserts hard block with no transcript;
+  credits-exhausted path unchanged).
+
+### Verification status
+
+`tsc` clean. Full `vitest` suite green (see session). **Neither bug is
+reported "fixed"** — the prompt requires a real live send/reply +
+missing-key voice-note test in the same session, which this environment
+cannot perform. What's verified: the code paths, by unit tests and trace.
+What's outstanding: the live test, and (Bug A) the `inbox.leadsmind.io`
+MX/Resend-inbound ops step without which replies keep bouncing regardless of
+the code fix.
+
+---
+
+## 2026-09-06 — 3-4s delay before a sent message appears (all 5 channels)
+
+**Reported:** ~3-4s between clicking Send and the bubble appearing, observed on
+Email, to be fixed across WhatsApp / Instagram / Email / SMS / Messenger.
+
+### Audit — real per-channel behaviour (code inspection)
+
+**All 5 channels share ONE send path**, so the bug and the fix are uniform:
+`MessageInput` → `ConversationThread.onSendMessage` → `ConversationsClient.handleSend`
+→ `sendMessage()` server action.
+
+- **No channel does optimistic rendering.** `handleSend` `await`s the *entire*
+  `sendMessage()` server action — which includes the real provider call: a
+  Graph API `POST` (10s AbortController timeout) for Instagram/Messenger/
+  WhatsApp; Resend for Email; the Resend→Twilio bridge for SMS — and only
+  *then* calls `router.refresh()` (a full RSC refetch of `getConversations()`).
+  The sent bubble first appears when that refresh lands. Delay ≈ provider-call
+  latency + refetch latency, structurally identical on every channel.
+- **`client_message_uuid` IS generated for every channel** — `MessageInput`'s
+  shared `getComposeUuid()` (`crypto.randomUUID()`) runs for text, template
+  (WhatsApp) and voice-note sends alike; the server stores it in
+  `messages.metadata.client_message_uuid`, and `metadata` is returned by
+  `getConversations()`. So a reconciliation key already exists for all 5.
+- **Message Delivery Reliability Part 3 did NOT fix this for anyone.** Its
+  "targeted realtime patch replacing blunt router.refresh()" only replaced the
+  refresh for message *UPDATE*s (status transitions on an already-visible
+  bubble). Its own code comment says *"INSERTs / new conversations still
+  refresh."* There was never an optimistic-INSERT path for any channel.
+
+So: no channel was correct; the fix is one shared mechanism used by all 5.
+
+### Fix
+
+New pure module `src/lib/messaging/optimisticMessages.ts` +
+`ConversationsClient.tsx`:
+- `handleSend` now appends a local `'sending'` bubble **synchronously on
+  submit**, before the round trip, carrying the `client_message_uuid`. The
+  composer is no longer held disabled through the whole send (MessageInput's
+  own 1200ms guard + fresh-uuid-per-send + Part 1's server-side dedupe already
+  prevent doubles).
+- The consolidation memo injects still-pending optimistic bubbles into their
+  target conversation, **deduped by `client_message_uuid`** against the real
+  server rows — so once `router.refresh()` (or the realtime `INSERT` →
+  debounced refresh) brings the real row, the optimistic twin is filtered out.
+  No duplicate on refresh or on a late realtime event, on any channel.
+- A `useEffect` prunes optimistic entries from state once reconciled, plus a
+  120s TTL safety net.
+- `router.refresh()` is now also called on send *failure* (was missing) so the
+  real `failed` row — with its error metadata + retry button (Part 3 UI) —
+  replaces the optimistic bubble.
+- Retry path unchanged: `handleRetryMessage` reuses the failed row's existing
+  uuid, so `collectRealClientUuids` already contains it and the optimistic
+  merge is a no-op for retries (they keep using Part 3's `liveMessagePatches`
+  status flip).
+
+Tests: `optimisticMessages.test.ts` (13 — bubble shape, uuid collection,
+merge-into-target-only, dedup-against-real-row, no-op cases, prune on
+reconcile / TTL / recent-keep). `tsc` clean, `next lint` clean, full suite
+green.
+
+### NOT verified — live per-channel timed test
+
+The prompt requires a real, timed, devtools-observed send on each of the 5
+channels (plus forced-failure and duplicate-after-refresh checks). **This
+environment has no browser, deployed app, provider credentials, or deploy** —
+so **no channel is reported "fixed."** What's done: the shared audit (all 5
+channels, one path, none optimistic — code-confirmed) and the shared fix
+(unit-tested + traced). Each channel still needs its own live timed check:
+render latency, `sending → sent/delivered` transition, forced failure + retry,
+and no-duplicate-after-refresh / after a realtime INSERT.

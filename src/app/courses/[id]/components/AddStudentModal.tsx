@@ -5,6 +5,7 @@ import { X, Search, Loader2, UserPlus, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar } from "./settings/primitives";
 import { cn } from "@/lib/utils";
+import { getOpenCohorts } from "@/app/actions/courseCohorts";
 
 interface Contact {
   id: string;
@@ -13,18 +14,56 @@ interface Contact {
   email: string;
 }
 
+interface OpenCohort {
+  id: string;
+  name: string;
+  start_date: string;
+  seats_left: number;
+}
+
 interface AddStudentModalProps {
   courseId: string;
   onClose: () => void;
   onEnrolled: () => void;
+  /** Opened from a specific cohort's roster (CourseCohortsTab) — enrolment is locked to this
+   *  cohort rather than asking the admin to pick one. */
+  cohortId?: string;
+  cohortName?: string;
 }
 
-export default function AddStudentModal({ courseId, onClose, onEnrolled }: AddStudentModalProps) {
+export default function AddStudentModal({ courseId, onClose, onEnrolled, cohortId, cohortName }: AddStudentModalProps) {
   const [query, setQuery] = useState("");
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [isSearching, setIsSearching] = useState(true);
   const [enrollingId, setEnrollingId] = useState<string | null>(null);
   const [enrolledIds, setEnrolledIds] = useState<string[]>([]);
+
+  // Root cause of "students added via Add a student don't show up in the cohort roster":
+  // this modal never asked which cohort to enrol into and never sent cohort_id, so every
+  // enrolment made here landed with cohort_id = null regardless of the course having cohorts.
+  // Fixed: when the course has cohorts enabled and isn't opened already locked to one
+  // (cohortId prop, from a cohort's own Roster button), the admin must pick a real, currently
+  // open cohort here too — same rule the student-facing checkout picker already enforces.
+  const [openCohorts, setOpenCohorts] = useState<OpenCohort[]>([]);
+  const [cohortsEnabled, setCohortsEnabled] = useState(false);
+  const [selectedCohortId, setSelectedCohortId] = useState<string>(cohortId || "");
+  const [loadingCohorts, setLoadingCohorts] = useState(!cohortId);
+
+  useEffect(() => {
+    if (cohortId) return; // already locked to one cohort — nothing to fetch/pick
+    getOpenCohorts(courseId)
+      .then((r: any) => {
+        setCohortsEnabled(!!r.cohortsEnabled);
+        setOpenCohorts(r.data || []);
+      })
+      .finally(() => setLoadingCohorts(false));
+  }, [courseId, cohortId]);
+
+  // Mirrors the student-facing checkout rule: only require a pick when there's a real, open
+  // cohort to pick from. If every cohort is full, fall through to a cohort-less enrolment
+  // rather than hard-blocking the admin (same as Cohorts Part 1's guest/self-serve paths).
+  const cohortRequired = !cohortId && cohortsEnabled && openCohorts.length > 0;
+  const effectiveCohortId = cohortId || selectedCohortId;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -44,12 +83,20 @@ export default function AddStudentModal({ courseId, onClose, onEnrolled }: AddSt
   }, [onClose]);
 
   const handleEnroll = async (contact: Contact) => {
+    if (cohortRequired && !selectedCohortId) {
+      toast.error("Choose a cohort first.");
+      return;
+    }
     setEnrollingId(contact.id);
     try {
       const res = await fetch("/api/lms/enrollments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ course_id: courseId, contact_id: contact.id }),
+        body: JSON.stringify({
+          course_id: courseId,
+          contact_id: contact.id,
+          cohort_id: effectiveCohortId || null,
+        }),
       });
       const dataJson = await res.json();
       if (dataJson.error) {
@@ -86,6 +133,11 @@ export default function AddStudentModal({ courseId, onClose, onEnrolled }: AddSt
             <h2 className="font-display text-[17px] font-semibold leading-tight tracking-[-0.01em] text-dash-text">
               Add a student
             </h2>
+            {cohortId && cohortName && (
+              <p className="text-[11px] text-dash-textMuted">
+                Enrolling into <span className="font-semibold text-dash-text">{cohortName}</span>
+              </p>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -95,6 +147,29 @@ export default function AddStudentModal({ courseId, onClose, onEnrolled }: AddSt
             <X size={18} />
           </button>
         </div>
+
+        {/* Cohort picker — required before enrolling whenever this course has cohorts
+            enabled, isn't already locked to one, and at least one cohort is still open. */}
+        {!loadingCohorts && cohortRequired && (
+          <div className="border-b border-dash-border bg-sky-50/40 px-6 py-3">
+            <label htmlFor="add-student-cohort" className="mb-1 block text-[11px] font-semibold text-dash-text">
+              Cohort
+            </label>
+            <select
+              id="add-student-cohort"
+              value={selectedCohortId}
+              onChange={(e) => setSelectedCohortId(e.target.value)}
+              className="h-9 w-full rounded-lg border border-dash-border bg-white px-2.5 text-[12px] text-dash-text outline-none focus:border-sky-500"
+            >
+              <option value="">Select a cohort…</option>
+              {openCohorts.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} — starts {new Date(c.start_date).toLocaleDateString()} ({c.seats_left} seat{c.seats_left === 1 ? "" : "s"} left)
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Search */}
         <div className="border-b border-dash-border px-6 py-4">
@@ -137,7 +212,7 @@ export default function AddStudentModal({ courseId, onClose, onEnrolled }: AddSt
                     <div className="truncate text-[11px] text-dash-textMuted">{contact.email}</div>
                   </div>
                   <button
-                    disabled={enrollingId === contact.id || isEnrolled}
+                    disabled={enrollingId === contact.id || isEnrolled || (cohortRequired && !selectedCohortId)}
                     onClick={() => handleEnroll(contact)}
                     className={cn(
                       "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-3 text-[12px] font-semibold transition-colors [&_svg]:size-3.5",

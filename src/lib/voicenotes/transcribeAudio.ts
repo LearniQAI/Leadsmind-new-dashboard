@@ -4,8 +4,6 @@ export interface TranscribeResult {
   success: boolean;
   transcript?: string;
   error?: string;
-  /** True when no ASSEMBLYAI_API_KEY is configured and a sandbox-safe placeholder was returned. */
-  usedMock?: boolean;
 }
 
 const POLL_INTERVAL_MS = 1800;
@@ -18,8 +16,7 @@ const MAX_POLL_ATTEMPTS = 14;
  *
  * Reuses AssemblyAI — the same provider already integrated for the calendar
  * meeting-recap pipeline (processMeetingAudio() in
- * src/lib/calendar/transcription.ts), same `en_za` locale tuning, same
- * sandbox-safe mock fallback when no API key is configured. NOT OpenAI
+ * src/lib/calendar/transcription.ts), same `en_za` locale tuning. NOT OpenAI
  * Whisper — Whisper isn't used for audio anywhere in this codebase today.
  *
  * Deliberately DOES poll to completion, unlike processMeetingAudio's call —
@@ -28,15 +25,17 @@ const MAX_POLL_ATTEMPTS = 14;
  * to its mock transcript in practice. That's fine for a fire-and-forget
  * recap email; it is NOT fine here, since PRD 4.3 requires the agent to
  * review a real completed transcript before the email actually sends.
+ *
+ * When no ASSEMBLYAI_API_KEY is configured this now FAILS
+ * (`{ success: false }`) rather than returning a placeholder string — a
+ * missing key previously caused literal "placeholder transcript" debug text
+ * to be shipped as real message content to real recipients.
  */
 export async function transcribeAudioWithAssemblyAI(audioUrl: string): Promise<TranscribeResult> {
   const apiKey = process.env.ASSEMBLYAI_API_KEY;
   if (!apiKey) {
-    return {
-      success: true,
-      usedMock: true,
-      transcript: 'This is a placeholder transcript — ASSEMBLYAI_API_KEY is not configured in this environment.',
-    };
+    logger.error({}, 'voicenotes.assemblyai.key_missing');
+    return { success: false, error: 'Voice transcription is not configured (ASSEMBLYAI_API_KEY missing).' };
   }
 
   try {

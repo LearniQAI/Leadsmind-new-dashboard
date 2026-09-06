@@ -21,6 +21,12 @@ import { ConversationList } from '@/components/conversations/ConversationList';
 import { ConversationThread } from '@/components/conversations/ConversationThread';
 import { ContactInfoPanel } from '@/components/conversations/ContactInfoPanel';
 import { ComposeEmailModal } from '@/components/conversations/ComposeEmailModal';
+import {
+  type OptimisticMessage,
+  mergeOptimisticIntoConsolidated,
+  collectRealClientUuids,
+  pruneOptimistic,
+} from '@/lib/messaging/optimisticMessages';
 
 export default function ConversationsClient({
   initialConversations,
@@ -56,6 +62,25 @@ export default function ConversationsClient({
   // A fresh server render is authoritative — drop stale overlays when it arrives.
   useEffect(() => {
     setLiveMessagePatches(new Map());
+  }, [initialConversations]);
+
+  // Optimistic outbound bubbles — appended locally the instant Send is clicked,
+  // in a 'sending' state, so the message shows immediately instead of waiting
+  // for the whole send round trip (provider call + refetch). Reconciled by
+  // client_message_uuid against the real server row and pruned once it lands —
+  // no duplicate. Channel-agnostic: handleSend is the single shared entry for
+  // WhatsApp / Instagram / Email / SMS / Messenger. See src/lib/messaging/optimisticMessages.ts.
+  const [optimisticMessages, setOptimisticMessages] = useState<OptimisticMessage[]>([]);
+
+  // When fresh server data arrives, drop any optimistic message whose real row
+  // is now present (reconciled), plus a TTL safety net.
+  useEffect(() => {
+    setOptimisticMessages((prev) => {
+      if (prev.length === 0) return prev;
+      const realUuids = collectRealClientUuids(initialConversations as any[]);
+      const next = pruneOptimistic(prev, realUuids);
+      return next.length === prev.length ? prev : next;
+    });
   }, [initialConversations]);
 
   // Compose ("New email") gap fix — a brand-new conversation has no prior
@@ -163,13 +188,17 @@ export default function ConversationsClient({
 
     const allConsolidated = [...Object.values(contactMap), ...singleConvs];
 
+    // Inject still-pending optimistic 'sending' bubbles (deduped by
+    // client_message_uuid against the real rows above).
+    mergeOptimisticIntoConsolidated(allConsolidated, optimisticMessages);
+
     // Sort messages in chronological order (oldest first for display in list from bottom)
     allConsolidated.forEach((conv) => {
       conv.messages.sort((a: any, b: any) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime());
     });
 
     return allConsolidated.sort((a: any, b: any) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime());
-  }, [initialConversations, liveMessagePatches]);
+  }, [initialConversations, liveMessagePatches, optimisticMessages]);
 
   // Channels whose token looks dead — either the connection row is in 'error', or
   // a visible outbound message failed with a Graph auth error. Drives the
@@ -336,15 +365,47 @@ export default function ConversationsClient({
 
   const handleSend = async (text: string, targetConvId: string, audioUrl?: string, transcript?: string, clientMessageUuid?: string) => {
     if (!targetConvId) return;
-    setIsSending(true);
+
     // Compose gap fix: a subject picked in the "New email" modal applies only
     // to the very first send into that brand-new conversation, then clears —
     // every other channel and every subsequent reply is untouched.
     const composeSubject = pendingComposeSubject?.conversationId === targetConvId ? pendingComposeSubject.subject : undefined;
     if (composeSubject !== undefined) setPendingComposeSubject(null);
+
+    // Optimistic render — append the bubble immediately, before the send round
+    // trip. Reconciled/pruned by client_message_uuid once the real row lands.
+    if (clientMessageUuid) {
+      const platform =
+        consolidatedConversations
+          .flatMap((c: any) => c.availablePlatforms || [])
+          .find((p: any) => p.conversationId === targetConvId)?.platform
+        || activeConv?.platform || filter;
+      setOptimisticMessages((prev) => [
+        ...prev,
+        {
+          clientMessageUuid,
+          conversationId: targetConvId,
+          platform,
+          content: text || (audioUrl ? 'Voice note' : ''),
+          audioUrl,
+          sentAt: new Date().toISOString(),
+        },
+      ]);
+      // The message is visually "in" — no need to hold the composer disabled
+      // through the whole round trip (MessageInput's own 1200ms guard +
+      // fresh-uuid-per-send + server-side dedupe already prevent doubles).
+    } else {
+      setIsSending(true);
+    }
+
     const res = await sendMessage(targetConvId, text, audioUrl, transcript, clientMessageUuid, composeSubject);
+    setIsSending(false);
+
     if (res.error) {
       toast.error(res.error);
+      // Bring the real failed row (with its error metadata + retry affordance)
+      // into view — it replaces the optimistic 'sending' bubble on reconcile.
+      router.refresh();
     } else {
       if ((res as { retrying?: boolean }).retrying) {
         // Recoverable send hiccup — a background retry is queued. Keep it low-key.
@@ -353,7 +414,6 @@ export default function ConversationsClient({
       setSearchQuery('');
       router.refresh();
     }
-    setIsSending(false);
   };
 
   const handleSelectConversation = (id: string) => {

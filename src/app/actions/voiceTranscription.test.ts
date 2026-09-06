@@ -35,13 +35,7 @@ describe('transcribeVoiceNoteForEmail', () => {
     expect(res).toEqual({ transcript: 'A real transcript', source: 'assemblyai' });
   });
 
-  it('flags a mock transcript as source "mock"', async () => {
-    state.transcribeResult = { success: true, transcript: 'placeholder', usedMock: true };
-    const res: any = await transcribeVoiceNoteForEmail({ audioUrl: 'https://x/a.webm' });
-    expect(res.source).toBe('mock');
-  });
-
-  it('degrades to the client-side transcript (with a warning) when out of AI credits — never blocks the send', async () => {
+  it('out of AI credits -> soft-degrades to the genuine on-device transcript with a warning (a limit, not a failure)', async () => {
     state.creditError = new CreditLimitExceededError();
     const res: any = await transcribeVoiceNoteForEmail({ audioUrl: 'https://x/a.webm', clientTranscript: 'rough client guess' });
     expect(res.transcript).toBe('rough client guess');
@@ -49,12 +43,12 @@ describe('transcribeVoiceNoteForEmail', () => {
     expect(res.warning).toMatch(/out of ai credits/i);
   });
 
-  it('degrades to the client-side transcript when AssemblyAI itself fails', async () => {
+  it('AssemblyAI failure / missing key -> HARD BLOCK with an error, never a substituted transcript', async () => {
     state.transcribeResult = { success: false, error: 'network blip' };
     const res: any = await transcribeVoiceNoteForEmail({ audioUrl: 'https://x/a.webm', clientTranscript: 'rough client guess' });
-    expect(res.transcript).toBe('rough client guess');
-    expect(res.source).toBe('client_fallback');
-    expect(res.warning).toMatch(/transcription failed/i);
+    expect(res.error).toMatch(/was not sent/i);
+    expect(res.transcript).toBeUndefined();
+    expect(res.source).toBeUndefined();
   });
 
   it('requires an active workspace', async () => {

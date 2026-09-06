@@ -8,7 +8,7 @@ import { logger } from '@/shared/logger';
 
 export interface TranscribeVoiceNoteResult {
   transcript: string;
-  source: 'assemblyai' | 'client_fallback' | 'mock';
+  source: 'assemblyai' | 'client_fallback';
   warning?: string;
 }
 
@@ -25,9 +25,16 @@ export interface TranscribeVoiceNoteResult {
  * credit-gated) is left alone, per the explicit decision to treat that as a
  * separate, optional follow-up rather than something to fix here.
  *
- * Never blocks the send over credits or a transcription failure — both
- * degrade to the client-side fallback with a clear warning, since the PRD's
- * hard requirement is "never auto-sent blind," not "always AI-transcribed."
+ * Failure handling:
+ *  - AI credits exhausted -> soft-degrade to the genuine on-device Web Speech
+ *    transcript (`clientTranscript`) with a clear warning. That's real content
+ *    the agent then reviews, not a placeholder — and an expected user-facing
+ *    limit, not a misconfiguration.
+ *  - Missing ASSEMBLYAI_API_KEY, or any AssemblyAI error/timeout -> HARD BLOCK
+ *    with `{ error }`. The send is stopped; the caller surfaces the error and
+ *    does NOT send. Previously these paths shipped a literal placeholder
+ *    string ("...ASSEMBLYAI_API_KEY is not configured...") as real message
+ *    content to real recipients.
  */
 export async function transcribeVoiceNoteForEmail(params: {
   audioUrl: string;
@@ -57,16 +64,13 @@ export async function transcribeVoiceNoteForEmail(params: {
     const result = await transcribeAudioWithAssemblyAI(audioUrl);
     if (!result.success) {
       logger.error({ err: result.error, workspaceId }, 'voice_transcription.assemblyai.failed');
-      return {
-        transcript: clientTranscript || '',
-        source: 'client_fallback',
-        warning: 'Transcription failed — showing the on-device transcript instead. Please review carefully before sending.',
-      };
+      // Hard block — do NOT substitute placeholder or fall back silently.
+      return { error: 'Transcription failed — the voice note was not sent. Please try again, or type your message instead.' };
     }
 
     return {
       transcript: result.transcript || clientTranscript || '',
-      source: result.usedMock ? 'mock' : 'assemblyai',
+      source: 'assemblyai',
     };
   } catch (err: any) {
     logger.error({ err }, 'voice_transcription.unexpected_failure');

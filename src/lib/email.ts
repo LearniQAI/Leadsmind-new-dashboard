@@ -8,6 +8,14 @@ interface SendEmailProps {
  html?: string
  text?: string
  scheduledAt?: string
+ /**
+  * Reply-To address. MUST be passed here (not via `config.headers`) — Resend
+  * maps its own `replyTo` field to the RFC `Reply-To:` header, and a
+  * `Reply-To` key inside the generic `headers` object is NOT honoured. Setting
+  * it via `headers` was the cause of the Communications Hub email-channel
+  * bounce (replies went to the `From` no-reply address and bounced).
+  */
+ replyTo?: string | string[]
  attachments?: { filename: string; content: Buffer | Uint8Array | string }[]
  config?: {
   apiKey?: string | null
@@ -18,7 +26,7 @@ interface SendEmailProps {
  }
 }
 
-export async function sendEmail({ to, subject, react, html, text, scheduledAt, attachments, config }: SendEmailProps) {
+export async function sendEmail({ to, subject, react, html, text, scheduledAt, replyTo, attachments, config }: SendEmailProps) {
  const apiKey = config?.apiKey || process.env.RESEND_API_KEY
  const fromAddress = config?.fromEmail || process.env.RESEND_FROM_EMAIL || 'noreply@leadsmind.io'
  const fromName = config?.fromName || 'LeadsMind'
@@ -42,6 +50,7 @@ export async function sendEmail({ to, subject, react, html, text, scheduledAt, a
    react: react as any,
    html: html || undefined,
    text: text || '',
+   replyTo: replyTo || undefined,
    tags: config?.tags,
    headers: config?.headers,
    // puppeteer-core's page.pdf() returns a Uint8Array, not a real Node
