@@ -31,7 +31,11 @@ export async function resolveInboundEmailContent(emailData: any): Promise<{ body
         fetchedText = emailJson.text || '';
         fetchedHtml = emailJson.html || '';
       } else {
-        logger.error({ status: resendResponse.status }, 'webhook.resend_inbound.receiving_api.failed');
+        // The body doesn't come on the webhook — if this fetch fails, the
+        // stored message degrades to subject-only. Log why (401 => bad/missing
+        // RESEND_API_KEY; 404 => Resend dashboard test event) so it's obvious.
+        const body = await resendResponse.text().catch(() => '');
+        logger.error({ status: resendResponse.status, body: body.slice(0, 500), emailId: emailData.email_id }, 'webhook.resend_inbound.receiving_api.failed');
       }
     } catch (err) {
       logger.error({ err }, 'webhook.resend_inbound.email_fetch.failed');
@@ -152,8 +156,20 @@ export async function handleInboundWorkspaceEmail(params: { emailData: any; from
   });
 
   if (insertErr) {
-    logger.error({ err: insertErr, workspaceId, conversationId }, 'webhook.resend_inbound.email_channel.message_insert_failed');
-    throw insertErr; // Bubble to the route's outer catch -> 500 -> Resend's own retry/backoff.
+    // 23505 = the unique index on bridge_metadata->>resend_message_id fired: a
+    // prior (retried) delivery already stored this message. Not an error —
+    // return normally so Resend gets a 2xx and stops retrying.
+    if ((insertErr as any).code === '23505') {
+      logger.warn({ workspaceId, conversationId, messageId }, 'webhook.resend_inbound.email_channel.duplicate_insert_skipped');
+      return;
+    }
+    logger.error(
+      { err: insertErr, code: (insertErr as any).code, details: (insertErr as any).details, hint: (insertErr as any).hint, workspaceId, conversationId },
+      'webhook.resend_inbound.email_channel.message_insert_failed',
+    );
+    // Bubble to the route's outer catch (which now surfaces code/details in the
+    // 500 body) -> Resend retries.
+    throw insertErr;
   }
 
   logger.info({ workspaceId, conversationId, contactId }, 'webhook.resend_inbound.email_channel.message_created');

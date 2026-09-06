@@ -483,3 +483,84 @@ channels, one path, none optimistic — code-confirmed) and the shared fix
 (unit-tested + traced). Each channel still needs its own live timed check:
 render latency, `sending → sent/delivered` transition, forced failure + retry,
 and no-duplicate-after-refresh / after a realtime INSERT.
+
+---
+
+## 2026-09-06 — Inbound webhook 500 on the first real reply (root cause found + fixed)
+
+The Reply-To fix + inbound DNS finally worked end-to-end: a Gmail reply routed
+to `zain-ul-hasssssan@inbox.leadsmind.io`, Resend fired `email.received` to
+`/api/webhooks/resend/inbound` — which returned **500 `{"error":"Infrastructure
+failure"}`** and the reply never reached the Hub. Real captured payload
+(event `msg_3IwgEKHGmnj2LubcCvlg9Ooi8it`).
+
+### Root cause (traced against the exact payload)
+
+`route.ts` extracted the dedup id as
+`String(emailData.headers?.['Message-ID'] || emailData.id || '')`. **Resend's
+real `email.received` payload has neither** — no `headers` key at all, no `id`.
+It provides `message_id` (the RFC 5322 Message-ID) and `email_id` (Resend's own
+id). So `messageId` resolved to `''`:
+- on the **current** code that means the "Missing Message-ID" branch → a
+  200-with-dead-letter and a silently-lost reply;
+- on the **deployed** (older) code it evidently reached the DB insert with an
+  empty / mis-shaped id and threw, surfacing only as the generic
+  "Infrastructure failure".
+
+Either way the reply is lost. The generic catch-all made it look like an infra
+problem when it was a payload-parsing bug.
+
+### Fixes
+
+- **`src/lib/email/inboundPayload.ts`** (new, pure, unit-tested):
+  - `extractInboundMessageId(data)` — `message_id` → `headers['Message-ID']`
+    (+ case variants) → `email_id` → `id`. Regression-tested against the exact
+    captured payload.
+  - `extractInboundToAddresses(data)` — now also reads `received_for` (Resend's
+    real routing address), not just `to` + the legacy `Delivered-To` /
+    `X-Forwarded-To` headers.
+- **`route.ts`**: uses those; all "find one or none" lookups switched from
+  `.single()` (populates `error` on 0 rows) to `.maybeSingle()`; the top-level
+  catch now returns the **real** `error.message` / `error.code` in the response
+  body *and* logs `code`/`details`/`hint` structured *and* writes a dead-letter
+  — so the next failure is one glance in Resend's dashboard, not a log dive.
+- **`inboundEmailProcessing.ts`**: a `23505` unique-violation on the message
+  insert (a retried delivery that already stored the message) is now swallowed
+  → Resend gets a 2xx and stops retrying; any other DB error still throws, now
+  carrying its PG `code`/`details` to the route catch. The receiving-API
+  fetch failure now logs the response body + status (401 ⇒ bad
+  `RESEND_API_KEY`, 404 ⇒ Resend test event).
+- **Reply threading**: confirmed already correct — `findOrCreateEmailConversation`
+  matches on `(workspace_id, contact_id, platform='email')`, so a `Re:` reply
+  appends to the existing conversation, never a duplicate. No `In-Reply-To` /
+  `References` parsing needed (contact-based grouping, the standing decision).
+- **Sibling check**: `meta`, `twilio/inbound`, `email/deliverability`,
+  `support/inbound`, `paystack` webhook catches all log the real `err` (pino
+  serializes it) but return a generic body — same pattern, less severe (the
+  error *is* in logs). Left as-is: out of scope for this bug, and changing five
+  live webhook response contracts at once isn't worth the blast radius here.
+
+Tests: `inboundPayload.test.ts` (9 — the captured payload + fallbacks),
+`inboundEmailProcessing.test.ts` (+4 — `handleInboundWorkspaceEmail` on the
+exact payload: no throw, correct threaded insert, 23505 swallowed, real DB
+error still throws with its code, unknown slug dead-letters). `tsc` clean,
+`next lint` clean, full suite green.
+
+### NOT verified — replay + fresh live test
+
+Step 4 (deploy → Resend **Replay** on `msg_3IwgEKHGmnj2LubcCvlg9Ooi8it` →
+confirm 2xx → confirm the reply lands in the right conversation → one fresh
+Gmail reply) needs deploy + Resend dashboard + Gmail — **not possible from this
+environment.** What's verified: the exact captured payload now parses to a real
+`message_id` and `handleInboundWorkspaceEmail` processes it to a threaded
+inbound message with no throw (unit test). The replay/live confirmation is
+outstanding.
+
+### Caveat — degraded body if the receiving-API fetch fails
+
+For a payload with no `text`/`html` inline (like the captured one), the reply
+body comes only from the `https://api.resend.com/emails/receiving/:id` fetch.
+If `RESEND_API_KEY` is wrong, that fetch 401s and the stored message degrades
+to subject-only (`Subj: Re: …`) — still threaded, not a 500, but the body text
+is lost. The louder log added here makes that obvious; fixing the key is an ops
+step.

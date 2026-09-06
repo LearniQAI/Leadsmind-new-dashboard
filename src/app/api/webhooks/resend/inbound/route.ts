@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { sendSMS } from '@/lib/sms';
 import { logger } from '@/shared/logger';
 import { extractWorkspaceSlugFromAddress } from '@/lib/email/inboundAddress';
+import { extractInboundToAddresses, extractInboundMessageId } from '@/lib/email/inboundPayload';
 import { resolveInboundEmailContent, deadLetterResendEvent, insertWebhookDeadLetter, handleInboundWorkspaceEmail } from '@/lib/email/inboundEmailProcessing';
 
 export const runtime = 'nodejs';
@@ -42,16 +43,12 @@ export async function POST(req: NextRequest) {
     if (event.type === 'email.received') {
       const emailData = event.data;
       const from = emailData.from;
-      const toArray = Array.isArray(emailData.to) ? emailData.to : (emailData.to ? [emailData.to] : []);
-      const toAddresses = [...toArray];
+      const toAddresses = extractInboundToAddresses(emailData);
 
-      if (emailData.headers?.['Delivered-To']) toAddresses.push(emailData.headers['Delivered-To']);
-      if (emailData.headers?.['X-Forwarded-To']) toAddresses.push(emailData.headers['X-Forwarded-To']);
-
-      let messageId = String(emailData.headers?.['Message-ID'] || emailData.id || '').trim();
+      const messageId = extractInboundMessageId(emailData);
       if (!messageId) {
-        logger.error({}, 'webhook.resend_inbound.message_id.missing');
-        await deadLetterResendEvent(emailData, 'Missing Message-ID', 'validation_failed', 'dropped');
+        logger.error({ dataKeys: Object.keys(emailData || {}) }, 'webhook.resend_inbound.message_id.missing');
+        await deadLetterResendEvent(emailData, 'Missing Message-ID / email_id', 'validation_failed', 'dropped');
         return NextResponse.json({ received: true, error: 'Missing Message-ID ignored' }, { status: 200 });
       }
 
@@ -72,7 +69,7 @@ export async function POST(req: NextRequest) {
           .select('id')
           .eq('bridge_metadata->>resend_message_id', messageId)
           .limit(1)
-          .single();
+          .maybeSingle();
 
         if (existingMsg) {
           logger.warn({ messageId, workspaceSlug }, 'webhook.resend_inbound.email_channel.duplicate_message_skipped');
@@ -107,7 +104,7 @@ export async function POST(req: NextRequest) {
         .select('id')
         .eq('bridge_metadata->>resend_message_id', messageId)
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (existingMsg) {
         logger.warn({ messageId }, 'webhook.resend_inbound.duplicate_message_skipped');
@@ -130,7 +127,7 @@ export async function POST(req: NextRequest) {
         .select('id, workspace_id')
         .eq('phone', targetPhone)
         .limit(1)
-        .single();
+        .maybeSingle();
 
       let dbMessageId = null;
 
@@ -144,7 +141,7 @@ export async function POST(req: NextRequest) {
           .eq('contact_id', contact.id)
           .eq('platform', 'sms')
           .limit(1)
-          .single();
+          .maybeSingle();
 
         if (conv) {
           conversationId = conv.id;
@@ -234,8 +231,28 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ received: true });
   } catch (error: any) {
-    logger.error({ err: error }, 'webhook.resend_inbound.failed');
-    // Transient infrastructure failure (e.g. DB down) -> return 500 to invoke Resend's backoff retry
-    return NextResponse.json({ error: 'Infrastructure failure' }, { status: 500 });
+    // Surface the real error — both in the structured log and in the response
+    // body Resend's dashboard shows — so the next failure doesn't need a log
+    // dive. This is our own webhook; there's nothing sensitive to hide from it.
+    // Postgres/PostgREST errors carry code/details/hint; plain Errors carry a
+    // message + stack.
+    const detail = error?.message || String(error);
+    logger.error(
+      { err: error, detail, code: error?.code, details: error?.details, hint: error?.hint },
+      'webhook.resend_inbound.failed',
+    );
+    try {
+      await deadLetterResendEvent(
+        { note: 'top-level catch', detail, code: error?.code ?? null },
+        detail,
+        'infrastructure_failure',
+        'pending',
+      );
+    } catch { /* dead-letter insert is best-effort */ }
+    // 500 -> Resend retries with backoff (right for a transient DB blip).
+    return NextResponse.json(
+      { error: 'Infrastructure failure', detail, code: error?.code ?? null },
+      { status: 500 },
+    );
   }
 }
