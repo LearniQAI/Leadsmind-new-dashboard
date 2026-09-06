@@ -12,7 +12,7 @@
     "start": "next start",
     "lint": "next lint",
     "query": "node run_queries.js",
-    "test": "vitest run",
+    "test": "cross-env NODE_ENV=test vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui"

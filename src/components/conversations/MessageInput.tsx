@@ -201,11 +201,11 @@ export function MessageInput({
               try {
                 const result = await transcribeVoiceNoteForEmail({ audioUrl, clientTranscript: transcript });
                 if ('error' in result) {
+                  // Hard stop — never send placeholder/debug text or a rough
+                  // on-device transcript in place of a failed transcription.
+                  // The recording is discarded; the agent can re-record or
+                  // type a message instead.
                   toast.error(result.error);
-                  // Don't strand the recording behind a dead end — fall back to
-                  // the same auto-send other channels use, with whatever
-                  // on-device transcript exists.
-                  onSend(transcript || 'Voice note', false, audioUrl, transcript, getComposeUuid());
                   composeUuidRef.current = null;
                 } else {
                   if (result.warning) toast(result.warning);

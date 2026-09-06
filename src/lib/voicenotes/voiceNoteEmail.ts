@@ -257,15 +257,15 @@ export async function sendVoiceNoteEmail({
   `;
 
   const config = await getWorkspaceEmailConfig(workspaceId);
-  const mergedConfig = {
-    ...(config || {}),
-    ...(replyTo ? { headers: { ...(config as any)?.headers, 'Reply-To': replyTo } } : {}),
-  };
 
   return sendEmail({
     to: toEmail,
     subject: subject?.trim() || `Voice note from ${fullName}`,
     html: htmlContent,
-    config: Object.keys(mergedConfig).length > 0 ? mergedConfig : undefined
+    // Reply-To goes through sendEmail's dedicated param — a `Reply-To` key in
+    // `config.headers` is silently dropped by Resend (was the cause of the
+    // reply-bounce bug).
+    replyTo: replyTo || undefined,
+    config: config || undefined,
   });
 }
