@@ -456,6 +456,23 @@ merge-into-target-only, dedup-against-real-row, no-op cases, prune on
 reconcile / TTL / recent-keep). `tsc` clean, `next lint` clean, full suite
 green.
 
+### Follow-up: Vercel build broke on the RTL test (fixed)
+
+The `ComposeEmailModal.test.tsx` added earlier (the first `@testing-library/react`
+test in this repo) failed the **Vercel build** — `npm run build` runs
+`npm run test` first, and on Vercel that runs with `NODE_ENV=production` in the
+environment, so React loads its production build and RTL's `render`/`cleanup`
+throw `act(...) is not supported in production builds of React`. It passed
+locally only because local runs weren't `NODE_ENV=production`.
+
+Fix: `package.json` `test` script → `cross-env NODE_ENV=test vitest run`
+(scoped to the test step only — `next build` runs separately and still sets its
+own `NODE_ENV=production`). `NODE_ENV=test` is what vitest expects anyway; this
+just stops Vercel's global `NODE_ENV=production` from leaking into the test run.
+Verified by reproducing (`NODE_ENV=production npm run test` → 4 failures) and
+confirming the fix (`NODE_ENV=production npm run test` with the new script →
+38 files, 357 passed, exit 0).
+
 ### NOT verified — live per-channel timed test
 
 The prompt requires a real, timed, devtools-observed send on each of the 5
