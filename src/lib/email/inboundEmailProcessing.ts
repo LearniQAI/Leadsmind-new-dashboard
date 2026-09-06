@@ -116,12 +116,18 @@ export async function handleInboundWorkspaceEmail(params: { emailData: any; from
     return;
   }
 
-  const { rawText } = await resolveInboundEmailContent(emailData);
+  const { bodyText, rawText } = await resolveInboundEmailContent(emailData);
   if (!rawText) {
     logger.error({}, 'webhook.resend_inbound.email_channel.body_empty');
     await deadLetterResendEvent(emailData, 'Empty body after strip', 'validation_failed', 'dropped');
     return;
   }
+  // The Email channel stores the subject in its own `subject` column and shows
+  // it at the thread level — so the bubble body is the clean reply text only
+  // (`bodyText`), NOT `rawText` (which prepends "Subj: …" for the Email→SMS
+  // bridge, where an SMS has no subject field). Fall back to `rawText` only for
+  // the rare subject-only email with no body, so the bubble isn't blank.
+  const messageContent = bodyText || rawText;
 
   // Contact + conversation resolution — the shared find-or-create logic
   // (contact-based grouping, one platform:'email' conversation per contact)
@@ -148,7 +154,7 @@ export async function handleInboundWorkspaceEmail(params: { emailData: any; from
     workspace_id: workspaceId,
     conversation_id: conversationId,
     direction: 'inbound',
-    content: rawText,
+    content: messageContent,
     sender_handle: fromEmail,
     status: 'delivered',
     subject: emailData.subject || null,

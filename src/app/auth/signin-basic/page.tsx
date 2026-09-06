@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import React from 'react';
 import SignInBasicForm from '@/form/auth/SignIn/basic-form';
-import SocialLinks from '@/components/SocialLinks/SocialLinks';
+import OAuthButtons from '@/components/auth/OAuthButtons';
 import AuthSplitLayout from '@/components/auth/AuthSplitLayout';
 
 const SignInBasicMain = () => {
@@ -31,10 +31,8 @@ const SignInBasicMain = () => {
         <span className="text-[13px] font-medium text-[#94A3B8]">or</span>
         <div className="flex-1 h-px bg-[#E2E8F0]" />
       </div>
-      {/* Social link*/}
-      <div className="flex justify-center">
-        <SocialLinks />
-      </div>
+      {/* Alternate sign-in methods */}
+      <OAuthButtons />
     </AuthSplitLayout>
   );
 };

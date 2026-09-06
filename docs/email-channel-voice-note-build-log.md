@@ -659,3 +659,46 @@ dead-letter as "Invalid target address" (200). If that truncated capture is
 accurate (its `message_id` is also shown truncated with `...`), inbound routing
 needs a fallback — but that's unconfirmed until the real full payload is seen
 in the replay. Flagged, not patched blind.
+
+## 2026-09-06 — Drop the redundant "Subj: …" line from inbound email bubbles
+
+### Audit (Step 1)
+
+Root cause: **stored in the DB at insert time**, not a rendering-layer concat.
+`resolveInboundEmailContent()` returns `{ bodyText, rawText }` where
+`rawText = "Subj: <subject>\n\n<bodyText>"`. `handleInboundWorkspaceEmail()`
+wrote `content: rawText` **and** `subject: emailData.subject` — so the subject
+was double-stored (baked into the body *and* in its own column). No bubble
+component reads a `subject` field (`grep` over `src/components/conversations/**`
++ `src/app/conversations/**` — `subject` only appears in the Compose flow), so
+the visible "Subj: …" was purely the stored `content`.
+
+`resolveInboundEmailContent()` is shared with the Email→SMS bridge, where
+prepending "Subj: …" into the SMS text IS wanted (an SMS has no subject field),
+so the helper and the bridge path are left untouched.
+
+### Fix (Step 2)
+
+`handleInboundWorkspaceEmail()` now stores `content: bodyText || rawText` — the
+clean reply text for the normal case, falling back to `rawText` ("Subj: …")
+only for the rare subject-only email with no body so the bubble isn't blank.
+The `subject` column write is unchanged, so the real subject is still captured.
+
+- `src/lib/email/inboundEmailProcessing.ts` — destructure `bodyText`, add
+  `messageContent`, insert `content: messageContent`.
+- `inboundEmailProcessing.test.ts` — the captured-payload test now asserts
+  `content === 'hy'` and `not.toContain('Subj:')`.
+
+`tsc` → 0. `next lint` → clean. `npm run test` → 41 files / 378 passed.
+
+### Deferred
+
+- **Already-stored inbound messages** keep the "Subj: …" prefix baked into their
+  `content` — a storage-time fix doesn't rewrite history. No bulk migration
+  done (not requested).
+- **Surfacing the subject at the thread header** (like the "Email" channel
+  label) — optional per the prompt for the storage-time branch; not added in
+  this scoped pass. The data is in `messages.subject` when wanted.
+- **Live send-a-real-reply verification** — needs deploy + Gmail; not possible
+  here. Verified via the captured-payload unit test that a new inbound message
+  is stored with clean `content` and the subject in its column.

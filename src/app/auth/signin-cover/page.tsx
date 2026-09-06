@@ -3,7 +3,7 @@ import Link from 'next/link';
 import React from 'react';
 import signInImg from "../../../../public/assets/images/sign/sign-in.png";
 import SignInCoverForm from '@/form/auth/SignIn/cover-form';
-import SocialLinks from '@/components/SocialLinks/SocialLinks';
+import OAuthButtons from '@/components/auth/OAuthButtons';
 
 const SignInCoverMain = () => {
   return (
@@ -35,8 +35,8 @@ const SignInCoverMain = () => {
               <div className="divider mb-2.5 text-center">
                 <div className="divider-text">or</div>
               </div>
-              {/* Social link*/}
-              <SocialLinks />
+              {/* Alternate sign-in methods */}
+              <OAuthButtons />
             </div>
           </div>
 

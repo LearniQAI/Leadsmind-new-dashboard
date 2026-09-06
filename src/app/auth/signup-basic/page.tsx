@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import React from 'react';
-import SocialLinks from '@/components/SocialLinks/SocialLinks';
+import OAuthButtons from '@/components/auth/OAuthButtons';
 import SignUpBasicForm from '@/form/auth/SignUp/basic-form';
 import AuthSplitLayout from '@/components/auth/AuthSplitLayout';
 
@@ -31,10 +31,8 @@ const SignUpBasicMain = () => {
         <span className="text-[13px] font-medium text-[#94A3B8]">or</span>
         <div className="flex-1 h-px bg-[#E2E8F0]" />
       </div>
-      {/* social link */}
-      <div className="flex justify-center">
-        <SocialLinks />
-      </div>
+      {/* Alternate sign-up methods */}
+      <OAuthButtons />
     </AuthSplitLayout>
   );
 };
