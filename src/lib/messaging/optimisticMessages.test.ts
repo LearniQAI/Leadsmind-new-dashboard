@@ -82,7 +82,15 @@ describe('mergeOptimisticIntoConsolidated', () => {
 
 describe('pruneOptimistic', () => {
   it('drops entries whose real row has arrived', () => {
-    const kept = pruneOptimistic([opt({ clientMessageUuid: 'a' }), opt({ clientMessageUuid: 'b' })], new Set(['a']));
+    // Anchor `now` to the fixtures' clock (as the TTL tests below do) so this
+    // isolates uuid-matching — otherwise, once the real wall clock is >120s past
+    // the fixed `sentAt`, the TTL safety net also drops 'b' and this flakes.
+    const now = Date.parse('2026-09-06T10:00:03.000Z');
+    const kept = pruneOptimistic(
+      [opt({ clientMessageUuid: 'a' }), opt({ clientMessageUuid: 'b' })],
+      new Set(['a']),
+      now,
+    );
     expect(kept.map((o) => o.clientMessageUuid)).toEqual(['b']);
   });
 
