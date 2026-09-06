@@ -564,3 +564,98 @@ If `RESEND_API_KEY` is wrong, that fetch 401s and the stored message degrades
 to subject-only (`Subj: Re: …`) — still threaded, not a 500, but the body text
 is lost. The louder log added here makes that obvious; fixing the key is an ops
 step.
+
+## 2026-09-06 — Inbound webhook 500 #2: `svix` v2 made `Webhook.verify()` return `undefined`
+
+### Symptom (distinct from the first 500)
+
+```
+{"error":"Infrastructure failure","detail":"Cannot read properties of undefined (reading 'type')","code":null}
+```
+
+`code: null` = a plain JS `TypeError`, thrown before any DB call — the improved
+top-level catch from the previous fix worked and surfaced the real message.
+Two real events hit it: the retried `msg_3IwgEKHGmnj2LubcCvlg9Ooi8it` and a
+brand-new fresh reply from a different sender.
+
+### Root cause (found, not guessed) — a breaking dependency bump
+
+`git log -S'"svix": "^2.2.0"'` → commit **`742b29cb`** (2026-09-01, "groupA ,
+Groupb 3a,3g,3i,3j", a 141-line mass `package.json` bump) moved `svix`
+**`^1.94.0` → `^2.2.0`**. That is a breaking change to `Webhook.verify()`:
+
+- **svix 1.x** — `verify()` returned the parsed JSON payload.
+- **svix 2.x** — the `Webhook` compat wrapper
+  (`node_modules/svix/dist/index.mjs:6469`) calls the core verifier with
+  `{ jsonParse: false }`; `standardwebhooks`'s `verify()` then hits
+  `return undefined` (`.../standardwebhooks/dist/index.js:79`) on a **valid**
+  signature. It still **throws** `WebhookVerificationError` on a bad/missing
+  one.
+
+So `const event = wh.verify(payload, headers)` was `undefined`, and the next
+line `if (event.type === 'email.received')` threw. The route — for **both** the
+email-channel path and the Email→SMS bridge — has been dead since 2026-09-01.
+Nothing to do with `RESEND_API_KEY`, the receiving-API fetch, or empty
+`attachments[]` (the fetch path swallows its own errors and never reads
+`.type`); the only `.type` in the route is `event.type`.
+
+### Sibling bug — same root cause, same endpoint family
+
+`src/app/api/webhooks/email/deliverability/route.ts:30` —
+`body = new Webhook(secret).verify(rawBody, svixHeaders)` then
+`if (body.type && body.data)` at line 46. Identical `undefined.type` crash,
+caught as a generic `500 "Infrastructure failure"`. Every open/click/bounce/
+complaint + voice-note-click tracking event has been failing since the same
+commit. Fixed here too.
+
+`support/inbound` uses its own manual HMAC `verifySignature()` (boolean) — not
+svix, unaffected. `meta` / `twilio` webhooks don't use svix. Grep confirms only
+these two files import svix `Webhook`.
+
+### Fix
+
+- **New `src/lib/email/verifyResendWebhook.ts`** — `verifyResendWebhookEvent(rawBody, headers, secret)`:
+  runs `new Webhook(secret).verify(...)` (still throws on a bad signature — the
+  security-critical behaviour is unchanged) **then** `JSON.parse(rawBody)`,
+  restoring the svix-1.x contract. Empty authenticated body → `{}`.
+- **`resend/inbound/route.ts`** — uses the helper; drops the direct `svix`
+  import; `if (event && event.type === 'email.received')` guard so a null event
+  can never reproduce the same `TypeError`.
+- **`email/deliverability/route.ts`** — uses the helper; `if (!body || typeof body !== 'object') body = {}`
+  before the payload-shape branch.
+- The previous fix's improved catch/logging is untouched.
+
+### Tests
+
+- `src/lib/email/verifyResendWebhook.test.ts` (6) — real `Webhook.sign()` round
+  trip: a validly signed payload returns the **parsed** body (`.type` readable,
+  never throws); invalid signature / tampered body / missing headers throw;
+  empty body → `{}`.
+- `src/app/api/webhooks/resend/inbound/route.test.ts` (3, new) — `POST` with a
+  real svix-signed Event-1 wrapper returns **200** (was 500), calls
+  `handleInboundWorkspaceEmail` with `workspaceSlug: 'zain-ul-hasssssan'`;
+  response body never contains `reading 'type'`; bad signature → 200 drop +
+  dead-letter, no processing.
+
+`tsc` → 0. `next lint` on the 3 touched files → clean. `npm run test` →
+**41 files, 378 passed**.
+
+### NOT verified — replay + fresh live test
+
+Deploy → Resend **Replay** on Event 1 (`msg_3IwgEKHGmnj2LubcCvlg9Ooi8it`) and
+Event 2 (`msg_3IwtSSXPAjCp20LnqY4OOogFq19`) → confirm both 2xx → confirm both
+replies thread correctly (Event 1 under "Zee" / `zainulhassan5857@gmail.com`,
+Event 2 under `zainalimuhammad5857@gmail.com`, no duplicate conversation) →
+confirm real body text ("hy good to hear from you") not subject-only → one
+fresh Gmail reply. Needs deploy + Resend dashboard + Gmail — **not possible
+from this environment.**
+
+### Observed, not fixed — Event 2 routing
+
+The Event 2 payload as captured has **no `to` and no `received_for`**, only
+`from` / `subject` / `message_id`. With the `verify()` fix it now parses, but
+with no recipient address there is no workspace slug to route on → it would
+dead-letter as "Invalid target address" (200). If that truncated capture is
+accurate (its `message_id` is also shown truncated with `...`), inbound routing
+needs a fallback — but that's unconfirmed until the real full payload is seen
+in the replay. Flagged, not patched blind.
