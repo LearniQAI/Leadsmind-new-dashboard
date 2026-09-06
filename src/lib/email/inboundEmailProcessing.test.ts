@@ -124,7 +124,8 @@ describe('handleInboundWorkspaceEmail — regression for the real 500 payload', 
       sender_handle: 'zainulhassan5857@gmail.com',
       subject: 'Re: New message from Zain Workspace',
     });
-    expect(msg.payload.content).toContain('hy'); // real reply body, from the receiving-API fetch
+    expect(msg.payload.content).toBe('hy'); // clean reply body from the receiving-API fetch
+    expect(msg.payload.content).not.toContain('Subj:'); // subject lives in its own column, not the bubble body
     expect(msg.payload.bridge_metadata.resend_message_id).toBe(CAPTURED.message_id);
     expect(dbState.deadLetters).toHaveLength(0);
   });
