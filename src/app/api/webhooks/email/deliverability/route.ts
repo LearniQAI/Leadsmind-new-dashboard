@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { Webhook } from 'svix';
 import { logger } from '@/shared/logger';
 import { recordVoiceNoteClick } from '@/lib/voicenotes/voiceClickTracking';
+import { verifyResendWebhookEvent } from '@/lib/email/verifyResendWebhook';
 
 export const runtime = 'nodejs';
 
@@ -27,11 +27,15 @@ export async function POST(req: NextRequest) {
 
     let body: any;
     try {
-      body = new Webhook(secret).verify(rawBody, svixHeaders);
+      // svix 2.x's verify() returns void; this helper verifies the signature
+      // (still throws on failure) AND parses the body. See
+      // src/lib/email/verifyResendWebhook.ts.
+      body = verifyResendWebhookEvent(rawBody, svixHeaders, secret);
     } catch (err: any) {
       logger.warn({ err }, 'webhook.email_deliverability.signature.invalid');
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
+    if (!body || typeof body !== 'object') body = {};
 
     logger.info({ body }, 'webhook.email_deliverability.received');
 

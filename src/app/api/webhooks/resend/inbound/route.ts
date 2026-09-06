@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Webhook } from 'svix';
 import { createClient } from '@supabase/supabase-js';
 import { sendSMS } from '@/lib/sms';
 import { logger } from '@/shared/logger';
 import { extractWorkspaceSlugFromAddress } from '@/lib/email/inboundAddress';
 import { extractInboundToAddresses, extractInboundMessageId } from '@/lib/email/inboundPayload';
+import { verifyResendWebhookEvent } from '@/lib/email/verifyResendWebhook';
 import { resolveInboundEmailContent, deadLetterResendEvent, insertWebhookDeadLetter, handleInboundWorkspaceEmail } from '@/lib/email/inboundEmailProcessing';
 
 export const runtime = 'nodejs';
@@ -29,18 +29,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
-    const wh = new Webhook(secret);
     let event: any;
 
     try {
-      event = wh.verify(payload, headers);
+      // svix 2.x's verify() returns void — this helper verifies the signature
+      // (still throws on failure) AND parses the body, restoring the 1.x
+      // contract. See src/lib/email/verifyResendWebhook.ts.
+      event = verifyResendWebhookEvent(payload, headers, secret);
     } catch (err: any) {
       logger.error({ err }, 'webhook.resend_inbound.verification.failed');
-      await deadLetterResendEvent({ headers, body: payload }, err.message, 'verification_failed', 'dropped');
+      await deadLetterResendEvent({ headers, body: payload }, err?.message || String(err), 'verification_failed', 'dropped');
       return NextResponse.json({ error: 'Verification failed' }, { status: 200 }); // Return 200 to drop
     }
 
-    if (event.type === 'email.received') {
+    if (event && event.type === 'email.received') {
       const emailData = event.data;
       const from = emailData.from;
       const toAddresses = extractInboundToAddresses(emailData);
