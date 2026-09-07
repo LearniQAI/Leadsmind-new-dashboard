@@ -40,10 +40,13 @@ const Wrapper: React.FC<WrapperProps> = ({ children }) => {
       if (pathName.startsWith('/hr/employees')) {
         return role === 'admin' || role === 'owner' || role === 'hr';
       }
-      if (pathName.startsWith('/hr/payroll')) {
-        return role === 'admin' || role === 'owner' || role === 'hr' || role === 'payroll';
-      }
-      // Allow any workspace member to access basic HR pages (Leave, Time Tracking)
+      // /hr/payroll itself is now open to any workspace member (Task 47: the page
+      // branches internally -- admin/owner/hr/payroll get the full payroll-run
+      // management view, everyone else gets a self-service "my payslips" view). The
+      // real access boundary between those two is enforced by the API routes
+      // (GET /api/hr/payroll stays admin/owner/hr/payroll-only; the new
+      // GET /api/hr/payslips/me is scoped to the caller's own record), not by this gate.
+      // Allow any workspace member to access basic HR pages (Leave, Time Tracking, Payroll)
       return true;
     }
 

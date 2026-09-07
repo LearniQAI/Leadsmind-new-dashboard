@@ -12,21 +12,24 @@ interface PermissionedEntry {
 
 function isItemAllowed(item: PermissionedEntry, ctx: NavRoleContext): boolean {
   if (ctx.role === "admin" || ctx.role === "owner") return true;
-  // HR & Payroll base page is allowed for all workspace members
-  if (item.link === "/hr") return true;
+  // HR & Payroll is now a flat list (no subItems), so its per-page role gating lives here
+  // rather than in isSubItemAllowed. Employees stays HR-role-restricted, matching
+  // DefaultWrapper's page-level gate; every other /hr/* page is open to any workspace
+  // member (Payroll's own page branches into an admin view or a self-service view, see
+  // src/app/hr/payroll/page.tsx).
+  if (item.link === "/hr/employees") {
+    return ctx.role === "hr";
+  }
+  if (item.link?.startsWith("/hr")) return true;
   const requiredPermission = item.permission;
   if (!requiredPermission) return true;
   return ctx.permissions.includes(requiredPermission);
 }
 
-function isSubItemAllowed(sub: { link: string }, ctx: NavRoleContext): boolean {
-  if (ctx.role === "admin" || ctx.role === "owner") return true;
-  if (sub.link === "/hr/employees") {
-    return ctx.role === "admin" || ctx.role === "owner" || ctx.role === "hr";
-  }
-  if (sub.link === "/hr/payroll") {
-    return ctx.role === "admin" || ctx.role === "owner" || ctx.role === "hr" || ctx.role === "payroll";
-  }
+// No subItems-level role restrictions remain (HR & Payroll's were the only ones and moved
+// to isItemAllowed above once it became a flat list) -- kept as a named predicate so a
+// future module's subItems can add one without re-deriving the filter shape.
+function isSubItemAllowed(_sub: { link: string }, _ctx: NavRoleContext): boolean {
   return true;
 }
 

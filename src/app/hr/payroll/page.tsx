@@ -2,9 +2,23 @@
 import { useEffect, useState } from 'react'
 import Wrapper from '@/components/layouts/DefaultWrapper'
 import { useDashboardContext } from '@/components/layouts/DashboardProvider'
-import { Plus, X, CreditCard, Receipt, FileText, Landmark, Info } from 'lucide-react'
+import { Plus, X, Receipt, Landmark, Info } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import MyPayslipsView from './MyPayslipsView'
+import {
+  DashCard,
+  DashButton,
+  DashEmptyState,
+  DashStatusPill,
+  DashModal,
+  DashModalContent,
+  DashModalHeader,
+  DashModalTitle,
+  DashFormField,
+  DashInput,
+  CurrencyValue,
+} from '@/components/dashboard-ui'
 
 interface Payslip {
   id: string
@@ -46,10 +60,17 @@ interface Employee {
   status: string
 }
 
+const STATUS_VARIANT: Record<PayrollRun['status'], 'success' | 'warning' | 'danger' | 'neutral'> = {
+  paid: 'success',
+  processing: 'warning',
+  cancelled: 'danger',
+  draft: 'neutral',
+}
+
 function calculatePAYE(monthlyGross: number): number {
   const annual = monthlyGross * 12
   let annualTax = 0
-  
+
   // 2024/25 SA tax brackets
   if (annual <= 237100) annualTax = annual * 0.18
   else if (annual <= 370500) annualTax = 42678 + (annual - 237100) * 0.26
@@ -58,14 +79,14 @@ function calculatePAYE(monthlyGross: number): number {
   else if (annual <= 857900) annualTax = 179147 + (annual - 673000) * 0.39
   else if (annual <= 1817000) annualTax = 251258 + (annual - 857900) * 0.41
   else annualTax = 644489 + (annual - 1817000) * 0.45
-  
+
   // Primary rebate 2024/25
   annualTax = Math.max(0, annualTax - 17235)
-  
+
   return Math.round((annualTax / 12) * 100) / 100
 }
 
-export default function PayrollPage() {
+function PayrollAdminView() {
   const { workspace } = useDashboardContext() as any
   const workspaceId = workspace?.id
 
@@ -184,320 +205,265 @@ export default function PayrollPage() {
     return sum + (gross - paye - uif)
   }, 0)
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'paid':
-        return <span className="bg-[rgba(16,185,129,0.12)] border border-[rgba(16,185,129,0.2)] text-[#10b981] text-[10px] font-semibold rounded-full px-2.5 py-0.5">● Paid</span>
-      case 'processing':
-        return <span className="bg-[rgba(245,158,11,0.1)] border border-[rgba(245,158,11,0.2)] text-[#f59e0b] text-[10px] font-semibold rounded-full px-2.5 py-0.5 animate-pulse">Processing</span>
-      case 'cancelled':
-        return <span className="bg-red-500/10 border border-red-500/20 text-[#ef4444] text-[10px] font-semibold rounded-full px-2.5 py-0.5">Cancelled</span>
-      default:
-        return <span className="bg-white/5 border border-white/10 text-[#94a3c8] text-[10px] font-semibold rounded-full px-2.5 py-0.5">Draft</span>
-    }
-  }
-
   return (
     <Wrapper>
-      <div className="min-h-screen bg-[#04091a] px-6 py-6 max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center justify-between border-b border-white/5 pb-4">
+      <div className="min-h-screen bg-dash-bg px-6 py-6 max-w-6xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/hr" className="text-[#4a5a82] hover:text-[#eef2ff] text-[12px] font-semibold">
+            <Link href="/hr" className="text-dash-textMuted hover:text-dash-text text-[13px] font-semibold">
               ← Overview
             </Link>
-            <h1 className="text-[20px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-              Payroll Management
-            </h1>
+            <h1 className="font-display text-[22px] font-bold text-dash-text ml-1">Payroll Management</h1>
           </div>
-          <button
+          <DashButton
+            size="sm"
             onClick={() => {
               const now = new Date()
               const monthName = now.toLocaleString('default', { month: 'long' })
               setPeriodLabel(`${monthName} ${now.getFullYear()} Payroll`)
-              setPeriodStart(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`)
-              setPeriodEnd(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-30`)
+              setPeriodStart(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`)
+              setPeriodEnd(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-30`)
               setRunModalOpen(true)
             }}
-            className="h-9 px-4 rounded-[8px] bg-[#10b981] text-white hover:opacity-90 text-[12px] font-bold font-dm-sans flex items-center gap-1.5 transition-all shadow-lg shadow-[#10b981]/10"
           >
             <Plus size={14} /> Run Payroll
-          </button>
+          </DashButton>
         </div>
 
         {/* Tax Note Info Box */}
-        <div className="bg-[#0c1535] border border-white/5 rounded-2xl p-4 flex gap-3">
-          <Info className="text-[#3b82f6] shrink-0 mt-0.5" size={18} />
-          <div className="text-[11.5px] text-[#94a3c8] leading-relaxed font-dm-sans">
-            <strong>SARS 2024/25 Tax Rules:</strong> PAYE is calculated dynamically based on South African tax tables. 
-            UIF contribution is capped at R177.12 per month (1% of salary, capped at R17,712 gross) for both employer and employee. 
+        <DashCard interactive={false} className="p-4 flex gap-3 bg-dash-accent/[0.03] border-dash-accent/20">
+          <Info className="text-dash-accent shrink-0 mt-0.5" size={18} />
+          <div className="text-[12.5px] text-dash-textMuted leading-relaxed">
+            <strong className="text-dash-text">SARS 2024/25 Tax Rules:</strong> PAYE is calculated dynamically based on South African tax tables.
+            UIF contribution is capped at R177.12 per month (1% of salary, capped at R17,712 gross) for both employer and employee.
             Skills Development Levy (SDL) is assessed at 1% of gross payroll.
           </div>
-        </div>
+        </DashCard>
 
         {loading ? (
-          <div className="text-center py-20 text-[#4a5a82] animate-pulse">Loading payroll records...</div>
+          <div className="text-center py-20 text-dash-textMuted animate-pulse">Loading payroll records...</div>
         ) : payrollRuns.length === 0 ? (
-          <div className="text-center py-20 bg-[rgba(12,21,53,0.3)] border border-white/5 rounded-2xl p-8">
-            <p className="text-[13px] text-[#4a5a82]">No payroll runs processed yet. Run your first payroll using the button above.</p>
-          </div>
+          <DashCard interactive={false}>
+            <DashEmptyState icon={Landmark} title="No payroll runs yet" description="Run your first payroll using the button above." />
+          </DashCard>
         ) : (
           <div className="grid grid-cols-1 gap-4">
             {payrollRuns.map(run => (
-              <div
-                key={run.id}
-                className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-2xl p-5 hover:border-[rgba(255,255,255,0.13)] transition-all flex flex-col md:flex-row md:items-center md:justify-between gap-5"
-              >
+              <DashCard key={run.id} className="p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-5">
                 <div>
                   <div className="flex items-center gap-3 flex-wrap">
-                    <h3 className="text-[14px] font-bold text-[#eef2ff] font-space-grotesk">{run.period_label}</h3>
-                    {getStatusBadge(run.status)}
+                    <h3 className="font-display text-[14.5px] font-bold text-dash-text">{run.period_label}</h3>
+                    <DashStatusPill variant={STATUS_VARIANT[run.status]} className="capitalize">{run.status}</DashStatusPill>
                   </div>
-                  <p className="text-[11.5px] text-[#4a5a82] mt-1 font-dm-sans">
+                  <p className="text-[12px] text-dash-textMuted mt-1">
                     Period: {new Date(run.period_start).toLocaleDateString()} - {new Date(run.period_end).toLocaleDateString()} • {run.payslips?.length ?? 0} employees
                   </p>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-right">
                   <div>
-                    <span className="text-[#4a5a82] text-[9.5px] font-bold uppercase block tracking-[0.5px]">Total Gross</span>
-                    <span className="text-[#eef2ff] text-[12.5px] font-semibold block mt-0.5 font-space-grotesk">
-                      R{Number(run.total_gross).toLocaleString()}
-                    </span>
+                    <span className="text-dash-textMuted text-[10px] font-bold uppercase block tracking-wide">Total Gross</span>
+                    <CurrencyValue value={run.total_gross} className="text-dash-text text-[13px] font-semibold block mt-0.5" />
                   </div>
                   <div>
-                    <span className="text-[#4a5a82] text-[9.5px] font-bold uppercase block tracking-[0.5px]">Total PAYE</span>
-                    <span className="text-[#eef2ff] text-[12.5px] font-semibold block mt-0.5 font-space-grotesk">
-                      R{Number(run.total_paye).toLocaleString()}
-                    </span>
+                    <span className="text-dash-textMuted text-[10px] font-bold uppercase block tracking-wide">Total PAYE</span>
+                    <CurrencyValue value={run.total_paye} className="text-dash-text text-[13px] font-semibold block mt-0.5" />
                   </div>
                   <div>
-                    <span className="text-[#4a5a82] text-[9.5px] font-bold uppercase block tracking-[0.5px]">Total UIF + SDL</span>
-                    <span className="text-[#eef2ff] text-[12.5px] font-semibold block mt-0.5 font-space-grotesk">
-                      R{Number(run.total_uif + run.total_sdl).toLocaleString()}
-                    </span>
+                    <span className="text-dash-textMuted text-[10px] font-bold uppercase block tracking-wide">Total UIF + SDL</span>
+                    <CurrencyValue value={run.total_uif + run.total_sdl} className="text-dash-text text-[13px] font-semibold block mt-0.5" />
                   </div>
                   <div>
-                    <span className="text-[#10b981] text-[9.5px] font-bold uppercase block tracking-[0.5px]">Total Net</span>
-                    <span className="text-[#10b981] text-[13px] font-bold block mt-0.5 font-space-grotesk">
-                      R{Number(run.total_net).toLocaleString()}
-                    </span>
+                    <span className="text-green text-[10px] font-bold uppercase block tracking-wide">Total Net</span>
+                    <CurrencyValue value={run.total_net} className="!text-green text-[14px] font-bold block mt-0.5" />
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 border-t md:border-t-0 pt-3 md:pt-0 border-white/5 justify-end">
-                  <button
-                    onClick={() => setPayslipsOpen(run)}
-                    className="h-8 px-3 rounded-lg bg-white/5 border border-white/5 text-[#eef2ff] hover:bg-white/10 text-[11px] font-bold transition-all flex items-center gap-1.5"
-                  >
+                <div className="flex items-center gap-2 border-t md:border-t-0 pt-3 md:pt-0 border-dash-border justify-end">
+                  <DashButton size="sm" variant="secondary" onClick={() => setPayslipsOpen(run)}>
                     <Receipt size={12} /> View Payslips
-                  </button>
+                  </DashButton>
                   {run.status === 'draft' && (
                     <>
-                      <button
-                        onClick={() => handleMarkAsPaid(run.id)}
-                        className="h-8 px-3 rounded-lg bg-green-500/10 border border-green-500/20 text-[#10b981] hover:bg-green-500/20 text-[11px] font-bold transition-all"
-                      >
+                      <DashButton size="sm" variant="secondary" className="!text-green" onClick={() => handleMarkAsPaid(run.id)}>
                         Mark as Paid
-                      </button>
+                      </DashButton>
                       <button
                         onClick={() => handleDeleteRun(run.id)}
-                        className="h-8 px-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-[#ef4444] hover:bg-red-500/20 text-[11px] font-bold transition-all"
+                        className="h-9 px-2.5 rounded-xl bg-red/10 text-red hover:bg-red/20 text-[13px] font-bold transition-colors"
                         title="Delete Run"
                       >
-                        <X size={12} />
+                        <X size={13} />
                       </button>
                     </>
                   )}
                 </div>
-              </div>
+              </DashCard>
             ))}
           </div>
         )}
 
         {/* Run Payroll Modal */}
-        {runModalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-            <div className="bg-[#0b122b] border border-white/10 rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-5 border-b border-white/5 bg-white/[0.01]">
-                <h3 className="text-[15px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                  Run Payroll
-                </h3>
-                <button onClick={() => setRunModalOpen(false)} className="text-[#4a5a82] hover:text-[#eef2ff] transition-colors">
-                  <X size={16} />
-                </button>
+        <DashModal open={runModalOpen} onOpenChange={setRunModalOpen}>
+          <DashModalContent className="max-w-xl">
+            <DashModalHeader>
+              <DashModalTitle>Run Payroll</DashModalTitle>
+            </DashModalHeader>
+
+            <form onSubmit={handleRunPayroll} className="space-y-4 max-h-[70vh] overflow-y-auto common-scrollbar pr-1">
+              <DashFormField label="Period Label">
+                <DashInput required value={periodLabel} onChange={e => setPeriodLabel(e.target.value)} placeholder="e.g. June 2026 Payroll" />
+              </DashFormField>
+
+              <div className="grid grid-cols-2 gap-4">
+                <DashFormField label="Period Start">
+                  <DashInput type="date" required value={periodStart} onChange={e => setPeriodStart(e.target.value)} />
+                </DashFormField>
+                <DashFormField label="Period End">
+                  <DashInput type="date" required value={periodEnd} onChange={e => setPeriodEnd(e.target.value)} />
+                </DashFormField>
               </div>
 
-              <form onSubmit={handleRunPayroll} className="p-5 space-y-4 max-h-[75vh] overflow-y-auto common-scrollbar">
-                <div>
-                  <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Period Label</label>
-                  <input
-                    type="text"
-                    required
-                    value={periodLabel}
-                    onChange={e => setPeriodLabel(e.target.value)}
-                    className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none focus:border-blue-500"
-                    placeholder="e.g. June 2026 Payroll"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+              {/* Calculations Live Preview */}
+              <div className="border border-dash-border bg-dash-surface rounded-2xl p-5 space-y-4">
+                <h4 className="text-[13px] font-bold text-dash-text font-display flex items-center gap-1.5">
+                  <Landmark size={14} className="text-dash-accent" /> Run preview summary ({employees.length} employees)
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center border-b border-dash-border pb-3">
                   <div>
-                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Period Start</label>
-                    <input
-                      type="date"
-                      required
-                      value={periodStart}
-                      onChange={e => setPeriodStart(e.target.value)}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none focus:border-blue-500"
-                    />
+                    <span className="text-dash-textMuted text-[10px] font-bold block">Gross Payroll</span>
+                    <CurrencyValue value={previewGross} className="text-dash-text text-[12.5px] font-semibold block mt-0.5" />
                   </div>
                   <div>
-                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Period End</label>
-                    <input
-                      type="date"
-                      required
-                      value={periodEnd}
-                      onChange={e => setPeriodEnd(e.target.value)}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none focus:border-blue-500"
-                    />
+                    <span className="text-dash-textMuted text-[10px] font-bold block">Total PAYE</span>
+                    <CurrencyValue value={previewPAYE} className="text-dash-text text-[12.5px] font-semibold block mt-0.5" />
+                  </div>
+                  <div>
+                    <span className="text-dash-textMuted text-[10px] font-bold block">UIF & SDL</span>
+                    <CurrencyValue value={previewUIF + previewSDL} className="text-dash-text text-[12.5px] font-semibold block mt-0.5" />
+                  </div>
+                  <div>
+                    <span className="text-green text-[10px] font-bold block">Net Payout</span>
+                    <CurrencyValue value={previewNet} className="!text-green text-[13px] font-bold block mt-0.5" />
                   </div>
                 </div>
 
-                {/* Calculations Live Preview */}
-                <div className="border border-white/5 bg-[#070d24]/50 rounded-2xl p-5 space-y-4">
-                  <h4 className="text-[12px] font-bold text-[#eef2ff] font-space-grotesk flex items-center gap-1.5">
-                    <Landmark size={14} className="text-[#3b82f6]" /> Run Preview summary ({employees.length} employees)
-                  </h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center border-b border-white/5 pb-3">
-                    <div>
-                      <span className="text-[#4a5a82] text-[9.5px] font-bold block">Gross Payroll</span>
-                      <span className="text-[#eef2ff] text-[12px] font-semibold block mt-0.5">R{previewGross.toLocaleString()}</span>
-                    </div>
-                    <div>
-                      <span className="text-[#4a5a82] text-[9.5px] font-bold block">Total PAYE</span>
-                      <span className="text-[#eef2ff] text-[12px] font-semibold block mt-0.5">R{previewPAYE.toLocaleString()}</span>
-                    </div>
-                    <div>
-                      <span className="text-[#4a5a82] text-[9.5px] font-bold block">UIF & SDL</span>
-                      <span className="text-[#eef2ff] text-[12px] font-semibold block mt-0.5">R{(previewUIF + previewSDL).toLocaleString()}</span>
-                    </div>
-                    <div>
-                      <span className="text-[#10b981] text-[9.5px] font-bold block">Net Payout</span>
-                      <span className="text-[#10b981] text-[12.5px] font-bold block mt-0.5">R{previewNet.toLocaleString()}</span>
-                    </div>
-                  </div>
-
-                  {/* Individual employee preview items */}
-                  <div className="space-y-2 max-h-[150px] overflow-y-auto common-scrollbar pr-2">
-                    {employees.map(emp => {
-                      const gross = Number(emp.salary)
-                      const paye = calculatePAYE(gross)
-                      const uif = Math.min(177.12, gross * 0.01)
-                      const net = gross - paye - uif
-                      return (
-                        <div key={emp.id} className="flex justify-between items-center text-[11px] py-1 border-b border-white/[0.02] last:border-0">
-                          <span className="text-[#eef2ff] font-medium">{emp.first_name} {emp.last_name}</span>
-                          <span className="text-[#94a3c8]">Gross: R{gross.toLocaleString()} • Net: <strong className="text-white">R{net.toLocaleString()}</strong></span>
-                        </div>
-                      )
-                    })}
-                  </div>
+                {/* Individual employee preview items */}
+                <div className="space-y-2 max-h-[150px] overflow-y-auto common-scrollbar pr-2">
+                  {employees.map(emp => {
+                    const gross = Number(emp.salary)
+                    const paye = calculatePAYE(gross)
+                    const uif = Math.min(177.12, gross * 0.01)
+                    const net = gross - paye - uif
+                    return (
+                      <div key={emp.id} className="flex justify-between items-center text-[12px] py-1.5 border-b border-dash-border/60 last:border-0">
+                        <span className="text-dash-text font-medium">{emp.first_name} {emp.last_name}</span>
+                        <span className="text-dash-textMuted">
+                          Gross: <CurrencyValue value={gross} /> • Net: <strong className="text-dash-text"><CurrencyValue value={net} /></strong>
+                        </span>
+                      </div>
+                    )
+                  })}
                 </div>
+              </div>
 
-                <div className="pt-2 flex justify-end gap-3 border-t border-white/5">
-                  <button
-                    type="button"
-                    onClick={() => setRunModalOpen(false)}
-                    className="px-4 py-2 border border-white/5 hover:bg-white/5 text-[11px] font-bold rounded-xl text-t3 hover:text-t1 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submittingRun || employees.length === 0}
-                    className="px-5 py-2 bg-[#10b981] hover:opacity-90 disabled:opacity-50 text-[11px] font-bold rounded-xl text-white transition-colors"
-                  >
-                    {submittingRun ? 'Processing...' : 'Confirm Run'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+              <div className="pt-2 flex justify-end gap-3 border-t border-dash-border">
+                <DashButton type="button" variant="secondary" onClick={() => setRunModalOpen(false)}>
+                  Cancel
+                </DashButton>
+                <DashButton type="submit" disabled={submittingRun || employees.length === 0}>
+                  {submittingRun ? 'Processing...' : 'Confirm Run'}
+                </DashButton>
+              </div>
+            </form>
+          </DashModalContent>
+        </DashModal>
 
         {/* Payslips Drawer Modal */}
-        {payslipsOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-            <div className="bg-[#0b122b] border border-white/10 rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-5 border-b border-white/5 bg-white/[0.01]">
-                <div>
-                  <h3 className="text-[15px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                    Payslip Breakdown
-                  </h3>
-                  <span className="text-[10px] text-[#4a5a82] block mt-0.5">{payslipsOpen.period_label}</span>
-                </div>
-                <button onClick={() => setPayslipsOpen(null)} className="text-[#4a5a82] hover:text-[#eef2ff] transition-colors">
-                  <X size={16} />
-                </button>
-              </div>
+        <DashModal open={!!payslipsOpen} onOpenChange={(open) => !open && setPayslipsOpen(null)}>
+          <DashModalContent className="max-w-xl">
+            {payslipsOpen && (
+              <>
+                <DashModalHeader>
+                  <DashModalTitle>Payslip Breakdown</DashModalTitle>
+                  <span className="text-[12px] text-dash-textMuted">{payslipsOpen.period_label}</span>
+                </DashModalHeader>
 
-              <div className="p-5 max-h-[70vh] overflow-y-auto common-scrollbar space-y-4">
-                {(!payslipsOpen.payslips || payslipsOpen.payslips.length === 0) ? (
-                  <p className="text-[12px] text-[#4a5a82] text-center py-6">No payslips generated for this run.</p>
-                ) : (
-                  <div className="space-y-4">
-                    {payslipsOpen.payslips.map((slip: any) => (
-                      <div key={slip.id} className="border border-white/5 rounded-xl p-4 bg-[#070d24]/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                        <div>
-                          <span className="text-[12.5px] font-bold text-[#eef2ff] block">
-                            {slip.employees?.first_name} {slip.employees?.last_name}
-                          </span>
-                          <span className="text-[10.5px] text-[#4a5a82] block mt-0.5">{slip.employees?.email}</span>
+                <div className="max-h-[65vh] overflow-y-auto common-scrollbar space-y-4">
+                  {(!payslipsOpen.payslips || payslipsOpen.payslips.length === 0) ? (
+                    <p className="text-[13px] text-dash-textMuted text-center py-6">No payslips generated for this run.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {payslipsOpen.payslips.map((slip: any) => (
+                        <div key={slip.id} className="border border-dash-border rounded-xl p-4 bg-dash-surface flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                          <div>
+                            <span className="text-[13px] font-bold text-dash-text block">
+                              {slip.employees?.first_name} {slip.employees?.last_name}
+                            </span>
+                            <span className="text-[11px] text-dash-textMuted block mt-0.5">{slip.employees?.email}</span>
+                          </div>
+                          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 text-right text-[12px]">
+                            <div>
+                              <span className="text-dash-textMuted text-[9.5px] uppercase block">Gross</span>
+                              <CurrencyValue value={slip.gross_salary} className="text-dash-text font-semibold block mt-0.5" />
+                            </div>
+                            <div>
+                              <span className="text-dash-textMuted text-[9.5px] uppercase block">PAYE</span>
+                              <CurrencyValue value={slip.paye} className="text-dash-text font-semibold block mt-0.5" />
+                            </div>
+                            <div>
+                              <span className="text-dash-textMuted text-[9.5px] uppercase block">UIF EE</span>
+                              <CurrencyValue value={slip.uif_employee} className="text-dash-text font-semibold block mt-0.5" />
+                            </div>
+                            <div>
+                              <span className="text-dash-textMuted text-[9.5px] uppercase block">UIF ER</span>
+                              <CurrencyValue value={slip.uif_employer} className="text-dash-text font-semibold block mt-0.5" />
+                            </div>
+                            <div>
+                              <span className="text-dash-textMuted text-[9.5px] uppercase block">SDL</span>
+                              <CurrencyValue value={slip.sdl} className="text-dash-text font-semibold block mt-0.5" />
+                            </div>
+                            <div>
+                              <span className="text-green text-[9.5px] uppercase block">Net Pay</span>
+                              <CurrencyValue value={slip.net_salary} className="!text-green font-bold block mt-0.5" />
+                            </div>
+                          </div>
                         </div>
-                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 text-right text-[11.5px] font-dm-sans">
-                          <div>
-                            <span className="text-[#4a5a82] text-[9px] uppercase block">Gross</span>
-                            <span className="text-[#eef2ff] font-semibold block mt-0.5">R{Number(slip.gross_salary).toLocaleString()}</span>
-                          </div>
-                          <div>
-                            <span className="text-[#4a5a82] text-[9px] uppercase block">PAYE</span>
-                            <span className="text-[#eef2ff] font-semibold block mt-0.5">R{Number(slip.paye).toLocaleString()}</span>
-                          </div>
-                          <div>
-                            <span className="text-[#4a5a82] text-[9px] uppercase block">UIF EE</span>
-                            <span className="text-[#eef2ff] font-semibold block mt-0.5">R{Number(slip.uif_employee).toLocaleString()}</span>
-                          </div>
-                          <div>
-                            <span className="text-[#4a5a82] text-[9px] uppercase block">UIF ER</span>
-                            <span className="text-[#eef2ff] font-semibold block mt-0.5">R{Number(slip.uif_employer).toLocaleString()}</span>
-                          </div>
-                          <div>
-                            <span className="text-[#4a5a82] text-[9px] uppercase block">SDL</span>
-                            <span className="text-[#eef2ff] font-semibold block mt-0.5">R{Number(slip.sdl).toLocaleString()}</span>
-                          </div>
-                          <div>
-                            <span className="text-[#10b981] text-[9px] uppercase block">Net Pay</span>
-                            <span className="text-[#10b981] font-bold block mt-0.5">R{Number(slip.net_salary).toLocaleString()}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="pt-2 flex justify-end">
+                    <DashButton variant="secondary" onClick={() => setPayslipsOpen(null)}>
+                      Close
+                    </DashButton>
                   </div>
-                )}
-
-                <div className="pt-2 flex justify-end">
-                  <button
-                    onClick={() => setPayslipsOpen(null)}
-                    className="px-5 py-2 bg-white/5 hover:bg-white/10 text-[11px] font-bold rounded-xl text-t1 transition-colors border border-white/5"
-                  >
-                    Close
-                  </button>
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
+              </>
+            )}
+          </DashModalContent>
+        </DashModal>
       </div>
+    </Wrapper>
+  )
+}
+
+// Task 47: /hr/payroll is now reachable by any workspace member (see
+// components/layouts/DefaultWrapper.tsx), not just admin/owner/hr/payroll -- this
+// dispatcher decides which view they actually get. Same "one route, role-branched
+// content" shape already used by /hr/leave for its own self-service case, reused here
+// rather than fragmenting payroll into a disconnected second route.
+export default function PayrollPage() {
+  const { role } = useDashboardContext() as any
+  const canManagePayroll = role === 'admin' || role === 'owner' || role === 'hr' || role === 'payroll'
+
+  if (canManagePayroll) {
+    return <PayrollAdminView />
+  }
+
+  return (
+    <Wrapper>
+      <MyPayslipsView />
     </Wrapper>
   )
 }

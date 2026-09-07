@@ -2,10 +2,23 @@
 import { useEffect, useState } from 'react'
 import Wrapper from '@/components/layouts/DefaultWrapper'
 import { useDashboardContext } from '@/components/layouts/DashboardProvider'
-import { Plus, Edit2, Trash2, X, AlertTriangle } from 'lucide-react'
+import { Plus, Edit2, Trash2, Users, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { getWorkspaceMembers } from '@/app/actions/settings'
+import {
+  DashCard,
+  DashButton,
+  DashEmptyState,
+  DashStatusPill,
+  DashModal,
+  DashModalContent,
+  DashModalHeader,
+  DashModalTitle,
+  DashFormField,
+  DashInput,
+  CurrencyValue,
+} from '@/components/dashboard-ui'
 
 interface Employee {
   id: string
@@ -21,6 +34,34 @@ interface Employee {
   salary: number
   salary_frequency: 'monthly' | 'weekly' | 'hourly'
   status: 'active' | 'inactive' | 'terminated'
+}
+
+const TYPE_LABEL: Record<Employee['employment_type'], string> = {
+  full_time: 'Full-Time',
+  part_time: 'Part-Time',
+  contractor: 'Contractor',
+  intern: 'Intern',
+}
+
+const STATUS_VARIANT: Record<Employee['status'], 'success' | 'neutral' | 'danger'> = {
+  active: 'success',
+  inactive: 'neutral',
+  terminated: 'danger',
+}
+
+// Same select-control shape as DashInput (dashboard-ui/FormField.tsx) — that file's own
+// comment says to wrap a real <select> with this className rather than re-implementing
+// Radix Select for a plain dropdown.
+const selectClass =
+  'w-full h-11 rounded-xl border border-dash-border bg-white pl-3.5 pr-9 text-sm !text-dash-text appearance-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-accent'
+
+function DashSelect({ className, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <div className="relative">
+      <select className={`${selectClass} ${className ?? ''}`} {...props} />
+      <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-dash-textMuted" />
+    </div>
+  )
 }
 
 export default function EmployeesPage() {
@@ -176,329 +217,209 @@ export default function EmployeesPage() {
     }
   }
 
-  const getTypeBadge = (type: string) => {
-    switch (type) {
-      case 'full_time':
-        return <span className="bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-semibold px-2 py-0.5 rounded-full">Full-Time</span>
-      case 'part_time':
-        return <span className="bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-semibold px-2 py-0.5 rounded-full">Part-Time</span>
-      case 'contractor':
-        return <span className="bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[10px] font-semibold px-2 py-0.5 rounded-full">Contractor</span>
-      case 'intern':
-        return <span className="bg-green-500/10 border border-green-500/20 text-green-400 text-[10px] font-semibold px-2 py-0.5 rounded-full">Intern</span>
-      default:
-        return null
-    }
-  }
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'active':
-        return <span className="text-[#10b981] text-[10.5px] font-medium flex items-center gap-1">● Active</span>
-      case 'inactive':
-        return <span className="text-[#94a3c8] text-[10.5px] font-medium flex items-center gap-1">○ Inactive</span>
-      case 'terminated':
-        return <span className="text-[#ef4444] text-[10.5px] font-medium flex items-center gap-1">✕ Terminated</span>
-      default:
-        return null
-    }
-  }
-
   return (
     <Wrapper>
-      <div className="min-h-screen bg-[#04091a] px-6 py-6 max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center justify-between border-b border-white/5 pb-4">
+      <div className="min-h-screen bg-dash-bg px-6 py-6 max-w-6xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/hr" className="text-[#4a5a82] hover:text-[#eef2ff] text-[12px] font-semibold">
+            <Link href="/hr" className="text-dash-textMuted hover:text-dash-text text-[13px] font-semibold">
               ← Overview
             </Link>
-            <h1 className="text-[20px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-              Employee Directory
-            </h1>
+            <h1 className="font-display text-[22px] font-bold text-dash-text ml-1">Employee Directory</h1>
           </div>
-          <button
-            onClick={openAddModal}
-            className="h-9 px-4 rounded-[8px] bg-[#2563eb] text-white hover:bg-[#2563eb]/95 text-[12px] font-bold font-dm-sans flex items-center gap-1.5 transition-all shadow-lg shadow-[#2563eb]/10"
-          >
+          <DashButton size="sm" onClick={openAddModal}>
             <Plus size={14} /> Add Employee
-          </button>
+          </DashButton>
         </div>
 
         {loading ? (
-          <div className="text-center py-20 text-[#4a5a82] animate-pulse">Loading employee directory...</div>
+          <div className="text-center py-20 text-dash-textMuted animate-pulse">Loading employee directory...</div>
         ) : employees.length === 0 ? (
-          <div className="text-center py-20 bg-[rgba(12,21,53,0.3)] border border-white/5 rounded-2xl p-8">
-            <p className="text-[13px] text-[#4a5a82]">No employees registered. Click "Add Employee" to register your first team member.</p>
-          </div>
+          <DashCard interactive={false}>
+            <DashEmptyState
+              icon={Users}
+              title="No employees registered"
+              description='Click "Add Employee" to register your first team member.'
+              actionLabel="Add Employee"
+              onAction={openAddModal}
+            />
+          </DashCard>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {employees.map(emp => (
-              <div key={emp.id} className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-2xl p-5 hover:border-[rgba(255,255,255,0.13)] transition-all flex flex-col justify-between gap-4">
+              <DashCard key={emp.id} className="p-5 flex flex-col justify-between gap-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-[13px] shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-dash-accent/10 text-dash-accent flex items-center justify-center font-bold text-[13px] shrink-0">
                       {emp.first_name[0]}{emp.last_name[0]}
                     </div>
                     <div>
-                      <h3 className="text-[13.5px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                      <h3 className="font-display text-[14px] font-bold text-dash-text">
                         {emp.first_name} {emp.last_name}
                       </h3>
-                      <p className="text-[11.5px] text-[#94a3c8] mt-0.5 font-medium">{emp.role} — {emp.department}</p>
+                      <p className="text-[12px] text-dash-textMuted mt-0.5">{emp.role} — {emp.department}</p>
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1.5 shrink-0">
-                    {getTypeBadge(emp.employment_type)}
-                    {getStatusBadge(emp.status)}
+                    <DashStatusPill variant="accent">{TYPE_LABEL[emp.employment_type]}</DashStatusPill>
+                    <DashStatusPill variant={STATUS_VARIANT[emp.status]} dot className="capitalize">{emp.status}</DashStatusPill>
                   </div>
                 </div>
 
-                <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-1.5 text-[11.5px] font-dm-sans">
-                  {emp.email && <div className="text-[#94a3c8]"><span className="text-[#4a5a82]">Email:</span> {emp.email}</div>}
-                  {emp.phone && <div className="text-[#94a3c8]"><span className="text-[#4a5a82]">Phone:</span> {emp.phone}</div>}
-                  {emp.id_number && <div className="text-[#94a3c8]"><span className="text-[#4a5a82]">ID No:</span> {emp.id_number}</div>}
-                  <div className="text-[#94a3c8]">
-                    <span className="text-[#4a5a82]">Salary:</span> R{Number(emp.salary).toLocaleString()} / {emp.salary_frequency}
+                <div className="bg-dash-surface rounded-xl p-3 space-y-1.5 text-[12px]">
+                  {emp.email && <div className="text-dash-textMuted"><span className="text-dash-text/70 font-medium">Email:</span> {emp.email}</div>}
+                  {emp.phone && <div className="text-dash-textMuted"><span className="text-dash-text/70 font-medium">Phone:</span> {emp.phone}</div>}
+                  {emp.id_number && <div className="text-dash-textMuted"><span className="text-dash-text/70 font-medium">ID No:</span> {emp.id_number}</div>}
+                  <div className="text-dash-textMuted flex items-center gap-1">
+                    <span className="text-dash-text/70 font-medium">Salary:</span> <CurrencyValue value={emp.salary} /> / {emp.salary_frequency}
                   </div>
                 </div>
 
-                <div className="flex justify-end items-center gap-2 pt-2 border-t border-white/5">
+                <div className="flex justify-end items-center gap-2 pt-2 border-t border-dash-border">
                   <Link
                     href={`/hr/employees/${emp.id}`}
-                    className="h-7 px-3 rounded-lg bg-white/5 border border-white/5 text-[#94a3c8] hover:text-[#eef2ff] flex items-center justify-center transition-colors text-[11px] font-semibold mr-auto"
+                    className="h-7 px-3 rounded-lg bg-dash-surface text-dash-textMuted hover:text-dash-text flex items-center justify-center transition-colors text-[11px] font-semibold mr-auto"
                   >
                     Manage
                   </Link>
                   <button
                     onClick={() => openEditModal(emp)}
-                    className="w-7 h-7 rounded-lg bg-white/5 border border-white/5 text-[#94a3c8] hover:text-[#eef2ff] flex items-center justify-center transition-colors"
+                    className="w-7 h-7 rounded-lg bg-dash-surface text-dash-textMuted hover:text-dash-text flex items-center justify-center transition-colors"
                   >
                     <Edit2 size={12} />
                   </button>
                   <button
                     onClick={() => handleDelete(emp.id)}
-                    className="w-7 h-7 rounded-lg bg-red-500/10 border border-red-500/20 text-[#ef4444] hover:bg-red-500/20 flex items-center justify-center transition-colors"
+                    className="w-7 h-7 rounded-lg bg-red/10 text-red hover:bg-red/20 flex items-center justify-center transition-colors"
                   >
                     <Trash2 size={12} />
                   </button>
                 </div>
-              </div>
+              </DashCard>
             ))}
           </div>
         )}
 
-        {/* Modal */}
-        {modalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-            <div className="bg-[#0b122b] border border-white/10 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-5 border-b border-white/5 bg-white/[0.01]">
-                <h3 className="text-[15px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                  {editingEmployee ? 'Edit Employee Details' : 'Add New Employee'}
-                </h3>
-                <button onClick={() => setModalOpen(false)} className="text-[#4a5a82] hover:text-[#eef2ff] transition-colors">
-                  <X size={16} />
-                </button>
+        <DashModal open={modalOpen} onOpenChange={setModalOpen}>
+          <DashModalContent className="max-w-lg">
+            <DashModalHeader>
+              <DashModalTitle>{editingEmployee ? 'Edit Employee Details' : 'Add New Employee'}</DashModalTitle>
+            </DashModalHeader>
+
+            <form onSubmit={handleSave} className="space-y-4 max-h-[70vh] overflow-y-auto common-scrollbar pr-1">
+              {!editingEmployee && members.length > 0 && (
+                <DashFormField label="Autofill from Workspace Member">
+                  <DashSelect
+                    onChange={(e) => {
+                      const val = e.target.value
+                      if (val) {
+                        const m = members.find(x => x.id === val)
+                        if (m && m.user) {
+                          setFirstName(m.user.first_name || '')
+                          setLastName(m.user.last_name || '')
+                          setEmail(m.user.email || '')
+                          setRole(m.role || '')
+                        }
+                      }
+                    }}
+                    defaultValue=""
+                  >
+                    <option value="">-- Select Member --</option>
+                    {members.map(m => (
+                      <option key={m.id} value={m.id}>
+                        {m.user?.first_name} {m.user?.last_name} ({m.user?.email})
+                      </option>
+                    ))}
+                  </DashSelect>
+                </DashFormField>
+              )}
+              <div className="grid grid-cols-2 gap-4">
+                <DashFormField label="First Name" required>
+                  <DashInput required value={firstName} onChange={e => setFirstName(e.target.value)} />
+                </DashFormField>
+                <DashFormField label="Last Name" required>
+                  <DashInput required value={lastName} onChange={e => setLastName(e.target.value)} />
+                </DashFormField>
               </div>
 
-              <form onSubmit={handleSave} className="p-5 space-y-4 max-h-[75vh] overflow-y-auto common-scrollbar">
-                {!editingEmployee && members.length > 0 && (
-                  <div>
-                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">
-                      Autofill from Workspace Member
-                    </label>
-                    <select
-                      onChange={(e) => {
-                        const val = e.target.value
-                        if (val) {
-                          const m = members.find(x => x.id === val)
-                          if (m && m.user) {
-                            setFirstName(m.user.first_name || '')
-                            setLastName(m.user.last_name || '')
-                            setEmail(m.user.email || '')
-                            setRole(m.role || '')
-                          }
-                        }
-                      }}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-3 py-2 text-[12px] text-white focus:outline-none focus:border-blue-500 mb-2"
-                      defaultValue=""
+              <div className="grid grid-cols-2 gap-4">
+                <DashFormField label="Email">
+                  <DashInput type="email" value={email} onChange={e => setEmail(e.target.value)} />
+                </DashFormField>
+                <DashFormField label="Phone">
+                  <DashInput value={phone} onChange={e => setPhone(e.target.value)} />
+                </DashFormField>
+              </div>
+
+              <DashFormField label="SA ID Number / Passport">
+                <DashInput value={idNumber} onChange={e => setIdNumber(e.target.value)} />
+              </DashFormField>
+
+              <div className="grid grid-cols-2 gap-4">
+                <DashFormField label="Role Title" required>
+                  <DashInput required placeholder="e.g. Software Engineer" value={role} onChange={e => setRole(e.target.value)} />
+                </DashFormField>
+                <DashFormField label="Department" required>
+                  <DashInput required placeholder="e.g. Engineering" value={department} onChange={e => setDepartment(e.target.value)} />
+                </DashFormField>
+              </div>
+
+              <DashFormField label="Employment Type">
+                <div className="flex gap-2">
+                  {(['full_time', 'part_time', 'contractor', 'intern'] as Employee['employment_type'][]).map(type => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setEmploymentType(type)}
+                      className={`flex-1 py-2 border rounded-lg text-[11px] font-semibold transition-colors ${
+                        employmentType === type
+                          ? 'bg-dash-accent text-white border-dash-accent'
+                          : 'bg-white border-dash-border text-dash-textMuted hover:border-dash-text/20'
+                      }`}
                     >
-                      <option value="">-- Select Member --</option>
-                      {members.map(m => (
-                        <option key={m.id} value={m.id}>
-                          {m.user?.first_name} {m.user?.last_name} ({m.user?.email})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">First Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={firstName}
-                      onChange={e => setFirstName(e.target.value)}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Last Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={lastName}
-                      onChange={e => setLastName(e.target.value)}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
+                      {TYPE_LABEL[type]}
+                    </button>
+                  ))}
                 </div>
+              </DashFormField>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Email</label>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Phone</label>
-                    <input
-                      type="text"
-                      value={phone}
-                      onChange={e => setPhone(e.target.value)}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                </div>
+              <div className="grid grid-cols-3 gap-4">
+                <DashFormField label="Salary Amount (ZAR)" required className="col-span-2">
+                  <DashInput type="number" required min={0} value={salary} onChange={e => setSalary(Number(e.target.value))} />
+                </DashFormField>
+                <DashFormField label="Frequency">
+                  <DashSelect value={salaryFrequency} onChange={e => setSalaryFrequency(e.target.value as any)}>
+                    <option value="monthly">Monthly</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="hourly">Hourly</option>
+                  </DashSelect>
+                </DashFormField>
+              </div>
 
-                <div>
-                  <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">SA ID Number / Passport</label>
-                  <input
-                    type="text"
-                    value={idNumber}
-                    onChange={e => setIdNumber(e.target.value)}
-                    className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none focus:border-blue-500"
-                  />
-                </div>
+              <div className="grid grid-cols-2 gap-4">
+                <DashFormField label="Start Date" required>
+                  <DashInput type="date" required value={startDate} onChange={e => setStartDate(e.target.value)} />
+                </DashFormField>
+                <DashFormField label="Status">
+                  <DashSelect value={status} onChange={e => setStatus(e.target.value as any)}>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="terminated">Terminated</option>
+                  </DashSelect>
+                </DashFormField>
+              </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Role Title</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Software Engineer"
-                      value={role}
-                      onChange={e => setRole(e.target.value)}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Department</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Engineering"
-                      value={department}
-                      onChange={e => setDepartment(e.target.value)}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Employment Type</label>
-                  <div className="flex gap-2">
-                    {(['full_time', 'part_time', 'contractor', 'intern'] as Employee['employment_type'][]).map(type => (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => setEmploymentType(type)}
-                        className={`flex-1 py-1.5 border rounded-lg text-[10.5px] font-semibold transition-all ${
-                          employmentType === type
-                            ? 'bg-[#2563eb] text-white border-[#2563eb]'
-                            : 'bg-[#070d24] border-white/5 text-[#94a3c8] hover:border-white/10'
-                        }`}
-                      >
-                        {type.replace('_', ' ').toUpperCase()}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="col-span-2">
-                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Salary Amount (ZAR)</label>
-                    <input
-                      type="number"
-                      required
-                      min={0}
-                      value={salary}
-                      onChange={e => setSalary(Number(e.target.value))}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Frequency</label>
-                    <select
-                      value={salaryFrequency}
-                      onChange={e => setSalaryFrequency(e.target.value as any)}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-3 py-2 text-[12px] text-white focus:outline-none focus:border-blue-500"
-                    >
-                      <option value="monthly">Monthly</option>
-                      <option value="weekly">Weekly</option>
-                      <option value="hourly">Hourly</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Start Date</label>
-                    <input
-                      type="date"
-                      required
-                      value={startDate}
-                      onChange={e => setStartDate(e.target.value)}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Status</label>
-                    <select
-                      value={status}
-                      onChange={e => setStatus(e.target.value as any)}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-3 py-2 text-[12px] text-white focus:outline-none focus:border-blue-500"
-                    >
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                      <option value="terminated">Terminated</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="pt-2 flex justify-end gap-3 border-t border-white/5">
-                  <button
-                    type="button"
-                    onClick={() => setModalOpen(false)}
-                    className="px-4 py-2 border border-white/5 hover:bg-white/5 text-[11px] font-bold rounded-xl text-t3 hover:text-t1 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-[11px] font-bold rounded-xl text-white transition-colors"
-                  >
-                    {editingEmployee ? 'Save Changes' : 'Register Employee'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+              <div className="pt-2 flex justify-end gap-3 border-t border-dash-border">
+                <DashButton type="button" variant="secondary" onClick={() => setModalOpen(false)}>
+                  Cancel
+                </DashButton>
+                <DashButton type="submit">
+                  {editingEmployee ? 'Save Changes' : 'Register Employee'}
+                </DashButton>
+              </div>
+            </form>
+          </DashModalContent>
+        </DashModal>
       </div>
     </Wrapper>
   )

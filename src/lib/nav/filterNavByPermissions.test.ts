@@ -124,7 +124,11 @@ function newVisibleLinks(ctx: NavRoleContext): Set<string> {
   const links = new Set<string>();
 
   filterNavByPermissions(dashboardNav, ctx).forEach((module) => {
-    if (module.link) links.add(module.link);
+    // Mirrors NavRailModule.tsx: module.link only renders as a clickable rail entry
+    // when the module has no items (e.g. Dashboard). HR & Payroll carries `link: "/hr"`
+    // solely so /hr resolves for active-state highlighting (see matchActiveNav.test.ts)
+    // -- it must not surface as an extra visible sidebar link here.
+    if (module.link && !module.items) links.add(module.link);
     module.items?.forEach((item) => {
       if (item.link) links.add(item.link);
       item.subItems?.forEach((sub) => links.add(sub.link));
@@ -195,6 +199,33 @@ const NEWLY_ADDED_HR_ROUTES = new Set([
   "/hr/schedules",
 ]);
 
+/**
+ * Task 47: /hr/payroll changed from role-restricted (admin/owner/hr/payroll only) to
+ * visible to any workspace member -- the page itself now branches (full payroll-run
+ * management for privileged roles, a self-service "my payslips" view for everyone else),
+ * so the nav link needs to be reachable by everyone too. Not a new route (it's in the
+ * frozen OLD_SIDEBAR_DATA snapshot already, just with the old restricted visibility), so
+ * it doesn't fit NEWLY_ADDED_HR_ROUTES conceptually, but gets the same treatment in the
+ * parity check below: excluded from the strict old-vs-new comparison, with its own
+ * equivalence test instead.
+ */
+const HR_PAYROLL_NOW_OPEN_TO_ALL = new Set([
+  "/hr/payroll",
+]);
+
+/**
+ * Sub-nav fix: HR & Payroll changed from a single "HR & Payroll" item (linking to /hr)
+ * containing 5 subItems, to 5 flat top-level items with no container and no accordion.
+ * The container's own /hr link is gone as a nav entry (it was never actually clickable
+ * in the old UI either -- NavItemsList intercepts the click on any item that has
+ * subItems and toggles expand/collapse instead of navigating) -- /hr itself is still a
+ * real page, still reachable via the "← Overview" links already on the HR sub-pages,
+ * just no longer a distinct sidebar link. Excluded from the parity check below.
+ */
+const HR_OVERVIEW_LINK_REMOVED = new Set([
+  "/hr",
+]);
+
 describe("filterNavByPermissions matches the old inline filtering logic exactly", () => {
   const scenarios: Array<[label: string, role: string, permissions: string[]]> = [
     ["admin", "admin", []],
@@ -213,15 +244,24 @@ describe("filterNavByPermissions matches the old inline filtering logic exactly"
   it.each(scenarios)("%s sees the identical set of routes (plus the intentionally-added Social pages)", (_label, role, permissions) => {
     const oldLinks = oldVisibleLinks(role, permissions);
     const newLinks = newVisibleLinks({ role, permissions });
+    // /hr/payroll's visibility itself changed (Task 47), so it's excluded from BOTH
+    // sides here -- filtered out of newLinks like the other NEWLY_ADDED_* sets, but
+    // also out of oldLinks, since (unlike a brand new route) it already existed in the
+    // frozen snapshot with different, role-restricted visibility. Its own equivalence
+    // test below covers the real new behavior.
+    const oldLinksExcludingChanges = [...oldLinks].filter(
+      (l) => !HR_PAYROLL_NOW_OPEN_TO_ALL.has(l) && !HR_OVERVIEW_LINK_REMOVED.has(l)
+    );
     const newLinksExcludingAdditions = [...newLinks].filter(
       (l) =>
         !NEWLY_ADDED_SOCIAL_ROUTES.has(l) &&
         !NEWLY_ADDED_FINANCE_ROUTES.has(l) &&
         !NEWLY_ADDED_MARKETING_ROUTES.has(l) &&
         !NEWLY_ADDED_LEAD_FINDER_ROUTES.has(l) &&
-        !NEWLY_ADDED_HR_ROUTES.has(l)
+        !NEWLY_ADDED_HR_ROUTES.has(l) &&
+        !HR_PAYROLL_NOW_OPEN_TO_ALL.has(l)
     );
-    expect(newLinksExcludingAdditions.sort()).toEqual([...oldLinks].sort());
+    expect(newLinksExcludingAdditions.sort()).toEqual(oldLinksExcludingChanges.sort());
   });
 
   it.each(scenarios)("%s: new Social pages are visible iff /social already was (same 'marketing' permission)", (_label, role, permissions) => {
@@ -256,11 +296,26 @@ describe("filterNavByPermissions matches the old inline filtering logic exactly"
     });
   });
 
-  it.each(scenarios)("%s: Schedules is visible iff /hr/leave already was (both open to any workspace member who can see /hr at all, unlike the role-restricted Employees/Payroll subItems)", (_label, role, permissions) => {
+  it.each(scenarios)("%s: Schedules is visible iff /hr/leave already was (both open to any workspace member who can see /hr at all, unlike the role-restricted Employees subItem)", (_label, role, permissions) => {
     const newLinks = newVisibleLinks({ role, permissions });
     const hadHrLeave = newLinks.has("/hr/leave");
     NEWLY_ADDED_HR_ROUTES.forEach((route) => {
       expect(newLinks.has(route)).toBe(hadHrLeave);
+    });
+  });
+
+  it.each(scenarios)("%s: Payroll is visible iff /hr/leave already was (Task 47 -- Payroll is no longer role-restricted, it's open to any workspace member same as Leave/Time Tracking/Schedules; the page itself branches into an admin view or a self-service view)", (_label, role, permissions) => {
+    const newLinks = newVisibleLinks({ role, permissions });
+    const hadHrLeave = newLinks.has("/hr/leave");
+    HR_PAYROLL_NOW_OPEN_TO_ALL.forEach((route) => {
+      expect(newLinks.has(route)).toBe(hadHrLeave);
+    });
+  });
+
+  it.each(scenarios)("%s: /hr is never a distinct sidebar link (sub-nav fix -- HR & Payroll is a flat list, no container item)", (_label, role, permissions) => {
+    const newLinks = newVisibleLinks({ role, permissions });
+    HR_OVERVIEW_LINK_REMOVED.forEach((route) => {
+      expect(newLinks.has(route)).toBe(false);
     });
   });
 });

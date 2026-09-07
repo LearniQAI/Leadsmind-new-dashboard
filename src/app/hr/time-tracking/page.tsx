@@ -2,9 +2,30 @@
 import { useEffect, useState } from 'react'
 import Wrapper from '@/components/layouts/DefaultWrapper'
 import { useDashboardContext } from '@/components/layouts/DashboardProvider'
-import { Plus, X, Edit2, Trash2, Calendar, Clock, DollarSign } from 'lucide-react'
+import { Plus, Edit2, Trash2, Clock, DollarSign, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import {
+  DashCard,
+  DashButton,
+  DashEmptyState,
+  DashStatusPill,
+  DashModal,
+  DashModalContent,
+  DashModalHeader,
+  DashModalTitle,
+  DashFormField,
+  DashInput,
+  DashTextarea,
+  DashTable,
+  DashTableContainer,
+  DashTableHead,
+  DashTableHeadCell,
+  DashTableBody,
+  DashTableRow,
+  DashTableCell,
+  CurrencyValue,
+} from '@/components/dashboard-ui'
 
 interface TimeEntry {
   id: string
@@ -26,6 +47,18 @@ interface Employee {
   id: string
   first_name: string
   last_name: string
+}
+
+const selectClass =
+  'w-full h-10 rounded-xl border border-dash-border bg-white pl-3 pr-8 text-[12.5px] !text-dash-text appearance-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-accent'
+
+function DashSelect({ className, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <div className="relative">
+      <select className={`${selectClass} ${className ?? ''}`} {...props} />
+      <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-dash-textMuted" />
+    </div>
+  )
 }
 
 export default function TimeTrackingPage() {
@@ -170,302 +203,242 @@ export default function TimeTrackingPage() {
 
   return (
     <Wrapper>
-      <div className="min-h-screen bg-[#04091a] px-6 py-6 max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center justify-between border-b border-white/5 pb-4">
+      <div className="min-h-screen bg-dash-bg px-6 py-6 max-w-6xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/hr" className="text-[#4a5a82] hover:text-[#eef2ff] text-[12px] font-semibold">
+            <Link href="/hr" className="text-dash-textMuted hover:text-dash-text text-[13px] font-semibold">
               ← Overview
             </Link>
-            <h1 className="text-[20px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-              Time Tracking
-            </h1>
+            <h1 className="font-display text-[22px] font-bold text-dash-text ml-1">Time Tracking</h1>
           </div>
-          <button
-            onClick={openAddModal}
-            className="h-9 px-4 rounded-[8px] bg-[#2563eb] text-white hover:bg-[#2563eb]/95 text-[12px] font-bold font-dm-sans flex items-center gap-1.5 transition-all shadow-lg shadow-[#2563eb]/10"
-          >
+          <DashButton size="sm" onClick={openAddModal}>
             <Plus size={14} /> Log Time
-          </button>
+          </DashButton>
         </div>
 
         {/* Summary Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-2xl p-5 flex items-center justify-between">
+          <DashCard className="p-5 flex items-center justify-between">
             <div>
-              <span className="text-[11.5px] font-medium text-[#4a5a82] uppercase tracking-[0.8px] block mb-1">Total Logged Hours</span>
-              <span className="text-[20px] font-bold text-[#eef2ff] font-space-grotesk">{totalHours} hrs</span>
+              <span className="text-[12px] font-medium text-dash-textMuted block mb-1">Total Logged Hours</span>
+              <span className="font-display text-[20px] font-bold text-dash-text">{totalHours} hrs</span>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-              <Clock size={18} className="text-[#3b82f6]" />
+            <div className="w-10 h-10 rounded-xl bg-dash-accent/10 flex items-center justify-center">
+              <Clock size={18} className="text-dash-accent" />
             </div>
-          </div>
-          <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-2xl p-5 flex items-center justify-between">
+          </DashCard>
+          <DashCard className="p-5 flex items-center justify-between">
             <div>
-              <span className="text-[11.5px] font-medium text-[#4a5a82] uppercase tracking-[0.8px] block mb-1">Billable Hours</span>
-              <span className="text-[20px] font-bold text-[#eef2ff] font-space-grotesk">{billableHours} hrs</span>
+              <span className="text-[12px] font-medium text-dash-textMuted block mb-1">Billable Hours</span>
+              <span className="font-display text-[20px] font-bold text-dash-text">{billableHours} hrs</span>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center">
-              <Clock size={18} className="text-[#6366f1]" />
+            <div className="w-10 h-10 rounded-xl bg-purple/10 flex items-center justify-center">
+              <Clock size={18} className="text-purple" />
             </div>
-          </div>
-          <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-2xl p-5 flex items-center justify-between">
+          </DashCard>
+          <DashCard className="p-5 flex items-center justify-between">
             <div>
-              <span className="text-[11.5px] font-medium text-[#4a5a82] uppercase tracking-[0.8px] block mb-1">Billable Amount</span>
-              <span className="text-[20px] font-bold text-[#10b981] font-space-grotesk">R{billableValue.toLocaleString()}</span>
+              <span className="text-[12px] font-medium text-dash-textMuted block mb-1">Billable Amount</span>
+              <CurrencyValue value={billableValue} className="font-display text-[20px] font-bold !text-green block" />
             </div>
-            <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
-              <DollarSign size={18} className="text-[#10b981]" />
+            <div className="w-10 h-10 rounded-xl bg-green/10 flex items-center justify-center">
+              <DollarSign size={18} className="text-green" />
             </div>
-          </div>
+          </DashCard>
         </div>
 
         {/* Filters */}
-        <div className="bg-[rgba(12,21,53,0.85)] border border-white/5 rounded-2xl p-4 flex flex-wrap gap-4 items-center">
+        <DashCard interactive={false} className="p-4 flex flex-wrap gap-4 items-end">
           {isTimeManager && (
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] text-[#4a5a82] font-bold uppercase">Employee</span>
-              <select
-                value={filterEmployee}
-                onChange={e => setFilterEmployee(e.target.value)}
-                className="bg-[#070d24] border border-white/5 rounded-xl px-3 py-1.5 text-[11.5px] text-white focus:outline-none"
-              >
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[11px] text-dash-textMuted font-bold uppercase tracking-wide">Employee</span>
+              <DashSelect value={filterEmployee} onChange={e => setFilterEmployee(e.target.value)} className="w-48">
                 <option value="all">All Employees</option>
                 {employees.map(emp => (
                   <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name}</option>
                 ))}
-              </select>
+              </DashSelect>
             </div>
           )}
 
-          <div className="flex flex-col gap-1">
-            <span className="text-[10px] text-[#4a5a82] font-bold uppercase">Billable Status</span>
-            <select
-              value={filterBillable}
-              onChange={e => setFilterBillable(e.target.value)}
-              className="bg-[#070d24] border border-white/5 rounded-xl px-3 py-1.5 text-[11.5px] text-white focus:outline-none"
-            >
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[11px] text-dash-textMuted font-bold uppercase tracking-wide">Billable Status</span>
+            <DashSelect value={filterBillable} onChange={e => setFilterBillable(e.target.value)} className="w-44">
               <option value="all">All Entries</option>
               <option value="true">Billable Only</option>
               <option value="false">Non-Billable Only</option>
-            </select>
+            </DashSelect>
           </div>
-        </div>
+        </DashCard>
 
-        {/* Time Entries Table */}
+        {/* Time Entries */}
         {loading ? (
-          <div className="text-center py-20 text-[#4a5a82] animate-pulse">Loading time log sheets...</div>
+          <div className="text-center py-20 text-dash-textMuted animate-pulse">Loading time log sheets...</div>
         ) : timeEntries.length === 0 ? (
-          <div className="text-center py-20 bg-[rgba(12,21,53,0.3)] border border-white/5 rounded-2xl p-8">
-            <p className="text-[13px] text-[#4a5a82]">No time sheets recorded yet.</p>
-          </div>
+          <DashCard interactive={false}>
+            <DashEmptyState icon={Clock} title="No time sheets recorded" description="No time sheets recorded yet." />
+          </DashCard>
         ) : (
-          <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-2xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-[12px] font-dm-sans">
-                <thead>
-                  <tr className="border-b border-white/5 bg-white/[0.01] text-[#4a5a82] font-semibold">
-                    <th className="p-4">Date</th>
-                    <th className="p-4">Employee</th>
-                    <th className="p-4">Project</th>
-                    <th className="p-4">Description</th>
-                    <th className="p-4 text-center">Hours</th>
-                    <th className="p-4 text-center">Billable</th>
-                    <th className="p-4 text-right">Rate</th>
-                    <th className="p-4 text-right">Total</th>
-                    <th className="p-4 text-center">Actions</th>
+          <>
+            {/* Desktop: table */}
+            <DashTableContainer className="hidden md:block">
+              <DashTable>
+                <DashTableHead>
+                  <tr>
+                    <DashTableHeadCell>Date</DashTableHeadCell>
+                    <DashTableHeadCell>Employee</DashTableHeadCell>
+                    <DashTableHeadCell>Project</DashTableHeadCell>
+                    <DashTableHeadCell>Description</DashTableHeadCell>
+                    <DashTableHeadCell className="text-center">Hours</DashTableHeadCell>
+                    <DashTableHeadCell className="text-center">Billable</DashTableHeadCell>
+                    <DashTableHeadCell className="text-right">Rate</DashTableHeadCell>
+                    <DashTableHeadCell className="text-right">Total</DashTableHeadCell>
+                    <DashTableHeadCell className="text-center">Actions</DashTableHeadCell>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-white/[0.02]">
+                </DashTableHead>
+                <DashTableBody>
                   {timeEntries.map(entry => {
                     const totalVal = entry.billable ? (entry.hours * entry.hourly_rate) : 0
                     return (
-                      <tr key={entry.id} className="hover:bg-white/[0.01] transition-colors text-[#94a3c8]">
-                        <td className="p-4 text-[#eef2ff] whitespace-nowrap">
-                          {new Date(entry.date).toLocaleDateString()}
-                        </td>
-                        <td className="p-4 whitespace-nowrap">
+                      <DashTableRow key={entry.id}>
+                        <DashTableCell className="whitespace-nowrap">{new Date(entry.date).toLocaleDateString()}</DashTableCell>
+                        <DashTableCell className="whitespace-nowrap">
                           {entry.employees ? `${entry.employees.first_name} ${entry.employees.last_name}` : 'Deleted Employee'}
-                        </td>
-                        <td className="p-4 text-[#eef2ff] font-medium whitespace-nowrap">{entry.project_name || 'N/A'}</td>
-                        <td className="p-4 max-w-xs truncate" title={entry.description}>{entry.description}</td>
-                        <td className="p-4 text-center font-bold text-[#eef2ff]">{entry.hours} hrs</td>
-                        <td className="p-4 text-center">
-                          {entry.billable ? (
-                            <span className="text-[#10b981] bg-green-500/10 border border-green-500/20 text-[10px] font-semibold px-2 py-0.5 rounded-full">Yes</span>
-                          ) : (
-                            <span className="text-[#4a5a82] bg-white/5 border border-white/10 text-[10px] font-semibold px-2 py-0.5 rounded-full">No</span>
-                          )}
-                        </td>
-                        <td className="p-4 text-right whitespace-nowrap">
-                          {entry.billable ? `R${Number(entry.hourly_rate).toLocaleString()}` : '-'}
-                        </td>
-                        <td className="p-4 text-right text-[#eef2ff] font-semibold whitespace-nowrap">
-                          {entry.billable ? `R${totalVal.toLocaleString()}` : '-'}
-                        </td>
-                        <td className="p-4">
+                        </DashTableCell>
+                        <DashTableCell className="font-medium whitespace-nowrap">{entry.project_name || 'N/A'}</DashTableCell>
+                        <DashTableCell className="max-w-xs truncate" title={entry.description}>{entry.description}</DashTableCell>
+                        <DashTableCell className="text-center font-bold">{entry.hours} hrs</DashTableCell>
+                        <DashTableCell className="text-center">
+                          <DashStatusPill variant={entry.billable ? 'success' : 'neutral'}>{entry.billable ? 'Yes' : 'No'}</DashStatusPill>
+                        </DashTableCell>
+                        <DashTableCell className="text-right whitespace-nowrap">
+                          {entry.billable ? <CurrencyValue value={entry.hourly_rate} /> : '-'}
+                        </DashTableCell>
+                        <DashTableCell className="text-right font-semibold whitespace-nowrap">
+                          {entry.billable ? <CurrencyValue value={totalVal} /> : '-'}
+                        </DashTableCell>
+                        <DashTableCell>
                           <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              onClick={() => openEditModal(entry)}
-                              className="w-6 h-6 rounded-md bg-white/5 text-[#94a3c8] hover:text-[#eef2ff] flex items-center justify-center transition-colors"
-                            >
+                            <button onClick={() => openEditModal(entry)} className="w-7 h-7 rounded-md bg-dash-surface text-dash-textMuted hover:text-dash-text flex items-center justify-center transition-colors">
                               <Edit2 size={11} />
                             </button>
-                            <button
-                              onClick={() => handleDelete(entry.id)}
-                              className="w-6 h-6 rounded-md bg-red-500/10 text-[#ef4444] hover:bg-red-500/20 flex items-center justify-center transition-colors"
-                            >
+                            <button onClick={() => handleDelete(entry.id)} className="w-7 h-7 rounded-md bg-red/10 text-red hover:bg-red/20 flex items-center justify-center transition-colors">
                               <Trash2 size={11} />
                             </button>
                           </div>
-                        </td>
-                      </tr>
+                        </DashTableCell>
+                      </DashTableRow>
                     )
                   })}
-                </tbody>
-              </table>
+                </DashTableBody>
+              </DashTable>
+            </DashTableContainer>
+
+            {/* Mobile: card list */}
+            <div className="md:hidden space-y-3">
+              {timeEntries.map(entry => {
+                const totalVal = entry.billable ? (entry.hours * entry.hourly_rate) : 0
+                return (
+                  <DashCard key={entry.id} className="p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-display text-[13px] font-bold text-dash-text">{entry.project_name || 'N/A'}</span>
+                      <DashStatusPill variant={entry.billable ? 'success' : 'neutral'}>{entry.billable ? 'Billable' : 'Non-billable'}</DashStatusPill>
+                    </div>
+                    <p className="text-[12px] text-dash-textMuted">{entry.description}</p>
+                    <div className="flex items-center justify-between text-[12px] text-dash-textMuted pt-1 border-t border-dash-border">
+                      <span>{new Date(entry.date).toLocaleDateString()}</span>
+                      <span>{entry.employees ? `${entry.employees.first_name} ${entry.employees.last_name}` : 'Deleted Employee'}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[12px]">
+                      <span className="text-dash-text font-bold">{entry.hours} hrs</span>
+                      {entry.billable && <CurrencyValue value={totalVal} className="font-semibold text-dash-text" />}
+                    </div>
+                    <div className="flex items-center justify-end gap-1.5 pt-1">
+                      <button onClick={() => openEditModal(entry)} className="w-7 h-7 rounded-md bg-dash-surface text-dash-textMuted flex items-center justify-center">
+                        <Edit2 size={11} />
+                      </button>
+                      <button onClick={() => handleDelete(entry.id)} className="w-7 h-7 rounded-md bg-red/10 text-red flex items-center justify-center">
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
+                  </DashCard>
+                )
+              })}
             </div>
-          </div>
+          </>
         )}
 
         {/* Modal */}
-        {modalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-            <div className="bg-[#0b122b] border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-5 border-b border-white/5 bg-white/[0.01]">
-                <h3 className="text-[15px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                  {editingEntry ? 'Edit Logged Time' : 'Log Hours'}
-                </h3>
-                <button onClick={() => setModalOpen(false)} className="text-[#4a5a82] hover:text-[#eef2ff] transition-colors">
-                  <X size={16} />
-                </button>
+        <DashModal open={modalOpen} onOpenChange={setModalOpen}>
+          <DashModalContent className="max-w-md">
+            <DashModalHeader>
+              <DashModalTitle>{editingEntry ? 'Edit Logged Time' : 'Log Hours'}</DashModalTitle>
+            </DashModalHeader>
+
+            <form onSubmit={handleSave} className="space-y-4">
+              <DashFormField label={isTimeManager ? 'Select Employee' : 'Employee'}>
+                {employees.length === 0 ? (
+                  <div className="text-[12px] text-red mt-1">
+                    {isTimeManager
+                      ? 'Please register employees first in the Employee Directory.'
+                      : 'Your account is not registered in the Employee Directory. Please ask an administrator to add you.'}
+                  </div>
+                ) : !isTimeManager ? (
+                  <div className="w-full h-11 rounded-xl border border-dash-border bg-dash-surface px-3.5 flex items-center text-sm font-semibold text-dash-text">
+                    {employees[0].first_name} {employees[0].last_name}
+                  </div>
+                ) : (
+                  <DashSelect required value={employeeId} onChange={e => setEmployeeId(e.target.value)} className="h-11 text-sm">
+                    <option value="">-- Select Employee --</option>
+                    {employees.map(emp => (
+                      <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name}</option>
+                    ))}
+                  </DashSelect>
+                )}
+              </DashFormField>
+
+              <div className="grid grid-cols-2 gap-4">
+                <DashFormField label="Date">
+                  <DashInput type="date" required value={date} onChange={e => setDate(e.target.value)} />
+                </DashFormField>
+                <DashFormField label="Project Name">
+                  <DashInput required value={projectName} onChange={e => setProjectName(e.target.value)} placeholder="e.g. Acme Website Redesign" />
+                </DashFormField>
               </div>
 
-              <form onSubmit={handleSave} className="p-5 space-y-4">
-                <div>
-                  <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">
-                    {isTimeManager ? 'Select Employee' : 'Employee'}
-                  </label>
-                  {employees.length === 0 ? (
-                    <div className="text-[11px] text-[#ef4444] mt-1">
-                      {isTimeManager 
-                        ? "Please register employees first in the Employee Directory."
-                        : "Your account is not registered in the Employee Directory. Please ask an administrator to add you."
-                      }
-                    </div>
-                  ) : !isTimeManager ? (
-                    <div className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2.5 text-[12px] text-white/90 font-semibold bg-white/[0.01]">
-                      {employees[0].first_name} {employees[0].last_name}
-                    </div>
-                  ) : (
-                    <select
-                      required
-                      value={employeeId}
-                      onChange={e => setEmployeeId(e.target.value)}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-3 py-2 text-[12px] text-white focus:outline-none focus:border-blue-500"
-                    >
-                      <option value="">-- Select Employee --</option>
-                      {employees.map(emp => (
-                        <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name}</option>
-                      ))}
-                    </select>
-                  )}
+              <DashFormField label="Logged Hours">
+                <DashInput type="number" required step={0.5} min={0.5} value={hours} onChange={e => setHours(Number(e.target.value))} />
+              </DashFormField>
+
+              <DashFormField label="Task Description">
+                <DashTextarea rows={3} required value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe the tasks completed..." />
+              </DashFormField>
+
+              {/* Billable Section */}
+              <div className="border border-dash-border bg-dash-surface rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[13px] text-dash-text font-semibold">Billable Task</span>
+                  <input type="checkbox" checked={billable} onChange={e => setBillable(e.target.checked)} className="accent-dash-accent" />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Date</label>
-                    <input
-                      type="date"
-                      required
-                      value={date}
-                      onChange={e => setDate(e.target.value)}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Project Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={projectName}
-                      onChange={e => setProjectName(e.target.value)}
-                      className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none"
-                      placeholder="e.g. Acme Website Redesign"
-                    />
-                  </div>
-                </div>
+                {billable && (
+                  <DashFormField label="Hourly Billing Rate (ZAR)">
+                    <DashInput type="number" min={0} required value={hourlyRate} onChange={e => setHourlyRate(Number(e.target.value))} className="bg-white" />
+                  </DashFormField>
+                )}
+              </div>
 
-                <div>
-                  <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Logged Hours</label>
-                  <input
-                    type="number"
-                    required
-                    step={0.5}
-                    min={0.5}
-                    value={hours}
-                    onChange={e => setHours(Number(e.target.value))}
-                    className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Task Description</label>
-                  <textarea
-                    rows={3}
-                    required
-                    value={description}
-                    onChange={e => setDescription(e.target.value)}
-                    className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none resize-none"
-                    placeholder="Describe the tasks completed..."
-                  />
-                </div>
-
-                {/* Billable Section */}
-                <div className="border border-white/5 bg-[#070d24]/50 rounded-xl p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11.5px] text-[#94a3c8] font-semibold">Billable Task</span>
-                    <input
-                      type="checkbox"
-                      checked={billable}
-                      onChange={e => setBillable(e.target.checked)}
-                      className="accent-[#2563eb]"
-                    />
-                  </div>
-
-                  {billable && (
-                    <div>
-                      <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Hourly Billing Rate (ZAR)</label>
-                      <input
-                        type="number"
-                        min={0}
-                        required
-                        value={hourlyRate}
-                        onChange={e => setHourlyRate(Number(e.target.value))}
-                        className="w-full bg-[#070d24] border border-white/5 rounded-xl px-4 py-2 text-[12px] text-white focus:outline-none"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div className="pt-2 flex justify-end gap-3 border-t border-white/5">
-                  <button
-                    type="button"
-                    onClick={() => setModalOpen(false)}
-                    className="px-4 py-2 border border-white/5 hover:bg-white/5 text-[11px] font-bold rounded-xl text-t3 hover:text-t1 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-[11px] font-bold rounded-xl text-white transition-colors"
-                  >
-                    Save Entry
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+              <div className="pt-2 flex justify-end gap-3 border-t border-dash-border">
+                <DashButton type="button" variant="secondary" onClick={() => setModalOpen(false)}>
+                  Cancel
+                </DashButton>
+                <DashButton type="submit">
+                  Save Entry
+                </DashButton>
+              </div>
+            </form>
+          </DashModalContent>
+        </DashModal>
       </div>
     </Wrapper>
   )
