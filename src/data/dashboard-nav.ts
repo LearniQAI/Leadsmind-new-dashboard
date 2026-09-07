@@ -58,35 +58,32 @@ const dashboardNav: NavModule[] = [
     ],
   },
   {
+    // Flat list, no inner accordion (same treatment as HR & Payroll above). The old
+    // nested "Finance" subItems container has been dissolved -- every page links
+    // directly and is always visible once the section is open, no expand/collapse.
+    // "commerce" gates the accounting pages (unchanged from the old container's
+    // inherited permission); Invoices keeps "invoices" and Compliance Hub keeps
+    // "contacts", matching their standalone entries pre-flatten.
     id: "finance-accounting",
     label: "Finance & Accounting",
     icon: "fa-light fa-chart-line",
     items: [
-      {
-        id: 20,
-        label: "Finance",
-        icon: "fa-light fa-chart-line",
-        link: "/finance",
-        permission: "commerce",
-        subItems: [
-          { label: "Overview", link: "/finance" },
-          { label: "Revenue Forecast", link: "/finance/revenue-forecast" },
-          { label: "Transactions", link: "/finance/transactions" },
-          { label: "Reconciliation", link: "/finance/reconciliation" },
-          { label: "Connected Accounts", link: "/finance/connected-accounts" },
-          { label: "Payment Gateways", link: "/finance/payment-gateways" },
-          { label: "Reports", link: "/finance/reports" },
-          { label: "Expenses", link: "/finance/expenses" },
-          { label: "Credit Notes", link: "/finance/credit-notes" },
-          { label: "Retainers", link: "/finance/retainers" },
-          { label: "Chart of Accounts", link: "/finance/chart-of-accounts" },
-        ],
-      },
-      { id: 82, label: "Compliance Hub", icon: "fa-light fa-shield-halved", link: "/admin/compliance", permission: "contacts" },
+      { id: 20, label: "Overview", icon: "fa-light fa-chart-line", link: "/finance", permission: "commerce" },
+      { id: 201, label: "Revenue Forecast", icon: "fa-light fa-chart-mixed", link: "/finance/revenue-forecast", permission: "commerce" },
+      { id: 202, label: "Transactions", icon: "fa-light fa-arrow-right-arrow-left", link: "/finance/transactions", permission: "commerce" },
+      { id: 203, label: "Reconciliation", icon: "fa-light fa-scale-balanced", link: "/finance/reconciliation", permission: "commerce" },
+      // Invoices / Credit Notes / Retainers sit next to Reconciliation -- they're the
+      // billing-document side of the same money flow (an invoice gets reconciled, a
+      // credit note reverses one, a retainer draws down against them).
       { id: 8, label: "Invoices", icon: "fa-light fa-file-invoice-dollar", link: "/invoices", permission: "invoices" },
-      { id: 83, label: "Credit Notes", icon: "fa-light fa-file-minus", link: "/finance/credit-notes", permission: "invoices" },
-      { id: 84, label: "Retainers", icon: "fa-light fa-wallet", link: "/finance/retainers", permission: "invoices" },
-      { id: 85, label: "Chart of Accounts", icon: "fa-light fa-landmark", link: "/finance/chart-of-accounts", permission: "invoices" },
+      { id: 83, label: "Credit Notes", icon: "fa-light fa-file-minus", link: "/finance/credit-notes", permission: "commerce" },
+      { id: 84, label: "Retainers", icon: "fa-light fa-wallet", link: "/finance/retainers", permission: "commerce" },
+      { id: 204, label: "Connected Accounts", icon: "fa-light fa-building-columns", link: "/finance/connected-accounts", permission: "commerce" },
+      { id: 205, label: "Payment Gateways", icon: "fa-light fa-credit-card", link: "/finance/payment-gateways", permission: "commerce" },
+      { id: 85, label: "Chart of Accounts", icon: "fa-light fa-landmark", link: "/finance/chart-of-accounts", permission: "commerce" },
+      { id: 206, label: "Expenses", icon: "fa-light fa-receipt", link: "/finance/expenses", permission: "commerce" },
+      { id: 207, label: "Reports", icon: "fa-light fa-chart-pie", link: "/finance/reports", permission: "commerce" },
+      { id: 82, label: "Compliance Hub", icon: "fa-light fa-shield-halved", link: "/admin/compliance", permission: "contacts" },
     ],
   },
   {

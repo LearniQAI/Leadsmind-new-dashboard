@@ -251,29 +251,42 @@ export async function inviteTeamMember(
     .eq('id', workspaceId)
     .single();
 
-   await sendEmail({
-     to: email,
-     subject: `Join ${workspace?.name || 'LeadsMind'} Workspace`,
-     html: `
-      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #2563eb; border-radius: 16px; background-color: #04091a; color: #eef2ff;">
-       <h2 style="color: #3b82f6; font-size: 24px;">Workspace <span style="color: #ffffff;">Invitation</span></h2>
-       <p style="color: #94a3c8; font-size: 14px;">You have been authorized to join <strong>${workspace?.name}</strong>.</p>
-       <div style="margin: 24px 0; padding: 20px; background-color: rgba(255,255,255,0.05); border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
-         <p style="margin: 0; font-size: 12px; color: #4a5a82; text-transform: uppercase; letter-spacing: 1px;">Access Protocol</p>
-         <p style="margin: 8px 0 0; font-size: 16px; font-weight: bold; color: #3b82f6;">${role.toUpperCase()}</p>
-       </div>
-       <p style="color: #94a3c8;">Accept the invitation below to initialize your node:</p>
-       <div style="margin: 30px 0;">
-        <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/signup?email=${encodeURIComponent(email)}&invite=${data.id}" 
-          style="display: inline-block; padding: 14px 40px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">
-         Accept Invitation
-        </a>
-       </div>
-      </div>
-     `
-    });
+   const acceptUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/accept-invite?token=${data.id}`;
 
-   return { data };
+   // The invitation row above is already committed — a failed send here (a
+   // misconfigured sending domain, Resend being down, etc.) must never make
+   // this action report the whole invite as failed, since that would hide a
+   // real, already-created, still-usable invitation from the admin. Caught
+   // and reported separately so the UI can fall back to "copy this link and
+   // send it yourself" instead of a bare failure.
+   try {
+     await sendEmail({
+       to: email,
+       subject: `Join ${workspace?.name || 'LeadsMind'} Workspace`,
+       html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #2563eb; border-radius: 16px; background-color: #04091a; color: #eef2ff;">
+         <h2 style="color: #3b82f6; font-size: 24px;">Workspace <span style="color: #ffffff;">Invitation</span></h2>
+         <p style="color: #94a3c8; font-size: 14px;">You have been authorized to join <strong>${workspace?.name}</strong>.</p>
+         <div style="margin: 24px 0; padding: 20px; background-color: rgba(255,255,255,0.05); border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+           <p style="margin: 0; font-size: 12px; color: #4a5a82; text-transform: uppercase; letter-spacing: 1px;">Access Protocol</p>
+           <p style="margin: 8px 0 0; font-size: 16px; font-weight: bold; color: #3b82f6;">${role.toUpperCase()}</p>
+         </div>
+         <p style="color: #94a3c8;">Accept the invitation below to initialize your node:</p>
+         <div style="margin: 30px 0;">
+          <a href="${acceptUrl}"
+            style="display: inline-block; padding: 14px 40px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">
+           Accept Invitation
+          </a>
+         </div>
+        </div>
+       `
+      });
+   } catch (emailError) {
+     logger.error({ err: emailError, workspaceId, invitationId: data.id }, 'settings.team_invitation.email_send.failed');
+     return { data, emailFailed: true, acceptUrl };
+   }
+
+   return { data, acceptUrl };
   }
  } catch (error: any) {
   logger.error({ err: error, workspaceId }, 'settings.team_member.invite.failed');
