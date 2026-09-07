@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { createClient } from '@/lib/supabase/client';
+import { getActiveWorkspaceId } from '@/lib/workspace/activeWorkspaceClient';
 
 import {
   inviteTeamMember,
@@ -219,7 +220,11 @@ export default function SettingsClient({
     setIsSaving(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const filePath = `logo-${Date.now()}.${fileExt}`;
+      // Path is workspace-scoped ({workspaceId}/...) so the workspace-path RLS on the
+      // 'branding' bucket (supabase/migrations/20260907160000_branding_storage_lockdown.sql)
+      // can actually verify the uploader belongs to the workspace they're writing into —
+      // same convention as media/social-media/ai-generated-media/builder-media.
+      const filePath = `${getActiveWorkspaceId()}/logo-${Date.now()}.${fileExt}`;
 
       const { data, error } = await supabase.storage
         .from('branding')
@@ -270,7 +275,7 @@ export default function SettingsClient({
     setIsSaving(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const filePath = `favicon-${Date.now()}.${fileExt}`;
+      const filePath = `${getActiveWorkspaceId()}/favicon-${Date.now()}.${fileExt}`;
 
       const { data, error } = await supabase.storage
         .from('branding')
