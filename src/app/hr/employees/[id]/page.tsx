@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Wrapper from '@/components/layouts/DefaultWrapper'
 import { useDashboardContext } from '@/components/layouts/DashboardProvider'
-import { AlertTriangle, ArrowLeft, Ban, Plus, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Ban, Download, FileText, Plus, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
@@ -44,6 +44,16 @@ interface Termination {
   notes: string | null
 }
 
+interface EmployeeDocument {
+  id: string
+  label: string
+  category: string | null
+  file_name: string
+  file_size: number | null
+  mime_type: string | null
+  created_at: string
+}
+
 export default function EmployeeDetailPage() {
   const params = useParams()
   const employeeId = params?.id as string
@@ -67,15 +77,23 @@ export default function EmployeeDetailPage() {
   const [lastWorkingDay, setLastWorkingDay] = useState('')
   const [rehireEligible, setRehireEligible] = useState(true)
 
+  const [documents, setDocuments] = useState<EmployeeDocument[]>([])
+  const [uploadModalOpen, setUploadModalOpen] = useState(false)
+  const [uploadLabel, setUploadLabel] = useState('')
+  const [uploadCategory, setUploadCategory] = useState('')
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+
   const fetchAll = async () => {
     if (!workspaceId || !employeeId) return
     setLoading(true)
     try {
-      const [empRes, schedRes, warnRes, termRes] = await Promise.all([
+      const [empRes, schedRes, warnRes, termRes, docRes] = await Promise.all([
         fetch(`/api/hr/employees?workspaceId=${workspaceId}`),
         fetch(`/api/hr/schedules?workspaceId=${workspaceId}`),
         fetch(`/api/hr/warnings?workspaceId=${workspaceId}&employeeId=${employeeId}`),
         fetch(`/api/hr/terminations?workspaceId=${workspaceId}&employeeId=${employeeId}`),
+        fetch(`/api/hr/employees/${employeeId}/documents`),
       ])
       const empData = await empRes.json()
       const found = (empData.employees ?? []).find((e: Employee) => e.id === employeeId)
@@ -89,6 +107,9 @@ export default function EmployeeDetailPage() {
 
       const termData = await termRes.json()
       setTermination((termData.terminations ?? [])[0] ?? null)
+
+      const docData = await docRes.json()
+      setDocuments(docData.documents ?? [])
     } catch {
       toast.error('Failed to load employee')
     } finally {
@@ -161,6 +182,71 @@ export default function EmployeeDetailPage() {
       fetchAll()
     } catch (err: any) {
       toast.error(err.message || 'Failed to terminate employee')
+    }
+  }
+
+  const handleUploadDocument = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!employee || !uploadFile) return
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', uploadFile)
+      formData.append('label', uploadLabel)
+      if (uploadCategory) formData.append('category', uploadCategory)
+
+      const res = await fetch(`/api/hr/employees/${employee.id}/documents`, {
+        method: 'POST',
+        body: formData,
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      toast.success('Document uploaded')
+      setUploadModalOpen(false)
+      setUploadLabel('')
+      setUploadCategory('')
+      setUploadFile(null)
+      fetchAll()
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to upload document')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleDeleteDocument = async (docId: string) => {
+    if (!employee) return
+    if (!confirm('Delete this document? This cannot be undone.')) return
+    try {
+      const res = await fetch(`/api/hr/employees/${employee.id}/documents/${docId}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      toast.success('Document deleted')
+      fetchAll()
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete document')
+    }
+  }
+
+  const handleDownloadDocument = async (doc: EmployeeDocument) => {
+    if (!employee) return
+    try {
+      const res = await fetch(`/api/hr/employees/${employee.id}/documents/${doc.id}/download`)
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Failed to download document')
+      }
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = doc.file_name
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to download document')
     }
   }
 
@@ -302,6 +388,116 @@ export default function EmployeeDetailPage() {
             </div>
           )}
         </div>
+
+        {/* Documents */}
+        <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-2xl p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[13.5px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+              Documents
+            </h2>
+            {canManage && employee.status !== 'terminated' && (
+              <button
+                onClick={() => setUploadModalOpen(true)}
+                className="h-8 px-3 rounded-[8px] bg-[#2563eb]/10 border border-[#2563eb]/20 text-[#2563eb] hover:bg-[#2563eb]/20 text-[11.5px] font-bold flex items-center gap-1.5 transition-all"
+              >
+                <Plus size={13} /> Upload Document
+              </button>
+            )}
+          </div>
+
+          {documents.length === 0 ? (
+            <p className="text-[12px] text-[#4a5a82]">No documents on file.</p>
+          ) : (
+            <div className="space-y-2">
+              {documents.map((d) => (
+                <div key={d.id} className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <FileText size={14} className="text-[#4a5a82] shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-[11.5px] font-bold text-[#eef2ff] truncate">
+                        {d.label}{d.category ? ` · ${d.category}` : ''}
+                      </div>
+                      <div className="text-[10.5px] text-[#4a5a82] truncate">
+                        {d.file_name}{d.file_size ? ` · ${(d.file_size / 1024).toFixed(0)} KB` : ''}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={() => handleDownloadDocument(d)}
+                      className="w-7 h-7 rounded-lg bg-white/5 border border-white/5 text-[#94a3c8] hover:text-[#eef2ff] flex items-center justify-center transition-colors"
+                      title="Download"
+                    >
+                      <Download size={12} />
+                    </button>
+                    {canManage && (
+                      <button
+                        onClick={() => handleDeleteDocument(d.id)}
+                        className="w-7 h-7 rounded-lg bg-red-500/10 border border-red-500/20 text-[#ef4444] hover:bg-red-500/20 flex items-center justify-center transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Upload document modal */}
+        {uploadModalOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+            <div className="bg-[#0b122b] border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+              <div className="flex items-center justify-between p-5 border-b border-white/5">
+                <h3 className="text-[15px] font-bold text-[#eef2ff]">Upload Document</h3>
+                <button onClick={() => setUploadModalOpen(false)} className="text-[#4a5a82] hover:text-[#eef2ff]">
+                  <X size={16} />
+                </button>
+              </div>
+              <form onSubmit={handleUploadDocument} className="p-5 space-y-4">
+                <div>
+                  <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Label *</label>
+                  <input
+                    required
+                    value={uploadLabel}
+                    onChange={(e) => setUploadLabel(e.target.value)}
+                    className="w-full h-10 rounded-lg bg-white/[0.03] border border-white/10 px-3 text-[12.5px] text-[#eef2ff] focus:outline-none focus:border-[#2563eb]"
+                    placeholder="e.g. Signed Employment Contract"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Category</label>
+                  <input
+                    value={uploadCategory}
+                    onChange={(e) => setUploadCategory(e.target.value)}
+                    className="w-full h-10 rounded-lg bg-white/[0.03] border border-white/10 px-3 text-[12.5px] text-[#eef2ff] focus:outline-none focus:border-[#2563eb]"
+                    placeholder="e.g. Contract, ID, Certification (optional)"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">File * (PDF, PNG, JPEG — max 15MB)</label>
+                  <input
+                    required
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
+                    onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+                    className="w-full text-[12px] text-[#94a3c8] file:mr-3 file:h-8 file:px-3 file:rounded-lg file:border-0 file:bg-[#2563eb] file:text-white file:text-[11.5px] file:font-bold"
+                  />
+                </div>
+                <p className="text-[11px] text-[#4a5a82]">Stored encrypted at rest (AES-256-GCM).</p>
+                <button
+                  type="submit"
+                  disabled={uploading}
+                  className="w-full h-10 rounded-lg bg-[#2563eb] hover:bg-[#2563eb]/90 disabled:opacity-50 text-white text-[12.5px] font-bold transition-all"
+                >
+                  {uploading ? 'Uploading…' : 'Upload'}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* Issue warning modal */}
         {warningModalOpen && (

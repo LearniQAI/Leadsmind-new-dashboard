@@ -1,22 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/server';
 import { assertContactAccessOrPortalSelf } from '@/lib/kyc/access';
+import { getDocumentEncryptionKey, encryptBuffer } from '@/lib/storage/encryptedDocuments';
 import { toClientError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
-
-// Retrieve and hash the encryption key to guarantee it is exactly 32 bytes (256 bits) for AES-256.
-// No fallback: a hardcoded default key here would mean anyone who reads this source (or any repo
-// fork/clone) could decrypt FICA/KYC documents for any deployment that forgot to set the env var.
-function getKycEncryptionKey(): Buffer {
-  const keyEnv = process.env.KYC_ENCRYPTION_KEY;
-  if (!keyEnv) {
-    throw new Error('[FATAL] KYC_ENCRYPTION_KEY env var is not configured');
-  }
-  return crypto.createHash('sha256').update(keyEnv).digest();
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -45,13 +34,10 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const fileBuffer = Buffer.from(arrayBuffer);
 
-    // Generate random 12-byte IV (GCM standard) and encrypt using AES-256-GCM
-    // (authenticated -- the auth tag lets download/route.ts detect any tampering
-    // or corruption of the stored ciphertext, which the previous CBC scheme could not).
-    const iv = crypto.randomBytes(12);
-    const cipher = crypto.createCipheriv('aes-256-gcm', getKycEncryptionKey(), iv);
-    const encryptedBuffer = Buffer.concat([cipher.update(fileBuffer), cipher.final()]);
-    const authTag = cipher.getAuthTag();
+    // Encrypt using AES-256-GCM (authenticated -- the auth tag lets download/route.ts
+    // detect any tampering or corruption of the stored ciphertext, which the previous
+    // CBC scheme could not).
+    const { encryptedBuffer, iv, authTag } = encryptBuffer(fileBuffer, getDocumentEncryptionKey());
 
     // Construct path under bucket: contacts/[contactId]/[timestamp]-[cleanName].enc
     const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');

@@ -2,20 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getUser } from '@/lib/auth';
 import { createAdminClient, createServerClient } from '@/lib/supabase/server';
+import { getDocumentEncryptionKey, decryptBuffer } from '@/lib/storage/encryptedDocuments';
 import { UnauthorizedError, ForbiddenError, NotFoundError, toClientError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
-
-// No fallback: a hardcoded default key here would mean anyone who reads this source (or any repo
-// fork/clone) could decrypt FICA/KYC documents for any deployment that forgot to set the env var.
-function getKycEncryptionKey(): Buffer {
-  const keyEnv = process.env.KYC_ENCRYPTION_KEY;
-  if (!keyEnv) {
-    throw new Error('[FATAL] KYC_ENCRYPTION_KEY env var is not configured');
-  }
-  return crypto.createHash('sha256').update(keyEnv).digest();
-}
 
 export async function GET(req: NextRequest) {
   try {
@@ -88,7 +79,7 @@ export async function GET(req: NextRequest) {
     // are explicitly tagged 'aes-256-cbc' (see 20260831000000 migration) and keep
     // decrypting via the legacy path; new uploads use authenticated aes-256-gcm.
     const iv = Buffer.from(doc.encryption_iv, 'hex');
-    const key = getKycEncryptionKey();
+    const key = getDocumentEncryptionKey();
     const algorithm = doc.encryption_algorithm || 'aes-256-cbc';
 
     let decryptedBuffer: Buffer;
@@ -96,10 +87,12 @@ export async function GET(req: NextRequest) {
       if (!doc.encryption_auth_tag) {
         throw new Error('Missing auth tag for GCM-encrypted document');
       }
-      const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
-      decipher.setAuthTag(Buffer.from(doc.encryption_auth_tag, 'hex'));
-      decryptedBuffer = Buffer.concat([decipher.update(encryptedBuffer), decipher.final()]);
+      decryptedBuffer = decryptBuffer(encryptedBuffer, key, iv, Buffer.from(doc.encryption_auth_tag, 'hex'));
     } else {
+      // Legacy path only -- rows uploaded before the GCM upgrade (20260831000000 migration)
+      // are explicitly tagged 'aes-256-cbc' and have no auth tag to verify. Left as a direct
+      // crypto call rather than folded into the shared helper, since it's a one-off
+      // backward-compat shim, not part of the ongoing encrypt/decrypt contract new stores use.
       const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
       decryptedBuffer = Buffer.concat([decipher.update(encryptedBuffer), decipher.final()]);
     }
