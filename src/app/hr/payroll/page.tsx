@@ -6,6 +6,7 @@ import { Plus, X, Receipt, Landmark, Info } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import MyPayslipsView from './MyPayslipsView'
+import { PayslipBreakdown } from './PayslipBreakdown'
 import {
   DashCard,
   DashButton,
@@ -395,39 +396,21 @@ function PayrollAdminView() {
                   ) : (
                     <div className="space-y-3">
                       {payslipsOpen.payslips.map((slip: any) => (
-                        <div key={slip.id} className="border border-dash-border rounded-xl p-4 bg-dash-surface flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                          <div>
-                            <span className="text-[13px] font-bold text-dash-text block">
-                              {slip.employees?.first_name} {slip.employees?.last_name}
-                            </span>
-                            <span className="text-[11px] text-dash-textMuted block mt-0.5">{slip.employees?.email}</span>
-                          </div>
-                          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 text-right text-[12px]">
-                            <div>
-                              <span className="text-dash-textMuted text-[9.5px] uppercase block">Gross</span>
-                              <CurrencyValue value={slip.gross_salary} className="text-dash-text font-semibold block mt-0.5" />
+                        <div key={slip.id} className="border border-dash-border rounded-2xl p-4 sm:p-5 bg-white shadow-sm">
+                          <div className="flex items-center gap-3 pb-2 border-b border-dash-border">
+                            <div className="w-9 h-9 rounded-xl bg-dash-accent/10 flex items-center justify-center shrink-0">
+                              <Receipt size={15} className="text-dash-accent" />
                             </div>
-                            <div>
-                              <span className="text-dash-textMuted text-[9.5px] uppercase block">PAYE</span>
-                              <CurrencyValue value={slip.paye} className="text-dash-text font-semibold block mt-0.5" />
-                            </div>
-                            <div>
-                              <span className="text-dash-textMuted text-[9.5px] uppercase block">UIF EE</span>
-                              <CurrencyValue value={slip.uif_employee} className="text-dash-text font-semibold block mt-0.5" />
-                            </div>
-                            <div>
-                              <span className="text-dash-textMuted text-[9.5px] uppercase block">UIF ER</span>
-                              <CurrencyValue value={slip.uif_employer} className="text-dash-text font-semibold block mt-0.5" />
-                            </div>
-                            <div>
-                              <span className="text-dash-textMuted text-[9.5px] uppercase block">SDL</span>
-                              <CurrencyValue value={slip.sdl} className="text-dash-text font-semibold block mt-0.5" />
-                            </div>
-                            <div>
-                              <span className="text-green text-[9.5px] uppercase block">Net Pay</span>
-                              <CurrencyValue value={slip.net_salary} className="!text-green font-bold block mt-0.5" />
+                            <div className="min-w-0">
+                              <span className="text-[13px] font-bold text-dash-text block truncate">
+                                {slip.employees?.first_name} {slip.employees?.last_name}
+                              </span>
+                              {slip.employees?.email && (
+                                <span className="text-[11px] text-dash-textMuted block truncate">{slip.employees.email}</span>
+                              )}
                             </div>
                           </div>
+                          <PayslipBreakdown slip={slip} variant="compact" />
                         </div>
                       ))}
                     </div>

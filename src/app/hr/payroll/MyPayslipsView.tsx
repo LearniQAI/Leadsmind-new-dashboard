@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useDashboardContext } from '@/components/layouts/DashboardProvider'
-import { Receipt, ArrowLeft } from 'lucide-react'
+import { Receipt, ArrowLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import {
@@ -12,8 +12,10 @@ import {
   DashModalContent,
   DashModalHeader,
   DashModalTitle,
+  DashButton,
   CurrencyValue,
 } from '@/components/dashboard-ui'
+import { PayslipBreakdown } from './PayslipBreakdown'
 
 interface PayrollRunInfo {
   period_start: string
@@ -39,6 +41,7 @@ interface MyEmployee {
   id: string
   first_name: string
   last_name: string
+  email: string
   salary: number
   salary_frequency: string
 }
@@ -120,76 +123,90 @@ export default function MyPayslipsView() {
           <DashEmptyState icon={Receipt} title="No payslips yet" description="No payslips have been issued to you yet." />
         </DashCard>
       ) : (
-        <div className="space-y-3">
-          {payslips.map((p) => (
-            <button key={p.id} onClick={() => setDetailOpen(p)} className="w-full text-left">
-              <DashCard className="p-5 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-dash-accent/10 flex items-center justify-center shrink-0">
-                    <Receipt size={16} className="text-dash-accent" />
+        <>
+          <p className="text-[12px] text-dash-textMuted">
+            {employee.first_name} {employee.last_name} · {payslips.length} payslip{payslips.length === 1 ? '' : 's'}
+          </p>
+          <div className="space-y-3">
+            {payslips.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => setDetailOpen(p)}
+                className="group w-full text-left rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-accent focus-visible:ring-offset-2"
+              >
+                <DashCard className="p-4 sm:p-5 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-dash-accent/10 flex items-center justify-center shrink-0">
+                      <Receipt size={16} className="text-dash-accent" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-display text-[14px] font-bold text-dash-text truncate">
+                        {p.payroll_runs?.period_label ?? 'Payslip'}
+                      </h3>
+                      <p className="text-[12px] text-dash-textMuted mt-0.5 truncate">
+                        {p.payroll_runs?.period_start} – {p.payroll_runs?.period_end}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-display text-[14px] font-bold text-dash-text">
-                      {p.payroll_runs?.period_label ?? 'Payslip'}
-                    </h3>
-                    <p className="text-[12px] text-dash-textMuted mt-0.5">
-                      {p.payroll_runs?.period_start} – {p.payroll_runs?.period_end}
-                    </p>
+                  <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                    <div className="text-right">
+                      <span className="block text-[9.5px] font-bold uppercase tracking-wider text-dash-textMuted">Net pay</span>
+                      <CurrencyValue
+                        value={p.net_salary}
+                        className="text-[15px] sm:text-[16px] font-bold !text-green font-display block whitespace-nowrap"
+                      />
+                      {p.payroll_runs && (
+                        <DashStatusPill variant={STATUS_VARIANT[p.payroll_runs.status] ?? 'neutral'} className="mt-1 capitalize">
+                          {p.payroll_runs.status}
+                        </DashStatusPill>
+                      )}
+                    </div>
+                    <ChevronRight size={16} className="text-dash-textMuted group-hover:text-dash-text transition-colors shrink-0" />
                   </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <CurrencyValue value={p.net_salary} className="text-[16px] font-bold !text-green font-display block" />
-                  {p.payroll_runs && (
-                    <DashStatusPill variant={STATUS_VARIANT[p.payroll_runs.status] ?? 'neutral'} className="mt-1 capitalize">
-                      {p.payroll_runs.status}
-                    </DashStatusPill>
-                  )}
-                </div>
-              </DashCard>
-            </button>
-          ))}
-        </div>
+                </DashCard>
+              </button>
+            ))}
+          </div>
+        </>
       )}
 
       <DashModal open={!!detailOpen} onOpenChange={(open) => !open && setDetailOpen(null)}>
-        <DashModalContent>
+        <DashModalContent className="max-w-md">
           {detailOpen && (
             <>
               <DashModalHeader>
                 <DashModalTitle className="flex items-center gap-2">
-                  <Receipt size={16} className="text-dash-accent" />
+                  <Receipt size={16} className="text-dash-accent shrink-0" />
                   {detailOpen.payroll_runs?.period_label ?? 'Payslip'}
                 </DashModalTitle>
+                <span className="text-[12px] text-dash-textMuted">
+                  {detailOpen.payroll_runs?.period_start} – {detailOpen.payroll_runs?.period_end}
+                </span>
               </DashModalHeader>
-              <div className="text-[13px]">
-                <div className="flex justify-between py-2.5 border-b border-dash-border">
-                  <span className="text-dash-textMuted">Employee</span>
-                  <span className="text-dash-text font-semibold">{employee.first_name} {employee.last_name}</span>
+
+              <div className="flex items-center gap-3 rounded-xl bg-dash-surface border border-dash-border px-4 py-3">
+                <div className="w-9 h-9 rounded-full bg-dash-accent/10 flex items-center justify-center shrink-0 text-[12px] font-bold text-dash-accent">
+                  {employee.first_name?.[0]}{employee.last_name?.[0]}
                 </div>
-                <div className="flex justify-between py-2.5 border-b border-dash-border">
-                  <span className="text-dash-textMuted">Pay period</span>
-                  <span className="text-dash-text">{detailOpen.payroll_runs?.period_start} – {detailOpen.payroll_runs?.period_end}</span>
+                <div className="min-w-0">
+                  <span className="block text-[13px] font-bold text-dash-text truncate">
+                    {employee.first_name} {employee.last_name}
+                  </span>
+                  <span className="block text-[11px] text-dash-textMuted truncate">{employee.email}</span>
                 </div>
-                <div className="flex justify-between py-2.5 border-b border-dash-border">
-                  <span className="text-dash-textMuted">Gross salary</span>
-                  <CurrencyValue value={detailOpen.gross_salary} className="text-dash-text font-semibold" />
-                </div>
-                <div className="flex justify-between py-2.5 border-b border-dash-border">
-                  <span className="text-dash-textMuted">PAYE (tax)</span>
-                  <span className="text-red">-<CurrencyValue value={detailOpen.paye} /></span>
-                </div>
-                <div className="flex justify-between py-2.5 border-b border-dash-border">
-                  <span className="text-dash-textMuted">UIF (employee)</span>
-                  <span className="text-red">-<CurrencyValue value={detailOpen.uif_employee} /></span>
-                </div>
-                <div className="flex justify-between items-center py-3.5">
-                  <span className="text-dash-text font-bold">Net pay</span>
-                  <CurrencyValue value={detailOpen.net_salary} className="!text-green font-bold text-[18px] font-display" />
-                </div>
-                <p className="text-[11px] text-dash-textMuted pt-1">
-                  Issued {new Date(detailOpen.created_at).toLocaleDateString()}
-                  {detailOpen.payroll_runs?.paid_at ? ` · Paid ${new Date(detailOpen.payroll_runs.paid_at).toLocaleDateString()}` : ''}
-                </p>
+              </div>
+
+              <PayslipBreakdown slip={detailOpen} variant="full" />
+
+              <p className="text-[11px] text-dash-textMuted">
+                Issued {new Date(detailOpen.created_at).toLocaleDateString()}
+                {detailOpen.payroll_runs?.paid_at ? ` · Paid ${new Date(detailOpen.payroll_runs.paid_at).toLocaleDateString()}` : ''}
+              </p>
+
+              <div className="flex justify-end pt-1">
+                <DashButton variant="secondary" size="sm" onClick={() => setDetailOpen(null)}>
+                  Close
+                </DashButton>
               </div>
             </>
           )}

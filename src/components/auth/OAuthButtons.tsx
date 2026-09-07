@@ -18,7 +18,14 @@ type Provider = 'google' | 'facebook';
  * back to /auth/callback with ?error=access_denied, which the callback route
  * forwards to /auth/signin-basic?error=... — surfaced here as a toast.
  */
-const OAuthButtons = () => {
+interface OAuthButtonsProps {
+  /** Overrides the `?next=` query param — used by pages like accept-invite that
+   * need OAuth to land back on their own URL (with their own params, e.g. a
+   * token) rather than the default `/dashboard`. */
+  next?: string;
+}
+
+const OAuthButtons = ({ next: nextOverride }: OAuthButtonsProps = {}) => {
   const supabase = createClient();
   const searchParams = useSearchParams();
   const [pending, setPending] = useState<Provider | null>(null);
@@ -39,7 +46,7 @@ const OAuthButtons = () => {
   const signIn = async (provider: Provider) => {
     setPending(provider);
     try {
-      const next = searchParams?.get('next') || '/dashboard';
+      const next = nextOverride || searchParams?.get('next') || '/dashboard';
       const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
       const { error } = await supabase.auth.signInWithOAuth({
         provider,

@@ -377,6 +377,24 @@ export default function SettingsClient({
 
     if (res.error) {
       toast.error(res.error);
+    } else if ((res as { emailFailed?: boolean; acceptUrl?: string }).emailFailed) {
+      // The invitation was created for real — only the email failed to send
+      // (see settings.ts inviteTeamMember). Surface the real accept link so
+      // the admin can still get it to the invited person themselves.
+      const acceptUrl = (res as { acceptUrl?: string }).acceptUrl;
+      if (acceptUrl && navigator.clipboard) {
+        navigator.clipboard.writeText(acceptUrl).catch(() => {});
+      }
+      toast.error(
+        `Invitation created, but the email couldn't be sent. ${acceptUrl ? 'Link copied — share it directly.' : ''}`,
+        { duration: 8000 }
+      );
+      setIsInviteOpen(false);
+      setInviteEmail('');
+      setInviteName('');
+      setInvitePassword('');
+      setSelectedPermissions(['dashboard']);
+      router.refresh();
     } else {
       toast.success(inviteMode === 'invite' ? `Invitation sent to ${inviteEmail}` : `Member created successfully`);
       setIsInviteOpen(false);
