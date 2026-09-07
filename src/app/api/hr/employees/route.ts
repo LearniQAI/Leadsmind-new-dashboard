@@ -118,6 +118,17 @@ export async function PATCH(req: NextRequest) {
 
     const body = await req.json()
     delete body.workspace_id;
+
+    // Termination is a real business event (date, reason, processed-by — see the
+    // terminations table), not a raw field flip. It only ever happens through the
+    // dedicated POST /api/hr/employees/[id]/terminate action, never here.
+    if (body.status === 'terminated') {
+      return NextResponse.json(
+        { error: 'Use POST /api/hr/employees/[id]/terminate to terminate an employee' },
+        { status: 400 }
+      )
+    }
+
     body.updated_at = new Date().toISOString()
 
     const { data, error } = await adminClient

@@ -128,6 +128,7 @@ const dashboardNav: NavModule[] = [
         permission: "commerce",
         subItems: [
           { label: "Employees", link: "/hr/employees" },
+          { label: "Schedules", link: "/hr/schedules" },
           { label: "Payroll", link: "/hr/payroll" },
           { label: "Leave", link: "/hr/leave" },
           { label: "Time Tracking", link: "/hr/time-tracking" },
