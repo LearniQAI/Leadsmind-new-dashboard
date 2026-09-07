@@ -2,32 +2,32 @@
 import { useEffect, useState } from 'react'
 import Wrapper from '@/components/layouts/DefaultWrapper'
 import { useDashboardContext } from '@/components/layouts/DashboardProvider'
-import { Users, Clock, CreditCard, Calendar, Check, X, ShieldAlert } from 'lucide-react'
+import { Users, Clock, CreditCard, Calendar, Check, X } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { DashCard, DashButton, DashStatusPill } from '@/components/dashboard-ui'
 
 interface StatCardProps {
   title: string
   value: string | number
   icon: any
-  color: string
 }
 
-function StatCard({ title, value, icon: Icon, color }: StatCardProps) {
+function StatCard({ title, value, icon: Icon }: StatCardProps) {
   return (
-    <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-2xl p-5 flex items-center justify-between">
+    <DashCard className="p-5 flex items-center justify-between">
       <div>
-        <span className="text-[11.5px] font-medium text-[#4a5a82] uppercase tracking-[0.8px] font-dm-sans block mb-1">
+        <span className="text-[11px] font-bold text-dash-textMuted uppercase tracking-wide block mb-1">
           {title}
         </span>
-        <span className="text-[20px] font-bold text-[#eef2ff] font-space-grotesk">
+        <span className="font-display text-[20px] font-bold text-dash-text">
           {value}
         </span>
       </div>
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${color}1F` }}>
-        <Icon size={18} style={{ color: color }} />
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-dash-accent/10">
+        <Icon size={18} className="text-dash-accent" />
       </div>
-    </div>
+    </DashCard>
   )
 }
 
@@ -75,7 +75,7 @@ export default function HRPage() {
 
       // Calculations
       const pendingLeaves = leaves.filter((l: any) => l.status === 'pending')
-      
+
       // Hours logged this month (filter times where date is current month)
       const now = new Date()
       const currentYear = now.getFullYear()
@@ -87,7 +87,7 @@ export default function HRPage() {
         })
         .reduce((sum: number, t: any) => sum + Number(t.hours), 0)
 
-      const lastPayDate = payrolls.length > 0 
+      const lastPayDate = payrolls.length > 0
         ? new Date(payrolls[0].created_at).toLocaleDateString()
         : 'Never'
 
@@ -132,27 +132,25 @@ export default function HRPage() {
 
   return (
     <Wrapper>
-      <div className="min-h-screen bg-[#04091a] px-6 py-6 max-w-6xl mx-auto space-y-6">
+      <div className="min-h-screen bg-dash-bg px-6 py-6 max-w-6xl mx-auto space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-[22px] font-bold"
-              style={{ fontFamily: "'Space Grotesk', sans-serif", color: '#eef2ff' }}>
-              HR & <span style={{ color: '#3b82f6' }}>Payroll</span>
+            <h1 className="font-display text-[22px] font-bold text-dash-text">
+              HR & Payroll
             </h1>
-            <p className="text-[11px] uppercase tracking-[0.8px] font-medium mt-1"
-              style={{ color: '#4a5a82', fontFamily: "'DM Sans', sans-serif" }}>
-              Workforce, Payroll Calculations, Leave Records, and Timesheets
+            <p className="text-[12px] text-dash-textMuted mt-1">
+              Workforce, payroll calculations, leave records, and timesheets
             </p>
           </div>
           <div className="flex items-center gap-2">
             {canManageTeam && (
-              <Link href="/hr/employees" className="h-9 px-4 rounded-[8px] bg-white/5 border border-white/5 text-[#eef2ff] hover:bg-white/10 text-[12px] font-bold font-dm-sans flex items-center gap-2 transition-all">
-                Manage Team
+              <Link href="/hr/employees">
+                <DashButton size="sm" variant="secondary">Manage Team</DashButton>
               </Link>
             )}
             {canRunPayroll && (
-              <Link href="/hr/payroll" className="h-9 px-4 rounded-[8px] bg-[#10b981] text-white hover:opacity-90 text-[12px] font-bold font-dm-sans flex items-center gap-2 transition-all shadow-lg shadow-[#10b981]/10">
-                Run Payroll
+              <Link href="/hr/payroll">
+                <DashButton size="sm">Run Payroll</DashButton>
               </Link>
             )}
           </div>
@@ -160,101 +158,99 @@ export default function HRPage() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="Total Employees" value={stats.totalEmployees} icon={Users} color="#6366f1" />
-          <StatCard title="Pending Leave" value={stats.pendingLeave} icon={Calendar} color="#f59e0b" />
-          <StatCard title="Hours This Month" value={`${stats.hoursThisMonth} hrs`} icon={Clock} color="#3b82f6" />
-          <StatCard title="Last Payroll Run" value={stats.lastPayrollDate} icon={CreditCard} color="#10b981" />
+          <StatCard title="Total Employees" value={stats.totalEmployees} icon={Users} />
+          <StatCard title="Pending Leave" value={stats.pendingLeave} icon={Calendar} />
+          <StatCard title="Hours This Month" value={`${stats.hoursThisMonth} hrs`} icon={Clock} />
+          <StatCard title="Last Payroll Run" value={stats.lastPayrollDate} icon={CreditCard} />
         </div>
 
         {loading ? (
-          <div className="text-center py-20 text-[#4a5a82] animate-pulse">Loading dashboard...</div>
+          <div className="text-center py-20 text-dash-textMuted animate-pulse">Loading dashboard...</div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
+
             {/* Left: Recent Employees */}
-            <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-2xl p-6">
-              <h2 className="text-[15px] font-bold text-[#eef2ff] mb-4 font-space-grotesk">
+            <DashCard interactive={false} className="p-6">
+              <h2 className="font-display text-[15px] font-bold text-dash-text mb-4">
                 Recent Employees
               </h2>
               {recentEmployees.length === 0 ? (
-                <p className="text-[12px] text-[#4a5a82]">No employees added yet.</p>
+                <p className="text-[12px] text-dash-textMuted">No employees added yet.</p>
               ) : (
                 <div className="space-y-4">
                   {recentEmployees.map(emp => (
-                    <div key={emp.id} className="flex items-center justify-between pb-3 border-b border-white/5 last:border-b-0 last:pb-0">
+                    <div key={emp.id} className="flex items-center justify-between pb-3 border-b border-dash-border last:border-b-0 last:pb-0">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-[12px]">
+                        <div className="w-9 h-9 rounded-full bg-dash-accent/10 border border-dash-accent/20 text-dash-accent flex items-center justify-center font-bold text-[12px]">
                           {emp.first_name[0]}{emp.last_name[0]}
                         </div>
                         <div>
-                          <span className="text-[12.5px] font-semibold text-[#eef2ff] block">
+                          <span className="text-[12.5px] font-semibold text-dash-text block">
                             {emp.first_name} {emp.last_name}
                           </span>
-                          <span className="text-[11px] text-[#4a5a82] block">
+                          <span className="text-[11px] text-dash-textMuted block">
                             {emp.role} • {emp.department}
                           </span>
                         </div>
                       </div>
-                      <span className="text-[11.5px] text-[#94a3c8] font-medium font-dm-sans">
+                      <span className="text-[11.5px] text-dash-textMuted font-medium">
                         Start: {emp.start_date ? new Date(emp.start_date).toLocaleDateString() : 'N/A'}
                       </span>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
+            </DashCard>
 
             {/* Right: Pending Leave Requests */}
-            <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-2xl p-6">
-              <h2 className="text-[15px] font-bold text-[#eef2ff] mb-4 font-space-grotesk">
+            <DashCard interactive={false} className="p-6">
+              <h2 className="font-display text-[15px] font-bold text-dash-text mb-4">
                 Pending Leave Requests
               </h2>
               {pendingLeaveRequests.length === 0 ? (
-                <p className="text-[12px] text-[#4a5a82]">No pending leave requests.</p>
+                <p className="text-[12px] text-dash-textMuted">No pending leave requests.</p>
               ) : (
                 <div className="space-y-4">
                   {pendingLeaveRequests.map(leave => (
-                    <div key={leave.id} className="flex items-center justify-between pb-3 border-b border-white/5 last:border-b-0 last:pb-0 gap-4">
+                    <div key={leave.id} className="flex items-center justify-between pb-3 border-b border-dash-border last:border-b-0 last:pb-0 gap-4">
                       <div>
-                        <span className="text-[12.5px] font-semibold text-[#eef2ff] block">
+                        <span className="text-[12.5px] font-semibold text-dash-text block">
                           {leave.employees?.first_name} {leave.employees?.last_name}
                         </span>
-                        <span className="text-[11px] text-[#94a3c8] block mt-0.5 capitalize">
-                          Type: <strong className="text-[#3b82f6]">{leave.leave_type}</strong> • {leave.days_count} days
+                        <span className="text-[11px] text-dash-textMuted block mt-0.5 capitalize">
+                          Type: <strong className="text-dash-accent">{leave.leave_type}</strong> • {leave.days_count} days
                         </span>
-                        <span className="text-[10px] text-[#4a5a82] block mt-0.5">
+                        <span className="text-[10px] text-dash-textMuted block mt-0.5">
                           {new Date(leave.start_date).toLocaleDateString()} - {new Date(leave.end_date).toLocaleDateString()}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         {isLeaveApprover ? (
                           <>
                             <button
                               onClick={() => handleUpdateLeaveStatus(leave.id, 'approved')}
-                              className="w-7 h-7 rounded-lg bg-green-500/10 border border-green-500/20 text-[#10b981] flex items-center justify-center hover:bg-green-500/20 transition-colors"
+                              className="w-7 h-7 rounded-lg bg-green/10 border border-green/20 text-green flex items-center justify-center hover:bg-green/20 transition-colors"
                               title="Approve"
                             >
                               <Check size={14} />
                             </button>
                             <button
                               onClick={() => handleUpdateLeaveStatus(leave.id, 'rejected')}
-                              className="w-7 h-7 rounded-lg bg-red-500/10 border border-red-500/20 text-[#ef4444] flex items-center justify-center hover:bg-red-500/20 transition-colors"
+                              className="w-7 h-7 rounded-lg bg-red/10 border border-red/20 text-red flex items-center justify-center hover:bg-red/20 transition-colors"
                               title="Reject"
                             >
                               <X size={14} />
                             </button>
                           </>
                         ) : (
-                          <span className="px-2 py-0.5 rounded bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-[10px] font-bold uppercase tracking-widest font-dm-sans">
-                            Pending
-                          </span>
+                          <DashStatusPill variant="warning">Pending</DashStatusPill>
                         )}
                       </div>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
+            </DashCard>
 
           </div>
         )}

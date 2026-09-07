@@ -116,24 +116,24 @@ const dashboardNav: NavModule[] = [
     ],
   },
   {
+    // Flat list, no accordion (deliberately unlike Finance/Affiliates below, which keep
+    // their real subItems-container pattern) -- each item links directly and is always
+    // visible, no expand/collapse. Role gating (Employees is HR-role-restricted) moved
+    // from isSubItemAllowed to isItemAllowed in filterNavByPermissions.ts to match.
     id: "hr-payroll",
     label: "HR & Payroll",
     icon: "fa-light fa-users-gear",
+    // Not a "direct link" module (NavRailModule only treats `link` as a direct link
+    // when `items` is absent) -- this exists solely so /hr (the overview page, reached
+    // via each sub-page's "Overview" link, not a distinct sidebar entry) still resolves
+    // to this module for active-state highlighting.
+    link: "/hr",
     items: [
-      {
-        id: 30,
-        label: "HR & Payroll",
-        icon: "fa-light fa-users-gear",
-        link: "/hr",
-        permission: "commerce",
-        subItems: [
-          { label: "Employees", link: "/hr/employees" },
-          { label: "Schedules", link: "/hr/schedules" },
-          { label: "Payroll", link: "/hr/payroll" },
-          { label: "Leave", link: "/hr/leave" },
-          { label: "Time Tracking", link: "/hr/time-tracking" },
-        ],
-      },
+      { id: 30, label: "Employees", icon: "fa-light fa-users", link: "/hr/employees", permission: "commerce" },
+      { id: 301, label: "Schedules", icon: "fa-light fa-calendar-clock", link: "/hr/schedules", permission: "commerce" },
+      { id: 302, label: "Payroll", icon: "fa-light fa-money-check-dollar", link: "/hr/payroll", permission: "commerce" },
+      { id: 303, label: "Leave", icon: "fa-light fa-calendar-days", link: "/hr/leave", permission: "commerce" },
+      { id: 304, label: "Time Tracking", icon: "fa-light fa-clock", link: "/hr/time-tracking", permission: "commerce" },
     ],
   },
   {

@@ -3,9 +3,21 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Wrapper from '@/components/layouts/DefaultWrapper'
 import { useDashboardContext } from '@/components/layouts/DashboardProvider'
-import { AlertTriangle, ArrowLeft, Ban, Download, FileText, Plus, Trash2, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Ban, Download, FileText, Plus, Trash2, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import {
+  DashCard,
+  DashButton,
+  DashStatusPill,
+  DashModal,
+  DashModalContent,
+  DashModalHeader,
+  DashModalTitle,
+  DashFormField,
+  DashInput,
+  DashTextarea,
+} from '@/components/dashboard-ui'
 
 interface Employee {
   id: string
@@ -53,6 +65,9 @@ interface EmployeeDocument {
   mime_type: string | null
   created_at: string
 }
+
+const selectClass =
+  'w-full h-11 rounded-xl border border-dash-border bg-white pl-3.5 pr-9 text-sm !text-dash-text appearance-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-accent disabled:cursor-not-allowed disabled:opacity-50'
 
 export default function EmployeeDetailPage() {
   const params = useParams()
@@ -253,7 +268,7 @@ export default function EmployeeDetailPage() {
   if (loading) {
     return (
       <Wrapper>
-        <div className="min-h-screen bg-[#04091a] px-6 py-6 max-w-4xl mx-auto text-center text-[#4a5a82] animate-pulse">
+        <div className="min-h-screen bg-dash-bg px-6 py-6 max-w-4xl mx-auto text-center text-dash-textMuted animate-pulse">
           Loading employee...
         </div>
       </Wrapper>
@@ -263,7 +278,7 @@ export default function EmployeeDetailPage() {
   if (!employee) {
     return (
       <Wrapper>
-        <div className="min-h-screen bg-[#04091a] px-6 py-6 max-w-4xl mx-auto text-center text-[#4a5a82]">
+        <div className="min-h-screen bg-dash-bg px-6 py-6 max-w-4xl mx-auto text-center text-dash-textMuted">
           Employee not found.
         </div>
       </Wrapper>
@@ -272,312 +287,260 @@ export default function EmployeeDetailPage() {
 
   return (
     <Wrapper>
-      <div className="min-h-screen bg-[#04091a] px-6 py-6 max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center gap-3 border-b border-white/5 pb-4">
-          <Link href="/hr/employees" className="text-[#4a5a82] hover:text-[#eef2ff] text-[12px] font-semibold flex items-center gap-1">
-            <ArrowLeft size={14} /> Employees
-          </Link>
-        </div>
+      <div className="min-h-screen bg-dash-bg px-6 py-6 max-w-4xl mx-auto space-y-6">
+        <Link href="/hr/employees" className="text-dash-textMuted hover:text-dash-text text-[13px] font-semibold flex items-center gap-1 w-fit">
+          <ArrowLeft size={14} /> Employees
+        </Link>
 
-        <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-2xl p-5 flex items-center justify-between">
+        <DashCard className="p-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-[15px] shrink-0">
+            <div className="w-12 h-12 rounded-full bg-dash-accent/10 text-dash-accent flex items-center justify-center font-bold text-[16px] shrink-0">
               {employee.first_name[0]}{employee.last_name[0]}
             </div>
             <div>
-              <h1 className="text-[18px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+              <h1 className="font-display text-[19px] font-bold text-dash-text">
                 {employee.first_name} {employee.last_name}
               </h1>
-              <p className="text-[11.5px] text-[#94a3c8] mt-0.5">{employee.role} — {employee.department}</p>
+              <p className="text-[12px] text-dash-textMuted mt-0.5">{employee.role} — {employee.department}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             {employee.status === 'terminated' ? (
-              <span className="text-[#ef4444] text-[11px] font-bold uppercase tracking-wide bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-full">
-                Terminated
-              </span>
+              <DashStatusPill variant="danger" className="uppercase tracking-wide">Terminated</DashStatusPill>
             ) : canManage ? (
-              <button
-                onClick={() => setTerminateModalOpen(true)}
-                className="h-9 px-4 rounded-[8px] bg-red-500/10 border border-red-500/20 text-[#ef4444] hover:bg-red-500/20 text-[12px] font-bold flex items-center gap-1.5 transition-all"
-              >
+              <DashButton variant="destructive" size="sm" onClick={() => setTerminateModalOpen(true)}>
                 <Ban size={14} /> Terminate Employee
-              </button>
+              </DashButton>
             ) : null}
           </div>
-        </div>
+        </DashCard>
 
         {/* Schedule assignment */}
-        <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-2xl p-5 space-y-3">
-          <h2 className="text-[13.5px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-            Assigned Schedule
-          </h2>
-          {canManage ? (
-            <select
-              value={employee.schedule_id ?? ''}
-              disabled={savingSchedule || employee.status === 'terminated'}
-              onChange={(e) => handleAssignSchedule(e.target.value)}
-              className="w-full h-10 rounded-lg bg-white/[0.03] border border-white/10 px-3 text-[12.5px] text-[#eef2ff] focus:outline-none focus:border-[#2563eb]"
-            >
-              <option value="">No schedule assigned</option>
-              {schedules.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} ({s.start_time}–{s.end_time}, {s.standard_hours_per_day}h/day)
-                </option>
-              ))}
-            </select>
-          ) : (
-            <p className="text-[12.5px] text-[#94a3c8]">
-              {schedules.find((s) => s.id === employee.schedule_id)?.name ?? 'No schedule assigned'}
-            </p>
-          )}
-          {schedules.length === 0 && (
-            <p className="text-[11px] text-[#4a5a82]">
-              No schedules exist yet. <Link href="/hr/schedules" className="text-[#2563eb] hover:underline">Create one</Link>.
-            </p>
-          )}
-        </div>
+        <DashCard interactive={false}>
+          <div className="p-5 space-y-3">
+            <h2 className="font-display text-[14.5px] font-bold text-dash-text">Assigned Schedule</h2>
+            {canManage ? (
+              <div className="relative">
+                <select
+                  value={employee.schedule_id ?? ''}
+                  disabled={savingSchedule || employee.status === 'terminated'}
+                  onChange={(e) => handleAssignSchedule(e.target.value)}
+                  className={selectClass}
+                >
+                  <option value="">No schedule assigned</option>
+                  {schedules.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.start_time}–{s.end_time}, {s.standard_hours_per_day}h/day)
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-dash-textMuted" />
+              </div>
+            ) : (
+              <p className="text-[13px] text-dash-textMuted">
+                {schedules.find((s) => s.id === employee.schedule_id)?.name ?? 'No schedule assigned'}
+              </p>
+            )}
+            {schedules.length === 0 && (
+              <p className="text-[12px] text-dash-textMuted">
+                No schedules exist yet. <Link href="/hr/schedules" className="text-dash-accent hover:underline">Create one</Link>.
+              </p>
+            )}
+          </div>
+        </DashCard>
 
         {/* Termination record, if any */}
         {termination && (
-          <div className="bg-red-500/[0.04] border border-red-500/20 rounded-2xl p-5 space-y-2">
-            <h2 className="text-[13.5px] font-bold text-[#ef4444] flex items-center gap-1.5">
-              <Ban size={14} /> Termination Record
-            </h2>
-            <div className="text-[12px] text-[#94a3c8] space-y-1">
-              <div><span className="text-[#4a5a82]">Date:</span> {termination.termination_date}</div>
-              {termination.last_working_day && <div><span className="text-[#4a5a82]">Last working day:</span> {termination.last_working_day}</div>}
-              <div><span className="text-[#4a5a82]">Reason:</span> {termination.reason}</div>
-              <div><span className="text-[#4a5a82]">Rehire eligible:</span> {termination.rehire_eligible ? 'Yes' : 'No'}</div>
-              {termination.notes && <div><span className="text-[#4a5a82]">Notes:</span> {termination.notes}</div>}
+          <DashCard interactive={false} className="border-red/20 bg-red/[0.03]">
+            <div className="p-5 space-y-2">
+              <h2 className="font-display text-[14.5px] font-bold text-red flex items-center gap-1.5">
+                <Ban size={14} /> Termination Record
+              </h2>
+              <div className="text-[13px] text-dash-textMuted space-y-1">
+                <div><span className="text-dash-text/70 font-medium">Date:</span> {termination.termination_date}</div>
+                {termination.last_working_day && <div><span className="text-dash-text/70 font-medium">Last working day:</span> {termination.last_working_day}</div>}
+                <div><span className="text-dash-text/70 font-medium">Reason:</span> {termination.reason}</div>
+                <div><span className="text-dash-text/70 font-medium">Rehire eligible:</span> {termination.rehire_eligible ? 'Yes' : 'No'}</div>
+                {termination.notes && <div><span className="text-dash-text/70 font-medium">Notes:</span> {termination.notes}</div>}
+              </div>
             </div>
-          </div>
+          </DashCard>
         )}
 
         {/* Warnings */}
-        <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-2xl p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-[13.5px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-              Warnings
-            </h2>
-            {canManage && employee.status !== 'terminated' && (
-              <button
-                onClick={() => setWarningModalOpen(true)}
-                className="h-8 px-3 rounded-[8px] bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20 text-[11.5px] font-bold flex items-center gap-1.5 transition-all"
-              >
-                <Plus size={13} /> Issue Warning
-              </button>
+        <DashCard interactive={false}>
+          <div className="p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-[14.5px] font-bold text-dash-text">Warnings</h2>
+              {canManage && employee.status !== 'terminated' && (
+                <DashButton size="sm" variant="secondary" onClick={() => setWarningModalOpen(true)}>
+                  <Plus size={13} /> Issue Warning
+                </DashButton>
+              )}
+            </div>
+
+            {warnings.length === 0 ? (
+              <p className="text-[13px] text-dash-textMuted">No warnings on record.</p>
+            ) : (
+              <div className="space-y-2">
+                {warnings.map((w) => (
+                  <div key={w.id} className="bg-dash-surface rounded-xl p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[12.5px] font-bold text-dash-text flex items-center gap-1.5">
+                        <AlertTriangle size={12} className="text-amber" /> {w.reason}
+                      </span>
+                      <span className="text-[11px] text-dash-textMuted">{w.warning_date}</span>
+                    </div>
+                    {w.notes && <p className="text-[12px] text-dash-textMuted mt-1.5">{w.notes}</p>}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
-
-          {warnings.length === 0 ? (
-            <p className="text-[12px] text-[#4a5a82]">No warnings on record.</p>
-          ) : (
-            <div className="space-y-2">
-              {warnings.map((w) => (
-                <div key={w.id} className="bg-white/[0.02] border border-white/5 rounded-xl p-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11.5px] font-bold text-[#eef2ff] flex items-center gap-1.5">
-                      <AlertTriangle size={12} className="text-amber-400" /> {w.reason}
-                    </span>
-                    <span className="text-[10.5px] text-[#4a5a82]">{w.warning_date}</span>
-                  </div>
-                  {w.notes && <p className="text-[11px] text-[#94a3c8] mt-1.5">{w.notes}</p>}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        </DashCard>
 
         {/* Documents */}
-        <div className="bg-[rgba(12,21,53,0.85)] border border-[rgba(255,255,255,0.07)] rounded-2xl p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-[13.5px] font-bold text-[#eef2ff]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-              Documents
-            </h2>
-            {canManage && employee.status !== 'terminated' && (
-              <button
-                onClick={() => setUploadModalOpen(true)}
-                className="h-8 px-3 rounded-[8px] bg-[#2563eb]/10 border border-[#2563eb]/20 text-[#2563eb] hover:bg-[#2563eb]/20 text-[11.5px] font-bold flex items-center gap-1.5 transition-all"
-              >
-                <Plus size={13} /> Upload Document
-              </button>
-            )}
-          </div>
+        <DashCard interactive={false}>
+          <div className="p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-[14.5px] font-bold text-dash-text">Documents</h2>
+              {canManage && employee.status !== 'terminated' && (
+                <DashButton size="sm" variant="secondary" onClick={() => setUploadModalOpen(true)}>
+                  <Plus size={13} /> Upload Document
+                </DashButton>
+              )}
+            </div>
 
-          {documents.length === 0 ? (
-            <p className="text-[12px] text-[#4a5a82]">No documents on file.</p>
-          ) : (
-            <div className="space-y-2">
-              {documents.map((d) => (
-                <div key={d.id} className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <FileText size={14} className="text-[#4a5a82] shrink-0" />
-                    <div className="min-w-0">
-                      <div className="text-[11.5px] font-bold text-[#eef2ff] truncate">
-                        {d.label}{d.category ? ` · ${d.category}` : ''}
-                      </div>
-                      <div className="text-[10.5px] text-[#4a5a82] truncate">
-                        {d.file_name}{d.file_size ? ` · ${(d.file_size / 1024).toFixed(0)} KB` : ''}
+            {documents.length === 0 ? (
+              <p className="text-[13px] text-dash-textMuted">No documents on file.</p>
+            ) : (
+              <div className="space-y-2">
+                {documents.map((d) => (
+                  <div key={d.id} className="bg-dash-surface rounded-xl p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <FileText size={14} className="text-dash-textMuted shrink-0" />
+                      <div className="min-w-0">
+                        <div className="text-[12.5px] font-bold text-dash-text truncate">
+                          {d.label}{d.category ? ` · ${d.category}` : ''}
+                        </div>
+                        <div className="text-[11px] text-dash-textMuted truncate">
+                          {d.file_name}{d.file_size ? ` · ${(d.file_size / 1024).toFixed(0)} KB` : ''}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      onClick={() => handleDownloadDocument(d)}
-                      className="w-7 h-7 rounded-lg bg-white/5 border border-white/5 text-[#94a3c8] hover:text-[#eef2ff] flex items-center justify-center transition-colors"
-                      title="Download"
-                    >
-                      <Download size={12} />
-                    </button>
-                    {canManage && (
+                    <div className="flex items-center gap-1.5 shrink-0">
                       <button
-                        onClick={() => handleDeleteDocument(d.id)}
-                        className="w-7 h-7 rounded-lg bg-red-500/10 border border-red-500/20 text-[#ef4444] hover:bg-red-500/20 flex items-center justify-center transition-colors"
-                        title="Delete"
+                        onClick={() => handleDownloadDocument(d)}
+                        className="w-7 h-7 rounded-lg bg-white border border-dash-border text-dash-textMuted hover:text-dash-text flex items-center justify-center transition-colors"
+                        title="Download"
                       >
-                        <Trash2 size={12} />
+                        <Download size={12} />
                       </button>
-                    )}
+                      {canManage && (
+                        <button
+                          onClick={() => handleDeleteDocument(d.id)}
+                          className="w-7 h-7 rounded-lg bg-red/10 text-red hover:bg-red/20 flex items-center justify-center transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DashCard>
 
         {/* Upload document modal */}
-        {uploadModalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-            <div className="bg-[#0b122b] border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
-              <div className="flex items-center justify-between p-5 border-b border-white/5">
-                <h3 className="text-[15px] font-bold text-[#eef2ff]">Upload Document</h3>
-                <button onClick={() => setUploadModalOpen(false)} className="text-[#4a5a82] hover:text-[#eef2ff]">
-                  <X size={16} />
-                </button>
-              </div>
-              <form onSubmit={handleUploadDocument} className="p-5 space-y-4">
-                <div>
-                  <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Label *</label>
-                  <input
-                    required
-                    value={uploadLabel}
-                    onChange={(e) => setUploadLabel(e.target.value)}
-                    className="w-full h-10 rounded-lg bg-white/[0.03] border border-white/10 px-3 text-[12.5px] text-[#eef2ff] focus:outline-none focus:border-[#2563eb]"
-                    placeholder="e.g. Signed Employment Contract"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Category</label>
-                  <input
-                    value={uploadCategory}
-                    onChange={(e) => setUploadCategory(e.target.value)}
-                    className="w-full h-10 rounded-lg bg-white/[0.03] border border-white/10 px-3 text-[12.5px] text-[#eef2ff] focus:outline-none focus:border-[#2563eb]"
-                    placeholder="e.g. Contract, ID, Certification (optional)"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">File * (PDF, PNG, JPEG — max 15MB)</label>
-                  <input
-                    required
-                    type="file"
-                    accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
-                    onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
-                    className="w-full text-[12px] text-[#94a3c8] file:mr-3 file:h-8 file:px-3 file:rounded-lg file:border-0 file:bg-[#2563eb] file:text-white file:text-[11.5px] file:font-bold"
-                  />
-                </div>
-                <p className="text-[11px] text-[#4a5a82]">Stored encrypted at rest (AES-256-GCM).</p>
-                <button
-                  type="submit"
-                  disabled={uploading}
-                  className="w-full h-10 rounded-lg bg-[#2563eb] hover:bg-[#2563eb]/90 disabled:opacity-50 text-white text-[12.5px] font-bold transition-all"
-                >
-                  {uploading ? 'Uploading…' : 'Upload'}
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
+        <DashModal open={uploadModalOpen} onOpenChange={setUploadModalOpen}>
+          <DashModalContent className="max-w-md">
+            <DashModalHeader>
+              <DashModalTitle>Upload Document</DashModalTitle>
+            </DashModalHeader>
+            <form onSubmit={handleUploadDocument} className="space-y-4">
+              <DashFormField label="Label" required>
+                <DashInput
+                  required
+                  value={uploadLabel}
+                  onChange={(e) => setUploadLabel(e.target.value)}
+                  placeholder="e.g. Signed Employment Contract"
+                />
+              </DashFormField>
+              <DashFormField label="Category">
+                <DashInput
+                  value={uploadCategory}
+                  onChange={(e) => setUploadCategory(e.target.value)}
+                  placeholder="e.g. Contract, ID, Certification (optional)"
+                />
+              </DashFormField>
+              <DashFormField label="File (PDF, PNG, JPEG — max 15MB)" required>
+                <input
+                  required
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
+                  onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+                  className="w-full text-[12px] text-dash-textMuted file:mr-3 file:h-9 file:px-3.5 file:rounded-lg file:border-0 file:bg-dash-accent file:text-white file:text-[12px] file:font-bold"
+                />
+              </DashFormField>
+              <p className="text-[11.5px] text-dash-textMuted">Stored encrypted at rest (AES-256-GCM).</p>
+              <DashButton type="submit" disabled={uploading} className="w-full">
+                {uploading ? 'Uploading…' : 'Upload'}
+              </DashButton>
+            </form>
+          </DashModalContent>
+        </DashModal>
 
         {/* Issue warning modal */}
-        {warningModalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-            <div className="bg-[#0b122b] border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
-              <div className="flex items-center justify-between p-5 border-b border-white/5">
-                <h3 className="text-[15px] font-bold text-[#eef2ff]">Issue Warning</h3>
-                <button onClick={() => setWarningModalOpen(false)} className="text-[#4a5a82] hover:text-[#eef2ff]">
-                  <X size={16} />
-                </button>
-              </div>
-              <form onSubmit={handleAddWarning} className="p-5 space-y-4">
-                <div>
-                  <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Reason *</label>
-                  <input
-                    required
-                    value={warningReason}
-                    onChange={(e) => setWarningReason(e.target.value)}
-                    className="w-full h-10 rounded-lg bg-white/[0.03] border border-white/10 px-3 text-[12.5px] text-[#eef2ff] focus:outline-none focus:border-[#2563eb]"
-                    placeholder="e.g. Repeated late arrival"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Notes</label>
-                  <textarea
-                    value={warningNotes}
-                    onChange={(e) => setWarningNotes(e.target.value)}
-                    rows={3}
-                    className="w-full rounded-lg bg-white/[0.03] border border-white/10 px-3 py-2 text-[12.5px] text-[#eef2ff] focus:outline-none focus:border-[#2563eb]"
-                  />
-                </div>
-                <p className="text-[11px] text-[#4a5a82]">The employee will be emailed a copy of this warning, if they have an email on file.</p>
-                <button type="submit" className="w-full h-10 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[12.5px] font-bold transition-all">
-                  Issue Warning
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
+        <DashModal open={warningModalOpen} onOpenChange={setWarningModalOpen}>
+          <DashModalContent className="max-w-md">
+            <DashModalHeader>
+              <DashModalTitle>Issue Warning</DashModalTitle>
+            </DashModalHeader>
+            <form onSubmit={handleAddWarning} className="space-y-4">
+              <DashFormField label="Reason" required>
+                <DashInput
+                  required
+                  value={warningReason}
+                  onChange={(e) => setWarningReason(e.target.value)}
+                  placeholder="e.g. Repeated late arrival"
+                />
+              </DashFormField>
+              <DashFormField label="Notes">
+                <DashTextarea value={warningNotes} onChange={(e) => setWarningNotes(e.target.value)} rows={3} />
+              </DashFormField>
+              <p className="text-[11.5px] text-dash-textMuted">The employee will be emailed a copy of this warning, if they have an email on file.</p>
+              <DashButton type="submit" className="w-full">
+                Issue Warning
+              </DashButton>
+            </form>
+          </DashModalContent>
+        </DashModal>
 
         {/* Terminate modal */}
-        {terminateModalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-            <div className="bg-[#0b122b] border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
-              <div className="flex items-center justify-between p-5 border-b border-white/5">
-                <h3 className="text-[15px] font-bold text-[#ef4444]">Terminate Employee</h3>
-                <button onClick={() => setTerminateModalOpen(false)} className="text-[#4a5a82] hover:text-[#eef2ff]">
-                  <X size={16} />
-                </button>
-              </div>
-              <form onSubmit={handleTerminate} className="p-5 space-y-4">
-                <div>
-                  <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Reason *</label>
-                  <input
-                    required
-                    value={terminationReason}
-                    onChange={(e) => setTerminationReason(e.target.value)}
-                    className="w-full h-10 rounded-lg bg-white/[0.03] border border-white/10 px-3 text-[12.5px] text-[#eef2ff] focus:outline-none focus:border-red-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-[#4a5a82] font-bold uppercase tracking-wider block mb-1">Last Working Day</label>
-                  <input
-                    type="date"
-                    value={lastWorkingDay}
-                    onChange={(e) => setLastWorkingDay(e.target.value)}
-                    className="w-full h-10 rounded-lg bg-white/[0.03] border border-white/10 px-3 text-[12.5px] text-[#eef2ff] focus:outline-none focus:border-red-500"
-                  />
-                </div>
-                <label className="flex items-center gap-2 text-[12px] text-[#94a3c8]">
-                  <input type="checkbox" checked={rehireEligible} onChange={(e) => setRehireEligible(e.target.checked)} />
-                  Eligible for rehire
-                </label>
-                <button type="submit" className="w-full h-10 rounded-lg bg-red-500 hover:bg-red-600 text-white text-[12.5px] font-bold transition-all">
-                  Confirm Termination
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
+        <DashModal open={terminateModalOpen} onOpenChange={setTerminateModalOpen}>
+          <DashModalContent className="max-w-md">
+            <DashModalHeader>
+              <DashModalTitle className="!text-red">Terminate Employee</DashModalTitle>
+            </DashModalHeader>
+            <form onSubmit={handleTerminate} className="space-y-4">
+              <DashFormField label="Reason" required>
+                <DashInput required value={terminationReason} onChange={(e) => setTerminationReason(e.target.value)} />
+              </DashFormField>
+              <DashFormField label="Last Working Day">
+                <DashInput type="date" value={lastWorkingDay} onChange={(e) => setLastWorkingDay(e.target.value)} />
+              </DashFormField>
+              <label className="flex items-center gap-2 text-[13px] text-dash-textMuted">
+                <input type="checkbox" checked={rehireEligible} onChange={(e) => setRehireEligible(e.target.checked)} />
+                Eligible for rehire
+              </label>
+              <DashButton type="submit" variant="destructive" className="w-full">
+                Confirm Termination
+              </DashButton>
+            </form>
+          </DashModalContent>
+        </DashModal>
       </div>
     </Wrapper>
   )
