@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { requireWorkspaceRole } from '@/lib/api/workspaceAuth'
 import { toClientError } from '@/shared/errors/AppError'
 import { logger } from '@/shared/logger'
+import { sendHRNotification } from '@/app/actions/hr/notifications'
 
 export const dynamic = 'force-dynamic';
 
@@ -100,6 +101,19 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (error) throw error;
+
+    // Best-effort welcome notification — the employee record is already committed above,
+    // so a failed send here must never fail employee creation itself. sendHRNotification()
+    // already catches its own errors and returns { success: false } rather than throwing,
+    // but this is still explicitly awaited (not fire-and-forget) — an un-awaited promise
+    // can be killed by the serverless runtime before it resolves once the response is
+    // returned, which would silently drop the notification. Logged explicitly at the call
+    // site too so a failure here is visible in this route's own logs.
+    const notifyResult = await sendHRNotification(data.id, 'new_hire')
+    if (!notifyResult.success) {
+      logger.error({ employeeId: data.id, error: notifyResult.error }, 'hr.employees.post.new_hire_notification.failed');
+    }
+
     return NextResponse.json({ success: true, employee: data })
   } catch (err: any) {
     logger.error({ err }, 'hr.employees.post.failed');
@@ -118,6 +132,17 @@ export async function PATCH(req: NextRequest) {
 
     const body = await req.json()
     delete body.workspace_id;
+
+    // Termination is a real business event (date, reason, processed-by — see the
+    // terminations table), not a raw field flip. It only ever happens through the
+    // dedicated POST /api/hr/employees/[id]/terminate action, never here.
+    if (body.status === 'terminated') {
+      return NextResponse.json(
+        { error: 'Use POST /api/hr/employees/[id]/terminate to terminate an employee' },
+        { status: 400 }
+      )
+    }
+
     body.updated_at = new Date().toISOString()
 
     const { data, error } = await adminClient

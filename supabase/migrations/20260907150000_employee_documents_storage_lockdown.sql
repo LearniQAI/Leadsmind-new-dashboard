@@ -1,0 +1,37 @@
+-- Fixes a real, live-confirmed gap: the employee-documents bucket (added in
+-- 20260907140000_hr_employee_documents.sql) shipped with bucket-wide
+-- 'authenticated' SELECT/INSERT/DELETE storage.objects policies -- any
+-- authenticated user in ANY workspace could fetch, overwrite, or delete
+-- another workspace's encrypted employee document blobs directly via the
+-- Storage API, bypassing the app-level workspace/role checks in
+-- src/app/api/hr/employees/[id]/documents/*.
+--
+-- This project has already solved this exact problem for the sibling
+-- kyc-documents bucket (20260827000000_lockdown_financial_kyc_identity_tables.sql):
+--   "kyc-documents is only ever touched via [the API routes], both using
+--    createAdminClient(); no browser code calls
+--    supabase.storage.from('kyc-documents') directly, so removing the
+--    client-facing storage.objects policies removes an unused, dangerous
+--    bypass path."
+--
+-- employee-documents is in the exact same position -- confirmed via a
+-- repo-wide search that the ONLY code touching this bucket is
+-- src/app/api/hr/employees/[id]/documents/route.ts (upload/list) and
+-- .../documents/[docId]/download/route.ts, both using createAdminClient()
+-- (service_role, which bypasses RLS/storage policies entirely regardless
+-- of what 'authenticated'-role policies exist). No client component calls
+-- supabase.storage.from('employee-documents') directly.
+--
+-- This project ALSO has a second, different-shaped precedent for
+-- private-per-workspace files (support-ticket-files / task-attachments):
+-- real path-scoped 'authenticated' policies checking
+-- (storage.foldername(name))[1] against workspace_members. That pattern
+-- fits buckets where legitimate client-side direct storage access exists
+-- (confirmed there is none here). Removing the policies entirely, matching
+-- kyc-documents, is the closer precedent for this bucket and is strictly
+-- stronger (zero authenticated-role access at all, vs. correctly-scoped-
+-- but-still-reachable access) -- see the Task 46 storage hardening build
+-- report for the full reasoning.
+DROP POLICY IF EXISTS "Allow authenticated users to read employee documents" ON storage.objects;
+DROP POLICY IF EXISTS "Allow authenticated users to insert employee documents" ON storage.objects;
+DROP POLICY IF EXISTS "Allow authenticated users to delete employee documents" ON storage.objects;

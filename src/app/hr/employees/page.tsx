@@ -262,6 +262,12 @@ export default function EmployeesPage() {
                 </div>
 
                 <div className="flex justify-end items-center gap-2 pt-2 border-t border-white/5">
+                  <Link
+                    href={`/hr/employees/${emp.id}`}
+                    className="h-7 px-3 rounded-lg bg-white/5 border border-white/5 text-[#94a3c8] hover:text-[#eef2ff] flex items-center justify-center transition-colors text-[11px] font-semibold mr-auto"
+                  >
+                    Manage
+                  </Link>
                   <button
                     onClick={() => openEditModal(emp)}
                     className="w-7 h-7 rounded-lg bg-white/5 border border-white/5 text-[#94a3c8] hover:text-[#eef2ff] flex items-center justify-center transition-colors"
