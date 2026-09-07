@@ -4,6 +4,7 @@ import { getUser, getCurrentWorkspaceId } from '@/lib/auth'
 import { createAdminClient, createServerClient } from '@/lib/supabase/server'
 import { UnauthorizedError, ForbiddenError, NotFoundError, toClientError } from '@/shared/errors/AppError'
 import { logger } from '@/shared/logger'
+import { sendHRNotification } from '@/app/actions/hr/notifications'
 
 export const dynamic = 'force-dynamic';
 
@@ -216,6 +217,25 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       logger.error({ err, payrollRunId: run.id }, 'hr.payroll.notification_email.lookup.failed')
     }
+
+    // Task 49: notify each affected employee that their payslip is ready. This is a genuinely
+    // different audience from the owner-summary email above (owner gets run totals; each
+    // employee gets "your payslip is ready") — not a duplicate of the same message to the same
+    // recipient, so both coexist. Fires once per employee/payslip in this run (not once per
+    // run) because that's what the notification content actually says ("your latest payslip
+    // has been generated") — a single run-level email couldn't make that claim per-employee.
+    // Best-effort: a failed send for one employee must never fail the run or block the rest.
+    const notificationResults = await Promise.allSettled(
+      calculations.map((calc) => sendHRNotification(calc.employee_id, 'payroll_run'))
+    )
+    notificationResults.forEach((result, i) => {
+      const employeeId = calculations[i].employee_id
+      if (result.status === 'rejected') {
+        logger.error({ employeeId, payrollRunId: run.id, err: result.reason }, 'hr.payroll.employee_notification.failed');
+      } else if (!result.value.success) {
+        logger.error({ employeeId, payrollRunId: run.id, error: result.value.error }, 'hr.payroll.employee_notification.failed');
+      }
+    })
 
     return NextResponse.json({ success: true, payrollRun: run })
 

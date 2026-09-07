@@ -50,12 +50,14 @@ This is an automated notification regarding the recent change to your employment
     }
 
     // 3. Send the Email via Resend
+    // (`tags` belongs under `config`, not top-level — sendEmail() only reads
+    // config?.tags; passing it top-level silently dropped it before this fix.)
     await sendEmail({
       to: employee.email,
       subject: subject,
       text: messageText,
-      tags: [{ name: 'category', value: `hr_${eventType}` }] as any,
-    } as any);
+      config: { tags: [{ name: 'category', value: `hr_${eventType}` }] },
+    });
 
     return { success: true };
   } catch (error: any) {

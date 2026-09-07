@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { requireWorkspaceRole } from '@/lib/api/workspaceAuth'
 import { NotFoundError, ConflictError, toClientError } from '@/shared/errors/AppError'
 import { logger } from '@/shared/logger'
+import { sendHRNotification } from '@/app/actions/hr/notifications'
 
 export const dynamic = 'force-dynamic';
 
@@ -22,9 +23,9 @@ const ALLOWED_HR_ROLES = ['admin', 'owner', 'hr'] as const;
  * and a TOCTOU race where two concurrent terminate calls for the same employee could both
  * pass an "already terminated?" pre-check and both insert a termination row.
  *
- * This route is the intended call site for Task 49's HR notifications: once a
- * termination is recorded here, call `sendHRNotification(employeeId, 'termination')`
- * (src/app/actions/hr/notifications.ts) right after the RPC call below succeeds.
+ * Task 49: calls `sendHRNotification(employeeId, 'termination')` right after the RPC
+ * succeeds — best-effort, never blocks or fails this response (see the comment at the
+ * call site below).
  *
  * Body: { terminationDate?: string, lastWorkingDay?: string, reason: string,
  *         rehireEligible?: boolean, notes?: string }
@@ -67,7 +68,17 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       adminClient.from('employees').select('*').eq('id', employeeId).eq('workspace_id', workspaceId).single(),
     ])
 
-    // Task 49 hook point: sendHRNotification(employeeId, 'termination') goes here once built.
+    // The termination itself is already committed above (atomic RPC, guaranteed to fire at
+    // most once per employee per Task 44 hardening) — everything from here on is best-effort
+    // notification, never a reason to fail this response back as an error. sendHRNotification()
+    // catches its own errors internally and returns { success: false } instead of throwing, so
+    // this can't turn into an uncaught exception that would make the client think the (already
+    // successful) termination failed. Explicitly awaited, not fire-and-forget, so a serverless
+    // runtime can't kill it before it resolves once the response is returned.
+    const notifyResult = await sendHRNotification(employeeId, 'termination')
+    if (!notifyResult.success) {
+      logger.error({ employeeId, terminationId: rpcResult!.termination_id, error: notifyResult.error }, 'hr.employees.terminate.notification.failed');
+    }
 
     return NextResponse.json({ success: true, termination, employee: updatedEmployee })
   } catch (err: any) {
