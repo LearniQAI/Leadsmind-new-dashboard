@@ -13,7 +13,6 @@ import TableSortLabel from "@mui/material/TableSortLabel";
 import Paper from "@mui/material/Paper";
 import { visuallyHidden } from "@mui/utils";
 import useMaterialTableHook from "@/hooks/useMaterialTableHook";
-import Link from "next/link";
 import Image from "next/image";
 import { IActivity } from "@/interface/table.interface";
 import { activityHeadCells } from "@/data/table-head-cell/table-head";
@@ -117,21 +116,12 @@ const ActivitiesTable = () => {
               </TableCell>
               <TableCell className="sorting_1">
                <span className="table-avatar flex justify-start items-center">
-                <Link
-                 className="me-[10px]"
-                 href={`/hrm/employee-profile/${index + 1}`}
-                >
-                 <Image
-                  className="img-36 border-circle"
-                  src={row?.employeeImg}
-                  alt="User Image"
-                 />
-                </Link>
-                <Link
-                 href={`/hrm/employee-profile/${index + 1}`}
-                >
-                 {row?.owner}
-                </Link>
+                <Image
+                 className="img-36 border-circle me-[10px]"
+                 src={row?.employeeImg}
+                 alt="User Image"
+                />
+                <span>{row?.owner}</span>
                </span>
               </TableCell>
               <TableCell className="table__loan-date">
