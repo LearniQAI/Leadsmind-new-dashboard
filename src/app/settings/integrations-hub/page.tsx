@@ -1,19 +1,51 @@
 'use client'
 
 // Force Vercel trigger rebuild
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import Wrapper from '@/components/layouts/DefaultWrapper'
 import { useDashboardContext } from "@/components/layouts/DashboardProvider"
 import { useWorkspaceIntegrations } from '@/hooks/useWorkspaceIntegrations'
 import ConnectionCard from '@/components/settings/ConnectionCard'
 import ConnectProviderModal from '@/components/settings/ConnectProviderModal'
 
+const CALENDAR_OAUTH_ERRORS: Record<string, string> = {
+  access_denied: 'Calendar connection was cancelled.',
+  invalid_state: 'That connection link expired or was already used — please try connecting again.',
+  missing_params: 'The calendar provider did not return a valid response. Please try again.',
+  config_missing: 'Calendar OAuth is not configured on this environment yet.',
+  connection_failed: 'Could not complete the calendar connection. Please try again.',
+  oauth_error: 'The calendar provider reported an error. Please try again.',
+  init_failed: 'Could not start the calendar connection. Please try again.',
+}
+
 export default function IntegrationsHubPage() {
   const { workspace } = useDashboardContext()
   const workspaceId = workspace?.id || null
+  const searchParams = useSearchParams()
+  const router = useRouter()
 
-  const { isConnected, getLabel, connect, disconnect, loading, error } =
+  const { isConnected, getLabel, connect, disconnect, loading, error, refetch } =
     useWorkspaceIntegrations(workspaceId)
+
+  // Surface the result of a calendar OAuth round-trip (Task 62 — the connect
+  // routes redirect back here with ?calendar_connected=… / ?calendar_error=…).
+  useEffect(() => {
+    const connected = searchParams.get('calendar_connected')
+    const errCode = searchParams.get('calendar_error')
+    if (!connected && !errCode) return
+
+    if (connected) {
+      toast.success(
+        `${connected === 'google' ? 'Google Calendar' : 'Outlook'} connected — your availability now syncs.`
+      )
+      refetch()
+    } else if (errCode) {
+      toast.error(CALENDAR_OAUTH_ERRORS[errCode] || 'Calendar connection failed. Please try again.')
+    }
+    router.replace('/settings/integrations-hub')
+  }, [searchParams, refetch, router])
 
   const [connectingProvider, setConnectingProvider] = useState<{
     provider: string
@@ -115,8 +147,13 @@ export default function IntegrationsHubPage() {
                   desc: 'Emails from clients are automatically logged on their contact record', status: 'available', category: 'email_calendar' },
                 { name: 'Google Calendar', shortName: 'GC', color: '#4285f4',
                   desc: 'Your calendar syncs with LeadsMind, letting contacts book meetings directly', status: 'available', category: 'email_calendar' },
+                // Outlook connect (Task 62) is fully built — /api/auth/microsoft/* + all
+                // sync code is intact — but the Azure app registration +
+                // OUTLOOK_CLIENT_ID/OUTLOOK_CLIENT_SECRET env vars are deferred. Keep it
+                // shown as "coming soon" (a dimmed, non-clickable card) until Azure is
+                // configured; re-enable by flipping this one value back to 'available'.
                 { name: 'Outlook & Microsoft 365', shortName: 'MS', color: '#0078d4',
-                  desc: 'Sync your Outlook emails and calendar events automatically', status: 'available', category: 'email_calendar' },
+                  desc: 'Sync your Outlook emails and calendar events automatically', status: 'coming_soon', category: 'email_calendar' },
               ].map(item => renderIntegrationCard(item as any))}
             </div>
 

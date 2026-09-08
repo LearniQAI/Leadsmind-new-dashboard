@@ -702,3 +702,98 @@ The `subject` column write is unchanged, so the real subject is still captured.
 - **Live send-a-real-reply verification** — needs deploy + Gmail; not possible
   here. Verified via the captured-payload unit test that a new inbound message
   is stored with clean `content` and the subject in its column.
+
+## 2026-09-08 — Voice-note transcription: invalid AssemblyAI language code
+
+### Root cause (confirmed via real production log, not guessed)
+
+After `ASSEMBLYAI_API_KEY` was added to Vercel production, voice-note
+transcription in the Email channel still failed with the same generic
+"Transcription failed — the voice note was not sent…" toast. The key itself
+turned out to be fine — the real log line showed a genuine AssemblyAI `400`,
+not an auth failure:
+
+```
+{"status":400,"err":"Language code en_za is not supported. See
+https://www.assemblyai.com/docs/concepts/supported-languages.",
+"msg":"voicenotes.assemblyai.submit_failed"}
+```
+
+`transcribeAudioWithAssemblyAI()` was hardcoding `language_code: 'en_za'`.
+AssemblyAI has never supported a South-Africa-specific English code — the
+real supported list is `en` / `en_us` / `en_uk` / `en_au` (+ non-English
+codes). Every single email voice-note transcription attempt failed at the
+submit step, 100% reproducible — a genuine code bug, not a config/credential
+issue, and not intermittent.
+
+### Fix
+
+Both AssemblyAI call sites used the same invalid code:
+- `src/lib/voicenotes/transcribeAudio.ts` (the email voice-note path — the one
+  that actually surfaces the hard-block error to the user)
+- `src/lib/calendar/transcription.ts` (`processMeetingAudio` — the meeting-recap
+  pipeline; doesn't hard-fail today since that caller already falls through to
+  its mock transcript on any non-success response, per prior audit, but was
+  silently sending the same invalid code)
+
+Both changed `language_code: 'en_za'` → `'en'`.
+
+### Verification
+
+`tsc` → 0. `next lint` on both files → clean. `npm run test` → 45 files / 417
+passed. No test asserted on the old `en_za` value.
+
+### Deferred
+
+- **Live re-send confirmation** — needs deploy + a real recorded voice note in
+  production; not possible from this environment. The fix is a one-line,
+  low-risk value change verified against the real 400 error text captured from
+  production logs, not a guess.
+- **The 5-failure-modes-collapse-into-one-toast finding** from the prior audit
+  (`voicenotes.assemblyai.key_missing` / `submit_failed` / `transcription_error`
+  / `poll_timeout` / `request_failed` all produce the identical user-facing
+  message) — flagged, not fixed; it's a UX/design decision, not addressed in
+  this pass.
+- **`processMeetingAudio`'s silent fallback-to-mock-on-failure** — pre-existing,
+  out of scope (already flagged in earlier audit as a separate, optional
+  follow-up).
+
+## 2026-09-08 — Split the collapsed transcription-failure toast into distinct, per-cause messages
+
+Follow-up to the `en_za` fix above — the generic "Transcription failed — the
+voice note was not sent…" toast previously covered all 5 AssemblyAI failure
+modes identically, which is exactly what made the `en_za` 400 indistinguishable
+from a missing-key failure without pulling a server log.
+
+### Change
+
+- `transcribeAudio.ts`: `TranscribeResult` gains a `reason?: TranscribeFailureReason`
+  discriminant (`'not_configured' | 'submit_failed' | 'processing_failed' |
+  'timeout' | 'network_error'`), set on every failure return alongside the
+  existing raw `error` string (unchanged, still logged server-side).
+- `voiceTranscription.ts`: new `FAILURE_MESSAGES` map + `DEFAULT_FAILURE_MESSAGE`
+  fallback (for any result with no `reason`, e.g. future/older shapes) — each
+  reason now produces distinct, actionable copy instead of one generic string.
+  The raw AssemblyAI `error` text stays log-only (some of it, like the `en_za`
+  400, isn't fit for an agent-facing toast); `logger.error` now also carries
+  `reason`.
+  Hard-block invariant unchanged: still never sends a substituted/placeholder
+  transcript.
+
+### Tests
+
+- `transcribeAudio.test.ts`: every existing failure test now also asserts
+  `res.reason`; new tests for `network_error` (fetch throws) and a direct
+  regression for the real captured `en_za` 400 payload; a submit-request
+  assertion confirms the outgoing body now carries `language_code: 'en'`.
+- `voiceTranscription.test.ts`: parametrized test asserting each of the 5
+  reasons maps to distinct, matching copy and never leaks the raw AssemblyAI
+  detail into the toast; a uniqueness test asserting no two reasons produce
+  the same message string.
+
+`tsc` → 0. `next lint` on both files → clean. `npm run test` → 45 files / 426
+passed (was 417 before this change — 9 new tests).
+
+### Deferred
+
+- Live confirmation of the new toast text in the real UI — needs deploy.

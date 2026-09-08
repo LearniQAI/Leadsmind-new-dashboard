@@ -6,6 +6,59 @@ import { addMinutes, isWithinInterval, parseISO, addDays } from 'date-fns';
 import { getEskomOutages, type OutagePeriod } from '@/lib/calendar/eskomsepush';
 import { getHolidaysInRange } from '@/lib/calendar/saHolidays';
 import { zonedTimeToUtc, isoDateDayOfWeek, formatInTimeZone } from '@/lib/calendar/timezone';
+import { getExternalBusySlots } from '@/lib/calendar/calendarSync';
+import { logger } from '@/shared/logger';
+
+/**
+ * Resolves the host user whose connected external calendar (Google/Outlook)
+ * should be consulted for this booking calendar. Round-robin calendars use
+ * the first assignment member; personal/collective fall back to the workspace
+ * owner (booking_calendars has no per-calendar owner column). Returns null if
+ * nothing resolvable — external busy is then simply skipped.
+ */
+async function resolveHostUserId(supabase: any, calendar: any, calendarId: string): Promise<string | null> {
+  const { data: rr } = await supabase
+    .from('round_robin_assignment')
+    .select('user_id')
+    .eq('calendar_id', calendarId)
+    .limit(1)
+    .maybeSingle();
+  if (rr?.user_id) return rr.user_id;
+
+  const { data: ws } = await supabase
+    .from('workspaces')
+    .select('owner_id')
+    .eq('id', calendar.workspace_id)
+    .maybeSingle();
+  return ws?.owner_id ?? null;
+}
+
+/**
+ * External-calendar busy intervals for a host, over [startIso, endIso].
+ * Wrapped so a provider/API failure can never break slot computation — the
+ * internal availability model stays authoritative; external busy is additive.
+ */
+async function getExternalBusyIntervals(
+  supabase: any,
+  calendar: any,
+  calendarId: string,
+  startIso: string,
+  endIso: string
+): Promise<{ start: Date; end: Date }[]> {
+  try {
+    const hostUserId = await resolveHostUserId(supabase, calendar, calendarId);
+    if (!hostUserId) return [];
+    const busy = await getExternalBusySlots(hostUserId, startIso, endIso);
+    return busy.map((b) => ({ start: parseISO(b.start), end: parseISO(b.end) }));
+  } catch (err) {
+    logger.warn({ err, calendarId }, 'calendar.available_slots.external_busy.failed');
+    return [];
+  }
+}
+
+function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date): boolean {
+  return aStart < bEnd && aEnd > bStart;
+}
 
 export async function validateSlot(calendarId: string, startTime: string, endTime: string) {
   const dateStr = startTime.split('T')[0];
@@ -156,6 +209,11 @@ async function diagnoseSlotUnavailable(calendarId: string, startTime: string, en
   const isLeased = (activeLeases || []).some((l: any) => parseISO(l.slot_time).getTime() === start.getTime());
   if (isLeased) {
     return { code: 'existing_booking_conflict' as const, message: 'This time conflicts with an existing checkout in progress for that slot.' };
+  }
+
+  const externalBusy = await getExternalBusyIntervals(supabase, calendar, calendarId, `${dateStr}T00:00:00Z`, `${dateStr}T23:59:59Z`);
+  if (externalBusy.some((bt) => overlaps(start, end, bt.start, bt.end))) {
+    return { code: 'external_calendar_conflict' as const, message: "This time is blocked by an event on the host's connected calendar." };
   }
 
   let outages: OutagePeriod[] = [];
@@ -351,6 +409,16 @@ export async function getAvailableSlots(calendarId: string, date: string) {
     );
   }
 
+  // 8b. External calendar (Google / Outlook) busy times for the host — Task 62.
+  // A connected calendar's real events remove slots from this booking page.
+  const externalBusyIntervals = await getExternalBusyIntervals(
+    supabase,
+    calendar,
+    calendarId,
+    startOfDayStr,
+    endOfDayStr
+  );
+
   // 9. Process Slots Chunking
   const slots = [];
   const duration = calendar.slot_duration || 30;
@@ -390,11 +458,16 @@ export async function getAvailableSlots(calendarId: string, date: string) {
       const isLoadShedding = outages.some(outage => {
         const outageStart = parseISO(outage.start);
         const outageEnd = parseISO(outage.end);
-        return (current >= outageStart && current < outageEnd) || 
+        return (current >= outageStart && current < outageEnd) ||
                (slotEnd > outageStart && slotEnd <= outageEnd);
       });
 
-      if (!isBooked && !isLeased && !isLoadShedding) {
+      // Check if slot overlaps a busy block on the host's connected external calendar
+      const isExternallyBusy = externalBusyIntervals.some(bt =>
+        overlaps(current, slotEnd, bt.start, bt.end)
+      );
+
+      if (!isBooked && !isLeased && !isLoadShedding && !isExternallyBusy) {
         slots.push({
           start: current.toISOString(),
           end: slotEnd.toISOString(),

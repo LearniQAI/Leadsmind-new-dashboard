@@ -43,12 +43,39 @@ describe('transcribeVoiceNoteForEmail', () => {
     expect(res.warning).toMatch(/out of ai credits/i);
   });
 
-  it('AssemblyAI failure / missing key -> HARD BLOCK with an error, never a substituted transcript', async () => {
+  it('AssemblyAI failure with no reason (e.g. an older/unmapped shape) -> generic HARD BLOCK, never a substituted transcript', async () => {
     state.transcribeResult = { success: false, error: 'network blip' };
     const res: any = await transcribeVoiceNoteForEmail({ audioUrl: 'https://x/a.webm', clientTranscript: 'rough client guess' });
     expect(res.error).toMatch(/was not sent/i);
     expect(res.transcript).toBeUndefined();
     expect(res.source).toBeUndefined();
+  });
+
+  // Regression for the incident where a missing-key failure and an invalid
+  // language-code failure showed the SAME generic toast, indistinguishable
+  // without a log dive. Each `reason` must now produce distinct copy.
+  it.each([
+    ['not_configured', /set up/i],
+    ['submit_failed', /couldn.t start transcribing/i],
+    ['processing_failed', /processing your recording/i],
+    ['timeout', /timed out/i],
+    ['network_error', /couldn.t reach/i],
+  ] as const)('reason=%s produces distinct, actionable copy', async (reason, expected) => {
+    state.transcribeResult = { success: false, reason, error: 'raw AssemblyAI detail, not shown to the user' };
+    const res: any = await transcribeVoiceNoteForEmail({ audioUrl: 'https://x/a.webm' });
+    expect(res.error).toMatch(expected);
+    expect(res.error).not.toContain('raw AssemblyAI detail');
+  });
+
+  it('every failure reason maps to a UNIQUE message (no two reasons collapse back together)', async () => {
+    const reasons = ['not_configured', 'submit_failed', 'processing_failed', 'timeout', 'network_error'] as const;
+    const messages = new Set<string>();
+    for (const reason of reasons) {
+      state.transcribeResult = { success: false, reason, error: 'x' };
+      const res: any = await transcribeVoiceNoteForEmail({ audioUrl: 'https://x/a.webm' });
+      messages.add(res.error);
+    }
+    expect(messages.size).toBe(reasons.length);
   });
 
   it('requires an active workspace', async () => {

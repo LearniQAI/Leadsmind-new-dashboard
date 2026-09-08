@@ -1,64 +1,68 @@
-import { createServerClient } from '@/lib/supabase/server';
 import { requireWorkspaceAccess } from '@/lib/auth';
+import { getCalendarConnection, getFreshCalendarAccessToken } from '@/lib/calendar/connections';
+import { logger } from '@/shared/logger';
 
+// Creates a real Google Meet link by inserting a Calendar event with
+// conferenceData, using the acting user's connected Google Calendar
+// (user_calendar_connections, provider 'google' — Task 62 single source of
+// truth; previously read platform_connections 'google_calendar', a row that
+// could never exist because that table's platform CHECK rejects the value).
+//
+// Returns null on ANY failure (no connection, refresh failed, API error) so
+// callers fall back to the internal /meet/[id] room — an internal_meet
+// booking must never hard-fail because Google is unavailable.
 export async function createGoogleMeetLink(appointmentDetails: {
   title: string;
   start_time: string;
   end_time: string;
 }): Promise<string | null> {
   try {
-    const { workspaceId } = await requireWorkspaceAccess();
-    const supabase = await createServerClient();
+    const { userId } = await requireWorkspaceAccess();
 
-    const { data: connection } = await supabase
-      .from('platform_connections')
-      .select('credentials')
-      .eq('workspace_id', workspaceId)
-      .eq('platform', 'google_calendar')
-      .single();
+    const connection = await getCalendarConnection(userId, 'google');
+    if (!connection) return null;
 
-    if (!connection || !connection.credentials?.refresh_token) return null;
+    const accessToken = await getFreshCalendarAccessToken(connection);
 
-    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: process.env.GOOGLE_CLIENT_ID!,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-        refresh_token: connection.credentials.refresh_token,
-        grant_type: 'refresh_token',
-      }),
-    });
+    const eventResponse = await fetch(
+      'https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          summary: appointmentDetails.title,
+          start: { dateTime: appointmentDetails.start_time },
+          end: { dateTime: appointmentDetails.end_time },
+          conferenceData: {
+            createRequest: {
+              requestId: `leadsmind-${Date.now()}`,
+              conferenceSolutionKey: { type: 'hangoutsMeet' },
+            },
+          },
+        }),
+      }
+    );
 
-    const tokens = await tokenResponse.json();
-    if (!tokens.access_token) throw new Error('Failed to refresh token');
-
-    const eventResponse = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${tokens.access_token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        summary: appointmentDetails.title,
-        start: { dateTime: appointmentDetails.start_time },
-        end: { dateTime: appointmentDetails.end_time },
-        conferenceData: {
-          createRequest: {
-            requestId: `leadsmind-${Date.now()}`,
-            conferenceSolutionKey: { type: "hangoutsMeet" }
-          }
-        }
-      }),
-    });
+    if (!eventResponse.ok) {
+      logger.warn(
+        { status: eventResponse.status },
+        'calendar.google_meet.event_create.failed'
+      );
+      return null;
+    }
 
     const event = await eventResponse.json();
-    if (event.conferenceData?.entryPoints) {
-      const videoLink = event.conferenceData.entryPoints.find((ep: any) => ep.entryPointType === 'video');
-      return videoLink ? videoLink.uri : null;
+    const entryPoints = event.conferenceData?.entryPoints;
+    if (Array.isArray(entryPoints)) {
+      const videoLink = entryPoints.find((ep: any) => ep.entryPointType === 'video');
+      return videoLink?.uri ?? null;
     }
     return null;
   } catch (err) {
+    logger.warn({ err }, 'calendar.google_meet.link_create.failed');
     return null;
   }
 }

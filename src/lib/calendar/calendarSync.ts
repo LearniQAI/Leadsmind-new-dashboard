@@ -11,6 +11,7 @@
 // equivalent case in lib/automation/executor.ts.
 import { createAdminClient } from '@/lib/supabase/server';
 import { logger } from '@/shared/logger';
+import { getFreshCalendarAccessToken, toCalendarConnectionRow } from '@/lib/calendar/connections';
 
 export interface BusySlot {
   start: string; // ISO string
@@ -18,87 +19,17 @@ export interface BusySlot {
 }
 
 /**
- * Refreshes user calendar connections credentials.
+ * Returns a valid access token for a `user_calendar_connections` DB row,
+ * refreshing + persisting a new one if needed. Token material is
+ * encrypted-at-rest and the refresh/re-encrypt logic lives in
+ * lib/calendar/connections.ts (shared with the OAuth callbacks and
+ * googleMeet.ts) — this is a thin adapter so existing call sites here don't
+ * each reimplement it. Throws (after flipping the row to status='error') if
+ * the connection can't produce a working token — never returns a stale/empty
+ * string silently.
  */
-export async function refreshUserCalendarToken(
-  connectionId: string,
-  credentials: any,
-  provider: 'google' | 'outlook'
-): Promise<string> {
-  const { accessToken, refreshToken, expiresAt } = credentials;
-
-  // If token is still valid (5 minute buffer), return current
-  if (expiresAt && Date.now() < (expiresAt - 300000)) {
-    return accessToken;
-  }
-
-  if (!refreshToken) {
-    throw new Error(`Missing refresh token for ${provider}`);
-  }
-
-  try {
-    let newAccessToken = '';
-    let newExpiresAt = Date.now() + 3600 * 1000;
-
-    if (provider === 'google') {
-      const response = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          client_id: process.env.GOOGLE_CLIENT_ID || '',
-          client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
-          refresh_token: refreshToken,
-          grant_type: 'refresh_token',
-        }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error_description || 'Failed to refresh Google token');
-      newAccessToken = data.access_token;
-      newExpiresAt = Date.now() + (data.expires_in * 1000);
-    } else {
-      // Outlook refresh
-      const response = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          client_id: process.env.OUTLOOK_CLIENT_ID || '',
-          client_secret: process.env.OUTLOOK_CLIENT_SECRET || '',
-          refresh_token: refreshToken,
-          grant_type: 'refresh_token',
-        }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error_description || 'Failed to refresh Outlook token');
-      newAccessToken = data.access_token;
-      newExpiresAt = Date.now() + (data.expires_in * 1000);
-    }
-
-    const supabase = createAdminClient();
-    await supabase
-      .from('user_calendar_connections')
-      .update({
-        credentials: {
-          ...credentials,
-          accessToken: newAccessToken,
-          expiresAt: newExpiresAt,
-        },
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', connectionId);
-
-    return newAccessToken;
-  } catch (error) {
-    logger.error({ err: error, provider }, 'calendar_refresh.token_refresh.failed');
-    // Mark status as error on refresh failure
-    const supabase = createAdminClient();
-    await supabase
-      .from('user_calendar_connections')
-      .update({ status: 'error' })
-      .eq('id', connectionId);
-    throw error;
-  }
+export async function getConnectionAccessToken(dbRow: any): Promise<string> {
+  return getFreshCalendarAccessToken(toCalendarConnectionRow(dbRow));
 }
 
 /**
@@ -124,7 +55,7 @@ export async function getExternalBusySlots(
 
   for (const conn of connections) {
     try {
-      const token = await refreshUserCalendarToken(conn.id, conn.credentials, conn.provider as 'google' | 'outlook');
+      const token = await getConnectionAccessToken(conn);
 
       if (conn.provider === 'google') {
         const response = await fetch(
@@ -233,7 +164,7 @@ export async function syncBookingToExternal(appointmentId: string): Promise<bool
 
   for (const conn of connections) {
     try {
-      const token = await refreshUserCalendarToken(conn.id, conn.credentials, conn.provider as 'google' | 'outlook');
+      const token = await getConnectionAccessToken(conn);
       const contactInfo: any = appointment.contact_id;
       const attendees = contactInfo?.email ? [{ email: contactInfo.email }] : [];
 
