@@ -123,6 +123,27 @@ export async function acceptInviteNewAccount(token: string, password: string, fu
       logger.error({ err: profileError, userId: authData.user.id }, 'invitations.accept_new.profile_upsert.failed');
     }
 
+    // The DB-level handle_new_user() trigger on auth.users (see
+    // supabase/migrations/20260805000003_fix_signup_trigger_plan_value.sql)
+    // unconditionally creates a personal workspace for every brand-new auth
+    // user, independent of and in addition to anything application code does
+    // — it already fired as part of admin.createUser() above, before this
+    // line ever runs. Left alone, every invited person would end up owning a
+    // stray solo workspace nobody asked for on top of the one they were
+    // actually invited to. Remove it — this is scoped to the invite-accept
+    // path only; the trigger itself (and the same effect on ordinary
+    // signups) is a separate, pre-existing, platform-wide issue.
+    const { data: strayWorkspaces } = await adminClient
+      .from('workspaces')
+      .select('id')
+      .eq('owner_id', authData.user.id);
+
+    if (strayWorkspaces && strayWorkspaces.length > 0) {
+      const strayIds = strayWorkspaces.map((w) => w.id);
+      await adminClient.from('workspace_members').delete().in('workspace_id', strayIds).eq('user_id', authData.user.id);
+      await adminClient.from('workspaces').delete().in('id', strayIds);
+    }
+
     const { error: memberError } = await adminClient.from('workspace_members').insert({
       workspace_id: invitation.workspaceId,
       user_id: authData.user.id,

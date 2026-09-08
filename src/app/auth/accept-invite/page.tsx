@@ -49,6 +49,16 @@ function AcceptInviteInner() {
     let cancelled = false;
 
     async function resolve() {
+      try {
+        await resolveInner();
+      } catch (err) {
+        if (cancelled) return;
+        console.error(err);
+        toast.error('Something went wrong loading this invitation. Please refresh the page.');
+      }
+    }
+
+    async function resolveInner() {
       if (!token) {
         setState({ kind: 'invalid' });
         return;
@@ -74,7 +84,7 @@ function AcceptInviteInner() {
           setState({ kind: 'joining' });
           const result = await acceptInviteExistingUser(token);
           if (cancelled) return;
-          if (result.success) {
+          if (result?.success) {
             await setActiveWorkspace(result.workspaceId);
             setState({ kind: 'joined', workspaceName: 'your workspace' });
             setTimeout(() => {
@@ -98,7 +108,7 @@ function AcceptInviteInner() {
         setState({ kind: 'joining' });
         const result = await acceptInviteExistingUser(token);
         if (cancelled) return;
-        if (result.success) {
+        if (result?.success) {
           await setActiveWorkspace(result.workspaceId);
           setState({ kind: 'joined', workspaceName: invitation.workspaceName });
           setTimeout(() => {
@@ -139,8 +149,14 @@ function AcceptInviteInner() {
         return;
       }
 
+      // A server action fired immediately after signInWithPassword() can race
+      // the browser's own write of the just-established session (cookies/
+      // localStorage) — give it a beat to settle before the next request
+      // depends on it being there.
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
       const result = await acceptInviteExistingUser(token);
-      if (!result.success) {
+      if (!result?.success) {
         toast.error('Signed in, but could not join the workspace. Please try again.');
         return;
       }
@@ -148,6 +164,9 @@ function AcceptInviteInner() {
       await setActiveWorkspace(result.workspaceId);
       toast.success(`You've joined ${invitation.workspaceName}!`);
       window.location.href = '/dashboard';
+    } catch (err) {
+      console.error(err);
+      toast.error('Something went wrong. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -165,14 +184,14 @@ function AcceptInviteInner() {
     setSubmitting(true);
     try {
       const result = await acceptInviteNewAccount(token, password, fullName.trim());
-      if (!result.success) {
+      if (!result?.success) {
         const messages: Record<string, string> = {
           account_exists: 'An account with this email already exists — refresh this page to sign in instead.',
           expired: 'This invitation has expired.',
           accepted: 'This invitation has already been accepted.',
           invalid: 'This invitation link is invalid.',
         };
-        toast.error(messages[result.error as string] || 'Could not create your account. Please try again.');
+        toast.error(messages[result?.error as string] || 'Could not create your account. Please try again.');
         return;
       }
 
@@ -191,6 +210,9 @@ function AcceptInviteInner() {
       await setActiveWorkspace(result.workspaceId);
       toast.success(`Welcome! You've joined ${invitation.workspaceName}.`);
       window.location.href = '/dashboard';
+    } catch (err) {
+      console.error(err);
+      toast.error('Something went wrong. Please try again.');
     } finally {
       setSubmitting(false);
     }

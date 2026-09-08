@@ -42,6 +42,83 @@ async function ensureWorkspace(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
 
+  // Honor a pending team invite for this email FIRST, before checking for any
+  // existing membership at all. This has to run first, not just for a "no
+  // membership yet" brand-new user: the DB-level handle_new_user() trigger on
+  // auth.users (supabase/migrations/20260805000003_fix_signup_trigger_plan_value.sql)
+  // already creates a personal workspace + membership for a brand-new user
+  // synchronously, as part of the OAuth/email-signup INSERT into auth.users
+  // itself — before this function ever runs. So a brand-new invited user
+  // already "has a membership" (their own stray solo one) by the time an
+  // existing-membership check would see it; checking the invite after that
+  // check would never fire. This is the "use Google/Facebook to accept an
+  // invite" path for someone with no prior LeadsMind account — the
+  // email/password accept flow (src/app/actions/invitations.ts) never reaches
+  // this file at all, so this check only ever matters here. Uses the admin
+  // client for every write, matching the rest of the invite-accept flow.
+  if (user.email) {
+    const adminClient = createAdminClient()
+    const { data: invite } = await adminClient
+      .from('workspace_invitations')
+      .select('id, workspace_id, role, permissions, expires_at')
+      .ilike('email', user.email)
+      .eq('status', 'pending')
+      .gt('expires_at', new Date().toISOString())
+      .limit(1)
+      .maybeSingle()
+
+    if (invite) {
+      const { data: alreadyMember } = await adminClient
+        .from('workspace_members')
+        .select('id')
+        .eq('workspace_id', invite.workspace_id)
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      let memberError = null
+      if (!alreadyMember) {
+        const result = await adminClient.from('workspace_members').insert({
+          workspace_id: invite.workspace_id,
+          user_id: user.id,
+          role: invite.role,
+          permissions: Array.isArray(invite.permissions) ? invite.permissions : [],
+        })
+        memberError = result.error
+      }
+
+      if (!memberError) {
+        // Remove the stray solo workspace the auth.users trigger already
+        // created for this brand-new user — scoped to this invite-accept
+        // path only; the trigger itself (and the same effect on ordinary
+        // signups with no invite) is a separate, pre-existing, platform-wide
+        // issue, not something fixed here.
+        const { data: strayWorkspaces } = await adminClient
+          .from('workspaces')
+          .select('id')
+          .eq('owner_id', user.id)
+
+        if (strayWorkspaces && strayWorkspaces.length > 0) {
+          const strayIds = strayWorkspaces.map((w) => w.id)
+          await adminClient.from('workspace_members').delete().in('workspace_id', strayIds).eq('user_id', user.id)
+          await adminClient.from('workspaces').delete().in('id', strayIds)
+        }
+
+        await adminClient.from('workspace_invitations').update({ status: 'accepted' }).eq('id', invite.id)
+        response.cookies.set('active_workspace_id', invite.workspace_id, {
+          maxAge: 60 * 60 * 24 * 30,
+          path: '/',
+          httpOnly: true,
+          sameSite: 'lax',
+        })
+        return
+      }
+
+      logger.error({ err: memberError, inviteId: invite.id, userId: user.id }, 'auth.callback.ensure_workspace.invite_accept.failed')
+      // Fall through to the normal existing-membership / auto-create path
+      // below rather than leaving the user stuck with no workspace at all.
+    }
+  }
+
   const { data: existing } = await supabase
     .from('workspace_members')
     .select('workspace_id')
@@ -57,50 +134,6 @@ async function ensureWorkspace(
       sameSite: 'lax',
     })
     return
-  }
-
-  // Brand-new user (no membership yet, e.g. a first-time OAuth sign-up) — honor a
-  // pending team invite for their email instead of always auto-creating them a
-  // lone personal workspace via setup_workspace below. This is the "use Google/
-  // Facebook to accept an invite" path for someone with no prior LeadsMind
-  // account; the email/password accept flow (src/app/actions/invitations.ts)
-  // never reaches setup_workspace at all, so this check only ever matters here.
-  // Uses the admin client for the actual membership write rather than the
-  // session client, matching the rest of the invite-accept flow.
-  if (user.email) {
-    const adminClient = createAdminClient()
-    const { data: invite } = await adminClient
-      .from('workspace_invitations')
-      .select('id, workspace_id, role, permissions, expires_at')
-      .ilike('email', user.email)
-      .eq('status', 'pending')
-      .gt('expires_at', new Date().toISOString())
-      .limit(1)
-      .maybeSingle()
-
-    if (invite) {
-      const { error: memberError } = await adminClient.from('workspace_members').insert({
-        workspace_id: invite.workspace_id,
-        user_id: user.id,
-        role: invite.role,
-        permissions: Array.isArray(invite.permissions) ? invite.permissions : [],
-      })
-
-      if (!memberError) {
-        await adminClient.from('workspace_invitations').update({ status: 'accepted' }).eq('id', invite.id)
-        response.cookies.set('active_workspace_id', invite.workspace_id, {
-          maxAge: 60 * 60 * 24 * 30,
-          path: '/',
-          httpOnly: true,
-          sameSite: 'lax',
-        })
-        return
-      }
-
-      logger.error({ err: memberError, inviteId: invite.id, userId: user.id }, 'auth.callback.ensure_workspace.invite_accept.failed')
-      // Fall through to the normal auto-create path below rather than leaving
-      // the user stuck with no workspace at all.
-    }
   }
 
   const meta = (user.user_metadata ?? {}) as Record<string, string | undefined>

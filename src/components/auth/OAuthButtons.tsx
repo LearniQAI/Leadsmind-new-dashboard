@@ -8,6 +8,14 @@ import { createClient } from '@/lib/supabase/client';
 type Provider = 'google' | 'facebook';
 
 /**
+ * Providers rendered as buttons. Facebook is temporarily disabled while the new
+ * Meta app is being configured — the `signIn('facebook')` handler, icon, and
+ * label below are all left intact, so re-enabling is a one-line change: add
+ * 'facebook' back to this array.
+ */
+const ENABLED_PROVIDERS: Provider[] = ['google'];
+
+/**
  * The only two real alternate sign-in methods, site-wide: Google and Facebook.
  * Both run the standard Supabase PKCE OAuth flow and land back on
  * /auth/callback, which exchanges the code, ensures a workspace exists, and
@@ -65,7 +73,7 @@ const OAuthButtons = ({ next: nextOverride }: OAuthButtonsProps = {}) => {
 
   return (
     <div className="flex flex-col gap-2.5">
-      {(['google', 'facebook'] as Provider[]).map((provider) => (
+      {ENABLED_PROVIDERS.map((provider) => (
         <button
           key={provider}
           type="button"
