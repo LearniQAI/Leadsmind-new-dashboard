@@ -108,7 +108,15 @@ export async function updateSession(request: NextRequest) {
  }
 
  const isAuthPage = request.nextUrl.pathname.startsWith('/auth')
- 
+
+ // The accept-invite page is under /auth but must stay reachable for an
+ // already-logged-in user: someone with their own separate LeadsMind account
+ // clicking an invite link needs the page's own "already signed in → accept"
+ // and "wrong account → sign out" branches to run. Blanket "user && isAuthPage
+ // → /dashboard" below would silently swallow the invite. Scoped to this one
+ // route only — every other /auth page keeps redirecting authed users away.
+ const isAcceptInvitePage = request.nextUrl.pathname.startsWith('/auth/accept-invite')
+
  // Define what should be public (landing pages, etc. if any)
  const isPublicPage =
    request.nextUrl.pathname === '/' ||
@@ -142,7 +150,9 @@ export async function updateSession(request: NextRequest) {
    request.nextUrl.pathname.startsWith('/about')
 
  // If user is logged in and tries to access auth pages, redirect to dashboard
- if (user && isAuthPage) {
+ // (except accept-invite — see isAcceptInvitePage above; its query string,
+ // which carries the invite token, is preserved by simply not redirecting).
+ if (user && isAuthPage && !isAcceptInvitePage) {
   return NextResponse.redirect(new URL('/dashboard', request.url))
  }
 

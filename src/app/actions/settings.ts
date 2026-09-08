@@ -139,10 +139,19 @@ export async function getWorkspaceInvitations() {
   if (!workspaceId) return { error: 'No workspace active' };
 
   const supabase = await createServerClient();
+  // Only genuinely-pending, non-expired invitations belong in the Team page's
+  // list — an accepted invite is already represented by a real "Active"
+  // workspace_members row, and showing its stale row too duplicated the person
+  // (confirmed live for letscode49@gmail.com). Expired rows (status left as
+  // 'pending' but past expires_at, or flipped to 'expired' by
+  // getInvitationByToken) are likewise not actionable here.
+  const nowIso = new Date().toISOString();
   const { data, error } = await supabase
    .from('workspace_invitations')
    .select('*')
-   .eq('workspace_id', workspaceId);
+   .eq('workspace_id', workspaceId)
+   .eq('status', 'pending')
+   .gt('expires_at', nowIso);
 
   if (error) throw error;
   return { data };
