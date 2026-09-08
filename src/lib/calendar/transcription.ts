@@ -51,7 +51,10 @@ export async function processMeetingAudio(
           body: JSON.stringify({
             audio_url: audioUrl,
             speaker_labels: true,
-            language_code: 'en_za', // fine-tuned to South African inflections/idioms
+            // 'en_za' is not a real AssemblyAI language code (confirmed via a
+            // live 400 on the sibling voice-note path) — AssemblyAI has no
+            // South-Africa-specific code; 'en' is the closest supported one.
+            language_code: 'en',
           }),
         });
         const data = await response.json();

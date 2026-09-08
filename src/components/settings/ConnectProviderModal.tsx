@@ -114,7 +114,18 @@ export default function ConnectProviderModal({
 
     // OAuth categories do not submit this way
     if (category === 'email_calendar' || category === 'communication') {
-      if (provider.toLowerCase().includes('google')) {
+      const p = provider.toLowerCase();
+      // Dedicated calendar connect routes (Task 62). Google Calendar uses its
+      // OWN route, not /api/auth/google (that pair is shared with Search Console).
+      if (p.includes('google calendar')) {
+        window.location.href = '/api/auth/google-calendar';
+        return;
+      }
+      if (p.includes('outlook') || p.includes('microsoft')) {
+        window.location.href = '/api/auth/microsoft';
+        return;
+      }
+      if (p.includes('google')) {
         window.location.href = '/api/auth/google';
         return;
       }

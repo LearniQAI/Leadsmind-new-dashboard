@@ -199,9 +199,25 @@ export async function DELETE(req: NextRequest) {
       ? rawProvider.toLowerCase()
       : rawProvider;
 
-    const { workspaceId } = await requireWorkspaceRole(ALLOWED_INTEGRATIONS_ROLES);
+    const { workspaceId, userId } = await requireWorkspaceRole(ALLOWED_INTEGRATIONS_ROLES);
     const supabase = await createServerClient();
     const adminClient = createAdminClient();
+
+    // Calendar-provider disconnect (Task 62): remove the caller's own
+    // user_calendar_connections row (best-effort provider-side revoke first),
+    // then let deleteCalendarConnection recompute the workspace_integrations
+    // status row — it stays "connected" if another workspace member still has
+    // a live connection, so we must NOT fall through to the generic
+    // force-disconnect below.
+    const calendarProvider =
+      provider === 'Google Calendar' ? 'google'
+      : provider === 'Outlook & Microsoft 365' ? 'outlook'
+      : null;
+    if (calendarProvider) {
+      const { deleteCalendarConnection } = await import('@/lib/calendar/connections');
+      await deleteCalendarConnection(workspaceId, userId, calendarProvider);
+      return NextResponse.json({ success: true });
+    }
 
     // Deactivate associated webhook endpoints
     let domainPattern = ''

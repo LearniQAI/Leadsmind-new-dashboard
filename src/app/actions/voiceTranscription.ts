@@ -3,7 +3,7 @@
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { consumeAICredit } from '@/lib/ai/creditGuard';
 import { CreditLimitExceededError } from '@/shared/errors/AppError';
-import { transcribeAudioWithAssemblyAI } from '@/lib/voicenotes/transcribeAudio';
+import { transcribeAudioWithAssemblyAI, type TranscribeFailureReason } from '@/lib/voicenotes/transcribeAudio';
 import { logger } from '@/shared/logger';
 
 export interface TranscribeVoiceNoteResult {
@@ -11,6 +11,22 @@ export interface TranscribeVoiceNoteResult {
   source: 'assemblyai' | 'client_fallback';
   warning?: string;
 }
+
+/**
+ * Distinct, actionable copy per failure mode — added after a real incident
+ * where a missing-API-key failure and an invalid-language-code failure both
+ * showed the identical generic toast, making them indistinguishable without
+ * a server log dive. Keeps the hard-block invariant (never send
+ * placeholder/degraded content silently) while telling the agent *why*.
+ */
+const FAILURE_MESSAGES: Record<TranscribeFailureReason, string> = {
+  not_configured: 'Voice transcription isn’t set up for this workspace yet. Please type your message instead.',
+  submit_failed: 'We couldn’t start transcribing that recording — it may be too short, silent, or in an unsupported format. Please try again, or type your message instead.',
+  processing_failed: 'Transcription failed while processing your recording. Please try again, or type your message instead.',
+  timeout: 'Transcription is taking longer than expected and timed out. Please try again, or type your message instead.',
+  network_error: 'Couldn’t reach the transcription service — check your connection and try again, or type your message instead.',
+};
+const DEFAULT_FAILURE_MESSAGE = 'Transcription failed — the voice note was not sent. Please try again, or type your message instead.';
 
 /**
  * Server-side transcription for an email voice note (Email Channel Part 2,
@@ -63,9 +79,14 @@ export async function transcribeVoiceNoteForEmail(params: {
 
     const result = await transcribeAudioWithAssemblyAI(audioUrl);
     if (!result.success) {
-      logger.error({ err: result.error, workspaceId }, 'voice_transcription.assemblyai.failed');
+      logger.error({ err: result.error, reason: result.reason, workspaceId }, 'voice_transcription.assemblyai.failed');
       // Hard block — do NOT substitute placeholder or fall back silently.
-      return { error: 'Transcription failed — the voice note was not sent. Please try again, or type your message instead.' };
+      // Distinct copy per failure mode (see FAILURE_MESSAGES) so "not
+      // configured" and "AssemblyAI rejected the request" are no longer
+      // indistinguishable to the agent — only the raw AssemblyAI `error` text
+      // (which can be technical/internal) stays server-log-only.
+      const message = (result.reason && FAILURE_MESSAGES[result.reason]) || DEFAULT_FAILURE_MESSAGE;
+      return { error: message };
     }
 
     return {
@@ -74,6 +95,6 @@ export async function transcribeVoiceNoteForEmail(params: {
     };
   } catch (err: any) {
     logger.error({ err }, 'voice_transcription.unexpected_failure');
-    return { error: 'Transcription failed unexpectedly' };
+    return { error: 'Transcription failed unexpectedly. Please try again, or type your message instead.' };
   }
 }
