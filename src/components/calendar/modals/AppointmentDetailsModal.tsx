@@ -9,6 +9,7 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { meetingLinkNote, type MeetingLinkStatus } from '@/lib/calendar/meetingLinkStatus';
 import {
   Clock,
   Calendar as CalendarIcon,
@@ -107,8 +108,24 @@ export default function AppointmentDetailsModal({
                 >
                   {appointment.meeting_link}
                 </a>
+              ) : appointment.metadata?.meeting_link_status === 'zoom_pending_integration' ? (
+                <p className="text-[12px] !text-amber mt-0.5 max-w-[280px]">
+                  Zoom integration isn&apos;t available yet — send the Zoom link to the attendee manually.
+                </p>
               ) : (
                 <p className="text-[12px] !text-dash-textMuted italic mt-0.5">No meeting link generated</p>
+              )}
+              {appointment.meeting_link &&
+                meetingLinkNote(appointment.metadata?.meeting_link_status as MeetingLinkStatus, 'host') && (
+                  <p className="text-[11px] !text-dash-textMuted mt-1 max-w-[280px] leading-snug">
+                    {meetingLinkNote(appointment.metadata?.meeting_link_status as MeetingLinkStatus, 'host')}
+                  </p>
+                )}
+              {appointment.metadata?.calendar_sync_error && (
+                <p className="text-[11px] !text-amber mt-1 max-w-[280px] leading-snug">
+                  This booking&apos;s {appointment.metadata.calendar_sync_error.action === 'cancel' ? 'cancellation' : 'new time'}{' '}
+                  could not be synced to the connected Google/Outlook calendar — update the calendar event manually, or reconnect the calendar in Settings.
+                </p>
               )}
             </div>
           </div>

@@ -6,10 +6,11 @@ import { revalidatePath } from 'next/cache';
 import { getAvailableSlots, getRoundRobinAssignee, updateRoundRobinStats } from './calendar/scheduling';
 import { addMinutes, parseISO } from 'date-fns';
 import { createTemporaryBookingLease, generatePayFastCheckoutUrl } from '@/lib/calendar/payfast';
-import { syncBookingToExternal } from '@/lib/calendar/calendarSync';
+import { syncBookingToExternal, pushEventCancellation, pushEventTimeUpdate } from '@/lib/calendar/calendarSync';
 import { createSupportTicket } from '@/lib/calendar/crossConnect';
 import { isSlotConflictError, SLOT_CONFLICT_MESSAGE } from '@/lib/calendar/bookingErrors';
 import { sendBookingConfirmation, sendCancellationNotice, sendRescheduleNotice } from '@/lib/calendar/notifications';
+import { resolveMeetingLink } from '@/lib/calendar/meetingLink';
 import { logger } from '@/shared/logger';
 
 /**
@@ -117,21 +118,25 @@ export async function bookAppointmentFromPortal(payload: {
       return { success: false, error: 'Failed to record appointment.' };
     }
 
-    // Generate Meeting link
-    if (calendar.meeting_mode === 'internal_meet' || (calendar.meeting_mode === 'custom_link' && !calendar.custom_link)) {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-      const internalLink = `${baseUrl}/meet/${appointment.id}`;
-      
-      await adminClient
-        .from('appointments')
-        .update({ meeting_link: internalLink, meeting_mode: 'internal_meet' })
-        .eq('id', appointment.id);
-    } else if (calendar.custom_link) {
-      await adminClient
-        .from('appointments')
-        .update({ meeting_link: calendar.custom_link })
-        .eq('id', appointment.id);
-    }
+    // Resolve the real meeting link — never a fabricated one (Task 63).
+    const resolved = await resolveMeetingLink({
+      appointmentId: appointment.id,
+      requestedMode: calendar.meeting_mode,
+      hostUserId: appointment.user_id ?? null,
+      workspaceId: workspace.id,
+      calendarCustomLink: calendar.custom_link ?? calendar.location ?? null,
+      title: appointment.title,
+      startTime: appointment.start_time,
+      endTime: appointment.end_time,
+    });
+    await adminClient
+      .from('appointments')
+      .update({
+        meeting_link: resolved.meetingLink,
+        meeting_mode: resolved.meetingMode,
+        metadata: { ...(appointment.metadata || {}), meeting_link_status: resolved.status },
+      })
+      .eq('id', appointment.id);
 
     // Update RR metrics
     if (calendar.calendar_type === 'round_robin' && assigneeId !== workspace.id) {
@@ -230,6 +235,13 @@ export async function cancelAppointmentFromPortal(appointmentId: string) {
       return { success: false, error: 'Failed to cancel appointment.' };
     }
 
+    // Remove the host's real calendar event too (best-effort).
+    try {
+      await pushEventCancellation(appointmentId);
+    } catch (syncErr) {
+      logger.error({ err: syncErr, appointmentId }, 'portal_bookings.cancel.calendar_sync_failed');
+    }
+
     // 5. CRM activity log
     await adminClient.from('contact_activities').insert({
       workspace_id: workspace.id,
@@ -323,9 +335,11 @@ export async function rescheduleAppointmentFromPortal(appointmentId: string, new
       return { success: false, error: 'Failed to save reschedule update.' };
     }
 
-    // 7. Sync with external calendar if required
+    // 7. Move the host's existing calendar event to the new time — NOT
+    //    syncBookingToExternal(), which always POSTs a fresh event and would
+    //    leave a duplicate at the old time.
     try {
-      await syncBookingToExternal(appointmentId);
+      await pushEventTimeUpdate(appointmentId);
     } catch (syncErr) {
       logger.error({ err: syncErr, appointmentId }, 'portal_bookings.reschedule.external_sync.failed');
     }

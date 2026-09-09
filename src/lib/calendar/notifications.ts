@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/email';
 import { generateManageToken } from '@/lib/calendar/manageToken';
+import { meetingLinkNote, type MeetingLinkStatus } from '@/lib/calendar/meetingLink';
 import { logger } from '@/shared/logger';
 import { format } from 'date-fns';
 
@@ -29,6 +30,7 @@ interface AppointmentForNotification {
   workspace_id: string;
   user_id: string | null;
   calendar_id: string | null;
+  metadata: Record<string, any> | null;
   contact: { first_name: string | null; last_name: string | null; email: string | null } | null;
   calendar: { name: string; calendar_type: string; timezone: string | null } | null;
 }
@@ -38,7 +40,7 @@ async function loadAppointment(appointmentId: string): Promise<AppointmentForNot
   const { data, error } = await supabase
     .from('appointments')
     .select(`
-      id, title, start_time, end_time, meeting_link, meeting_mode, status, workspace_id, user_id, calendar_id,
+      id, title, start_time, end_time, meeting_link, meeting_mode, status, workspace_id, user_id, calendar_id, metadata,
       contact:contacts(first_name, last_name, email),
       calendar:booking_calendars(name, calendar_type, timezone)
     `)
@@ -107,6 +109,7 @@ export async function sendBookingConfirmation(appointmentId: string, options: No
   const manageUrl = `${appUrl}/book/manage/${manageToken}`;
   const host = await resolveHostEmail(apt.workspace_id, apt.user_id);
   const isRoundRobin = apt.calendar?.calendar_type === 'round_robin';
+  const linkStatus = (apt.metadata?.meeting_link_status as MeetingLinkStatus) ?? 'none';
 
   const bookerLines = [
     `Your booking is confirmed.`,
@@ -115,6 +118,7 @@ export async function sendBookingConfirmation(appointmentId: string, options: No
     when,
     isRoundRobin && host ? `Host: ${host.name}` : null,
     apt.meeting_link ? `Meeting link: ${apt.meeting_link}` : null,
+    meetingLinkNote(linkStatus, 'booker'),
     ``,
     `Need to make a change? Manage this booking: ${manageUrl}`,
   ].filter(Boolean) as string[];
@@ -138,6 +142,7 @@ export async function sendBookingConfirmation(appointmentId: string, options: No
       when,
       `Booked by: ${bookerName(apt.contact)}${apt.contact?.email ? ` (${apt.contact.email})` : ''}`,
       apt.meeting_link ? `Meeting link: ${apt.meeting_link}` : null,
+      meetingLinkNote(linkStatus, 'host'),
     ].filter(Boolean) as string[];
 
     try {
