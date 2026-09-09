@@ -234,47 +234,84 @@ async function diagnoseSlotUnavailable(calendarId: string, startTime: string, en
   return { code: 'unknown' as const, message: 'This slot is no longer available.' };
 }
 
+const RR_NO_MEMBERS = 'No team members assigned to this Round Robin calendar';
+
 /**
- * Equitable Round Robin Selection: Pick rep with lowest bookings and oldest assignment.
+ * Equitable round-robin host selection for a booking calendar's enrolled pool
+ * (round_robin_assignment rows — written by the "Manage team" UI, Task 64).
+ *
+ * Picks the host with the lowest booking_count; ties broken by least-recently
+ * assigned, then earliest enrolled (so a brand-new pool where every count is 0
+ * still assigns deterministically to the first-enrolled host, then rotates).
+ *
+ * Pick + increment happen in ONE guarded UPDATE (optimistic lock on
+ * booking_count), so two near-simultaneous bookings can't both land on the
+ * same host — the loser retries and the re-sort hands it a different host.
+ *
+ * Throws RR_NO_MEMBERS when the pool is empty — callers decide the fallback
+ * (public/portal leave the booking unassigned; the internal booking modal
+ * surfaces the error so an admin enrols hosts).
  */
-export async function getRoundRobinAssignee(calendarId: string, workspaceId: string) {
+export async function getRoundRobinAssignee(calendarId: string, workspaceId: string): Promise<string> {
   const supabase = createAdminClient();
 
-  const { data: members, error } = await supabase
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { data: members, error } = await supabase
+      .from('round_robin_assignment')
+      .select('id, user_id, booking_count')
+      .eq('calendar_id', calendarId)
+      .eq('workspace_id', workspaceId)
+      .order('booking_count', { ascending: true })
+      .order('last_assigned_at', { ascending: true, nullsFirst: true })
+      .order('created_at', { ascending: true })
+      .limit(1);
+
+    if (error) throw error;
+    if (!members || members.length === 0) throw new Error(RR_NO_MEMBERS);
+
+    const pick = members[0];
+    const currentCount = pick.booking_count ?? 0;
+
+    // Claim this row only if booking_count is still what we just read.
+    const { data: claimed } = await supabase
+      .from('round_robin_assignment')
+      .update({ booking_count: currentCount + 1, last_assigned_at: new Date().toISOString() })
+      .eq('id', pick.id)
+      .eq('booking_count', currentCount)
+      .select('user_id');
+
+    if (claimed && claimed.length === 1) return claimed[0].user_id;
+    // else: another booking claimed it first — retry with a fresh sort
+  }
+
+  // Highly contended (5 losing retries): fall back to an unguarded lowest-count
+  // pick + increment rather than failing the booking outright.
+  const { data: fallback } = await supabase
     .from('round_robin_assignment')
-    .select('user_id, weight, booking_count')
+    .select('id, user_id, booking_count')
     .eq('calendar_id', calendarId)
     .eq('workspace_id', workspaceId)
     .order('booking_count', { ascending: true })
-    .order('last_assigned_at', { ascending: true, nullsFirst: true });
+    .order('created_at', { ascending: true })
+    .limit(1);
 
-  if (error || !members || members.length === 0) {
-    throw new Error('No team members assigned to this Round Robin calendar');
+  if (fallback && fallback.length === 1) {
+    await supabase
+      .from('round_robin_assignment')
+      .update({ booking_count: (fallback[0].booking_count ?? 0) + 1, last_assigned_at: new Date().toISOString() })
+      .eq('id', fallback[0].id);
+    return fallback[0].user_id;
   }
-
-  // Pick the rep with the lowest current booking count
-  return members[0].user_id;
+  throw new Error(RR_NO_MEMBERS);
 }
 
-export async function updateRoundRobinStats(calendarId: string, userId: string) {
-  const supabase = createAdminClient();
-  const { data: member } = await supabase
-    .from('round_robin_assignment')
-    .select('booking_count')
-    .eq('calendar_id', calendarId)
-    .eq('user_id', userId)
-    .single();
-
-  const count = (member?.booking_count || 0) + 1;
-
-  await supabase
-    .from('round_robin_assignment')
-    .update({ 
-      booking_count: count,
-      last_assigned_at: new Date().toISOString()
-    })
-    .eq('calendar_id', calendarId)
-    .eq('user_id', userId);
+/**
+ * @deprecated The booking-count increment is now atomic inside
+ * getRoundRobinAssignee(). Kept as a no-op so a stale caller can never
+ * double-count a host.
+ */
+export async function updateRoundRobinStats(_calendarId: string, _userId: string): Promise<void> {
+  /* no-op — see getRoundRobinAssignee */
 }
 
 export async function validateCollectiveSlot(calendarId: string, startTime: string, endTime: string) {

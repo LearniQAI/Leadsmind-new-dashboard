@@ -76,12 +76,25 @@ export async function POST(req: NextRequest) {
         const startTime = parseISO(lease.slot_time);
         const endTime = addMinutes(startTime, calendar.slot_duration || 30);
 
+        // Round-robin assignment for a paid booking (was missing — paid
+        // round-robin bookings landed unassigned).
+        let rrAssignee: string | null = null;
+        if (calendar.calendar_type === 'round_robin') {
+          try {
+            const { getRoundRobinAssignee } = await import('@/app/actions/calendar/scheduling');
+            rrAssignee = await getRoundRobinAssignee(lease.calendar_id, lease.workspace_id);
+          } catch (rrErr) {
+            logger.warn({ err: rrErr, calendarId: lease.calendar_id }, 'payfast.webhook.round_robin.no_hosts_enrolled');
+          }
+        }
+
         const { data: appointment } = await supabase
           .from('appointments')
           .insert({
             workspace_id: lease.workspace_id,
             calendar_id: lease.calendar_id,
             contact_id: lease.contact_id,
+            user_id: rrAssignee,
             title: `Paid Meeting: ${calendar.name} with ${contact.first_name} ${contact.last_name}`,
             start_time: startTime.toISOString(),
             end_time: endTime.toISOString(),

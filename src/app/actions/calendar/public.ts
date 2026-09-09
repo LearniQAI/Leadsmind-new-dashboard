@@ -1,7 +1,7 @@
 'use server';
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
-import { getAvailableSlots, getRoundRobinAssignee, updateRoundRobinStats } from './scheduling';
+import { getAvailableSlots, getRoundRobinAssignee } from './scheduling';
 import { createSupportTicket } from '@/lib/calendar/crossConnect';
 import { addMinutes, parseISO } from 'date-fns';
 import { logPopiaConsent } from '@/lib/calendar/popia';
@@ -172,10 +172,7 @@ export async function bookAppointment(
     })
     .eq('id', appointment.id);
 
-  // Update RR metrics
-  if (calendar.calendar_type === 'round_robin' && assigneeId !== calendar.workspace_id) {
-    await updateRoundRobinStats(calendarId, assigneeId);
-  }
+  // (round-robin booking_count is incremented atomically inside getRoundRobinAssignee)
 
   // Outbound push calendar synchronization
   try {

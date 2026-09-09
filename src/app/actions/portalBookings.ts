@@ -3,7 +3,7 @@
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getPortalSession } from '@/lib/portal/session';
 import { revalidatePath } from 'next/cache';
-import { getAvailableSlots, getRoundRobinAssignee, updateRoundRobinStats } from './calendar/scheduling';
+import { getAvailableSlots, getRoundRobinAssignee } from './calendar/scheduling';
 import { addMinutes, parseISO } from 'date-fns';
 import { createTemporaryBookingLease, generatePayFastCheckoutUrl } from '@/lib/calendar/payfast';
 import { syncBookingToExternal, pushEventCancellation, pushEventTimeUpdate } from '@/lib/calendar/calendarSync';
@@ -138,10 +138,7 @@ export async function bookAppointmentFromPortal(payload: {
       })
       .eq('id', appointment.id);
 
-    // Update RR metrics
-    if (calendar.calendar_type === 'round_robin' && assigneeId !== workspace.id) {
-      await updateRoundRobinStats(payload.calendarId, assigneeId);
-    }
+    // (round-robin booking_count is incremented atomically inside getRoundRobinAssignee)
 
     // Outbound push calendar synchronization
     try {

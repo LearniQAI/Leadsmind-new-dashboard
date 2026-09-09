@@ -3,7 +3,7 @@
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId, requireWorkspaceAccess } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
-import { validateSlot, getRoundRobinAssignee, updateRoundRobinStats } from './scheduling';
+import { validateSlot, getRoundRobinAssignee } from './scheduling';
 import { createSupportTicket } from '@/lib/calendar/crossConnect';
 import { logger } from '@/shared/logger';
 import { NotFoundError, ValidationError, toClientError } from '@/shared/errors/AppError';
@@ -78,10 +78,17 @@ export async function createAppointment(payload: {
     const effectiveMode = payload.meetingMode || calendar.meeting_mode || 'internal_meet';
     
     // 3. Engine-Specific Logic
-    let assigneeId = null;
+    let assigneeId: string | null = null;
 
     if (calendar.calendar_type === 'round_robin') {
-      assigneeId = await getRoundRobinAssignee(payload.calendarId, workspaceId);
+      try {
+        assigneeId = await getRoundRobinAssignee(payload.calendarId, workspaceId);
+      } catch (rrErr) {
+        // Empty pool (no hosts enrolled) — don't block the booking; create it
+        // unassigned so an admin can assign it, and warn. Same graceful
+        // degradation as the public / portal / paid paths.
+        logger.warn({ err: rrErr, calendarId: payload.calendarId }, 'calendar.appointment.round_robin.no_hosts_enrolled');
+      }
     }
 
     // 4. Meeting-link generation happens AFTER the insert (it needs the real
@@ -162,10 +169,7 @@ export async function createAppointment(payload: {
       logger.error({ err: notifyErr, appointmentId: data.id }, 'calendar.appointment.confirmation_email.failed');
     }
 
-    // 9. Post-Insert Engine Updates
-    if (calendar.calendar_type === 'round_robin' && assigneeId) {
-      await updateRoundRobinStats(payload.calendarId, assigneeId);
-    }
+    // (round-robin booking_count is incremented atomically inside getRoundRobinAssignee)
 
     // Auto-create Support Ticket if support calendar
     try {
