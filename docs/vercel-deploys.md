@@ -29,8 +29,8 @@ Either:
 
 ## The test gate
 
-`npm run test` still runs inside the Vercel `build` script **and** in GitHub Actions
-(`.github/workflows/ci.yml`: `npm ci` → `npm run test` → `tsc --noEmit` → `npm run lint`).
-CI is the authoritative gate. Once CI is proven green on real pushes, `npm run test` can be
-dropped from the Vercel `build` script (leaving just `next build`) to trim build minutes
-further — not before.
+GitHub Actions (`.github/workflows/ci.yml`: `npm ci` → `npm run test` → `tsc --noEmit` →
+`npm run lint`, on every push and PR) is the authoritative test gate. The Vercel `build`
+script is just `next build` — it no longer re-runs the test suite, since CI covers that
+independently and running 426 tests on every deployment was pure Build-CPU-Minutes waste.
+`next build` still type-checks, so a type error still fails a deployment.
