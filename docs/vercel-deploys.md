@@ -34,3 +34,5 @@ GitHub Actions (`.github/workflows/ci.yml`: `npm ci` → `npm run test` → `tsc
 script is just `next build` — it no longer re-runs the test suite, since CI covers that
 independently and running 426 tests on every deployment was pure Build-CPU-Minutes waste.
 `next build` still type-checks, so a type error still fails a deployment.
+
+_Verification note: this line changes only a Markdown file (removed after the ignoreCommand skip is confirmed)._
