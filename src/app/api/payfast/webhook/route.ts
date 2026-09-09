@@ -5,6 +5,7 @@ import { parseISO, addMinutes } from 'date-fns';
 import { logRevenueToAccounting } from '@/lib/calendar/accountingHook';
 import { createSupportTicket } from '@/lib/calendar/crossConnect';
 import { sendBookingConfirmation } from '@/lib/calendar/notifications';
+import { resolveMeetingLink } from '@/lib/calendar/meetingLink';
 import { logger } from '@/shared/logger';
 import { sendInvoiceEmail } from '@/lib/invoices/sendInvoiceEmail';
 import { calculateInclusiveTax } from '@/lib/invoicing/calculations';
@@ -96,20 +97,25 @@ export async function POST(req: NextRequest) {
           .single();
 
         if (appointment) {
-          // Generate internal meet links if needed
-          if (calendar.meeting_mode === 'internal_meet' || (calendar.meeting_mode === 'custom_link' && !calendar.custom_link)) {
-            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-            const internalLink = `${baseUrl}/meet/${appointment.id}`;
-            await supabase
-              .from('appointments')
-              .update({ meeting_link: internalLink, meeting_mode: 'internal_meet' })
-              .eq('id', appointment.id);
-          } else if (calendar.custom_link) {
-            await supabase
-              .from('appointments')
-              .update({ meeting_link: calendar.custom_link })
-              .eq('id', appointment.id);
-          }
+          // Resolve the real meeting link — never a fabricated one (Task 63).
+          const resolvedLink = await resolveMeetingLink({
+            appointmentId: appointment.id,
+            requestedMode: calendar.meeting_mode,
+            hostUserId: appointment.user_id ?? null,
+            workspaceId: lease.workspace_id,
+            calendarCustomLink: calendar.custom_link ?? calendar.location ?? null,
+            title: appointment.title,
+            startTime: appointment.start_time,
+            endTime: appointment.end_time,
+          });
+          await supabase
+            .from('appointments')
+            .update({
+              meeting_link: resolvedLink.meetingLink,
+              meeting_mode: resolvedLink.meetingMode,
+              metadata: { ...(appointment.metadata || {}), meeting_link_status: resolvedLink.status },
+            })
+            .eq('id', appointment.id);
 
           // 6. Cross-Module Invoicing Integration
           const price = parseFloat(payload.amount_gross || '0');

@@ -9,6 +9,8 @@ import { logger } from '@/shared/logger';
 import { NotFoundError, ValidationError, toClientError } from '@/shared/errors/AppError';
 import { isSlotConflictError, SLOT_CONFLICT_MESSAGE } from '@/lib/calendar/bookingErrors';
 import { sendBookingConfirmation } from '@/lib/calendar/notifications';
+import { resolveMeetingLink, applyResolvedMeetingLink } from '@/lib/calendar/meetingLink';
+import { pushEventCancellation, pushEventTimeUpdate } from '@/lib/calendar/calendarSync';
 
 // Previously read the workspaceId straight off the active_workspace_id cookie
 // (getCurrentWorkspaceId()) with no auth check at all — this wrapper never
@@ -77,25 +79,14 @@ export async function createAppointment(payload: {
     
     // 3. Engine-Specific Logic
     let assigneeId = null;
-    let meetingLink = calendar.location || null;
 
     if (calendar.calendar_type === 'round_robin') {
       assigneeId = await getRoundRobinAssignee(payload.calendarId, workspaceId);
     }
 
-    // 4. Link Generation
-    if (effectiveMode === 'google_meet') {
-      meetingLink = `https://meet.google.com/${Math.random().toString(36).substring(2, 5)}-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 5)}`;
-    } else if (effectiveMode === 'zoom') {
-      const zoomToken = await supabase.from('platform_connections').select('credentials').eq('workspace_id', workspaceId).eq('platform', 'zoom').single();
-      if (zoomToken.data?.credentials) {
-         meetingLink = 'https://zoom.us/j/real_oauth_meeting_link_pending';
-      } else {
-         meetingLink = `https://zoom.us/j/${Math.floor(Math.random() * 1000000000)}`;
-      }
-    } else if (effectiveMode === 'custom_link' && !meetingLink) {
-      // Fallback to internal if custom mode selected but no link provided
-    }
+    // 4. Meeting-link generation happens AFTER the insert (it needs the real
+    //    appointment id for the internal room, and a real Google Meet link
+    //    when the host has connected Google). See step 7 — no fabricated URLs.
 
     // 5. Validation Logic
     if (!payload.skipValidation) {
@@ -116,7 +107,7 @@ export async function createAppointment(payload: {
         title: payload.title,
         start_time: payload.startTime,
         end_time: payload.endTime,
-        meeting_link: meetingLink,
+        meeting_link: null,
         meeting_mode: effectiveMode,
         metadata: {
           ...(payload.metadata || {}),
@@ -133,20 +124,33 @@ export async function createAppointment(payload: {
       throw error;
     }
 
-    // 7. Post-Insert Update for Internal Meet Links
-    if (effectiveMode === 'internal_meet' || (effectiveMode === 'custom_link' && !meetingLink)) {
-       const baseUrl = process.env.NODE_ENV === 'development' 
-         ? 'http://localhost:3000' 
-         : (process.env.NEXT_PUBLIC_APP_URL || '');
-         
-       const meetLink = await import('@/lib/calendar/googleMeet').then(m => m.createGoogleMeetLink({ title: data.title, start_time: data.start_time, end_time: data.end_time }));
-       const internalLink = meetLink || `${baseUrl}/meet/${data.id}`;
-       await supabase.from('appointments').update({ 
-         meeting_link: internalLink,
-         meeting_mode: 'internal_meet' 
-      }).eq("id", data.id).eq("workspace_id", workspaceId);
-       data.meeting_link = internalLink;
-    }
+    // 7. Resolve the real meeting link (never a fabricated one) — see
+    //    lib/calendar/meetingLink.ts. google_meet => real Google Meet link or
+    //    an honest LeadsMind-room fallback; zoom => null + a "coming soon"
+    //    status; internal/custom => unchanged.
+    const resolved = await resolveMeetingLink({
+      appointmentId: data.id,
+      requestedMode: effectiveMode,
+      hostUserId: assigneeId,
+      workspaceId,
+      calendarCustomLink: calendar.location ?? null,
+      title: data.title,
+      startTime: data.start_time,
+      endTime: data.end_time,
+    });
+    const resolvedMetadata = applyResolvedMeetingLink(data.metadata, resolved);
+    await supabase
+      .from('appointments')
+      .update({
+        meeting_link: resolved.meetingLink,
+        meeting_mode: resolved.meetingMode,
+        metadata: resolvedMetadata,
+      })
+      .eq('id', data.id)
+      .eq('workspace_id', workspaceId);
+    data.meeting_link = resolved.meetingLink;
+    data.meeting_mode = resolved.meetingMode;
+    data.metadata = resolvedMetadata;
 
     // 8. Notification Orchestration — real send, not just a log line (see
     // calendar.md Part B: this used to be a misleadingly-named log statement
@@ -198,6 +202,17 @@ export async function updateAppointment(id: string, payload: Partial<any>) {
       .single();
 
     if (error) throw error;
+
+    // Staff-side reschedule: keep the host's real Google Calendar event in sync
+    // (best-effort — a calendar failure must not undo the booking change).
+    if (payload.start_time || payload.end_time) {
+      try {
+        await pushEventTimeUpdate(id);
+      } catch (syncErr) {
+        logger.error({ err: syncErr, appointmentId: id }, 'calendar.appointment.update.calendar_sync_failed');
+      }
+    }
+
     revalidatePath('/calendar');
     return data;
   });
@@ -205,6 +220,14 @@ export async function updateAppointment(id: string, payload: Partial<any>) {
 
 export async function deleteAppointment(id: string) {
   return executeAction(async (supabase, workspaceId) => {
+    // Cancel the host's Google Calendar event BEFORE deleting the row — the
+    // event id lives in the row's metadata (best-effort; never blocks the delete).
+    try {
+      await pushEventCancellation(id);
+    } catch (syncErr) {
+      logger.error({ err: syncErr, appointmentId: id }, 'calendar.appointment.delete.calendar_sync_failed');
+    }
+
     const { error } = await supabase
       .from('appointments')
       .delete()
@@ -414,13 +437,19 @@ export async function createInstantMeeting(payload: { title?: string; durationMi
       ? 'http://localhost:3000' 
       : (process.env.NEXT_PUBLIC_APP_URL || '');
       
-    const meetLink = await import('@/lib/calendar/googleMeet').then(m => m.createGoogleMeetLink({ title: data.title, start_time: data.start_time, end_time: data.end_time }));
+    const { link: meetLink, eventId: meetEventId } = await import('@/lib/calendar/googleMeet').then(
+      m => m.createGoogleMeetLink({ title: data.title, start_time: data.start_time, end_time: data.end_time })
+    );
     const internalLink = meetLink || `${baseUrl}/meet/${data.id}`;
-    
+    const instantMeta = meetEventId
+      ? { ...(data.metadata || {}), google_event_id: meetEventId }
+      : data.metadata;
+
     const { data: updated, error: updateErr } = await supabase
       .from('appointments')
-      .update({ 
-        meeting_link: internalLink 
+      .update({
+        meeting_link: internalLink,
+        ...(meetEventId ? { metadata: instantMeta } : {}),
       })
       .eq("id", data.id).eq("workspace_id", workspaceId)
       .select()

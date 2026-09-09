@@ -10,6 +10,7 @@ import { createTemporaryBookingLease, generatePayFastCheckoutUrl } from '@/lib/c
 import { syncBookingToExternal } from '@/lib/calendar/calendarSync';
 import { isSlotConflictError, SLOT_CONFLICT_MESSAGE } from '@/lib/calendar/bookingErrors';
 import { sendBookingConfirmation } from '@/lib/calendar/notifications';
+import { resolveMeetingLink } from '@/lib/calendar/meetingLink';
 import { logger } from '@/shared/logger';
 
 /**
@@ -149,21 +150,27 @@ export async function bookAppointment(
     return { success: false, error: 'Failed to record appointment' };
   }
 
-  // Generate Internal meeting links if appropriate
-  if (calendar.meeting_mode === 'internal_meet' || (calendar.meeting_mode === 'custom_link' && !calendar.custom_link)) {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const internalLink = `${baseUrl}/meet/${appointment.id}`;
-    
-    await supabase
-      .from('appointments')
-      .update({ meeting_link: internalLink, meeting_mode: 'internal_meet' })
-      .eq('id', appointment.id);
-  } else if (calendar.custom_link) {
-    await supabase
-      .from('appointments')
-      .update({ meeting_link: calendar.custom_link })
-      .eq('id', appointment.id);
-  }
+  // Resolve the real meeting link — never a fabricated one (Task 63).
+  // google_meet => real Google Meet link (host's Task 62 connection) or an
+  // honest LeadsMind-room fallback; zoom => null + "coming soon" status.
+  const resolved = await resolveMeetingLink({
+    appointmentId: appointment.id,
+    requestedMode: calendar.meeting_mode,
+    hostUserId: appointment.user_id ?? null,
+    workspaceId: calendar.workspace_id,
+    calendarCustomLink: calendar.custom_link ?? calendar.location ?? null,
+    title: appointment.title,
+    startTime: appointment.start_time,
+    endTime: appointment.end_time,
+  });
+  await supabase
+    .from('appointments')
+    .update({
+      meeting_link: resolved.meetingLink,
+      meeting_mode: resolved.meetingMode,
+      metadata: { ...(appointment.metadata || {}), meeting_link_status: resolved.status },
+    })
+    .eq('id', appointment.id);
 
   // Update RR metrics
   if (calendar.calendar_type === 'round_robin' && assigneeId !== calendar.workspace_id) {

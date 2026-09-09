@@ -12,6 +12,12 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { logger } from '@/shared/logger';
 import { getFreshCalendarAccessToken, toCalendarConnectionRow } from '@/lib/calendar/connections';
+import {
+  updateGoogleCalendarEventTime,
+  deleteGoogleCalendarEvent,
+  type CalendarEventSyncResult,
+} from '@/lib/calendar/googleMeet';
+import { updateOutlookCalendarEventTime, deleteOutlookCalendarEvent } from '@/lib/calendar/outlookCalendarEvents';
 
 export interface BusySlot {
   start: string; // ISO string
@@ -162,6 +168,8 @@ export async function syncBookingToExternal(appointmentId: string): Promise<bool
 
   let success = false;
 
+  const alreadyHasGoogleEvent = !!appointment.metadata?.google_event_id;
+
   for (const conn of connections) {
     try {
       const token = await getConnectionAccessToken(conn);
@@ -169,6 +177,12 @@ export async function syncBookingToExternal(appointmentId: string): Promise<bool
       const attendees = contactInfo?.email ? [{ email: contactInfo.email }] : [];
 
       if (conn.provider === 'google') {
+        // google_meet-mode bookings already created a real Calendar event (with
+        // the Meet conference) via meetingLink.ts — don't create a duplicate.
+        if (alreadyHasGoogleEvent) {
+          success = true;
+          continue;
+        }
         const response = await fetch(
           `https://www.googleapis.com/calendar/v3/calendars/primary/events`,
           {
@@ -197,6 +211,7 @@ export async function syncBookingToExternal(appointmentId: string): Promise<bool
               metadata: {
                 ...currentMeta,
                 google_event_id: event.id,
+                calendar_event_host_user_id: appointment.user_id,
               },
             })
             .eq('id', appointmentId);
@@ -236,6 +251,7 @@ export async function syncBookingToExternal(appointmentId: string): Promise<bool
               metadata: {
                 ...currentMeta,
                 outlook_event_id: event.id,
+                calendar_event_host_user_id: appointment.user_id,
               },
             })
             .eq('id', appointmentId);
@@ -248,4 +264,110 @@ export async function syncBookingToExternal(appointmentId: string): Promise<bool
   }
 
   return success;
+}
+
+// ---------------------------------------------------------------------------
+// Propagating a booking's reschedule / cancellation to the host's real
+// calendar event(s). The event ids are stored on appointments.metadata by
+// whichever path created them:
+//   - google_event_id  : meetingLink.ts (google_meet mode) or syncBookingToExternal
+//   - outlook_event_id : syncBookingToExternal (public / portal bookings)
+//   - calendar_event_host_user_id : whose connected calendar the event lives on
+// Both functions are BEST-EFFORT — the booking-side reschedule/cancel must
+// still succeed even if the calendar can't be reached (revoked token, event
+// deleted on the provider's side). A `calendar_sync_error` marker is written
+// to metadata so the failure is visible (host detail view) rather than silent.
+// ---------------------------------------------------------------------------
+
+interface EventSyncOutcome {
+  attempted: boolean;
+  failed: boolean;
+  google: CalendarEventSyncResult | null;
+  outlook: CalendarEventSyncResult | null;
+}
+
+async function loadEventSyncContext(appointmentId: string) {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from('appointments')
+    .select('id, user_id, start_time, end_time, metadata')
+    .eq('id', appointmentId)
+    .maybeSingle();
+  if (!data) return null;
+  const metadata = (data.metadata as Record<string, any>) || {};
+  return {
+    supabase,
+    appointment: data,
+    metadata,
+    hostUserId: (metadata.calendar_event_host_user_id as string | null) ?? data.user_id ?? null,
+    googleEventId: (metadata.google_event_id as string | null) ?? null,
+    outlookEventId: (metadata.outlook_event_id as string | null) ?? null,
+  };
+}
+
+async function recordSyncMarker(
+  supabase: any,
+  appointmentId: string,
+  metadata: Record<string, any>,
+  action: 'reschedule' | 'cancel',
+  outcome: EventSyncOutcome
+) {
+  const next = { ...metadata };
+  if (outcome.failed) {
+    next.calendar_sync_error = { at: new Date().toISOString(), action };
+  } else if (outcome.attempted) {
+    delete next.calendar_sync_error;
+    if (action === 'cancel') {
+      // The events are gone — don't leave dangling ids that a later call would retry.
+      delete next.google_event_id;
+      delete next.outlook_event_id;
+    }
+  } else {
+    return; // nothing attempted, nothing to record
+  }
+  await supabase.from('appointments').update({ metadata: next }).eq('id', appointmentId);
+}
+
+/** Reschedule → PATCH the host's Google/Outlook event to the appointment's current times. */
+export async function pushEventTimeUpdate(appointmentId: string): Promise<EventSyncOutcome> {
+  const outcome: EventSyncOutcome = { attempted: false, failed: false, google: null, outlook: null };
+  const ctx = await loadEventSyncContext(appointmentId);
+  if (!ctx || (!ctx.googleEventId && !ctx.outlookEventId)) return outcome;
+
+  const times = { startIso: ctx.appointment.start_time as string, endIso: ctx.appointment.end_time as string };
+
+  if (ctx.googleEventId) {
+    outcome.attempted = true;
+    outcome.google = await updateGoogleCalendarEventTime(ctx.hostUserId, ctx.googleEventId, times);
+    if (outcome.google === 'failed') outcome.failed = true;
+  }
+  if (ctx.outlookEventId) {
+    outcome.attempted = true;
+    outcome.outlook = await updateOutlookCalendarEventTime(ctx.hostUserId, ctx.outlookEventId, times);
+    if (outcome.outlook === 'failed') outcome.failed = true;
+  }
+
+  await recordSyncMarker(ctx.supabase, appointmentId, ctx.metadata, 'reschedule', outcome);
+  return outcome;
+}
+
+/** Cancel → DELETE the host's Google/Outlook event. */
+export async function pushEventCancellation(appointmentId: string): Promise<EventSyncOutcome> {
+  const outcome: EventSyncOutcome = { attempted: false, failed: false, google: null, outlook: null };
+  const ctx = await loadEventSyncContext(appointmentId);
+  if (!ctx || (!ctx.googleEventId && !ctx.outlookEventId)) return outcome;
+
+  if (ctx.googleEventId) {
+    outcome.attempted = true;
+    outcome.google = await deleteGoogleCalendarEvent(ctx.hostUserId, ctx.googleEventId);
+    if (outcome.google === 'failed') outcome.failed = true;
+  }
+  if (ctx.outlookEventId) {
+    outcome.attempted = true;
+    outcome.outlook = await deleteOutlookCalendarEvent(ctx.hostUserId, ctx.outlookEventId);
+    if (outcome.outlook === 'failed') outcome.failed = true;
+  }
+
+  await recordSyncMarker(ctx.supabase, appointmentId, ctx.metadata, 'cancel', outcome);
+  return outcome;
 }

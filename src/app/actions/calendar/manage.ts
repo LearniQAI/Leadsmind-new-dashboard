@@ -20,6 +20,8 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { parseManageToken } from '@/lib/calendar/manageToken';
 import { getAvailableSlots, validateSlot } from './scheduling';
 import { sendCancellationNotice, sendRescheduleNotice } from '@/lib/calendar/notifications';
+import { pushEventCancellation, pushEventTimeUpdate } from '@/lib/calendar/calendarSync';
+import { meetingLinkNote, type MeetingLinkStatus } from '@/lib/calendar/meetingLinkStatus';
 import { isSlotConflictError, SLOT_CONFLICT_MESSAGE } from '@/lib/calendar/bookingErrors';
 import { logger } from '@/shared/logger';
 import { addMinutes, parseISO } from 'date-fns';
@@ -31,6 +33,7 @@ interface VerifiedAppointment {
   end_time: string;
   status: string;
   meeting_link: string | null;
+  metadata: Record<string, any> | null;
   workspace_id: string;
   calendar_id: string | null;
   max_attendees: number | null;
@@ -57,7 +60,7 @@ async function resolveVerifiedAppointment(token: string): Promise<{ appointment:
   const { data, error } = await supabase
     .from('appointments')
     .select(`
-      id, title, start_time, end_time, status, meeting_link, workspace_id, calendar_id,
+      id, title, start_time, end_time, status, meeting_link, metadata, workspace_id, calendar_id,
       max_attendees, current_attendee_count,
       calendar:booking_calendars(name, calendar_type, timezone, cancellation_window_hours, slot_duration),
       contact:contacts(first_name, last_name, email)
@@ -106,6 +109,12 @@ export async function getAppointmentByToken(token: string) {
       endTime: appointment.end_time,
       status: appointment.status,
       meetingLink: appointment.meeting_link,
+      // Honest note for the booker when there's no live link yet (e.g. Zoom
+      // integration pending) — never a fabricated URL (Task 63).
+      meetingLinkNote: meetingLinkNote(
+        (appointment.metadata?.meeting_link_status as MeetingLinkStatus) ?? 'none',
+        'booker'
+      ),
       calendarName: appointment.calendar?.name ?? null,
       timezone: appointment.calendar?.timezone ?? 'UTC',
       bookerFirstName: appointment.contact?.first_name ?? null,
@@ -163,6 +172,14 @@ export async function cancelAppointmentByToken(token: string) {
     return { success: false, error: 'Failed to cancel this booking. Please try again.' };
   }
 
+  // Remove the host's real Google/Outlook calendar event too — best-effort, so
+  // a stale token or a provider outage never blocks the cancellation itself.
+  try {
+    await pushEventCancellation(appointment.id);
+  } catch (syncErr) {
+    logger.error({ err: syncErr, appointmentId: appointment.id }, 'calendar.manage.cancel.calendar_sync_failed');
+  }
+
   try {
     await sendCancellationNotice(appointment.id, previousWhen);
   } catch (notifyErr) {
@@ -212,6 +229,15 @@ export async function rescheduleAppointmentByToken(token: string, newSlot: strin
     }
     logger.error({ err: updateErr, appointmentId: appointment.id }, 'calendar.manage.reschedule.failed');
     return { success: false, error: 'Failed to reschedule this booking. Please try again.' };
+  }
+
+  // Move the host's real Google/Outlook calendar event to the new time — the
+  // core of this fix. Best-effort: a calendar failure records a marker on the
+  // booking (surfaced to the host) but never fails the reschedule.
+  try {
+    await pushEventTimeUpdate(appointment.id);
+  } catch (syncErr) {
+    logger.error({ err: syncErr, appointmentId: appointment.id }, 'calendar.manage.reschedule.calendar_sync_failed');
   }
 
   try {

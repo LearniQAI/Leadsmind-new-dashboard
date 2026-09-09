@@ -15,6 +15,7 @@ interface AppointmentSummary {
   endTime: string;
   status: string;
   meetingLink: string | null;
+  meetingLinkNote?: string | null;
   calendarName: string | null;
   timezone: string;
   bookerFirstName: string | null;
@@ -207,6 +208,12 @@ export default function ManageBookingClient({ token, appointment }: ManageBookin
             <a href={appointment.meetingLink} className="text-sm font-semibold text-[var(--accent2)] hover:underline break-all">
               {appointment.meetingLink}
             </a>
+          </div>
+        )}
+        {!appointment.meetingLink && appointment.meetingLinkNote && (
+          <div className="flex items-start gap-3">
+            <Video size={16} className="text-[var(--t4)] mt-0.5 shrink-0" />
+            <span className="text-sm text-[var(--t3)]">{appointment.meetingLinkNote}</span>
           </div>
         )}
       </div>
