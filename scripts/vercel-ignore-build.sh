@@ -38,22 +38,25 @@ if [ -z "${VERCEL_GIT_PULL_REQUEST_ID:-}" ]; then
   exit 0
 fi
 
-# 3) PR preview builds: skip when the change touches only docs / editor config.
-#    Prefer VERCEL_GIT_PREVIOUS_SHA (last successful deploy for this branch; only
-#    exposed inside the ignore step). Fall back to HEAD^ within the depth=10 clone.
+# 3) PR preview builds: skip when nothing meaningful changed since the last build.
+#    Base = VERCEL_GIT_PREVIOUS_SHA (git SHA of the last *successful* deployment for
+#    this project+branch; only exposed inside the ignore step). Fall back to HEAD^
+#    within the depth=10 clone. If neither resolves, build (can't reason -> safe).
 BASE="${VERCEL_GIT_PREVIOUS_SHA:-}"
 if [ -z "$BASE" ] || ! git cat-file -e "${BASE}^{commit}" 2>/dev/null; then
   BASE="$(git rev-parse --verify --quiet 'HEAD^' || true)"
 fi
-if [ -z "$BASE" ]; then
+if [ -z "$BASE" ] || ! git cat-file -e "${BASE}^{commit}" 2>/dev/null; then
   log "no comparable base commit available — building to be safe"
   exit 1
 fi
 
-CHANGED="$(git diff --name-only "$BASE" HEAD || true)"
+CHANGED="$(git diff --name-only "$BASE" HEAD 2>/dev/null || true)"
 if [ -z "$CHANGED" ]; then
-  log "no file changes detected between ${BASE} and HEAD — building to be safe"
-  exit 1
+  # Tree is byte-identical to the last successful deployment (e.g. a commit that
+  # reverts an earlier one in the same push series). Nothing to rebuild.
+  log "tree identical to last successful deploy (${BASE}) — skipping build"
+  exit 0
 fi
 
 # A path is "safe to skip" only if it matches one of these. Anything under src/,
