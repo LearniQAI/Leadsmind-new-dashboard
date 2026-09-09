@@ -2,9 +2,13 @@ name: CI
 
 # The real, platform-independent test gate for this repo. Runs regardless of
 # whether a Vercel build happens. Keep this green before merging to master.
+#
+# `push` only (no `pull_request`): every commit on every branch is tested,
+# including before a PR exists, and GitHub still surfaces the result on the PR
+# via the commit's check status. Adding `pull_request` would just double every
+# run (this repo takes no PRs from forks).
 on:
   push:
-  pull_request:
 
 # A newer push to the same ref supersedes an in-flight run.
 concurrency:
