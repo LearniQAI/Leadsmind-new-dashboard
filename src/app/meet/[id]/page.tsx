@@ -141,8 +141,9 @@ export default function MeetingPage() {
 
   if (isLoading) {
     return (
-      <div className="h-screen bg-[var(--n900)] flex items-center justify-center">
-        <Loader2 className="animate-spin text-[var(--accent)]" size={48} />
+      <div className="h-screen bg-dash-bg flex flex-col items-center justify-center gap-3">
+        <Loader2 className="animate-spin motion-reduce:hidden text-dash-accent" size={32} />
+        <p className="text-[13px] font-medium text-dash-textMuted">Preparing your meeting room…</p>
       </div>
     );
   }
@@ -161,34 +162,25 @@ export default function MeetingPage() {
   }
 
   return (
-    <div className="h-screen bg-[var(--n900)] text-[var(--t1)] flex flex-col font-['Space_Grotesk'] overflow-hidden">
-      {/* Meeting Room Header */}
-      <header className="h-16 px-6 flex items-center justify-between border-b border-[rgba(255,255,255,0.05)] bg-[rgba(10,14,23,0.8)] backdrop-blur-xl z-50">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--accent)] bg-opacity-10 rounded-lg border border-[var(--accent)] border-opacity-20">
-            <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-[var(--accent2)]">Secure Conference</span>
-          </div>
-          <div className="h-4 w-px bg-[var(--bdr)]" />
-          <div>
-            <h2 className="text-[14px] font-bold text-[var(--t1)]">{appointment?.title || 'Video Session'}</h2>
-            <p className="text-[10px] text-[var(--t4)] uppercase font-black tracking-widest">
-              LMS Connected Meeting
-            </p>
-          </div>
+    <div className="h-screen bg-[#0a0e17] text-white flex flex-col overflow-hidden">
+      {/* Meeting Room Header — the in-call surface stays dark (conventional for
+          video rooms); only the chrome is cleaned up to match the new system. */}
+      <header className="h-14 px-4 sm:px-6 flex items-center justify-between border-b border-white/10 bg-black/30 backdrop-blur-xl z-50">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-white shrink-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse motion-reduce:animate-none" /> Live
+          </span>
+          <h2 className="text-[14px] font-semibold text-white truncate font-space">{appointment?.title || 'Video meeting'}</h2>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={handleHangup}
-            className="bg-red-500 hover:bg-red-600 text-white font-bold h-9 px-4 rounded-xl flex items-center gap-2"
-          >
-            <PhoneOff size={16} />
-            Leave
-          </Button>
-        </div>
+        <Button
+          onClick={handleHangup}
+          className="bg-red-500 hover:bg-red-600 text-white font-semibold h-9 px-4 rounded-xl flex items-center gap-2 shrink-0"
+        >
+          <PhoneOff size={16} />
+          Leave
+        </Button>
       </header>
 
-      {/* Main Jitsi Container View */}
       <main className="flex-1 bg-[#0a0e17] relative flex items-center justify-center">
         <div id="meet-iframe-container" className="w-full h-full" />
       </main>

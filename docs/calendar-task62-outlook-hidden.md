@@ -1,5 +1,14 @@
 # Outlook "Connect" button — temporarily hidden (Task 62 follow-up)
 
+> **RE-ENABLED 2026-09-10.** The Outlook card (and the new Zoom + Microsoft
+> Teams cards from Task 70) are now `status: 'available'` in
+> `integrations-hub/page.tsx` — live "Connect" buttons again. Prerequisites
+> below still apply before a connection actually completes; the Azure app's
+> delegated Graph permissions must now also include
+> `OnlineMeetings.ReadWrite` (Task 70 — Teams meetings share this connection).
+> The rest of this doc is the original hide rationale, kept for history.
+
+
 Outlook/M365 calendar OAuth is fully built (`/api/auth/microsoft/*` + all
 sync code, Task 62) but the Azure app registration +
 `OUTLOOK_CLIENT_ID`/`OUTLOOK_CLIENT_SECRET` are deferred. Until then the

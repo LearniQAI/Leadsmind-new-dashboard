@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { PremiumInput, PremiumTextarea } from '@/components/ui/premium-inputs';
-import { User, Mail, MessageSquare, CalendarCheck2, FileText, AlertCircle } from 'lucide-react';
+import { DashFormField, DashInput, DashTextarea } from '@/components/dashboard-ui';
+import { CalendarCheck2, AlertCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface CustomField {
   id: string;
@@ -39,7 +40,6 @@ export function BookingForm({
   price = 0,
   submitLabel,
   t,
-  lang
 }: BookingFormProps) {
   const [formData, setFormData] = useState({
     firstName: '',
@@ -54,10 +54,7 @@ export function BookingForm({
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const handleFieldChange = (fieldId: string, value: string) => {
-    setAnswers(prev => ({
-      ...prev,
-      [fieldId]: value
-    }));
+    setAnswers(prev => ({ ...prev, [fieldId]: value }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -69,7 +66,6 @@ export function BookingForm({
       return;
     }
 
-    // Validate custom fields
     for (const field of customFields) {
       if (field.is_required && !answers[field.id]) {
         setValidationError(`"${field.label}" is required.`);
@@ -91,177 +87,112 @@ export function BookingForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {validationError && (
-        <div className="p-3.5 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl flex items-center gap-2.5 text-xs font-bold font-dm-sans animate-in slide-in-from-top-2 duration-300">
-          <AlertCircle size={15} />
+        <div className="p-3 rounded-xl bg-red/10 border border-red/20 text-red flex items-center gap-2 text-[13px] font-medium">
+          <AlertCircle size={15} strokeWidth={2} className="shrink-0" />
           <span>{validationError}</span>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[0.15em] ml-1">
-            First Name
-          </label>
-          <div className="relative group">
-            <PremiumInput
-              placeholder="John"
-              value={formData.firstName}
-              onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-              required
-              className="pl-10 h-10 text-[13px]"
-            />
-            <User className="absolute left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#4a5a82] group-focus-within:text-[#2563eb] transition-colors" />
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[0.15em] ml-1">
-            Last Name
-          </label>
-          <div className="relative group">
-            <PremiumInput
-              placeholder="Doe"
-              value={formData.lastName}
-              onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-              required
-              className="pl-10 h-10 text-[13px]"
-            />
-            <User className="absolute left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#4a5a82] group-focus-within:text-[#2563eb] transition-colors" />
-          </div>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <DashFormField label="First name" required>
+          <DashInput placeholder="John" value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} required />
+        </DashFormField>
+        <DashFormField label="Last name" required>
+          <DashInput placeholder="Doe" value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} required />
+        </DashFormField>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[0.15em] ml-1">
-            {t('emailAddress')}
-          </label>
-          <div className="relative group">
-            <PremiumInput
-              type="email"
-              placeholder="john@example.com"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              required
-              className="pl-10 h-10 text-[13px]"
-            />
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#4a5a82] group-focus-within:text-[#2563eb] transition-colors" />
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[0.15em] ml-1">
-            Phone Number
-          </label>
-          <div className="relative group">
-            <PremiumInput
-              type="tel"
-              placeholder="+27 82 123 4567"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="pl-10 h-10 text-[13px]"
-            />
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#4a5a82] group-focus-within:text-[#2563eb] transition-colors" />
-          </div>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <DashFormField label={t('emailAddress')} required>
+          <DashInput type="email" placeholder="john@example.com" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required />
+        </DashFormField>
+        <DashFormField label="Phone number">
+          <DashInput type="tel" placeholder="+27 82 123 4567" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
+        </DashFormField>
       </div>
 
-      {/* Dynamic Metadata Fields */}
       {customFields.map((field) => (
-        <div key={field.id} className="space-y-1.5 animate-in fade-in duration-300">
-          <label className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[0.15em] ml-1">
-            {field.label} {field.is_required && <span className="text-red-500">*</span>}
-          </label>
-          <div className="relative group">
-            {field.field_type === 'textarea' ? (
-              <PremiumTextarea
-                placeholder={`Provide details...`}
-                value={answers[field.id] || ''}
-                onChange={(e) => handleFieldChange(field.id, e.target.value)}
-                required={field.is_required}
-                className="min-h-[70px] pl-10 pt-3 text-[13px]"
-              />
-            ) : field.field_type === 'dropdown' ? (
-              <select
-                value={answers[field.id] || ''}
-                onChange={(e) => handleFieldChange(field.id, e.target.value)}
-                required={field.is_required}
-                className="w-full h-10 px-10 rounded-xl bg-white/5 border border-white/5 focus:border-[#2563eb] text-[13px] text-[#eef2ff] outline-none transition-all cursor-pointer appearance-none"
-              >
-                <option value="" className="bg-[#0b1229]">Select option</option>
-                {field.options?.map(opt => (
-                  <option key={opt} value={opt} className="bg-[#0b1229]">{opt}</option>
-                ))}
-              </select>
-            ) : (
-              <PremiumInput
-                placeholder={`Enter answer...`}
-                value={answers[field.id] || ''}
-                onChange={(e) => handleFieldChange(field.id, e.target.value)}
-                required={field.is_required}
-                className="pl-10 h-10 text-[13px]"
-              />
-            )}
-            <FileText className="absolute left-4 top-3 h-3.5 w-3.5 text-[#4a5a82] group-focus-within:text-[#2563eb]" />
-          </div>
-        </div>
+        <DashFormField key={field.id} label={field.label} required={field.is_required}>
+          {field.field_type === 'textarea' ? (
+            <DashTextarea
+              placeholder="Provide details…"
+              value={answers[field.id] || ''}
+              onChange={(e) => handleFieldChange(field.id, e.target.value)}
+              required={field.is_required}
+            />
+          ) : field.field_type === 'dropdown' ? (
+            <select
+              value={answers[field.id] || ''}
+              onChange={(e) => handleFieldChange(field.id, e.target.value)}
+              required={field.is_required}
+              className="w-full h-11 rounded-xl border border-dash-border bg-white px-3.5 text-sm text-dash-text outline-none transition-colors motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-dash-accent"
+            >
+              <option value="">Select an option</option>
+              {field.options?.map((opt) => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          ) : (
+            <DashInput
+              placeholder="Enter your answer…"
+              value={answers[field.id] || ''}
+              onChange={(e) => handleFieldChange(field.id, e.target.value)}
+              required={field.is_required}
+            />
+          )}
+        </DashFormField>
       ))}
 
-      <div className="space-y-1.5">
-        <label className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[0.15em] ml-1">
-          {t('additionalNotes')}
-        </label>
-        <div className="relative group">
-          <PremiumTextarea
-            placeholder="Objectives, goals, or schedule changes..."
-            value={formData.notes}
-            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-            className="min-h-[60px] pl-10 pt-3 text-[13px]"
-          />
-          <MessageSquare className="absolute left-4 top-4 h-3.5 w-3.5 text-[#4a5a82] group-focus-within:text-[#2563eb] transition-colors" />
-        </div>
-      </div>
+      <DashFormField label={t('additionalNotes')}>
+        <DashTextarea
+          placeholder="Anything you'd like the host to know before the meeting…"
+          value={formData.notes}
+          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+          className="min-h-[80px]"
+        />
+      </DashFormField>
 
-      {/* Non-bypassable POPIA Checkbox */}
-      <div className="flex items-start gap-3 p-3.5 bg-white/[0.02] rounded-xl border border-white/5 mt-4">
+      {/* POPIA consent */}
+      <label className="flex items-start gap-3 p-3.5 rounded-xl border border-dash-border bg-dash-surface cursor-pointer">
         <input
           type="checkbox"
-          id="popiaConsent"
           checked={formData.popiaConsent}
           onChange={(e) => setFormData({ ...formData, popiaConsent: e.target.checked })}
-          className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#2563eb] focus:ring-[#2563eb] bg-[#0b1229] cursor-pointer"
+          className="mt-0.5 h-4 w-4 rounded border-dash-border text-dash-accent focus:ring-dash-accent cursor-pointer"
         />
-        <label htmlFor="popiaConsent" className="text-[11px] text-[#94a3c8] leading-normal select-none cursor-pointer">
-          {t('popiaConsent')} <span className="text-red-400 font-bold">*</span>
-        </label>
-      </div>
+        <span className="text-[12px] leading-relaxed text-dash-textMuted select-none">
+          {t('popiaConsent')} <span className="text-red font-semibold">*</span>
+        </span>
+      </label>
 
-      {/* PayFast Premium Notice */}
       {price > 0 && (
-        <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[11px] text-amber-400 leading-normal font-bold">
+        <div className="p-3.5 rounded-xl bg-amber/5 border border-amber/20 text-[12px] leading-relaxed font-medium text-amber">
           {t('paymentNotice')} ZAR {price.toFixed(2)}.
         </div>
       )}
 
-      <div className="pt-2">
+      <div className="pt-1">
         <button
           type="submit"
           disabled={isSubmitting || !selectedTime}
-          className="w-full h-10 rounded-xl bg-[#2563eb] text-white hover:bg-[#2563eb]/90 disabled:opacity-50 disabled:cursor-not-allowed text-[13px] font-bold font-dm-sans transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#2563eb]/20"
+          className={cn(
+            'w-full h-12 rounded-xl bg-gradient-to-b from-dash-accent to-[#0F47CC] text-white text-[14px] font-bold',
+            'shadow-[0_4px_16px_rgba(19,89,255,0.3)] hover:shadow-[0_10px_28px_rgba(19,89,255,0.45)] hover:-translate-y-0.5',
+            'motion-reduce:hover:translate-y-0 transition-all duration-200 motion-reduce:transition-none',
+            'disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2'
+          )}
         >
           {isSubmitting ? (
-            <div className="h-4 w-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+            <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin motion-reduce:animate-none" />
           ) : (
             <>
-              <CalendarCheck2 className="h-4 w-4" />
+              <CalendarCheck2 className="h-4 w-4" strokeWidth={2} />
               {submitLabel ?? t('confirmBooking')}
             </>
           )}
         </button>
         {!selectedTime && (
-          <p className="text-center text-[9px] text-[#ef4444] font-bold uppercase tracking-widest mt-3 animate-pulse">
-            {t('selectSlotFirst')}
-          </p>
+          <p className="text-center text-[12px] text-dash-textMuted mt-2.5">{t('selectSlotFirst')}</p>
         )}
       </div>
     </form>

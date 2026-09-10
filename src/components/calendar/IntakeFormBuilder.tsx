@@ -1,21 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { 
- Plus, 
- GripVertical, 
- Trash2, 
- Settings2, 
- FileText,
- MousePointer2,
- ListFilter,
- Save,
- Rocket,
- LayoutTemplate
-} from 'lucide-react';
+import { DashButton, DashInput } from '@/components/dashboard-ui';
+import { Plus, GripVertical, Trash2, ListChecks, Save, Loader2, MousePointer2 } from 'lucide-react';
 import { saveIntakeForm } from '@/app/actions/calendar';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -40,7 +27,7 @@ export function IntakeFormBuilder({ calendarId, initialFields }: IntakeFormBuild
   const newField: Field = {
    id: Math.random().toString(36).substr(2, 9),
    type: 'text',
-   label: 'New Question',
+   label: 'New question',
    required: false,
   };
   setFields([...fields, newField]);
@@ -59,90 +46,83 @@ export function IntakeFormBuilder({ calendarId, initialFields }: IntakeFormBuild
   try {
    const res = await saveIntakeForm(calendarId, fields);
    if (res.success) {
-    toast.success('Intake form configuration persisted');
+    toast.success('Intake form saved');
    } else {
-    toast.error('Failed to sync intake form');
+    toast.error('Failed to save intake form');
    }
   } catch {
-   toast.error('Operation failed');
+   toast.error('Something went wrong');
   } finally {
    setIsSaving(false);
   }
  };
 
  return (
-  <div className="bg-white border border-dash-border rounded-2xl p-6 mt-[20px] shadow-sm">
-   <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+  <div className="bg-white border border-dash-border rounded-2xl p-6 mt-5 shadow-sm">
+   <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
     <div>
-      <div className="flex items-center gap-2 mb-2">
-       <ListFilter className="h-4 w-4 text-primary" />
-       <span className="text-[10px] font-bold text-primary">Qualitative acquisition</span>
+      <div className="flex items-center gap-2 mb-1.5 text-dash-accent">
+       <ListChecks className="h-4 w-4" strokeWidth={2} />
+       <span className="text-[12px] font-semibold">Intake questions</span>
       </div>
-      <h5 className="text-lg font-bold !text-dash-text">Intake protocol</h5>
-      <p className="text-sm font-medium !text-dash-textMuted mt-2">Design the dynamic data payload for each booking.</p>
+      <h5 className="text-lg font-bold font-space !text-dash-text">Ask before the meeting</h5>
+      <p className="text-[13px] !text-dash-textMuted mt-1">Collect a few extra details from each person when they book.</p>
     </div>
-    <div className="flex gap-3">
-      <Button
-       onClick={addField}
-       variant="outline"
-       className="bg-card border-border !text-dash-text rounded-xl gap-2 font-bold text-[10px] h-12 px-6 hover:bg-primary/5 transition-all motion-reduce:transition-none"
-      >
-       <Plus className="h-3.5 w-3.5" />
-       Add question
-      </Button>
-      <Button
-       onClick={handleSave}
-       disabled={isSaving}
-       className="bg-primary hover:bg-primary/90 text-white rounded-xl gap-2 font-bold text-[10px] h-12 px-8 shadow-lg shadow-primary/10 transition-colors motion-reduce:transition-none"
-      >
-       {isSaving ? <Rocket className="h-3.5 w-3.5 animate-bounce motion-reduce:animate-none" /> : <Save className="h-3.5 w-3.5" />}
-       Sync protocol
-      </Button>
+    <div className="flex gap-2 shrink-0">
+      <DashButton onClick={addField} variant="secondary" size="sm">
+       <Plus className="h-3.5 w-3.5" /> Add question
+      </DashButton>
+      <DashButton onClick={handleSave} disabled={isSaving} size="sm">
+       {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" /> : <Save className="h-3.5 w-3.5" />}
+       Save
+      </DashButton>
     </div>
    </div>
 
-   <div className="space-y-4">
+   <div className="space-y-3">
     {fields.map((field) => (
-     <div key={field.id} className="flex flex-col md:flex-row items-start md:items-center gap-4 p-5 rounded-xl bg-bgBody dark:bg-bgBody-dark border border-border dark:border-border-dark group hover:border-primary/30 transition-all duration-500">
-       <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center text-body opacity-40 group-hover:text-primary group-hover:opacity-100 transition-all motion-reduce:transition-none">
+     <div key={field.id} className="flex flex-col md:flex-row items-start md:items-center gap-3 p-4 rounded-xl bg-dash-surface border border-dash-border group hover:border-dash-accent/30 transition-colors motion-reduce:transition-none">
+       <div className="h-8 w-8 rounded-lg bg-white border border-dash-border flex items-center justify-center text-dash-textMuted opacity-60 group-hover:opacity-100 transition-opacity motion-reduce:transition-none shrink-0">
         <GripVertical className="h-4 w-4" />
        </div>
-       
-       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-        <Input 
+
+       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
+        <DashInput
           value={field.label}
           onChange={(e) => updateField(field.id, { label: e.target.value })}
-          className="bg-card dark:bg-card-dark border-border dark:border-border-dark text-heading dark:text-heading-dark rounded-lg h-11 text-sm font-medium"
-          placeholder="Question Label"
+          placeholder="Question label"
+          className="h-10"
         />
         <div className="flex gap-2">
-          <select 
+          <select
            value={field.type}
            onChange={(e) => updateField(field.id, { type: e.target.value as any })}
-           className="flex-1 bg-card dark:bg-card-dark border border-border dark:border-border-dark text-heading dark:text-heading-dark rounded-lg h-11 px-4 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-1 focus:ring-primary/50 transition-all"
+           className="flex-1 h-10 rounded-lg border border-dash-border bg-white px-3 text-[13px] text-dash-text outline-none transition-colors motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-dash-accent"
           >
-           <option value="text">Text Input</option>
-           <option value="textarea">Multi-line Area</option>
-           <option value="number">Numeric Value</option>
-           <option value="select">Dropdown Choice</option>
+           <option value="text">Short text</option>
+           <option value="textarea">Long text</option>
+           <option value="number">Number</option>
+           <option value="select">Dropdown</option>
           </select>
-          <Button 
+          <button
+           type="button"
            onClick={() => updateField(field.id, { required: !field.required })}
-           variant="ghost"
            className={cn(
-             "h-11 rounded-lg px-4 border border-border dark:border-border-dark transition-all",
-             field.required ? "bg-primary/10 text-primary border-primary/20" : "text-body dark:text-body-dark opacity-30"
+             'h-10 rounded-lg px-3 border text-[12px] font-semibold transition-colors motion-reduce:transition-none',
+             field.required
+               ? 'bg-dash-accent/10 text-dash-accent border-dash-accent/20'
+               : 'text-dash-textMuted border-dash-border hover:text-dash-text'
            )}
           >
-           <span className="text-[9px] font-black uppercase tracking-widest">Req</span>
-          </Button>
-          <Button 
-           variant="ghost" 
+           Required
+          </button>
+          <button
+           type="button"
            onClick={() => removeField(field.id)}
-           className="h-11 w-11 rounded-lg text-rose-500/30 hover:text-rose-500 hover:bg-rose-500/10 transition-all p-0"
+           className="h-10 w-10 rounded-lg text-dash-textMuted hover:text-red hover:bg-red/5 transition-colors motion-reduce:transition-none flex items-center justify-center shrink-0"
           >
            <Trash2 className="h-4 w-4" />
-          </Button>
+          </button>
         </div>
        </div>
      </div>
@@ -150,9 +130,10 @@ export function IntakeFormBuilder({ calendarId, initialFields }: IntakeFormBuild
    </div>
 
    {fields.length === 0 && (
-     <div className="p-16 text-center border border-dashed border-border dark:border-border-dark rounded-xl bg-bgBody/30">
-      <MousePointer2 className="h-8 w-8 text-placeholder dark:text-placeholder-dark mx-auto mb-4 opacity-40" />
-      <p className="text-[10px] font-black text-placeholder dark:text-placeholder-dark uppercase tracking-[0.4em]">Initialize acquisition schema</p>
+     <div className="py-12 text-center border border-dashed border-dash-border rounded-xl bg-dash-surface">
+      <MousePointer2 className="h-7 w-7 text-dash-textMuted mx-auto mb-2.5" strokeWidth={2} />
+      <p className="text-[13px] font-semibold text-dash-text">No questions yet</p>
+      <p className="text-[12px] text-dash-textMuted mt-0.5">Add a question to start building your intake form.</p>
      </div>
    )}
   </div>

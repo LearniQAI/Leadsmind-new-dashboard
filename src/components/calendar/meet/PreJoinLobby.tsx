@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { Mic, MicOff, Video, VideoOff, ShieldCheck, Users } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface PreJoinLobbyProps {
   appointment: any;
@@ -29,14 +29,9 @@ export default function PreJoinLobby({
     async function startPreview() {
       if (isCamOn) {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: false // No audio feedback in lobby
-          });
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
           streamRef.current = stream;
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-          }
+          if (videoRef.current) videoRef.current.srcObject = stream;
         } catch (err) {
           console.warn('[pre-join] Failed to acquire video feed:', err);
         }
@@ -46,10 +41,7 @@ export default function PreJoinLobby({
     }
 
     startPreview();
-
-    return () => {
-      stopPreview();
-    };
+    return () => { stopPreview(); };
   }, [isCamOn]);
 
   const stopPreview = () => {
@@ -60,77 +52,70 @@ export default function PreJoinLobby({
   };
 
   return (
-    <div className="min-h-screen bg-[var(--n900)] flex items-center justify-center p-6 font-['Space_Grotesk'] text-[var(--t1)]">
-      <div className="max-w-[1000px] w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-        {/* Left: Preview Area */}
-        <div className="space-y-6">
-          <div className="aspect-video bg-[var(--n800)] rounded-[var(--r24)] border-2 border-[var(--bdr)] relative overflow-hidden flex items-center justify-center shadow-2xl">
+    <div className="min-h-screen bg-dash-bg text-dash-text flex items-center justify-center p-5 sm:p-6">
+      <div className="absolute inset-x-0 top-0 h-64 bg-gradient-to-b from-dash-surface to-dash-bg pointer-events-none" />
+
+      <div className="relative max-w-[960px] w-full grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+        {/* Preview */}
+        <div className="space-y-4">
+          <div className="aspect-video bg-[#0a0e17] rounded-2xl border border-dash-border relative overflow-hidden flex items-center justify-center shadow-sm">
             {isCamOn ? (
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover scale-x-[-1]"
-              />
+              <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
             ) : (
-              <div className="w-24 h-24 rounded-full bg-[var(--accent)] bg-opacity-10 flex items-center justify-center text-[var(--accent2)] text-3xl font-bold">
+              <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center text-white text-2xl font-bold font-space">
                 {appointment?.contact?.first_name?.[0] || 'U'}
               </div>
             )}
-            {/* Floating Camera Preview Overlay */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-3 p-2 bg-[rgba(0,0,0,0.5)] backdrop-blur-md rounded-full border border-[rgba(255,255,255,0.1)]">
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2.5 p-1.5 bg-black/50 backdrop-blur-md rounded-full border border-white/10">
               <button
                 onClick={onToggleMic}
-                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isMicOn ? 'bg-white text-black' : 'bg-red-500 text-white'}`}
+                className={cn('w-9 h-9 rounded-full flex items-center justify-center transition-colors motion-reduce:transition-none', isMicOn ? 'bg-white text-black' : 'bg-red-500 text-white')}
               >
-                {isMicOn ? <Mic size={18} /> : <MicOff size={18} />}
+                {isMicOn ? <Mic size={17} /> : <MicOff size={17} />}
               </button>
               <button
                 onClick={onToggleCam}
-                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isCamOn ? 'bg-white text-black' : 'bg-red-500 text-white'}`}
+                className={cn('w-9 h-9 rounded-full flex items-center justify-center transition-colors motion-reduce:transition-none', isCamOn ? 'bg-white text-black' : 'bg-red-500 text-white')}
               >
-                {isCamOn ? <Video size={18} /> : <VideoOff size={18} />}
+                {isCamOn ? <Video size={17} /> : <VideoOff size={17} />}
               </button>
             </div>
           </div>
-          <div className="flex items-center gap-4 text-[var(--t4)] text-sm justify-center">
-            <ShieldCheck size={16} className="text-[var(--green)]" />
-            End-to-end encrypted connection
-          </div>
+          <p className="flex items-center gap-2 text-[12px] text-dash-textMuted justify-center">
+            <ShieldCheck size={14} strokeWidth={2} className="text-green" />
+            Encrypted connection
+          </p>
         </div>
 
-        {/* Right: Join Action Details */}
-        <div className="space-y-8">
-          <div className="space-y-2">
-            <h1 className="text-4xl font-bold text-[var(--t1)]">Ready to join?</h1>
-            <p className="text-[var(--t3)]">
-              {appointment?.title || 'Meeting Session'} with{' '}
-              <span className="text-[var(--accent2)] font-bold">
-                {appointment?.contact?.first_name || 'Host'} {appointment?.contact?.last_name || ''}
+        {/* Join */}
+        <div className="space-y-6">
+          <div className="space-y-1.5">
+            <h1 className="text-3xl font-bold font-space text-dash-text">Ready to join?</h1>
+            <p className="text-[15px] text-dash-textMuted">
+              {appointment?.title || 'Meeting'} with{' '}
+              <span className="font-semibold text-dash-text">
+                {appointment?.contact?.first_name || 'the host'} {appointment?.contact?.last_name || ''}
               </span>
             </p>
           </div>
 
-          <div className="p-6 bg-[var(--card)] border border-[var(--bdr)] rounded-[var(--r24)] shadow-xl space-y-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-[var(--n900)] border border-[var(--bdr)] flex items-center justify-center text-[var(--t4)]">
-                <Users size={20} />
+          <div className="rounded-2xl border border-dash-border bg-white p-5 shadow-sm space-y-5">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-dash-surface border border-dash-border flex items-center justify-center text-dash-textMuted shrink-0">
+                <Users size={18} strokeWidth={2} />
               </div>
               <div>
-                <p className="text-sm font-bold text-[var(--t1)]">Secure Room Active</p>
-                <p className="text-xs text-[var(--t4)]">
-                  Join to begin your scheduling session
-                </p>
+                <p className="text-[14px] font-semibold text-dash-text">The room is ready</p>
+                <p className="text-[12px] text-dash-textMuted">Join when you're set — your host will be notified.</p>
               </div>
             </div>
 
-            <Button
+            <button
               onClick={onJoin}
-              className="w-full bg-[var(--accent)] hover:bg-[var(--accent2)] text-white h-14 text-lg font-bold rounded-[var(--r16)] shadow-lg shadow-[rgba(0,0,0,0.3)] transition-all hover:scale-[1.02]"
+              className="w-full h-12 rounded-xl bg-gradient-to-b from-dash-accent to-[#0F47CC] text-white text-[15px] font-bold shadow-[0_4px_16px_rgba(19,89,255,0.3)] hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 transition-all duration-200 motion-reduce:transition-none"
             >
-              Join Meeting Now
-            </Button>
+              Join meeting
+            </button>
           </div>
         </div>
       </div>
