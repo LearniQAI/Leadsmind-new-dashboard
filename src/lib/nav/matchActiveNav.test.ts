@@ -46,9 +46,13 @@ describe("resolveActiveNav — every inventoried dashboard route resolves to its
     ["/affiliate-portal", "commerce-ops"],
     ["/affiliate-marketplace", "commerce-ops"],
     ["/inventory", "commerce-ops"],
-    ["/calendar", "commerce-ops"],
-    ["/calendar/waitlist", "commerce-ops"],
-    ["/calendar/instant-meet", "commerce-ops"],
+
+    ["/calendar", "calendar-meetings"],
+    ["/calendar/waitlist", "calendar-meetings"],
+    ["/calendar/instant-meet", "calendar-meetings"],
+    // reached via a tab inside the calendar page, not a distinct sidebar entry;
+    // resolves to the module by /calendar prefix match
+    ["/calendar/analytics", "calendar-meetings"],
 
     ["/hr", "hr-payroll"],
     ["/hr/employees", "hr-payroll"],

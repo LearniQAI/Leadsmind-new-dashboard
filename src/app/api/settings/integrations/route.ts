@@ -212,6 +212,7 @@ export async function DELETE(req: NextRequest) {
     const calendarProvider =
       provider === 'Google Calendar' ? 'google'
       : provider === 'Outlook & Microsoft 365' ? 'outlook'
+      : provider === 'Zoom' ? 'zoom'
       : null;
     if (calendarProvider) {
       const { deleteCalendarConnection } = await import('@/lib/calendar/connections');

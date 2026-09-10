@@ -3,14 +3,15 @@
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getPortalSession } from '@/lib/portal/session';
 import { revalidatePath } from 'next/cache';
-import { getAvailableSlots, getRoundRobinAssignee, updateRoundRobinStats } from './calendar/scheduling';
+import { getAvailableSlots, getRoundRobinAssignee } from './calendar/scheduling';
 import { addMinutes, parseISO } from 'date-fns';
 import { createTemporaryBookingLease, generatePayFastCheckoutUrl } from '@/lib/calendar/payfast';
 import { syncBookingToExternal, pushEventCancellation, pushEventTimeUpdate } from '@/lib/calendar/calendarSync';
+import { notifyNewlyOfferedWaitlist, cancelAttendeeSpot } from '@/lib/calendar/waitlist';
 import { createSupportTicket } from '@/lib/calendar/crossConnect';
 import { isSlotConflictError, SLOT_CONFLICT_MESSAGE } from '@/lib/calendar/bookingErrors';
 import { sendBookingConfirmation, sendCancellationNotice, sendRescheduleNotice } from '@/lib/calendar/notifications';
-import { resolveMeetingLink } from '@/lib/calendar/meetingLink';
+import { resolveMeetingLink, applyResolvedMeetingLink } from '@/lib/calendar/meetingLink';
 import { logger } from '@/shared/logger';
 
 /**
@@ -134,14 +135,11 @@ export async function bookAppointmentFromPortal(payload: {
       .update({
         meeting_link: resolved.meetingLink,
         meeting_mode: resolved.meetingMode,
-        metadata: { ...(appointment.metadata || {}), meeting_link_status: resolved.status },
+        metadata: applyResolvedMeetingLink(appointment.metadata, resolved),
       })
       .eq('id', appointment.id);
 
-    // Update RR metrics
-    if (calendar.calendar_type === 'round_robin' && assigneeId !== workspace.id) {
-      await updateRoundRobinStats(payload.calendarId, assigneeId);
-    }
+    // (round-robin booking_count is incremented atomically inside getRoundRobinAssignee)
 
     // Outbound push calendar synchronization
     try {
@@ -221,18 +219,34 @@ export async function cancelAppointmentFromPortal(appointmentId: string) {
       };
     }
 
-    // 4. Update appointment status to cancelled
+    // 4. Update appointment status to cancelled. For a GROUP SESSION, also
+    //    decrement current_attendee_count so the freed spot triggers the
+    //    waitlist — mirrors manage.ts's cancelAppointmentByToken (this was
+    //    missing here entirely).
+    const isGroupSession = (appt.max_attendees ?? 1) > 1;
+    const freesGroupSpot = isGroupSession && (appt.current_attendee_count ?? 0) > 0;
+    const cancelPayload: Record<string, any> = { status: 'cancelled', updated_at: new Date().toISOString() };
+    if (freesGroupSpot) {
+      cancelPayload.current_attendee_count = (appt.current_attendee_count ?? 1) - 1;
+    }
+
     const { error: updateErr } = await adminClient
       .from('appointments')
-      .update({
-        status: 'cancelled',
-        updated_at: new Date().toISOString()
-      })
+      .update(cancelPayload)
       .eq('id', appointmentId);
 
     if (updateErr) {
       logger.error({ err: updateErr, appointmentId }, 'portal_bookings.cancel.update_failed');
       return { success: false, error: 'Failed to cancel appointment.' };
+    }
+
+    // The DB trigger has marked the next waitlisted person offered — email them.
+    if (freesGroupSpot) {
+      try {
+        await notifyNewlyOfferedWaitlist(appointmentId);
+      } catch (wlErr) {
+        logger.error({ err: wlErr, appointmentId }, 'portal_bookings.cancel.waitlist_offer_failed');
+      }
     }
 
     // Remove the host's real calendar event too (best-effort).
@@ -260,6 +274,54 @@ export async function cancelAppointmentFromPortal(appointmentId: string) {
     return { success: true };
   } catch (err: any) {
     logger.error({ err, appointmentId }, 'portal_bookings.cancel_appointment.failed');
+    return { success: false, error: 'An unexpected error occurred.' };
+  }
+}
+
+/**
+ * Client Portal: a group-session attendee cancels ONLY their own spot. Unlike
+ * cancelAppointmentFromPortal (which flips appointments.status), this marks just
+ * the caller's own booking_waitlists row cancelled, frees one seat, and lets the
+ * waitlist fill it. The session and every other attendee are untouched. This is
+ * the path for any attendee who is NOT the session's contact_id — and also for
+ * the first booker, so "I cancel" never means "the whole class is cancelled".
+ */
+export async function cancelMyClassSpot(appointmentId: string) {
+  try {
+    const session = await getPortalSession();
+    if (!session) return { success: false, error: 'Unauthorized.' };
+
+    const { contact, workspace } = session;
+    const adminClient = createAdminClient();
+
+    const { data: record } = await adminClient
+      .from('booking_waitlists')
+      .select('id, workspace_id')
+      .eq('appointment_id', appointmentId)
+      .eq('contact_id', contact.id)
+      .eq('workspace_id', workspace.id)
+      .eq('confirmed', true)
+      .is('cancelled_at', null)
+      .maybeSingle();
+
+    if (!record) {
+      return { success: false, error: 'You do not have an active spot on this session.' };
+    }
+
+    const res = await cancelAttendeeSpot(record.id);
+    if (!res.success) return { success: false, error: res.error };
+
+    await adminClient.from('contact_activities').insert({
+      workspace_id: workspace.id,
+      contact_id: contact.id,
+      type: 'calendar',
+      description: `Client cancelled their spot on a group session`,
+    });
+
+    revalidatePath('/portal/bookings');
+    return { success: true };
+  } catch (err: any) {
+    logger.error({ err, appointmentId }, 'portal_bookings.cancel_class_spot.failed');
     return { success: false, error: 'An unexpected error occurred.' };
   }
 }

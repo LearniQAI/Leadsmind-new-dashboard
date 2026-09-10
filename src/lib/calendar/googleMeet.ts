@@ -80,7 +80,150 @@ export async function createGoogleMeetLink(
   }
 }
 
+/**
+ * Task 69 — creates ONE native Google Calendar *recurring* event (the whole
+ * series as a single event carrying `recurrence: ["RRULE:…"]`) with one Meet
+ * conference. Google shares that one Meet link across every instance, which is
+ * exactly the convention we follow. Returns the recurring event's id (used
+ * later to PATCH the RRULE or address individual instances) + the shared link.
+ * Same never-throw contract as createGoogleMeetLink.
+ */
+export async function createGoogleRecurringEvent(
+  details: { title: string; start_time: string; end_time: string; timezone?: string },
+  rruleValue: string,
+  hostUserId?: string
+): Promise<CreatedGoogleMeetEvent> {
+  try {
+    const accessToken = await resolveHostAccessToken(hostUserId);
+    if (!accessToken) return { link: null, eventId: null };
+
+    const tz = details.timezone || 'UTC';
+    const res = await fetch(`${EVENTS_BASE}?conferenceDataVersion=1`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        summary: details.title,
+        start: { dateTime: details.start_time, timeZone: tz },
+        end: { dateTime: details.end_time, timeZone: tz },
+        // The RRULE value must be sent prefixed with "RRULE:" per RFC 5545.
+        recurrence: [`RRULE:${rruleValue.replace(/^RRULE:/i, '')}`],
+        conferenceData: {
+          createRequest: {
+            requestId: `leadsmind-series-${Date.now()}`,
+            conferenceSolutionKey: { type: 'hangoutsMeet' },
+          },
+        },
+      }),
+    });
+
+    if (!res.ok) {
+      logger.warn({ status: res.status }, 'calendar.google_recurring.create.failed');
+      return { link: null, eventId: null };
+    }
+    const event = await res.json();
+    const entryPoints = event.conferenceData?.entryPoints;
+    const videoLink = Array.isArray(entryPoints)
+      ? entryPoints.find((ep: any) => ep.entryPointType === 'video')?.uri ?? null
+      : null;
+    return { link: videoLink, eventId: event.id ?? null };
+  } catch (err) {
+    logger.warn({ err }, 'calendar.google_recurring.create.error');
+    return { link: null, eventId: null };
+  }
+}
+
 export type CalendarEventSyncResult = 'updated' | 'not_applicable' | 'failed';
+
+/** Google instance id for one occurrence of a recurring event: `<eventId>_<UTC basic start>`. */
+export function googleInstanceId(recurringEventId: string, occurrenceStartIso: string): string {
+  const basic = new Date(occurrenceStartIso).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+  return `${recurringEventId}_${basic}`;
+}
+
+/** Task 69 — PATCH a recurring event's RRULE (used for "this and following" truncation / series end-date change). */
+export async function updateGoogleRecurringEventRule(
+  hostUserId: string | null,
+  recurringEventId: string | null,
+  rruleValue: string
+): Promise<CalendarEventSyncResult> {
+  if (!recurringEventId || !hostUserId) return 'not_applicable';
+  try {
+    const accessToken = await resolveHostAccessToken(hostUserId);
+    if (!accessToken) return 'failed';
+    const res = await fetch(`${EVENTS_BASE}/${encodeURIComponent(recurringEventId)}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recurrence: [`RRULE:${rruleValue.replace(/^RRULE:/i, '')}`] }),
+    });
+    if (res.status === 404 || res.status === 410) return 'not_applicable';
+    if (!res.ok) {
+      logger.warn({ status: res.status, recurringEventId }, 'calendar.google_recurring.rule_update.failed');
+      return 'failed';
+    }
+    return 'updated';
+  } catch (err) {
+    logger.warn({ err, recurringEventId }, 'calendar.google_recurring.rule_update.error');
+    return 'failed';
+  }
+}
+
+/** Task 69 — cancel ONE occurrence of a recurring event (an exception). */
+export async function cancelGoogleEventInstance(
+  hostUserId: string | null,
+  recurringEventId: string | null,
+  occurrenceStartIso: string
+): Promise<CalendarEventSyncResult> {
+  if (!recurringEventId || !hostUserId) return 'not_applicable';
+  try {
+    const accessToken = await resolveHostAccessToken(hostUserId);
+    if (!accessToken) return 'failed';
+    const instanceId = googleInstanceId(recurringEventId, occurrenceStartIso);
+    const res = await fetch(`${EVENTS_BASE}/${encodeURIComponent(instanceId)}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      // Cancelling an instance = set its status to 'cancelled' (keeps the rest of the series intact).
+      body: JSON.stringify({ status: 'cancelled' }),
+    });
+    if (res.status === 404 || res.status === 410) return 'not_applicable';
+    if (!res.ok) {
+      logger.warn({ status: res.status, recurringEventId }, 'calendar.google_recurring.instance_cancel.failed');
+      return 'failed';
+    }
+    return 'updated';
+  } catch (err) {
+    logger.warn({ err, recurringEventId }, 'calendar.google_recurring.instance_cancel.error');
+    return 'failed';
+  }
+}
+
+/** Task 69 — move ONE occurrence of a recurring event to a new time (an exception). */
+export async function updateGoogleEventInstanceTime(
+  hostUserId: string | null,
+  recurringEventId: string | null,
+  occurrenceOriginalStartIso: string,
+  times: { startIso: string; endIso: string }
+): Promise<CalendarEventSyncResult> {
+  if (!recurringEventId || !hostUserId) return 'not_applicable';
+  try {
+    const accessToken = await resolveHostAccessToken(hostUserId);
+    if (!accessToken) return 'failed';
+    const instanceId = googleInstanceId(recurringEventId, occurrenceOriginalStartIso);
+    const res = await fetch(`${EVENTS_BASE}/${encodeURIComponent(instanceId)}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ start: { dateTime: times.startIso }, end: { dateTime: times.endIso } }),
+    });
+    if (res.status === 404 || res.status === 410) return 'not_applicable';
+    if (!res.ok) {
+      logger.warn({ status: res.status, recurringEventId }, 'calendar.google_recurring.instance_update.failed');
+      return 'failed';
+    }
+    return 'updated';
+  } catch (err) {
+    logger.warn({ err, recurringEventId }, 'calendar.google_recurring.instance_update.error');
+    return 'failed';
+  }
+}
 
 /**
  * PATCHes an existing Google Calendar event's start/end time — used when a

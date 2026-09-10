@@ -38,7 +38,9 @@ export default function IntegrationsHubPage() {
 
     if (connected) {
       toast.success(
-        `${connected === 'google' ? 'Google Calendar' : 'Outlook'} connected — your availability now syncs.`
+        connected === 'google' ? 'Google Calendar connected — your availability now syncs.'
+        : connected === 'zoom' ? 'Zoom connected — new bookings will get a real Zoom link.'
+        : 'Outlook connected — your calendar and Teams meetings now sync.'
       )
       refetch()
     } else if (errCode) {
@@ -154,6 +156,27 @@ export default function IntegrationsHubPage() {
                 // configured; re-enable by flipping this one value back to 'available'.
                 { name: 'Outlook & Microsoft 365', shortName: 'MS', color: '#0078d4',
                   desc: 'Sync your Outlook emails and calendar events automatically', status: 'coming_soon', category: 'email_calendar' },
+              ].map(item => renderIntegrationCard(item as any))}
+            </div>
+
+            {/* Video conferencing */}
+            <p className="text-[10px] font-semibold mb-3 !text-dash-textMuted">
+              Video conferencing
+            </p>
+            <div className="flex flex-col gap-3 mb-8">
+              {[
+                // Task 70 — Zoom connect (/api/auth/zoom/*), token store, meeting
+                // create/update/cancel and the meetingLink.ts `zoom` branch are all
+                // built. Shown as "coming soon" until a Zoom Marketplace app +
+                // ZOOM_CLIENT_ID/ZOOM_CLIENT_SECRET are configured; flip to
+                // 'available' then (mirrors the Task 62 Outlook rollout).
+                { name: 'Zoom', shortName: 'ZM', color: '#2d8cff',
+                  desc: 'Bookings on a Zoom calendar get a real Zoom link, auto-updated on reschedule', status: 'coming_soon', category: 'video_conferencing' },
+                // Microsoft Teams reuses the ONE Outlook/M365 connection (Graph
+                // online meetings). Built; needs the OnlineMeetings.ReadWrite
+                // permission added to the Azure app + a reconnect.
+                { name: 'Microsoft Teams', shortName: 'MT', color: '#4b53bc',
+                  desc: 'Teams meeting links via your connected Microsoft 365 account — no separate connect', status: 'coming_soon', category: 'video_conferencing' },
               ].map(item => renderIntegrationCard(item as any))}
             </div>
 

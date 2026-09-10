@@ -13,7 +13,12 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { encrypt, decrypt } from '@/lib/encryption';
 import { logger } from '@/shared/logger';
 
-export type CalendarProvider = 'google' | 'outlook';
+// 'google' / 'outlook' are calendar providers (busy-sync + events). 'zoom' is a
+// meeting-only provider (Task 70) — same per-user encrypted OAuth token store
+// and connect/refresh/disconnect lifecycle, but it never participates in
+// busy-slot sync. Microsoft Teams meetings reuse the 'outlook' connection
+// (Graph /me/onlineMeetings) with one extra scope — there is no 'teams' provider.
+export type CalendarProvider = 'google' | 'outlook' | 'zoom';
 
 export interface DecryptedCalendarCredentials {
   accessToken: string | null;
@@ -171,11 +176,17 @@ export function toCalendarConnectionRow(data: any): CalendarConnectionRow {
  * Integrations Hub UI reads) from the current per-user `user_calendar_connections`
  * rows for this provider. Call after any connect/disconnect.
  */
+const PROVIDER_LABELS: Record<CalendarProvider, string> = {
+  google: 'Google Calendar',
+  outlook: 'Outlook & Microsoft 365',
+  zoom: 'Zoom',
+};
+
 export async function syncWorkspaceCalendarIntegrationRow(
   workspaceId: string,
   provider: CalendarProvider
 ): Promise<void> {
-  const label = provider === 'google' ? 'Google Calendar' : 'Outlook & Microsoft 365';
+  const label = PROVIDER_LABELS[provider];
   const supabase = createAdminClient();
 
   const { data } = await supabase
@@ -197,7 +208,7 @@ export async function syncWorkspaceCalendarIntegrationRow(
     {
       workspace_id: workspaceId,
       provider: label,
-      category: 'email_calendar',
+      category: provider === 'zoom' ? 'video_conferencing' : 'email_calendar',
       connected,
       account_label: accountLabel,
       connected_at: connected ? new Date().toISOString() : null,
@@ -264,17 +275,35 @@ export async function revokeProviderToken(
   provider: CalendarProvider,
   creds: DecryptedCalendarCredentials
 ): Promise<void> {
-  if (provider !== 'google') return;
   const token = creds.refreshToken || creds.accessToken;
   if (!token) return;
+
   try {
-    await fetch('https://oauth2.googleapis.com/revoke', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ token }),
-    });
+    if (provider === 'google') {
+      await fetch('https://oauth2.googleapis.com/revoke', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ token }),
+      });
+    } else if (provider === 'zoom') {
+      // Zoom has a real token-revoke endpoint (Basic client auth).
+      const basic = Buffer.from(
+        `${process.env.ZOOM_CLIENT_ID || ''}:${process.env.ZOOM_CLIENT_SECRET || ''}`
+      ).toString('base64');
+      await fetch('https://zoom.us/oauth/revoke', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Authorization: `Basic ${basic}`,
+        },
+        body: new URLSearchParams({ token }),
+      });
+    }
+    // Microsoft has no single-token revoke without tenant admin consent — the
+    // user removes the app under their Microsoft account security page. Local
+    // state is cleared by deleteCalendarConnection regardless.
   } catch (err) {
-    logger.warn({ err }, 'calendar.connection.google_revoke.failed');
+    logger.warn({ err, provider }, 'calendar.connection.revoke.failed');
   }
 }
 
@@ -321,6 +350,12 @@ export async function markCalendarConnectionError(connectionId: string): Promise
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const MICROSOFT_TOKEN_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/token';
+const ZOOM_TOKEN_URL = 'https://zoom.us/oauth/token';
+
+// The Outlook connection now also carries Teams online-meeting rights (Task 70).
+// Kept in one place so the initiate route, callback, and this refresh agree.
+export const MICROSOFT_CALENDAR_SCOPES =
+  'offline_access openid email profile https://graph.microsoft.com/User.Read https://graph.microsoft.com/Calendars.Read https://graph.microsoft.com/Calendars.ReadWrite https://graph.microsoft.com/OnlineMeetings.ReadWrite';
 
 /**
  * Returns a valid access token for a connection row, refreshing + persisting a
@@ -342,25 +377,30 @@ export async function getFreshCalendarAccessToken(row: CalendarConnectionRow): P
     throw new Error(`${row.provider} calendar connection is missing a refresh token — reconnect required`);
   }
 
-  const isGoogle = row.provider === 'google';
-  const tokenUrl = isGoogle ? GOOGLE_TOKEN_URL : MICROSOFT_TOKEN_URL;
-  const body = new URLSearchParams({
-    client_id: (isGoogle ? process.env.GOOGLE_CLIENT_ID : process.env.OUTLOOK_CLIENT_ID) || '',
-    client_secret: (isGoogle ? process.env.GOOGLE_CLIENT_SECRET : process.env.OUTLOOK_CLIENT_SECRET) || '',
-    refresh_token: refreshToken,
-    grant_type: 'refresh_token',
-  });
-  if (!isGoogle) {
-    body.set('scope', 'offline_access https://graph.microsoft.com/Calendars.Read https://graph.microsoft.com/Calendars.ReadWrite');
+  const tokenUrl =
+    row.provider === 'google' ? GOOGLE_TOKEN_URL
+    : row.provider === 'zoom' ? ZOOM_TOKEN_URL
+    : MICROSOFT_TOKEN_URL;
+
+  const body = new URLSearchParams({ refresh_token: refreshToken, grant_type: 'refresh_token' });
+  const headers: Record<string, string> = { 'Content-Type': 'application/x-www-form-urlencoded' };
+
+  if (row.provider === 'zoom') {
+    // Zoom OAuth refresh uses HTTP Basic client authentication, not body params.
+    const basic = Buffer.from(
+      `${process.env.ZOOM_CLIENT_ID || ''}:${process.env.ZOOM_CLIENT_SECRET || ''}`
+    ).toString('base64');
+    headers.Authorization = `Basic ${basic}`;
+  } else {
+    const isGoogle = row.provider === 'google';
+    body.set('client_id', (isGoogle ? process.env.GOOGLE_CLIENT_ID : process.env.OUTLOOK_CLIENT_ID) || '');
+    body.set('client_secret', (isGoogle ? process.env.GOOGLE_CLIENT_SECRET : process.env.OUTLOOK_CLIENT_SECRET) || '');
+    if (!isGoogle) body.set('scope', MICROSOFT_CALENDAR_SCOPES);
   }
 
   let data: any;
   try {
-    const res = await fetch(tokenUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body,
-    });
+    const res = await fetch(tokenUrl, { method: 'POST', headers, body });
     data = await res.json();
     if (!res.ok || !data.access_token) {
       throw new Error(data.error_description || data.error || `token refresh failed (${res.status})`);

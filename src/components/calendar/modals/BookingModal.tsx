@@ -32,6 +32,7 @@ import { Calendar as CalendarIcon, Clock, User, Check, ChevronsUpDown, Loader2, 
 import { format, addMinutes, parseISO } from 'date-fns';
 import { searchContacts } from '@/app/actions/contacts';
 import { createAppointment, updateAppointment } from '@/app/actions/calendar/appointments';
+import { createRecurringSeries } from '@/app/actions/calendar/recurringMeetings';
 import { toast } from 'sonner';
 
 const bookingSchema = z.object({
@@ -42,6 +43,11 @@ const bookingSchema = z.object({
   startTime: z.string().min(1, 'Start time is required'),
   endTime: z.string().min(1, 'End time is required'),
   meetingMode: z.enum(['google_meet', 'zoom', 'phone', 'in_person', 'custom_link', 'client_choice', 'internal_meet']),
+  repeat: z.enum(['none', 'daily', 'weekly', 'monthly']),
+  repeatInterval: z.coerce.number().min(1).max(52),
+  repeatEndType: z.enum(['count', 'date']),
+  repeatCount: z.coerce.number().min(2).max(60),
+  repeatUntil: z.string(),
 });
 
 interface BookingFormValues {
@@ -52,6 +58,11 @@ interface BookingFormValues {
   startTime: string;
   endTime: string;
   meetingMode: 'google_meet' | 'zoom' | 'phone' | 'in_person' | 'custom_link' | 'client_choice' | 'internal_meet';
+  repeat: 'none' | 'daily' | 'weekly' | 'monthly';
+  repeatInterval: number;
+  repeatEndType: 'count' | 'date';
+  repeatCount: number;
+  repeatUntil: string;
 }
 
 interface BookingModalProps {
@@ -62,6 +73,10 @@ interface BookingModalProps {
   initialAppointment?: any;
   allAppointments?: any[];
   onViewAppointment?: (apt: any) => void;
+  // Task 69 — when set, this edit is a recurring-series occurrence reschedule.
+  // BookingModal collects the new start time and hands it to this callback
+  // (bound to the chosen scope) instead of the plain updateAppointment path.
+  onSeriesReschedule?: (newStartTimeISO: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 export default function BookingModal({
@@ -71,7 +86,8 @@ export default function BookingModal({
   initialDate,
   initialAppointment,
   allAppointments = [],
-  onViewAppointment
+  onViewAppointment,
+  onSeriesReschedule
 }: BookingModalProps) {
   const [contacts, setContacts] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -89,6 +105,11 @@ export default function BookingModal({
       startTime: initialDate ? format(initialDate, 'HH:mm') : '',
       endTime: initialDate ? format(addMinutes(initialDate, 30), 'HH:mm') : '',
       meetingMode: 'internal_meet',
+      repeat: 'none',
+      repeatInterval: 1,
+      repeatEndType: 'count',
+      repeatCount: 4,
+      repeatUntil: '',
     },
   });
 
@@ -105,6 +126,11 @@ export default function BookingModal({
           startTime: format(parseISO(initialAppointment.start_time), 'HH:mm'),
           endTime: format(parseISO(initialAppointment.end_time), 'HH:mm'),
           meetingMode: initialAppointment.meeting_mode || 'internal_meet',
+          repeat: 'none',
+          repeatInterval: 1,
+          repeatEndType: 'count',
+          repeatCount: 4,
+          repeatUntil: '',
         });
       } else if (initialDate) {
         const dateStr = format(initialDate, 'yyyy-MM-dd');
@@ -126,6 +152,11 @@ export default function BookingModal({
           startTime: format(initialDate, 'HH:mm'),
           endTime: format(addMinutes(initialDate, 30), 'HH:mm'),
           meetingMode: calendars[0]?.meeting_mode || 'internal_meet',
+          repeat: 'none',
+          repeatInterval: 1,
+          repeatEndType: 'count',
+          repeatCount: 4,
+          repeatUntil: '',
         });
       }
     }
@@ -170,14 +201,33 @@ export default function BookingModal({
     const start = new Date(`${values.date}T${values.startTime}`);
     const end = new Date(`${values.date}T${values.endTime}`);
 
-    let res;
-    if (initialAppointment) {
+    let res: any;
+    if (initialAppointment && onSeriesReschedule) {
+      res = await onSeriesReschedule(start.toISOString());
+    } else if (initialAppointment) {
       res = await updateAppointment(initialAppointment.id, {
         title: values.title,
         calendar_id: values.calendarId,
         start_time: start.toISOString(),
         end_time: end.toISOString(),
         meeting_mode: values.meetingMode,
+      });
+    } else if (values.repeat !== 'none') {
+      res = await createRecurringSeries({
+        calendarId: values.calendarId,
+        contactId: values.contactId || null,
+        title: values.title,
+        startTime: start.toISOString(),
+        endTime: end.toISOString(),
+        meetingMode: values.meetingMode,
+        recurrence: {
+          frequency: values.repeat,
+          interval: values.repeatInterval,
+          count: values.repeatEndType === 'count' ? values.repeatCount : null,
+          until: values.repeatEndType === 'date' && values.repeatUntil
+            ? new Date(`${values.repeatUntil}T23:59:59`).toISOString()
+            : null,
+        },
       });
     } else {
       res = await createAppointment({
@@ -191,7 +241,15 @@ export default function BookingModal({
     }
 
     if (res.success) {
-      toast.success(initialAppointment ? 'Appointment updated' : 'Appointment booked successfully!');
+      if (values.repeat !== 'none' && !initialAppointment && res.data) {
+        const { occurrencesCreated, occurrencesSkipped } = res.data;
+        toast.success(
+          `Recurring meeting created — ${occurrencesCreated} occurrence${occurrencesCreated === 1 ? '' : 's'}` +
+          (occurrencesSkipped ? ` (${occurrencesSkipped} skipped for conflicts)` : '')
+        );
+      } else {
+        toast.success(initialAppointment ? 'Appointment updated' : 'Appointment booked successfully!');
+      }
       onClose();
     } else {
       toast.error(res.error || 'Failed to save appointment');
@@ -445,6 +503,101 @@ export default function BookingModal({
                 )}
               />
             </div>
+
+            {/* Recurrence (Task 69) — new meetings only; edit a series occurrence
+                from the appointment details panel instead. */}
+            {!initialAppointment && (
+              <div className="space-y-3 rounded-xl border border-dash-border bg-dash-surface/40 p-3">
+                <FormField
+                  control={form.control}
+                  name="repeat"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-[11px] font-bold !text-dash-textMuted">Repeat</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="bg-white border-dash-border !text-dash-text h-11">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="bg-white border-dash-border z-[1100]">
+                          <SelectItem value="none">Does not repeat</SelectItem>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+
+                {form.watch('repeat') !== 'none' && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormField
+                      control={form.control}
+                      name="repeatInterval"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-[10px] font-bold !text-dash-textMuted">
+                            Every (× {form.watch('repeat') === 'daily' ? 'days' : form.watch('repeat') === 'weekly' ? 'weeks' : 'months'})
+                          </FormLabel>
+                          <FormControl>
+                            <Input type="number" min={1} max={52} {...field} className="bg-white border-dash-border !text-dash-text h-10 px-2" />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="repeatEndType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-[10px] font-bold !text-dash-textMuted">Ends</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger className="bg-white border-dash-border !text-dash-text h-10">
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="bg-white border-dash-border z-[1100]">
+                              <SelectItem value="count">After N occurrences</SelectItem>
+                              <SelectItem value="date">On a date</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                    />
+                    {form.watch('repeatEndType') === 'count' ? (
+                      <FormField
+                        control={form.control}
+                        name="repeatCount"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-[10px] font-bold !text-dash-textMuted">Occurrences (2–60)</FormLabel>
+                            <FormControl>
+                              <Input type="number" min={2} max={60} {...field} className="bg-white border-dash-border !text-dash-text h-10 px-2" />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    ) : (
+                      <FormField
+                        control={form.control}
+                        name="repeatUntil"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-[10px] font-bold !text-dash-textMuted">End date</FormLabel>
+                            <FormControl>
+                              <Input type="date" {...field} className="bg-white border-dash-border !text-dash-text h-10 px-2" />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
               </form>
             </Form>
 

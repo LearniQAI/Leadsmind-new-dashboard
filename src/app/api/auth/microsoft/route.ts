@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createOAuthStateNonce } from '@/lib/oauth/stateNonce';
+import { MICROSOFT_CALENDAR_SCOPES } from '@/lib/calendar/connections';
 import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
@@ -8,16 +9,12 @@ export const dynamic = 'force-dynamic';
 // Previously only a callback stub existed with nothing to call it. Writes to
 // user_calendar_connections (provider 'outlook'), same store as Google.
 // Env: OUTLOOK_CLIENT_ID / OUTLOOK_CLIENT_SECRET (matches calendarSync.ts).
-
-const SCOPES = [
-  'offline_access',
-  'openid',
-  'email',
-  'profile',
-  'https://graph.microsoft.com/Calendars.Read',
-  'https://graph.microsoft.com/Calendars.ReadWrite',
-  'https://graph.microsoft.com/User.Read',
-].join(' ');
+//
+// Task 70 — the scope list now also carries OnlineMeetings.ReadWrite so this
+// SAME connection can create Microsoft Teams meetings (Graph /me/onlineMeetings)
+// without a second Microsoft app/connection. Existing connections keep working
+// for calendar sync; the Teams scope is picked up when the user reconnects.
+const SCOPES = MICROSOFT_CALENDAR_SCOPES;
 
 export async function GET(request: Request) {
   const settingsUrl = new URL('/settings/integrations-hub', request.url);

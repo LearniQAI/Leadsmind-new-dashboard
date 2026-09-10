@@ -80,6 +80,14 @@
     {
       "path": "/api/cron/reminders",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/pre-meeting-brief",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/waitlist-offers",
+      "schedule": "10 * * * *"
     }
   ]
 }

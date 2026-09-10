@@ -26,6 +26,7 @@ interface BookingFormProps {
   selectedTime?: string;
   customFields?: CustomField[];
   price?: number;
+  submitLabel?: string;
   t: (key: string) => string;
   lang: string;
 }
@@ -36,6 +37,7 @@ export function BookingForm({
   selectedTime,
   customFields = [],
   price = 0,
+  submitLabel,
   t,
   lang
 }: BookingFormProps) {
@@ -252,7 +254,7 @@ export function BookingForm({
           ) : (
             <>
               <CalendarCheck2 className="h-4 w-4" />
-              {t('confirmBooking')}
+              {submitLabel ?? t('confirmBooking')}
             </>
           )}
         </button>

@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import MetaData from '@/hooks/useMetaData';
 import BookingsClient from '@/components/portal/BookingsClient';
+import { generateWaitlistToken } from '@/lib/calendar/waitlistToken';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +25,37 @@ export default async function PortalBookingsPage() {
     .eq('workspace_id', workspace.id)
     .order('start_time', { ascending: true });
 
-  const appointments = dbAppts || [];
+  const ownAppointments = dbAppts || [];
+
+  // 1b. Group-session spots this contact holds as a per-attendee record
+  //     (booking_waitlists, confirmed + not cancelled). This is how every
+  //     booked class attendee — not just the session's original contact_id —
+  //     sees and manages their own spot. Each carries a token scoped to their
+  //     own attendee record so cancel routes through cancelMyClassSpot.
+  const { data: attendeeRows } = await supabase
+    .from('booking_waitlists')
+    .select('id, appointment_id, appointment:appointments(*, calendar:booking_calendars(*))')
+    .eq('contact_id', contact.id)
+    .eq('workspace_id', workspace.id)
+    .eq('confirmed', true)
+    .is('cancelled_at', null);
+
+  const attendeeAppointments = (attendeeRows || [])
+    .filter((r: any) => r.appointment && r.appointment.status !== 'cancelled')
+    .map((r: any) => ({
+      ...r.appointment,
+      _isGroupAttendee: true,
+      _attendeeRecordId: r.id,
+      _attendeeToken: generateWaitlistToken(r.id),
+    }));
+
+  // The first booker appears in BOTH lists — prefer the attendee-scoped copy
+  // so their cancel also only frees their own spot, not the whole session.
+  const attendeeAptIds = new Set(attendeeAppointments.map((a: any) => a.id));
+  const appointments = [
+    ...ownAppointments.filter((a: any) => !attendeeAptIds.has(a.id)),
+    ...attendeeAppointments,
+  ].sort((a: any, b: any) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
 
   // 2. Fetch available scheduling configurations (calendars) in this workspace
   const { data: dbCalendars } = await supabase

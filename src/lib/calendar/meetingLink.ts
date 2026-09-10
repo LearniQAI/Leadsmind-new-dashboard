@@ -1,5 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { createGoogleMeetLink } from '@/lib/calendar/googleMeet';
+import { createZoomMeeting } from '@/lib/calendar/zoomMeeting';
+import { createTeamsMeeting } from '@/lib/calendar/teamsMeeting';
 import { getCalendarConnection } from '@/lib/calendar/connections';
 import { logger } from '@/shared/logger';
 import type { MeetingLinkStatus } from '@/lib/calendar/meetingLinkStatus';
@@ -35,6 +37,13 @@ export interface ResolvedMeetingLink {
    */
   googleCalendarEventId: string | null;
   calendarEventHostUserId: string | null;
+  /**
+   * Task 70 — the real Zoom meeting id / Teams online-meeting id created for
+   * this booking, so reschedule/cancel can PATCH/DELETE the same meeting.
+   * `calendarEventHostUserId` carries the host in these cases too.
+   */
+  zoomMeetingId?: string | null;
+  teamsMeetingId?: string | null;
 }
 
 function appUrl(): string {
@@ -85,8 +94,64 @@ export async function resolveMeetingLink(params: {
   }
 
   if (mode === 'zoom') {
-    // NO fabricated URL. Real Zoom integration is Task 70.
-    return { meetingLink: null, meetingMode: 'zoom', status: 'zoom_pending_integration', ...noEvent };
+    // Task 70 — real Zoom meeting on the host's connected Zoom account, or an
+    // honest LeadsMind-room fallback. NEVER a fabricated zoom.us URL.
+    const hostUserId = await resolveHostUserId(params.workspaceId, params.hostUserId);
+    if (hostUserId) {
+      const connection = await getCalendarConnection(hostUserId, 'zoom');
+      if (connection) {
+        const { link, meetingId } = await createZoomMeeting(
+          { title: params.title, start_time: params.startTime, end_time: params.endTime },
+          hostUserId
+        );
+        if (link) {
+          return {
+            meetingLink: link,
+            meetingMode: 'zoom',
+            status: 'zoom',
+            ...noEvent,
+            zoomMeetingId: meetingId,
+            teamsMeetingId: null,
+            calendarEventHostUserId: meetingId ? hostUserId : null,
+          };
+        }
+        logger.warn({ appointmentId: params.appointmentId }, 'calendar.meeting_link.zoom.fell_back_to_internal');
+        return { meetingLink: internalLink, meetingMode: 'internal_meet', status: 'zoom_unavailable', ...noEvent };
+      }
+    }
+    // Host hasn't connected Zoom — a real, expected pre-setup case. Working
+    // LeadsMind room now, never a fake Zoom link, and record why so the host is nudged.
+    return { meetingLink: internalLink, meetingMode: 'internal_meet', status: 'zoom_pending_connection', ...noEvent };
+  }
+
+  if (mode === 'teams') {
+    // Task 70 — real Microsoft Teams online meeting via Graph /me/onlineMeetings
+    // on the host's EXISTING Outlook connection (Task 62 + the OnlineMeetings
+    // scope). Same honest-fallback contract as Zoom / Google Meet.
+    const hostUserId = await resolveHostUserId(params.workspaceId, params.hostUserId);
+    if (hostUserId) {
+      const connection = await getCalendarConnection(hostUserId, 'outlook');
+      if (connection) {
+        const { link, meetingId } = await createTeamsMeeting(
+          { title: params.title, start_time: params.startTime, end_time: params.endTime },
+          hostUserId
+        );
+        if (link) {
+          return {
+            meetingLink: link,
+            meetingMode: 'teams',
+            status: 'teams',
+            ...noEvent,
+            teamsMeetingId: meetingId,
+            zoomMeetingId: null,
+            calendarEventHostUserId: meetingId ? hostUserId : null,
+          };
+        }
+        logger.warn({ appointmentId: params.appointmentId }, 'calendar.meeting_link.teams.fell_back_to_internal');
+        return { meetingLink: internalLink, meetingMode: 'internal_meet', status: 'teams_unavailable', ...noEvent };
+      }
+    }
+    return { meetingLink: internalLink, meetingMode: 'internal_meet', status: 'teams_pending_connection', ...noEvent };
   }
 
   if (mode === 'google_meet') {
@@ -142,6 +207,14 @@ export function applyResolvedMeetingLink(
   const meta: Record<string, any> = { ...(existingMetadata || {}), meeting_link_status: resolved.status };
   if (resolved.googleCalendarEventId) {
     meta.google_event_id = resolved.googleCalendarEventId;
+    meta.calendar_event_host_user_id = resolved.calendarEventHostUserId;
+  }
+  if (resolved.zoomMeetingId) {
+    meta.zoom_meeting_id = resolved.zoomMeetingId;
+    meta.calendar_event_host_user_id = resolved.calendarEventHostUserId;
+  }
+  if (resolved.teamsMeetingId) {
+    meta.teams_meeting_id = resolved.teamsMeetingId;
     meta.calendar_event_host_user_id = resolved.calendarEventHostUserId;
   }
   return meta;

@@ -21,6 +21,7 @@ import { parseManageToken } from '@/lib/calendar/manageToken';
 import { getAvailableSlots, validateSlot } from './scheduling';
 import { sendCancellationNotice, sendRescheduleNotice } from '@/lib/calendar/notifications';
 import { pushEventCancellation, pushEventTimeUpdate } from '@/lib/calendar/calendarSync';
+import { notifyNewlyOfferedWaitlist } from '@/lib/calendar/waitlist';
 import { meetingLinkNote, type MeetingLinkStatus } from '@/lib/calendar/meetingLinkStatus';
 import { isSlotConflictError, SLOT_CONFLICT_MESSAGE } from '@/lib/calendar/bookingErrors';
 import { logger } from '@/shared/logger';
@@ -158,7 +159,8 @@ export async function cancelAppointmentByToken(token: string) {
   // here to actually trigger that already-existing logic — reusing it, not
   // reimplementing it.
   const isGroupSession = (appointment.max_attendees ?? 1) > 1;
-  if (isGroupSession && (appointment.current_attendee_count ?? 0) > 0) {
+  const freesGroupSpot = isGroupSession && (appointment.current_attendee_count ?? 0) > 0;
+  if (freesGroupSpot) {
     updatePayload.current_attendee_count = (appointment.current_attendee_count ?? 1) - 1;
   }
 
@@ -170,6 +172,17 @@ export async function cancelAppointmentByToken(token: string) {
   if (updateErr) {
     logger.error({ err: updateErr, appointmentId: appointment.id }, 'calendar.manage.cancel.failed');
     return { success: false, error: 'Failed to cancel this booking. Please try again.' };
+  }
+
+  // The DB trigger (tr_cancel_promotion) has, in that same UPDATE, marked the
+  // next waitlisted person `offered` — now actually email them their accept
+  // link (Task 65). Best-effort.
+  if (freesGroupSpot) {
+    try {
+      await notifyNewlyOfferedWaitlist(appointment.id);
+    } catch (wlErr) {
+      logger.error({ err: wlErr, appointmentId: appointment.id }, 'calendar.manage.cancel.waitlist_offer_failed');
+    }
   }
 
   // Remove the host's real Google/Outlook calendar event too — best-effort, so

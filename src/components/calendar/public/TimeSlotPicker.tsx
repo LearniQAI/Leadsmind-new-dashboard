@@ -37,25 +37,32 @@ export function TimeSlotPicker({ slots, selectedSlot, onSelectSlot, isLoading }:
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
       {slots.map((slot) => {
+        const s = slot as any;
         const isSelected = selectedSlot === slot.start;
         const timeStr = format(parseISO(slot.start), 'HH:mm');
         const periodStr = format(parseISO(slot.start), 'aa');
+        const isFull = s.full === true;
+        const spotsLeft: number | undefined = typeof s.spotsLeft === 'number' ? s.spotsLeft : undefined;
 
         return (
           <button
             key={slot.start}
             onClick={() => onSelectSlot(slot.start)}
             className={cn(
-              "relative group h-11 rounded-xl border transition-all duration-200 flex flex-col items-center justify-center gap-0",
-              isSelected 
-                ? "bg-[#2563eb] border-[#2563eb] shadow-lg shadow-[#2563eb]/20" 
-                : "bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10"
+              "relative group h-12 rounded-xl border transition-all duration-200 flex flex-col items-center justify-center gap-0",
+              isSelected
+                ? isFull
+                  ? "bg-amber-500 border-amber-500 shadow-lg shadow-amber-500/20"
+                  : "bg-[#2563eb] border-[#2563eb] shadow-lg shadow-[#2563eb]/20"
+                : isFull
+                  ? "bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/15"
+                  : "bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10"
             )}
           >
             <div className="flex items-baseline gap-1">
               <span className={cn(
                 "text-[14px] font-bold font-space tracking-tight",
-                isSelected ? "text-white" : "text-[#eef2ff]"
+                isSelected ? "text-white" : isFull ? "text-amber-300" : "text-[#eef2ff]"
               )}>
                 {timeStr}
               </span>
@@ -66,7 +73,17 @@ export function TimeSlotPicker({ slots, selectedSlot, onSelectSlot, isLoading }:
                 {periodStr}
               </span>
             </div>
-            
+
+            {isFull ? (
+              <span className={cn("text-[8px] font-black uppercase tracking-wider", isSelected ? "text-white/80" : "text-amber-400")}>
+                Full · Waitlist
+              </span>
+            ) : spotsLeft !== undefined && spotsLeft <= 3 ? (
+              <span className={cn("text-[8px] font-black uppercase tracking-wider", isSelected ? "text-white/80" : "text-[#4a5a82]")}>
+                {spotsLeft} left
+              </span>
+            ) : null}
+
             {isSelected && (
               <div className="absolute top-1 right-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-white shadow-sm shadow-black/20"></div>

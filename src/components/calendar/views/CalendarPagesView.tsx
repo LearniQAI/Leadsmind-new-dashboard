@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import CalendarSettingsModal from '../modals/CalendarSettingsModal';
+import RoundRobinPoolModal from '../modals/RoundRobinPoolModal';
 import { createCalendar, updateCalendar } from '@/app/actions/calendar/calendars';
 import { toast } from 'sonner';
 import { Copy, Eye, LayoutGrid, MoreVertical, User, Users, Zap } from 'lucide-react';
@@ -12,6 +13,7 @@ interface CalendarPagesViewProps {
 export default function CalendarPagesView({ calendars }: CalendarPagesViewProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCalendar, setEditingCalendar] = useState<any>(null);
+  const [teamCalendar, setTeamCalendar] = useState<any>(null);
 
   const copyToClipboard = (slug: string) => {
     const url = `${window.location.origin}/book/${slug}`;
@@ -93,6 +95,15 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
                 </div>
               </div>
 
+              {cal.calendar_type === 'round_robin' && (
+                <button
+                  onClick={() => setTeamCalendar(cal)}
+                  className="mt-5 w-full flex items-center justify-center gap-2 h-10 rounded-lg border border-dash-accent/30 bg-dash-accent/5 text-dash-accent text-[11px] font-bold hover:bg-dash-accent/10 transition-colors motion-reduce:transition-none"
+                >
+                  <Users size={14} /> Manage team
+                </button>
+              )}
+
               <div className="grid grid-cols-2 gap-3 mt-8">
                 <Button
                   variant="outline"
@@ -145,6 +156,13 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
         onClose={() => setIsModalOpen(false)}
         calendar={editingCalendar}
         onSave={handleSave}
+      />
+
+      <RoundRobinPoolModal
+        isOpen={!!teamCalendar}
+        onClose={() => setTeamCalendar(null)}
+        calendarId={teamCalendar?.id ?? null}
+        calendarName={teamCalendar?.name ?? ''}
       />
     </>
   );

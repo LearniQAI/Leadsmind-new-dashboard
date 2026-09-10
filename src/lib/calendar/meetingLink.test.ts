@@ -2,6 +2,8 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 const getCalendarConnection = vi.fn();
 const createGoogleMeetLink = vi.fn();
+const createZoomMeeting = vi.fn();
+const createTeamsMeeting = vi.fn();
 const ownerLookup = vi.fn();
 
 vi.mock('@/lib/calendar/connections', () => ({
@@ -9,6 +11,12 @@ vi.mock('@/lib/calendar/connections', () => ({
 }));
 vi.mock('@/lib/calendar/googleMeet', () => ({
   createGoogleMeetLink: (...a: unknown[]) => createGoogleMeetLink(...a),
+}));
+vi.mock('@/lib/calendar/zoomMeeting', () => ({
+  createZoomMeeting: (...a: unknown[]) => createZoomMeeting(...a),
+}));
+vi.mock('@/lib/calendar/teamsMeeting', () => ({
+  createTeamsMeeting: (...a: unknown[]) => createTeamsMeeting(...a),
 }));
 vi.mock('@/shared/logger', () => ({ logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 vi.mock('@/lib/supabase/server', () => ({
@@ -39,13 +47,66 @@ describe('resolveMeetingLink — never emits a fabricated link', () => {
   beforeEach(() => {
     getCalendarConnection.mockReset();
     createGoogleMeetLink.mockReset().mockResolvedValue({ link: null, eventId: null });
+    createZoomMeeting.mockReset().mockResolvedValue({ link: null, meetingId: null });
+    createTeamsMeeting.mockReset().mockResolvedValue({ link: null, meetingId: null });
     ownerLookup.mockReset().mockResolvedValue({ data: { owner_id: 'owner-1' } });
   });
 
-  it('zoom => null + zoom_pending_integration, NEVER a zoom.us URL', async () => {
-    const r = await resolveMeetingLink({ ...base, requestedMode: 'zoom' });
-    expect(r).toEqual({ meetingLink: null, meetingMode: 'zoom', status: 'zoom_pending_integration', ...NO_EVENT });
-    expect(getCalendarConnection).not.toHaveBeenCalled();
+  describe('zoom (Task 70)', () => {
+    it('host connected + real Zoom link => carries the join URL AND the meeting id', async () => {
+      getCalendarConnection.mockResolvedValue({ id: 'zc-1' });
+      createZoomMeeting.mockResolvedValue({ link: 'https://us05web.zoom.us/j/8123?pwd=x', meetingId: '81234567890' });
+      const r = await resolveMeetingLink({ ...base, requestedMode: 'zoom' });
+      expect(r.meetingLink).toBe('https://us05web.zoom.us/j/8123?pwd=x');
+      expect(r.meetingMode).toBe('zoom');
+      expect(r.status).toBe('zoom');
+      expect(r.zoomMeetingId).toBe('81234567890');
+      expect(r.calendarEventHostUserId).toBe('host-1');
+      expect(getCalendarConnection).toHaveBeenCalledWith('host-1', 'zoom');
+    });
+
+    it('host connected but Zoom API fails => working internal room, status zoom_unavailable (NEVER a fake zoom.us URL)', async () => {
+      getCalendarConnection.mockResolvedValue({ id: 'zc-1' });
+      createZoomMeeting.mockResolvedValue({ link: null, meetingId: null });
+      const r = await resolveMeetingLink({ ...base, requestedMode: 'zoom' });
+      expect(r).toEqual({ meetingLink: `${APP_URL}/meet/apt-1`, meetingMode: 'internal_meet', status: 'zoom_unavailable', ...NO_EVENT });
+    });
+
+    it('host has NOT connected Zoom => working internal room, status zoom_pending_connection', async () => {
+      getCalendarConnection.mockResolvedValue(null);
+      const r = await resolveMeetingLink({ ...base, requestedMode: 'zoom' });
+      expect(r).toEqual({ meetingLink: `${APP_URL}/meet/apt-1`, meetingMode: 'internal_meet', status: 'zoom_pending_connection', ...NO_EVENT });
+      expect(createZoomMeeting).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('teams (Task 70)', () => {
+    it('host connected (Outlook) + real Teams link => carries joinWebUrl AND the meeting id', async () => {
+      getCalendarConnection.mockResolvedValue({ id: 'oc-1' });
+      createTeamsMeeting.mockResolvedValue({ link: 'https://teams.microsoft.com/l/meetup-join/xyz', meetingId: 'MSPxyz==' });
+      const r = await resolveMeetingLink({ ...base, requestedMode: 'teams' });
+      expect(r.meetingLink).toBe('https://teams.microsoft.com/l/meetup-join/xyz');
+      expect(r.meetingMode).toBe('teams');
+      expect(r.status).toBe('teams');
+      expect(r.teamsMeetingId).toBe('MSPxyz==');
+      expect(r.calendarEventHostUserId).toBe('host-1');
+      // reuses the SAME outlook connection — no separate teams provider
+      expect(getCalendarConnection).toHaveBeenCalledWith('host-1', 'outlook');
+    });
+
+    it('host connected but Graph fails => internal room, status teams_unavailable', async () => {
+      getCalendarConnection.mockResolvedValue({ id: 'oc-1' });
+      createTeamsMeeting.mockResolvedValue({ link: null, meetingId: null });
+      const r = await resolveMeetingLink({ ...base, requestedMode: 'teams' });
+      expect(r).toEqual({ meetingLink: `${APP_URL}/meet/apt-1`, meetingMode: 'internal_meet', status: 'teams_unavailable', ...NO_EVENT });
+    });
+
+    it('host has NOT connected Microsoft => internal room, status teams_pending_connection', async () => {
+      getCalendarConnection.mockResolvedValue(null);
+      const r = await resolveMeetingLink({ ...base, requestedMode: 'teams' });
+      expect(r.status).toBe('teams_pending_connection');
+      expect(createTeamsMeeting).not.toHaveBeenCalled();
+    });
   });
 
   it('internal_meet => the real /meet/[id] room', async () => {
@@ -168,6 +229,26 @@ describe('applyResolvedMeetingLink', () => {
     expect(noEvent).toEqual({ notes: 'x', meeting_link_status: 'zoom_pending_integration' });
     expect(noEvent).not.toHaveProperty('google_event_id');
   });
+
+  it('records zoom_meeting_id / teams_meeting_id + host only when a real meeting was created (Task 70)', () => {
+    const zoom = applyResolvedMeetingLink(
+      {},
+      { meetingLink: 'https://zoom.us/j/1', meetingMode: 'zoom', status: 'zoom', googleCalendarEventId: null, calendarEventHostUserId: 'u-1', zoomMeetingId: '111', teamsMeetingId: null }
+    );
+    expect(zoom).toEqual({ meeting_link_status: 'zoom', zoom_meeting_id: '111', calendar_event_host_user_id: 'u-1' });
+
+    const teams = applyResolvedMeetingLink(
+      {},
+      { meetingLink: 'https://teams.microsoft.com/x', meetingMode: 'teams', status: 'teams', googleCalendarEventId: null, calendarEventHostUserId: 'u-2', zoomMeetingId: null, teamsMeetingId: 'MSP==' }
+    );
+    expect(teams).toEqual({ meeting_link_status: 'teams', teams_meeting_id: 'MSP==', calendar_event_host_user_id: 'u-2' });
+
+    const fellBack = applyResolvedMeetingLink(
+      {},
+      { meetingLink: 'internal', meetingMode: 'internal_meet', status: 'zoom_unavailable', googleCalendarEventId: null, calendarEventHostUserId: null }
+    );
+    expect(fellBack).not.toHaveProperty('zoom_meeting_id');
+  });
 });
 
 describe('meetingLinkNote', () => {
@@ -183,5 +264,14 @@ describe('meetingLinkNote', () => {
     expect(meetingLinkNote('google_meet', 'host')).toBeNull();
     expect(meetingLinkNote('internal', 'host')).toBeNull();
     expect(meetingLinkNote('none', 'booker')).toBeNull();
+    expect(meetingLinkNote('zoom', 'host')).toBeNull();
+    expect(meetingLinkNote('teams', 'host')).toBeNull();
+  });
+
+  it('zoom/teams pending connection => nudges the host, nothing to the booker (Task 70)', () => {
+    expect(meetingLinkNote('zoom_pending_connection', 'host')).toMatch(/Connect your Zoom/i);
+    expect(meetingLinkNote('zoom_pending_connection', 'booker')).toBeNull();
+    expect(meetingLinkNote('teams_pending_connection', 'host')).toMatch(/Microsoft 365/i);
+    expect(meetingLinkNote('teams_pending_connection', 'booker')).toBeNull();
   });
 });

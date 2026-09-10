@@ -107,6 +107,20 @@ const dashboardNav: NavModule[] = [
         ],
       },
       { id: 31, label: "Inventory", icon: "fa-light fa-boxes-stacked", link: "/inventory", permission: "commerce" },
+    ],
+  },
+  {
+    // Flat list, no accordion (same treatment as HR & Payroll / Finance & Accounting) --
+    // every item links directly and is always visible once the section is open. Promoted
+    // out of "Commerce & Ops", where Calendars / Waitlists / Instant Meet sat beside the
+    // genuine e-commerce items (Products, Orders, Shipments, Affiliates, Inventory) purely
+    // by historical accident -- scheduling isn't commerce. All three keep the "calendar"
+    // permission and their real, unchanged routes (/calendar, /calendar/waitlist,
+    // /calendar/instant-meet); this is a nav-location move only, no route or page change.
+    id: "calendar-meetings",
+    label: "Calendar & Meetings",
+    icon: "fa-light fa-calendar-days",
+    items: [
       { id: 9, label: "Calendars", icon: "fa-light fa-calendar-days", link: "/calendar", permission: "calendar" },
       { id: 10, label: "Waitlists", icon: "fa-light fa-clock-rotate-left", link: "/calendar/waitlist", permission: "calendar" },
       { id: 101, label: "Instant Meet", icon: "fa-light fa-video", link: "/calendar/instant-meet", permission: "calendar" },
