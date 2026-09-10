@@ -36,19 +36,23 @@ import { toast } from 'sonner';
 const calendarSchema = z.object({
   name: z.string().min(3, 'Name must be at least 3 characters'),
   calendar_type: z.enum(['personal', 'round_robin', 'collective', 'class_booking', 'service_menu', 'event']),
-  meeting_mode: z.enum(['google_meet', 'zoom', 'phone', 'in_person', 'custom_link', 'client_choice', 'internal_meet']),
+  meeting_mode: z.enum(['google_meet', 'zoom', 'teams', 'phone', 'in_person', 'custom_link', 'client_choice', 'internal_meet']),
   location: z.string(),
   description: z.string(),
   price: z.coerce.number().min(0),
+  capacity: z.coerce.number().int().min(1),
+  waitlist_enabled: z.boolean(),
 });
 
 interface CalendarFormValues {
   name: string;
   calendar_type: 'personal' | 'round_robin' | 'collective' | 'class_booking' | 'service_menu' | 'event';
-  meeting_mode: 'google_meet' | 'zoom' | 'phone' | 'in_person' | 'custom_link' | 'client_choice' | 'internal_meet';
+  meeting_mode: 'google_meet' | 'zoom' | 'teams' | 'phone' | 'in_person' | 'custom_link' | 'client_choice' | 'internal_meet';
   location: string;
   description: string;
   price: number;
+  capacity: number;
+  waitlist_enabled: boolean;
 }
 
 interface CalendarSettingsModalProps {
@@ -75,6 +79,8 @@ export default function CalendarSettingsModal({
       location: '',
       description: '',
       price: 0,
+      capacity: 1,
+      waitlist_enabled: false,
     },
   });
 
@@ -88,6 +94,8 @@ export default function CalendarSettingsModal({
           location: calendar.location || '',
           description: calendar.description || '',
           price: calendar.price || 0,
+          capacity: calendar.capacity || 1,
+          waitlist_enabled: !!calendar.waitlist_enabled,
         });
       } else {
         form.reset({
@@ -97,6 +105,8 @@ export default function CalendarSettingsModal({
           location: '',
           description: '',
           price: 0,
+          capacity: 1,
+          waitlist_enabled: false,
         });
       }
     }
@@ -200,6 +210,11 @@ export default function CalendarSettingsModal({
                            <Video size={14} className="text-blue-500" /> Zoom (Auto-Generate)
                         </div>
                       </SelectItem>
+                      <SelectItem value="teams">
+                        <div className="flex items-center gap-2">
+                           <Video size={14} className="text-indigo-500" /> Microsoft Teams (Auto-Generate)
+                        </div>
+                      </SelectItem>
                       <SelectItem value="custom_link">
                         <div className="flex items-center gap-2">
                            <LinkIcon size={14} className="!text-dash-textMuted" /> Custom Static Link
@@ -254,6 +269,49 @@ export default function CalendarSettingsModal({
                 </FormItem>
               )}
             />
+
+            {/* Group-session capacity + waitlist — only for Class/Group engines */}
+            {form.watch('calendar_type') === 'class_booking' && (
+              <div className="rounded-xl border border-dash-border bg-dash-surface/50 p-4 space-y-4">
+                <FormField
+                  control={form.control}
+                  name="capacity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-[11px] font-bold !text-dash-textMuted">Spots per session</FormLabel>
+                      <FormControl>
+                        <Input type="number" min={1} {...field} className="bg-white border-dash-border !text-dash-text h-11" placeholder="e.g. 12" />
+                      </FormControl>
+                      <FormDescription className="text-[10px] !text-dash-textMuted">
+                        How many people can book each session before it&apos;s full.
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="waitlist_enabled"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center gap-3 space-y-0">
+                      <FormControl>
+                        <input
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={(e) => field.onChange(e.target.checked)}
+                          className="h-4 w-4 rounded border-dash-border text-dash-accent focus:ring-dash-accent cursor-pointer"
+                        />
+                      </FormControl>
+                      <div>
+                        <FormLabel className="text-[11px] font-bold !text-dash-text cursor-pointer">Enable waitlist</FormLabel>
+                        <FormDescription className="text-[10px] !text-dash-textMuted">
+                          When a session is full, visitors can join a waitlist and are offered a spot (first come, first served) if one opens.
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
           </form>
         </Form>
 

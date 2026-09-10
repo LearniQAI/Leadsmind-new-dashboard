@@ -113,7 +113,7 @@ export default function ConnectProviderModal({
     setErrorMsg(null);
 
     // OAuth categories do not submit this way
-    if (category === 'email_calendar' || category === 'communication') {
+    if (category === 'email_calendar' || category === 'communication' || category === 'video_conferencing') {
       const p = provider.toLowerCase();
       // Dedicated calendar connect routes (Task 62). Google Calendar uses its
       // OWN route, not /api/auth/google (that pair is shared with Search Console).
@@ -121,7 +121,14 @@ export default function ConnectProviderModal({
         window.location.href = '/api/auth/google-calendar';
         return;
       }
-      if (p.includes('outlook') || p.includes('microsoft')) {
+      // Zoom (Task 70) — its own connect route, own token store row.
+      if (p.includes('zoom')) {
+        window.location.href = '/api/auth/zoom';
+        return;
+      }
+      // Microsoft Teams (Task 70) reuses the ONE Outlook/M365 connection (Graph
+      // online meetings + the OnlineMeetings scope) — no separate connection.
+      if (p.includes('outlook') || p.includes('microsoft') || p.includes('teams')) {
         window.location.href = '/api/auth/microsoft';
         return;
       }

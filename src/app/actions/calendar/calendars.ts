@@ -28,12 +28,26 @@ async function executeAction<T>(action: (supabase: any, workspaceId: string) => 
 // Matches exactly what CalendarSettingsModal.tsx's form actually sends
 // (verified against its zod schema) — never spread the raw client payload
 // directly into the insert/update.
-const EDITABLE_CALENDAR_FIELDS = ['name', 'calendar_type', 'meeting_mode', 'location', 'description', 'price'] as const;
+const EDITABLE_CALENDAR_FIELDS = [
+  'name', 'calendar_type', 'meeting_mode', 'location', 'description', 'price',
+  // Group-session defaults (booking_calendars.capacity / .waitlist_enabled) —
+  // inherited by each session created from a class_booking calendar's public
+  // page. Task: public waitlist-join.
+  'capacity', 'waitlist_enabled',
+] as const;
 
 function pickEditableFields(payload: any): Record<string, any> {
   const picked: Record<string, any> = {};
   for (const field of EDITABLE_CALENDAR_FIELDS) {
     if (payload[field] !== undefined) picked[field] = payload[field];
+  }
+  // Capacity only makes sense for group sessions — never let it silently
+  // shrink/grow a non-class calendar.
+  if (picked.calendar_type !== undefined && picked.calendar_type !== 'class_booking') {
+    delete picked.capacity;
+    delete picked.waitlist_enabled;
+  } else if (picked.capacity !== undefined) {
+    picked.capacity = Math.max(1, Math.floor(Number(picked.capacity) || 1));
   }
   return picked;
 }

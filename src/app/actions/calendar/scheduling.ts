@@ -408,18 +408,27 @@ export async function getAvailableSlots(calendarId: string, date: string) {
   const startOfDayStr = `${date}T00:00:00Z`;
   const endOfDayStr = `${date}T23:59:59Z`;
 
+  // Group-session (class_booking) calendars: a slot with an existing session is
+  // NOT blocked — it stays bookable until it's at capacity, then it's a
+  // "join waitlist" slot. Every other calendar type: an existing appointment
+  // blocks the slot (1:1).
+  const isClass = calendar.calendar_type === 'class_booking';
+
   const { data: existing } = await supabase
     .from('appointments')
-    .select('start_time, end_time')
+    .select(isClass ? 'id, start_time, end_time, max_attendees, current_attendee_count, waitlist_enabled' : 'start_time, end_time')
     .eq('calendar_id', calendarId)
     .eq('status', 'scheduled')
     .gte('start_time', startOfDayStr)
     .lte('start_time', endOfDayStr);
 
-  const bookedIntervals = (existing || []).map(a => ({
-    start: parseISO(a.start_time),
-    end: parseISO(a.end_time)
-  }));
+  const bookedIntervals = isClass
+    ? []
+    : (existing || []).map(a => ({ start: parseISO((a as any).start_time), end: parseISO((a as any).end_time) }));
+
+  const sessionByStart = new Map<number, any>(
+    isClass ? (existing || []).map((s: any) => [parseISO(s.start_time).getTime(), s]) : []
+  );
 
   // 7. Retrieve active PayFast checkout leases (5-min holds)
   const { data: activeLeases } = await supabase
@@ -505,11 +514,33 @@ export async function getAvailableSlots(calendarId: string, date: string) {
       );
 
       if (!isBooked && !isLeased && !isLoadShedding && !isExternallyBusy) {
-        slots.push({
+        const base = {
           start: current.toISOString(),
           end: slotEnd.toISOString(),
-          timeLabel: formatInTimeZone(current, calendarTimeZone)
-        });
+          timeLabel: formatInTimeZone(current, calendarTimeZone),
+        };
+        if (isClass) {
+          const session = sessionByStart.get(current.getTime());
+          const capacity = session?.max_attendees ?? calendar.capacity ?? 1;
+          const taken = session?.current_attendee_count ?? 0;
+          const waitlistEnabled = session ? !!session.waitlist_enabled : !!calendar.waitlist_enabled;
+          const full = taken >= capacity;
+          // A full session with no waitlist is dead — don't show it at all.
+          if (full && !waitlistEnabled) {
+            current = addMinutes(current, duration);
+            continue;
+          }
+          slots.push({
+            ...base,
+            appointmentId: session?.id ?? null,
+            capacity,
+            spotsLeft: Math.max(0, capacity - taken),
+            full,
+            waitlistEnabled,
+          });
+        } else {
+          slots.push(base);
+        }
       }
       current = addMinutes(current, duration);
     }

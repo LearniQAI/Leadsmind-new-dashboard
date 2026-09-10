@@ -52,7 +52,7 @@ beforeEach(() => {
 describe('pushEventTimeUpdate (reschedule → PATCH the calendar event)', () => {
   it('does nothing when the booking has no stored calendar event', async () => {
     const r = await pushEventTimeUpdate('apt-1');
-    expect(r).toEqual({ attempted: false, failed: false, google: null, outlook: null });
+    expect(r).toEqual({ attempted: false, failed: false, google: null, outlook: null, zoom: null, teams: null });
     expect(updateGoogle).not.toHaveBeenCalled();
     expect(dbUpdate).not.toHaveBeenCalled();
   });
@@ -130,6 +130,8 @@ describe('pushEventCancellation (cancel → DELETE the calendar event)', () => {
       failed: false,
       google: null,
       outlook: null,
+      zoom: null,
+      teams: null,
     });
   });
 });

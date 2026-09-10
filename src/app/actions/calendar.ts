@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/shared/logger';
 import { toClientError } from '@/shared/errors/AppError';
+import { sendWaitlistOfferEmail, cancelClassSession } from '@/lib/calendar/waitlist';
 
 /**
  * --- HELPER: STANDARD ACTION WRAPPER ---
@@ -65,6 +66,24 @@ export async function updateAppointmentStatus(id: string, status: string) {
       .eq('workspace_id', workspaceId);
 
     if (error) throw error;
+
+    // Cancelling a group session from the staff list: notify + cancel every
+    // attendee record (no waitlist offers — nothing is available).
+    if (status === 'cancelled') {
+      const { data: apt } = await supabase
+        .from('appointments')
+        .select('max_attendees')
+        .eq('id', id)
+        .eq('workspace_id', workspaceId)
+        .maybeSingle();
+      if (apt && (apt.max_attendees ?? 1) > 1) {
+        try {
+          await cancelClassSession(id);
+        } catch (err) {
+          logger.error({ err, appointmentId: id }, 'calendar.appointment_status.group_cancel.failed');
+        }
+      }
+    }
 
     revalidatePath('/calendar');
     return true;
@@ -191,6 +210,14 @@ export async function offerWaitlistSpot(waitlistId: string) {
    .single();
 
   if (updateErr) throw updateErr;
+
+  // Actually email the person their time-limited accept link (Task 65) — this
+  // was previously a no-op that a toast falsely claimed had happened.
+  try {
+    await sendWaitlistOfferEmail(waitlistId);
+  } catch (mailErr) {
+    logger.error({ err: mailErr, waitlistId }, 'calendar.waitlist.manual_offer_email.failed');
+  }
 
   revalidatePath('/calendar/waitlist');
   return waitlistEntry;

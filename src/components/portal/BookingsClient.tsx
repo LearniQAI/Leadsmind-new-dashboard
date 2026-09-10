@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useTransition } from 'react';
 import { Calendar, Video, Clock, ChevronRight, AlertCircle, X, ShieldAlert, Sparkles, RefreshCw } from 'lucide-react';
-import { bookAppointmentFromPortal, cancelAppointmentFromPortal, rescheduleAppointmentFromPortal } from '@/app/actions/portalBookings';
+import { bookAppointmentFromPortal, cancelAppointmentFromPortal, cancelMyClassSpot, rescheduleAppointmentFromPortal } from '@/app/actions/portalBookings';
 import { fetchPublicSlots } from '@/app/actions/calendar/public';
 import { format, parseISO, differenceInSeconds } from 'date-fns';
 import { toast } from 'sonner';
@@ -126,17 +126,24 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
   };
 
   // 2. Submit Cancellation
-  const handleCancelBooking = async (apptId: string) => {
-    if (!window.confirm("Are you sure you want to cancel this consultation meeting?")) {
+  const handleCancelBooking = async (appt: any) => {
+    const isGroupAttendee = !!appt._isGroupAttendee;
+    if (!window.confirm(
+      isGroupAttendee
+        ? "Cancel your spot for this session? The session itself will still go ahead."
+        : "Are you sure you want to cancel this consultation meeting?"
+    )) {
       return;
     }
 
     startTransition(async () => {
       try {
-        const res = await cancelAppointmentFromPortal(apptId);
+        const res = isGroupAttendee
+          ? await cancelMyClassSpot(appt.id)
+          : await cancelAppointmentFromPortal(appt.id);
         if (res.success) {
-          toast.success("Appointment cancelled successfully.");
-          setAppointments(appointments.map(a => a.id === apptId ? { ...a, status: 'cancelled' } : a));
+          toast.success(isGroupAttendee ? "Your spot has been cancelled." : "Appointment cancelled successfully.");
+          setAppointments(appointments.map(a => a.id === appt.id ? { ...a, status: 'cancelled' } : a));
         } else {
           toast.error(res.error || "Failed to cancel appointment.");
         }
@@ -266,15 +273,17 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
                     </span>
 
                     <div className="flex gap-2 justify-end">
+                      {!appt._isGroupAttendee && (
+                        <button
+                          onClick={() => setReschedulingAppt(appt)}
+                          disabled={isPending}
+                          className="px-3.5 h-10 rounded-xl bg-white/5 hover:bg-white/10 text-[#eef2ff] text-[9.5px] font-black uppercase tracking-wider border border-white/5 transition-colors disabled:opacity-50"
+                        >
+                          Reschedule
+                        </button>
+                      )}
                       <button
-                        onClick={() => setReschedulingAppt(appt)}
-                        disabled={isPending}
-                        className="px-3.5 h-10 rounded-xl bg-white/5 hover:bg-white/10 text-[#eef2ff] text-[9.5px] font-black uppercase tracking-wider border border-white/5 transition-colors disabled:opacity-50"
-                      >
-                        Reschedule
-                      </button>
-                      <button
-                        onClick={() => handleCancelBooking(appt.id)}
+                        onClick={() => handleCancelBooking(appt)}
                         disabled={isPending}
                         className="px-3.5 h-10 rounded-xl bg-red-500/5 hover:bg-red-500/15 text-red-400 text-[9.5px] font-black uppercase tracking-wider border border-red-500/10 transition-colors disabled:opacity-50"
                         title={`Subject to ${cancelWindowHours} hour modification window`}

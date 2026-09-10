@@ -58,14 +58,17 @@ async function main() {
       return data;
     };
 
-    // 1. zoom — must NEVER get a zoom.us link
+    // 1. zoom — must NEVER get a fabricated zoom.us link. Task 70 made zoom a
+    //    real branch: with no Zoom connection it falls back to a working
+    //    internal room + status zoom_pending_connection (no fake zoom.us URL).
     const zoomApt = await mkApt('zoom');
     const zoom = await resolveMeetingLink({
       appointmentId: zoomApt.id, requestedMode: 'zoom', hostUserId: null, workspaceId,
       calendarCustomLink: null, title: zoomApt.title, startTime: zoomApt.start_time, endTime: zoomApt.end_time,
     });
-    check('zoom: meetingLink is null (no fabricated zoom.us URL)', zoom.meetingLink === null && !looksFake(zoom.meetingLink));
-    check('zoom: status = zoom_pending_integration', zoom.status === 'zoom_pending_integration', zoom.status);
+    check('zoom: no fabricated zoom.us URL', !looksFake(zoom.meetingLink));
+    check('zoom (no connection): honest fallback status', zoom.status === 'zoom_pending_connection', zoom.status);
+    check('zoom (no connection): working internal room, not null', zoom.meetingLink === `${appUrl}/meet/${zoomApt.id}`);
 
     // 2. google_meet, host NOT connected -> real internal room, honest status
     const g1Apt = await mkApt('google_meet');

@@ -14,12 +14,14 @@ import BookingModal from './modals/BookingModal';
 import AppointmentDetailsModal from './modals/AppointmentDetailsModal';
 import ConfirmationModal from './modals/ConfirmationModal';
 import CalendarSettingsModal from './modals/CalendarSettingsModal';
+import RecurrenceScopeModal, { type RecurrenceScope } from './modals/RecurrenceScopeModal';
 import {
   getAppointments,
   createAppointment,
   updateAppointment,
   deleteAppointment
 } from '@/app/actions/calendar/appointments';
+import { updateRecurringScope } from '@/app/actions/calendar/recurringMeetings';
 import { createCalendar } from '@/app/actions/calendar/calendars';
 import { toast } from 'sonner';
 
@@ -45,6 +47,10 @@ export default function CalendarClient({
   const [isDeleting, setIsDeleting] = useState(false);
   const [appointmentToDelete, setAppointmentToDelete] = useState<string | null>(null);
   const [isCreateCalendarOpen, setIsCreateCalendarOpen] = useState(false);
+  // Task 69 — recurring-series scope prompt
+  const [scopePrompt, setScopePrompt] = useState<{ apt: any; action: 'cancel' | 'reschedule' } | null>(null);
+  const [scopeBusy, setScopeBusy] = useState(false);
+  const [seriesRescheduleScope, setSeriesRescheduleScope] = useState<RecurrenceScope | null>(null);
 
   const handleDayClick = (date: Date) => {
     setSelectedDate(date);
@@ -58,8 +64,40 @@ export default function CalendarClient({
   };
 
   const handleCancelAppointment = (id: string) => {
+    const apt = initialAppointments.find((a) => a.id === id);
+    if (apt?.series_id) {
+      setScopePrompt({ apt, action: 'cancel' });
+      setIsDetailsModalOpen(false);
+      return;
+    }
     setAppointmentToDelete(id);
     setIsConfirmOpen(true);
+  };
+
+  const handleScopeConfirm = async (scope: RecurrenceScope) => {
+    if (!scopePrompt) return;
+    if (scopePrompt.action === 'reschedule') {
+      // Hand off to BookingModal to collect the new time; the actual call
+      // happens in onSeriesReschedule below.
+      setSeriesRescheduleScope(scope);
+      setSelectedAppointment(scopePrompt.apt);
+      setIsEditing(true);
+      setScopePrompt(null);
+      setIsBookingModalOpen(true);
+      return;
+    }
+    setScopeBusy(true);
+    try {
+      const res = await updateRecurringScope({ appointmentId: scopePrompt.apt.id, scope, action: 'cancel' });
+      if (res.success) {
+        toast.success(`Cancelled (${res.data.affected} occurrence${res.data.affected === 1 ? '' : 's'})`);
+        setScopePrompt(null);
+      } else {
+        toast.error(res.error || 'Failed to cancel');
+      }
+    } finally {
+      setScopeBusy(false);
+    }
   };
 
   const confirmDelete = async () => {
@@ -81,10 +119,32 @@ export default function CalendarClient({
   };
 
   const handleEditAppointment = (appointment: any) => {
+    if (appointment?.series_id) {
+      // Recurring occurrence — ask scope first, then collect the new time.
+      setScopePrompt({ apt: appointment, action: 'reschedule' });
+      setIsDetailsModalOpen(false);
+      return;
+    }
     setSelectedAppointment(appointment);
     setIsEditing(true);
     setIsDetailsModalOpen(false);
     setIsBookingModalOpen(true);
+  };
+
+  const handleSeriesReschedule = async (newStartISO: string) => {
+    if (!selectedAppointment || !seriesRescheduleScope) {
+      return { success: false, error: 'Missing recurrence scope' };
+    }
+    const res = await updateRecurringScope({
+      appointmentId: selectedAppointment.id,
+      scope: seriesRescheduleScope,
+      action: 'reschedule',
+      newStartTime: newStartISO,
+    });
+    setSeriesRescheduleScope(null);
+    return res.success
+      ? { success: true }
+      : { success: false, error: res.error };
   };
 
   const handleCreateCalendar = async (data: any) => {
@@ -163,6 +223,7 @@ export default function CalendarClient({
           setIsBookingModalOpen(false);
           handleAppointmentClick(apt);
         }}
+        onSeriesReschedule={seriesRescheduleScope ? handleSeriesReschedule : undefined}
       />
 
       <AppointmentDetailsModal
@@ -182,6 +243,14 @@ export default function CalendarClient({
         onClose={() => setIsCreateCalendarOpen(false)}
         calendar={null}
         onSave={handleCreateCalendar}
+      />
+
+      <RecurrenceScopeModal
+        isOpen={!!scopePrompt}
+        onClose={() => setScopePrompt(null)}
+        action={scopePrompt?.action ?? 'cancel'}
+        onConfirm={handleScopeConfirm}
+        isLoading={scopeBusy}
       />
 
       <ConfirmationModal

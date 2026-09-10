@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { BookingFlow } from '@/components/calendar/public/BookingFlow';
-import { fetchPublicSlots, bookAppointment } from '@/app/actions/calendar/public';
+import { fetchPublicSlots, bookAppointment, bookClassSession } from '@/app/actions/calendar/public';
 import { format } from 'date-fns';
 import { Loader2, Globe, Languages } from 'lucide-react';
 import { useTranslation, Language } from '@/lib/calendar/useTranslation';
@@ -35,21 +35,24 @@ export default function BookingClientWrapper({ calendar }: BookingClientWrapperP
     loadSlots();
   }, [calendar.id, selectedDate]);
 
+  const isClass = calendar.calendar_type === 'class_booking';
+
   // 2. Booking Action
-  const handleBook = async (slot: string, leadData: any) => {
+  const handleBook = async (slot: string, leadData: any): Promise<{ success: boolean; mode?: 'booked' | 'waitlist'; position?: number }> => {
     try {
-      const res = await bookAppointment(calendar.id, slot, leadData);
-      
-      if (res.success && res.checkoutRequired && res.redirectUrl) {
-        // Redirection to PayFast interstitial checkout gate
-        window.location.href = res.redirectUrl;
-        return true;
+      if (isClass) {
+        const res = await bookClassSession(calendar.id, slot, leadData);
+        return { success: !!res.success, mode: (res as any).mode, position: (res as any).position };
       }
-      
-      return res.success;
+      const res = await bookAppointment(calendar.id, slot, leadData);
+      if (res.success && res.checkoutRequired && res.redirectUrl) {
+        window.location.href = res.redirectUrl;
+        return { success: true };
+      }
+      return { success: !!res.success };
     } catch (err) {
       console.error('[booking-wrapper] Booking submission error:', err);
-      return false;
+      return { success: false };
     }
   };
 
@@ -125,11 +128,12 @@ export default function BookingClientWrapper({ calendar }: BookingClientWrapperP
            <p className="text-[10px] font-black uppercase tracking-[0.2em]">Assembling slots matrix...</p>
         </div>
       ) : (
-        <BookingFlow 
-          availableSlots={availableSlots} 
+        <BookingFlow
+          availableSlots={availableSlots}
           onBook={handleBook}
           customFields={calendar.custom_fields || []}
           price={parseFloat(calendar.price || '0')}
+          isClass={isClass}
           t={t}
           lang={lang}
         />

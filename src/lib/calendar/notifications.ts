@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/email';
 import { generateManageToken } from '@/lib/calendar/manageToken';
+import { generateWaitlistToken } from '@/lib/calendar/waitlistToken';
 import { meetingLinkNote, type MeetingLinkStatus } from '@/lib/calendar/meetingLink';
 import { logger } from '@/shared/logger';
 import { format } from 'date-fns';
@@ -94,6 +95,19 @@ interface NotifyOptions {
   // (Part 1's explicit requirement: a promoted booking gets the same email).
   reason?: 'booked' | 'waitlist_promoted' | 'rescheduled' | 'cancelled';
   previousWhen?: string; // for reschedule emails, the old date/time string
+  // Group-session waitlist promotions email the person who claimed the spot,
+  // NOT appointments.contact (the session's original booker). Task 65.
+  overrideRecipient?: { email: string; name: string | null };
+  // Per-attendee record (booking_waitlists.id) for a group session. When set,
+  // the booker's "manage this booking" link is scoped to THIS attendee's own
+  // record (/book/waitlist/<token>) rather than the shared session manage
+  // token — so each attendee of a class session manages only their own spot.
+  attendeeRecordId?: string;
+  // Task 69 — when this booking is the first occurrence of a recurring series,
+  // a one-line human summary of the recurrence ("Repeats weekly, 4 occurrences")
+  // added to both the booker and host emails so the confirmation is honest about
+  // the whole series, not just the first meeting.
+  recurrenceSummary?: string;
 }
 
 export async function sendBookingConfirmation(appointmentId: string, options: NotifyOptions = {}) {
@@ -104,9 +118,10 @@ export async function sendBookingConfirmation(appointmentId: string, options: No
   }
 
   const when = formatWhen(apt.start_time, apt.end_time, apt.calendar?.timezone ?? null);
-  const manageToken = generateManageToken(apt.id);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  const manageUrl = `${appUrl}/book/manage/${manageToken}`;
+  const manageUrl = options.attendeeRecordId
+    ? `${appUrl}/book/waitlist/${generateWaitlistToken(options.attendeeRecordId)}`
+    : `${appUrl}/book/manage/${generateManageToken(apt.id)}`;
   const host = await resolveHostEmail(apt.workspace_id, apt.user_id);
   const isRoundRobin = apt.calendar?.calendar_type === 'round_robin';
   const linkStatus = (apt.metadata?.meeting_link_status as MeetingLinkStatus) ?? 'none';
@@ -116,6 +131,7 @@ export async function sendBookingConfirmation(appointmentId: string, options: No
     ``,
     `${apt.title}`,
     when,
+    options.recurrenceSummary ? options.recurrenceSummary : null,
     isRoundRobin && host ? `Host: ${host.name}` : null,
     apt.meeting_link ? `Meeting link: ${apt.meeting_link}` : null,
     meetingLinkNote(linkStatus, 'booker'),
@@ -123,10 +139,11 @@ export async function sendBookingConfirmation(appointmentId: string, options: No
     `Need to make a change? Manage this booking: ${manageUrl}`,
   ].filter(Boolean) as string[];
 
-  if (apt.contact?.email) {
+  const bookerRecipient = options.overrideRecipient?.email ?? apt.contact?.email ?? null;
+  if (bookerRecipient) {
     try {
       await sendEmail({
-        to: apt.contact.email,
+        to: bookerRecipient,
         subject: options.reason === 'waitlist_promoted' ? `You're off the waitlist: ${apt.title}` : `Booking confirmed: ${apt.title}`,
         text: bookerLines.join('\n'),
         tags: [{ name: 'category', value: 'calendar_booking_confirmation' }] as any,
@@ -140,6 +157,7 @@ export async function sendBookingConfirmation(appointmentId: string, options: No
     const staffLines = [
       `New booking: ${apt.title}`,
       when,
+      options.recurrenceSummary ? options.recurrenceSummary : null,
       `Booked by: ${bookerName(apt.contact)}${apt.contact?.email ? ` (${apt.contact.email})` : ''}`,
       apt.meeting_link ? `Meeting link: ${apt.meeting_link}` : null,
       meetingLinkNote(linkStatus, 'host'),
@@ -156,6 +174,11 @@ export async function sendBookingConfirmation(appointmentId: string, options: No
       logger.error({ err, appointmentId }, 'calendar.notification.staff_notice.failed');
     }
   }
+}
+
+function calendarSyncWarning(apt: AppointmentForNotification, action: 'moved' | 'cancelled'): string | null {
+  if (!apt.metadata?.calendar_sync_error) return null;
+  return `\n⚠ This booking's ${action === 'cancelled' ? 'cancellation' : 'new time'} could not be synced to your connected Google/Outlook calendar — please update (or remove) the event there manually, or reconnect the calendar in Settings.`;
 }
 
 export async function sendCancellationNotice(appointmentId: string, when: string) {
@@ -180,7 +203,7 @@ export async function sendCancellationNotice(appointmentId: string, when: string
       await sendEmail({
         to: host.email,
         subject: `Booking cancelled: ${apt.title}`,
-        text: `${bookerName(apt.contact)} cancelled "${apt.title}" (${when}).`,
+        text: `${bookerName(apt.contact)} cancelled "${apt.title}" (${when}).${calendarSyncWarning(apt, 'cancelled') ?? ''}`,
         tags: [{ name: 'category', value: 'calendar_booking_cancellation_staff' }] as any,
       } as any);
     } catch (err) {
@@ -197,6 +220,7 @@ export async function sendRescheduleNotice(appointmentId: string, previousWhen: 
   const manageToken = generateManageToken(apt.id);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const manageUrl = `${appUrl}/book/manage/${manageToken}`;
+  const linkStatus = (apt.metadata?.meeting_link_status as MeetingLinkStatus) ?? 'none';
 
   if (apt.contact?.email) {
     try {
@@ -208,6 +232,7 @@ export async function sendRescheduleNotice(appointmentId: string, previousWhen: 
           `Previous time: ${previousWhen}`,
           `New time: ${newWhen}`,
           apt.meeting_link ? `Meeting link: ${apt.meeting_link}` : null,
+          meetingLinkNote(linkStatus, 'booker'),
           `Manage this booking: ${manageUrl}`,
         ].filter(Boolean).join('\n'),
         tags: [{ name: 'category', value: 'calendar_booking_reschedule' }] as any,
@@ -221,7 +246,7 @@ export async function sendRescheduleNotice(appointmentId: string, previousWhen: 
       await sendEmail({
         to: host.email,
         subject: `Booking rescheduled: ${apt.title}`,
-        text: `${bookerName(apt.contact)} rescheduled "${apt.title}" from ${previousWhen} to ${newWhen}.`,
+        text: `${bookerName(apt.contact)} rescheduled "${apt.title}" from ${previousWhen} to ${newWhen}.${calendarSyncWarning(apt, 'moved') ?? ''}`,
         tags: [{ name: 'category', value: 'calendar_booking_reschedule_staff' }] as any,
       } as any);
     } catch (err) {

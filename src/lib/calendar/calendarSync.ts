@@ -18,6 +18,8 @@ import {
   type CalendarEventSyncResult,
 } from '@/lib/calendar/googleMeet';
 import { updateOutlookCalendarEventTime, deleteOutlookCalendarEvent } from '@/lib/calendar/outlookCalendarEvents';
+import { updateZoomMeetingTime, deleteZoomMeeting } from '@/lib/calendar/zoomMeeting';
+import { updateTeamsMeetingTime, deleteTeamsMeeting } from '@/lib/calendar/teamsMeeting';
 
 export interface BusySlot {
   start: string; // ISO string
@@ -284,6 +286,8 @@ interface EventSyncOutcome {
   failed: boolean;
   google: CalendarEventSyncResult | null;
   outlook: CalendarEventSyncResult | null;
+  zoom: CalendarEventSyncResult | null;
+  teams: CalendarEventSyncResult | null;
 }
 
 async function loadEventSyncContext(appointmentId: string) {
@@ -302,6 +306,8 @@ async function loadEventSyncContext(appointmentId: string) {
     hostUserId: (metadata.calendar_event_host_user_id as string | null) ?? data.user_id ?? null,
     googleEventId: (metadata.google_event_id as string | null) ?? null,
     outlookEventId: (metadata.outlook_event_id as string | null) ?? null,
+    zoomMeetingId: (metadata.zoom_meeting_id as string | null) ?? null,
+    teamsMeetingId: (metadata.teams_meeting_id as string | null) ?? null,
   };
 }
 
@@ -318,9 +324,11 @@ async function recordSyncMarker(
   } else if (outcome.attempted) {
     delete next.calendar_sync_error;
     if (action === 'cancel') {
-      // The events are gone — don't leave dangling ids that a later call would retry.
+      // The events/meetings are gone — don't leave dangling ids a later call would retry.
       delete next.google_event_id;
       delete next.outlook_event_id;
+      delete next.zoom_meeting_id;
+      delete next.teams_meeting_id;
     }
   } else {
     return; // nothing attempted, nothing to record
@@ -330,9 +338,9 @@ async function recordSyncMarker(
 
 /** Reschedule → PATCH the host's Google/Outlook event to the appointment's current times. */
 export async function pushEventTimeUpdate(appointmentId: string): Promise<EventSyncOutcome> {
-  const outcome: EventSyncOutcome = { attempted: false, failed: false, google: null, outlook: null };
+  const outcome: EventSyncOutcome = { attempted: false, failed: false, google: null, outlook: null, zoom: null, teams: null };
   const ctx = await loadEventSyncContext(appointmentId);
-  if (!ctx || (!ctx.googleEventId && !ctx.outlookEventId)) return outcome;
+  if (!ctx || (!ctx.googleEventId && !ctx.outlookEventId && !ctx.zoomMeetingId && !ctx.teamsMeetingId)) return outcome;
 
   const times = { startIso: ctx.appointment.start_time as string, endIso: ctx.appointment.end_time as string };
 
@@ -346,6 +354,16 @@ export async function pushEventTimeUpdate(appointmentId: string): Promise<EventS
     outcome.outlook = await updateOutlookCalendarEventTime(ctx.hostUserId, ctx.outlookEventId, times);
     if (outcome.outlook === 'failed') outcome.failed = true;
   }
+  if (ctx.zoomMeetingId) {
+    outcome.attempted = true;
+    outcome.zoom = await updateZoomMeetingTime(ctx.hostUserId, ctx.zoomMeetingId, times);
+    if (outcome.zoom === 'failed') outcome.failed = true;
+  }
+  if (ctx.teamsMeetingId) {
+    outcome.attempted = true;
+    outcome.teams = await updateTeamsMeetingTime(ctx.hostUserId, ctx.teamsMeetingId, times);
+    if (outcome.teams === 'failed') outcome.failed = true;
+  }
 
   await recordSyncMarker(ctx.supabase, appointmentId, ctx.metadata, 'reschedule', outcome);
   return outcome;
@@ -353,9 +371,9 @@ export async function pushEventTimeUpdate(appointmentId: string): Promise<EventS
 
 /** Cancel → DELETE the host's Google/Outlook event. */
 export async function pushEventCancellation(appointmentId: string): Promise<EventSyncOutcome> {
-  const outcome: EventSyncOutcome = { attempted: false, failed: false, google: null, outlook: null };
+  const outcome: EventSyncOutcome = { attempted: false, failed: false, google: null, outlook: null, zoom: null, teams: null };
   const ctx = await loadEventSyncContext(appointmentId);
-  if (!ctx || (!ctx.googleEventId && !ctx.outlookEventId)) return outcome;
+  if (!ctx || (!ctx.googleEventId && !ctx.outlookEventId && !ctx.zoomMeetingId && !ctx.teamsMeetingId)) return outcome;
 
   if (ctx.googleEventId) {
     outcome.attempted = true;
@@ -366,6 +384,16 @@ export async function pushEventCancellation(appointmentId: string): Promise<Even
     outcome.attempted = true;
     outcome.outlook = await deleteOutlookCalendarEvent(ctx.hostUserId, ctx.outlookEventId);
     if (outcome.outlook === 'failed') outcome.failed = true;
+  }
+  if (ctx.zoomMeetingId) {
+    outcome.attempted = true;
+    outcome.zoom = await deleteZoomMeeting(ctx.hostUserId, ctx.zoomMeetingId);
+    if (outcome.zoom === 'failed') outcome.failed = true;
+  }
+  if (ctx.teamsMeetingId) {
+    outcome.attempted = true;
+    outcome.teams = await deleteTeamsMeeting(ctx.hostUserId, ctx.teamsMeetingId);
+    if (outcome.teams === 'failed') outcome.failed = true;
   }
 
   await recordSyncMarker(ctx.supabase, appointmentId, ctx.metadata, 'cancel', outcome);

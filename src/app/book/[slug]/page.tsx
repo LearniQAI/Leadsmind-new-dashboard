@@ -64,6 +64,20 @@ export default async function BookingPage({
                   <p className="text-[15px] font-bold text-[var(--t1)]">{calendar.timezone || 'UTC'}</p>
                 </div>
               </div>
+
+              {calendar.calendar_type === 'class_booking' && (
+                <div className="flex items-center gap-4 group">
+                  <div className="w-10 h-10 rounded-xl bg-[var(--n800)] border border-[var(--bdr)] flex items-center justify-center text-[var(--t4)]">
+                    <ShieldCheck size={20} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-[var(--t4)]">Group session</p>
+                    <p className="text-[15px] font-bold text-[var(--t1)]">
+                      Up to {calendar.capacity || 1} spots{calendar.waitlist_enabled ? ' · waitlist' : ''}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Trust Badges */}

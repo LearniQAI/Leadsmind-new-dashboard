@@ -5,7 +5,7 @@ import { parseISO, addMinutes } from 'date-fns';
 import { logRevenueToAccounting } from '@/lib/calendar/accountingHook';
 import { createSupportTicket } from '@/lib/calendar/crossConnect';
 import { sendBookingConfirmation } from '@/lib/calendar/notifications';
-import { resolveMeetingLink } from '@/lib/calendar/meetingLink';
+import { resolveMeetingLink, applyResolvedMeetingLink } from '@/lib/calendar/meetingLink';
 import { logger } from '@/shared/logger';
 import { sendInvoiceEmail } from '@/lib/invoices/sendInvoiceEmail';
 import { calculateInclusiveTax } from '@/lib/invoicing/calculations';
@@ -126,7 +126,7 @@ export async function POST(req: NextRequest) {
             .update({
               meeting_link: resolvedLink.meetingLink,
               meeting_mode: resolvedLink.meetingMode,
-              metadata: { ...(appointment.metadata || {}), meeting_link_status: resolvedLink.status },
+              metadata: applyResolvedMeetingLink(appointment.metadata, resolvedLink),
             })
             .eq('id', appointment.id);
 

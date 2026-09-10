@@ -11,6 +11,27 @@ import { isSlotConflictError, SLOT_CONFLICT_MESSAGE } from '@/lib/calendar/booki
 import { sendBookingConfirmation } from '@/lib/calendar/notifications';
 import { resolveMeetingLink, applyResolvedMeetingLink } from '@/lib/calendar/meetingLink';
 import { pushEventCancellation, pushEventTimeUpdate } from '@/lib/calendar/calendarSync';
+import { cancelClassSession } from '@/lib/calendar/waitlist';
+
+// A group session (class_booking) carries per-attendee records. When staff
+// cancel or delete such a session, every attendee (and anyone waitlisted) must
+// be notified and their records marked cancelled — cancelClassSession does that
+// and makes NO waitlist offers (nothing is available).
+async function notifyGroupSessionCancellation(supabase: any, appointmentId: string, workspaceId: string) {
+  const { data: apt } = await supabase
+    .from('appointments')
+    .select('id, max_attendees')
+    .eq('id', appointmentId)
+    .eq('workspace_id', workspaceId)
+    .maybeSingle();
+  if (apt && (apt.max_attendees ?? 1) > 1) {
+    try {
+      await cancelClassSession(appointmentId);
+    } catch (err) {
+      logger.error({ err, appointmentId }, 'calendar.appointment.group_cancel.notify_failed');
+    }
+  }
+}
 
 // Previously read the workspaceId straight off the active_workspace_id cookie
 // (getCurrentWorkspaceId()) with no auth check at all — this wrapper never
@@ -207,6 +228,10 @@ export async function updateAppointment(id: string, payload: Partial<any>) {
 
     if (error) throw error;
 
+    if (payload.status === 'cancelled') {
+      await notifyGroupSessionCancellation(supabase, id, workspaceId);
+    }
+
     // Staff-side reschedule: keep the host's real Google Calendar event in sync
     // (best-effort — a calendar failure must not undo the booking change).
     if (payload.start_time || payload.end_time) {
@@ -224,6 +249,9 @@ export async function updateAppointment(id: string, payload: Partial<any>) {
 
 export async function deleteAppointment(id: string) {
   return executeAction(async (supabase, workspaceId) => {
+    // Notify + cancel every attendee record before the row (and its FK rows) go.
+    await notifyGroupSessionCancellation(supabase, id, workspaceId);
+
     // Cancel the host's Google Calendar event BEFORE deleting the row — the
     // event id lives in the row's metadata (best-effort; never blocks the delete).
     try {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { consumeOAuthStateNonce } from '@/lib/oauth/stateNonce';
-import { storeCalendarConnection } from '@/lib/calendar/connections';
+import { storeCalendarConnection, MICROSOFT_CALENDAR_SCOPES } from '@/lib/calendar/connections';
 import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
@@ -55,7 +55,7 @@ export async function GET(request: Request) {
         code,
         redirect_uri: redirectUri,
         grant_type: 'authorization_code',
-        scope: 'offline_access openid email profile https://graph.microsoft.com/Calendars.Read https://graph.microsoft.com/Calendars.ReadWrite https://graph.microsoft.com/User.Read',
+        scope: MICROSOFT_CALENDAR_SCOPES,
       }),
     });
     const tokens = await tokenRes.json();

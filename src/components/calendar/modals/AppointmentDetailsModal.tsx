@@ -53,6 +53,11 @@ export default function AppointmentDetailsModal({
             <span className="px-2 py-0.5 rounded-full bg-dash-accent/10 text-dash-accent text-[10px] font-bold border border-dash-accent/20">
               {appointment.calendar?.calendar_type || 'Booking'}
             </span>
+            {appointment.series_id && (
+              <span className="px-2 py-0.5 rounded-full bg-dash-surface text-dash-textMuted text-[10px] font-bold border border-dash-border flex items-center gap-1">
+                ⟳ Recurring{appointment.is_exception ? ' · edited' : ''}
+              </span>
+            )}
           </div>
           <DialogTitle className="text-[22px] font-bold !text-dash-text leading-tight">
             {appointment.title}

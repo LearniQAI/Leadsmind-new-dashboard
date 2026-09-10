@@ -36,7 +36,8 @@ intake forms, status updates, analytics) — still partly on the weak
 **Libs** (`src/lib/calendar/`): `scheduling` logic aside, notable files —
 `notifications.ts` (real, email confirmations), `calendarSync.ts` (external
 Google/Outlook busy-sync + push), `googleMeet.ts` (real Google Meet API call),
-`sms.ts` (`sendCalendarSMS` — **orphan, zero callers**),
+`sms.ts` (`sendCalendarSMS` — **orphan, zero callers** — DELETED in Task 68, 2026-09-10; the reminders cron uses `@/lib/sms`),
+`whatsappReminder.ts` (Task 68 — real WhatsApp reminder send, used by `/api/cron/reminders`),
 `recurring.ts` (`generateRecurringSlots` — **imported once, never called**),
 `manageToken.ts` (HMAC token, real), `payfast.ts`, `eskomsepush.ts`,
 `saHolidays.ts`, `timezone.ts`, `popia.ts`, `crossConnect.ts`,
@@ -286,7 +287,16 @@ CalDAV later).
 
 ---
 
-### Task 68 — SMS / WhatsApp appointment reminders — **PARTIALLY BUILT (SMS real, WhatsApp absent)**
+### Task 68 — SMS / WhatsApp appointment reminders — **DONE 2026-09-10** (`docs/calendar-task68-whatsapp-reminders.md`)
+
+> **Resolved:** `lib/calendar/sms.ts` was a genuine dead duplicate (zero code
+> callers — the cron uses `@/lib/sms`). **Deleted.** WhatsApp reminders added to
+> `/api/cron/reminders` via the real Meta/WhatsApp stack (`platform_connections`
+> + `MetaAdapter` + `isWithinWhatsAppSessionWindow`), template out-of-window /
+> free-text in-window, opt-out + no-number skip gracefully. Original audit notes
+> kept below for history.
+
+
 
 - **SMS: REAL** — `/api/cron/reminders` already sends SMS via `lib/sms.ts:
   sendSMS` + per-workspace Twilio creds (`resolveWorkspaceTwilioCredentials`,
@@ -319,7 +329,18 @@ CalDAV later).
 
 ---
 
-### Task 70 — Real Zoom / Google Meet / Teams video integration — **PARTIALLY BUILT (Meet) / ABSENT (Zoom, Teams)**
+### Task 70 — Real Zoom / Google Meet / Teams video integration — **DONE 2026-09-10 (code-complete; Zoom/Teams pending external setup)** — `docs/calendar-task70-video-conferencing.md`
+
+> Google Meet already real (Task 62/63). Zoom + Teams added as real branches of
+> the SAME `resolveMeetingLink()` resolver (`zoomMeeting.ts` / `teamsMeeting.ts`,
+> create/update/cancel wired into `calendarSync.ts`). Zoom = new
+> `user_calendar_connections` provider + `/api/auth/zoom/*`. **Teams reuses the
+> ONE Outlook connection** (Graph `/me/onlineMeetings` + `OnlineMeetings.ReadWrite`
+> scope) — no 2nd Microsoft app. Migration `20260911000000` (provider `zoom` +
+> meeting_mode `teams`) + a Zoom Marketplace app + the Azure permission are the
+> remaining external steps. Original audit notes kept below.
+
+
 
 | Provider | State |
 |---|---|
@@ -401,9 +422,9 @@ outside it.
 | 65 confirmations + self-service | **Mostly real** (built since `calendar.md`) — needs live QA; waitlist-accept still missing |
 | 66 Apple/Exchange | **Entirely absent** |
 | 67 pre-meeting reminders | **Partial** — reminder cron real+scheduled; AI brief built but unscheduled |
-| 68 SMS/WhatsApp reminders | **Partial** — SMS real; WhatsApp absent; `calendar/sms.ts` orphan |
+| 68 SMS/WhatsApp reminders | **DONE 2026-09-10** — SMS real; WhatsApp added (real Meta stack, template/free-text by window); `calendar/sms.ts` orphan deleted |
 | 69 recurring meetings | **Dead stub** — one uncalled helper, no schema, no UI |
-| 70 Zoom/Meet/Teams | **Partial** (Meet) / **Absent** (Zoom, Teams) |
+| 70 Zoom/Meet/Teams | **DONE 2026-09-10** — Meet real; Zoom + Teams built (code-complete, pending migration + Zoom Marketplace app + Azure `OnlineMeetings` perm) |
 | 71 rooms/desks | **Entirely absent** — commented-out scaffold only |
 
 ## Suggested build order (dependency-driven — suggestion, not a plan)
@@ -434,7 +455,7 @@ outside it.
 
 ### Cleanup worth folding into the above (dead/misleading code)
 - Delete `src/app/actions/calendar/round-robin.ts` references in `docs/calendar.md` (file already gone).
-- Delete or converge `lib/calendar/sms.ts` (orphan) and `lib/calendar/availability.ts` (orphan engine).
+- ~~Delete or converge `lib/calendar/sms.ts` (orphan)~~ **DONE — deleted in Task 68.** `lib/calendar/availability.ts` (orphan engine) still to converge.
 - Remove the unused `generateRecurringSlots` import in `public.ts` (or use it in Task 69).
 - Resolve `src/app/calendar/CalendarClient.tsx` vs `src/components/calendar/CalendarClient.tsx` duplication.
 - The `'https://zoom.us/j/real_oauth_meeting_link_pending'` placeholder string in `appointments.ts`.

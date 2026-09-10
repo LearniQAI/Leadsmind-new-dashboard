@@ -4,6 +4,7 @@ import { ResearchAgent } from '@/server/services/ai/ResearchAgent';
 import { sendEmail } from '@/lib/email';
 import { getUser, requireWorkspaceAccess } from '@/lib/auth';
 import { UnauthorizedError as LibUnauthorizedError, ForbiddenError as LibForbiddenError } from '@/lib/errors';
+import { runCreditGuard, consumeAICredit } from '@/lib/ai/creditGuard';
 import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
@@ -81,6 +82,14 @@ async function handleSingleContactBrief(contact: any, recipientEmail: string) {
   const domainPart = domain.split('.')[0];
   const companyName = domainPart.charAt(0).toUpperCase() + domainPart.slice(1);
 
+  // Same AI-credit gate every other metered AI feature in this app applies
+  // (content generate, revenue forecast, campaign recommendations): a
+  // pre-meeting brief is a real LLM enrichment run and is billed the same way.
+  const guard = await runCreditGuard(contact.workspace_id);
+  if (guard.ok === false) {
+    return NextResponse.json(guard.body as object, { status: guard.status });
+  }
+
   logger.info({ contactId: contact.id, workspaceId: contact.workspace_id }, 'cron.pre_meeting_brief.single_contact.enrichment_start');
   const report = await ResearchAgent.enrichContact(
     contact.id,
@@ -133,23 +142,36 @@ async function handleSingleContactBrief(contact: any, recipientEmail: string) {
     html
   });
 
+  await consumeAICredit(contact.workspace_id);
+
   return NextResponse.json({ success: true, contactName, sentTo: recipientEmail });
 }
 
 async function handleBriefingCron() {
   try {
     const now = new Date();
-    // Look ahead 2 hours (115 to 120 minutes window)
-    const startRange = new Date(now.getTime() + 115 * 60 * 1000);
+    // A pre-meeting brief should land ~2h out, so the top of the window stays
+    // at now+120min. The bottom is NOT a tight 5-min band any more: it's
+    // now+10min, i.e. "any scheduled meeting in roughly the next two hours
+    // that hasn't been briefed yet". Combined with the brief_sent flag below,
+    // this makes the sweep self-healing — a missed/delayed cron tick is picked
+    // up by the next run instead of the appointment silently never getting a
+    // brief — while brief_sent stops the wider overlap from double-sending.
+    const startRange = new Date(now.getTime() + 10 * 60 * 1000);
     const endRange = new Date(now.getTime() + 120 * 60 * 1000);
 
     logger.info({ startRange: startRange.toISOString(), endRange: endRange.toISOString() }, 'cron.pre_meeting_brief.scan_start');
 
-    // Query appointments scheduled 2 hours ahead
+    // Not-yet-briefed scheduled appointments starting within the window.
+    // brief_sent mirrors appointments.reminder_1h_sent / reminder_24h_sent used
+    // by the hourly reminder cron — exactly-once delivery, set true only after
+    // a brief is fully generated, persisted, credit-charged and emailed.
+    // brief_sent defaults to false and is backfilled false by its migration,
+    // so a plain equality filter is complete — no NULL rows exist.
     const upcomingAppointments = await db('appointments')
       .where('start_time', '>=', startRange.toISOString())
       .where('start_time', '<=', endRange.toISOString())
-      .where({ status: 'scheduled' });
+      .where({ status: 'scheduled', brief_sent: false });
 
     logger.info({ count: upcomingAppointments.length }, 'cron.pre_meeting_brief.appointments_found');
 
@@ -158,6 +180,27 @@ async function handleBriefingCron() {
     for (const appointment of upcomingAppointments) {
       try {
         if (!appointment.contact_id || !appointment.workspace_id) {
+          continue;
+        }
+
+        // Same AI-credit gate as every other metered AI feature. A workspace
+        // that is out of credits simply doesn't get auto-briefs this run —
+        // logged and reported as skipped, never a hard failure of the sweep.
+        //
+        // brief_sent is deliberately LEFT FALSE here. An out-of-credit skip is
+        // not a delivered brief: if the workspace tops up (or a monthly refill
+        // lands) while the meeting is still >10min away, a later tick within
+        // the widened window should still send it. This differs from the
+        // reminder cron, whose flag is only ever set on real success too — the
+        // difference is that a skip is a transient condition, not a terminal
+        // one, so it must remain retryable.
+        const guard = await runCreditGuard(appointment.workspace_id);
+        if (guard.ok === false) {
+          logger.info(
+            { appointmentId: appointment.id, workspaceId: appointment.workspace_id, guard: guard.body },
+            'cron.pre_meeting_brief.skipped_no_credits'
+          );
+          results.push({ appointmentId: appointment.id, skipped: 'no_ai_credits' });
           continue;
         }
 
@@ -234,6 +277,14 @@ async function handleBriefingCron() {
           subject: `AI Briefing: Pre-Meeting Assessment for ${contactName}`,
           html
         });
+
+        await consumeAICredit(appointment.workspace_id);
+
+        // Mark sent only now — after enrichment, persistence, the credit charge
+        // and a successful email. Any earlier failure threw out of this block
+        // with brief_sent still false, so the next cron run retries the whole
+        // appointment (no half-charged, never-delivered state).
+        await db('appointments').where({ id: appointment.id }).update({ brief_sent: true });
 
         results.push({ appointmentId: appointment.id, contactName, sentTo: agentEmail });
       } catch (innerErr: any) {
