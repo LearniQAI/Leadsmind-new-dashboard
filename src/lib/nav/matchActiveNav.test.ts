@@ -73,7 +73,7 @@ describe("resolveActiveNav — every inventoried dashboard route resolves to its
     ["/settings/integrations-hub", "settings"],
     ["/settings/developer", "settings"],
     ["/support", "settings"],
-    ["/articles", "settings"],
+    ["/articles", "help-center"],
   ];
 
   it.each(cases)("%s resolves to module %s", (route, expectedModuleId) => {
