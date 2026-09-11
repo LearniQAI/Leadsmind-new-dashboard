@@ -147,7 +147,17 @@ export async function updateSession(request: NextRequest) {
    request.nextUrl.pathname.startsWith('/solutions') ||
    request.nextUrl.pathname.startsWith('/careers') ||
    request.nextUrl.pathname.startsWith('/docs') ||
-   request.nextUrl.pathname.startsWith('/about')
+   request.nextUrl.pathname.startsWith('/about') ||
+   // Public blog hub (src/app/blog/page.tsx) and public post pages
+   // (src/app/blog/[slug]/page.tsx) — both query getPublicBlogPost(s) and are
+   // meant to be indexed/reachable logged-out (the landing footer links here).
+   // The CMS management sub-routes under /blog must stay gated, so this is
+   // scoped to just the hub and single-segment slugs, not a blanket prefix.
+   request.nextUrl.pathname === '/blog' ||
+   (request.nextUrl.pathname.startsWith('/blog/') &&
+     !['analytics', 'manage', 'editor', 'new', 'comments'].includes(
+       request.nextUrl.pathname.split('/')[2] || ''
+     ))
 
  // If user is logged in and tries to access auth pages, redirect to dashboard
  // (except accept-invite — see isAcceptInvitePage above; its query string,

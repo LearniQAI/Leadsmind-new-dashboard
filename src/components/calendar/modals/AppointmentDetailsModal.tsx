@@ -19,7 +19,8 @@ import {
   Edit,
   Trash2,
   Video,
-  Phone
+  Phone,
+  Building2
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -90,6 +91,23 @@ export default function AppointmentDetailsModal({
                 <p className="text-[12px] font-medium !text-dash-textMuted flex items-center gap-1.5 mt-0.5">
                   <Mail size={14} className="text-dash-accent" />
                   {appointment.contact.email}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Resource (Task 71) — the room/desk/equipment reserved for this slot,
+              if any. Double-booking prevention lives in the DB, not here. */}
+          {appointment.resource && (
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-dash-surface flex items-center justify-center !text-dash-textMuted border border-dash-border">
+                <Building2 size={20} />
+              </div>
+              <div>
+                <p className="text-[14px] font-bold !text-dash-text">{appointment.resource.name}</p>
+                <p className="text-[12px] font-medium !text-dash-textMuted mt-0.5 capitalize">
+                  {appointment.resource.type}
+                  {appointment.resource.location ? ` · ${appointment.resource.location}` : ''}
                 </p>
               </div>
             </div>

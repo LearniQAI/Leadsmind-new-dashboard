@@ -7,7 +7,7 @@ import { validateSlot, getRoundRobinAssignee } from './scheduling';
 import { createSupportTicket } from '@/lib/calendar/crossConnect';
 import { logger } from '@/shared/logger';
 import { NotFoundError, ValidationError, toClientError } from '@/shared/errors/AppError';
-import { isSlotConflictError, SLOT_CONFLICT_MESSAGE } from '@/lib/calendar/bookingErrors';
+import { isSlotConflictError, SLOT_CONFLICT_MESSAGE, isResourceConflictError, RESOURCE_CONFLICT_MESSAGE } from '@/lib/calendar/bookingErrors';
 import { sendBookingConfirmation } from '@/lib/calendar/notifications';
 import { resolveMeetingLink, applyResolvedMeetingLink } from '@/lib/calendar/meetingLink';
 import { pushEventCancellation, pushEventTimeUpdate } from '@/lib/calendar/calendarSync';
@@ -62,7 +62,8 @@ export async function getAppointments() {
       .select(`
         *,
         contact:contacts(first_name, last_name, email),
-        calendar:booking_calendars(name, calendar_type, price)
+        calendar:booking_calendars(name, calendar_type, price),
+        resource:resources(name, type, location)
       `)
       .eq('workspace_id', workspaceId)
       .order('start_time', { ascending: true });
@@ -81,6 +82,8 @@ export async function createAppointment(payload: {
   meetingMode?: string;
   metadata?: any;
   skipValidation?: boolean;
+  /** Task 71 — an optional room/desk/equipment reserved for this exact slot. */
+  resourceId?: string | null;
 }) {
   return executeAction(async (supabase, workspaceId) => {
     // 1. Fetch Calendar Metadata — scoped to the verified workspace so a
@@ -137,6 +140,7 @@ export async function createAppointment(payload: {
         end_time: payload.endTime,
         meeting_link: null,
         meeting_mode: effectiveMode,
+        resource_id: payload.resourceId || null,
         metadata: {
           ...(payload.metadata || {}),
           engine_type: calendar.calendar_type,
@@ -148,6 +152,12 @@ export async function createAppointment(payload: {
       .single();
 
     if (error) {
+      // Resource check first — a resource-conflict insert also fails the
+      // calendar_id EXCLUDE constraint's WHERE clause the same way, but
+      // Postgres only ever raises ONE violation (whichever constraint it hits
+      // first), so isSlotConflictError() already excludes the resource case —
+      // order here just keeps the two branches readable.
+      if (isResourceConflictError(error)) throw new ValidationError(RESOURCE_CONFLICT_MESSAGE);
       if (isSlotConflictError(error)) throw new ValidationError(SLOT_CONFLICT_MESSAGE);
       throw error;
     }
@@ -226,7 +236,11 @@ export async function updateAppointment(id: string, payload: Partial<any>) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if (isResourceConflictError(error)) throw new ValidationError(RESOURCE_CONFLICT_MESSAGE);
+      if (isSlotConflictError(error)) throw new ValidationError(SLOT_CONFLICT_MESSAGE);
+      throw error;
+    }
 
     if (payload.status === 'cancelled') {
       await notifyGroupSessionCancellation(supabase, id, workspaceId);

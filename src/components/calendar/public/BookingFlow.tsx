@@ -5,7 +5,7 @@ import { TimeSlotPicker } from './TimeSlotPicker';
 import { BookingForm } from './BookingForm';
 import { TimeSlot } from '@/lib/calendar/availability';
 import { toast } from 'sonner';
-import { Calendar, CheckCircle2 } from 'lucide-react';
+import { CalendarClock, CheckCircle2, Users } from 'lucide-react';
 
 type BookResult = { success: boolean; mode?: 'booked' | 'waitlist'; position?: number };
 
@@ -61,21 +61,26 @@ export function BookingFlow({
   if (result?.success) {
     const isWaitlist = result.mode === 'waitlist';
     return (
-      <div className="flex flex-col items-center justify-center py-12 px-6 bg-white/[0.02] rounded-3xl border border-white/5 text-center animate-in zoom-in-95 duration-500">
-        <div className="w-20 h-20 rounded-full bg-[#10b981]/10 flex items-center justify-center mb-6 border border-[#10b981]/20">
-          <CheckCircle2 className="h-10 w-10 text-[#10b981]" />
+      <div className="flex flex-col items-center justify-center text-center py-12 px-6 rounded-2xl border border-dash-border bg-dash-surface">
+        <div
+          className={
+            'w-16 h-16 rounded-2xl flex items-center justify-center mb-5 ' +
+            (isWaitlist ? 'bg-amber/10 text-amber' : 'bg-green/10 text-green')
+          }
+        >
+          {isWaitlist ? <Users className="h-8 w-8" strokeWidth={2} /> : <CheckCircle2 className="h-8 w-8" strokeWidth={2} />}
         </div>
-        <h2 className="text-[24px] font-bold font-space text-[#eef2ff] mb-2 uppercase tracking-tight">
+        <h2 className="text-xl font-bold font-space text-dash-text mb-2">
           {isWaitlist ? "You're on the waitlist" : t('bookingConfirmed')}
         </h2>
-        <p className="text-[14px] text-[#94a3c8] max-w-sm mb-8 font-dm-sans">
+        <p className="text-[14px] leading-relaxed text-dash-textMuted max-w-sm mb-7">
           {isWaitlist
             ? `You're #${result.position} on the list. This session is full — if a spot opens up we'll email you a link to claim it (first come, first served).`
             : t('bookingSuccessMsg')}
         </p>
         <button
           onClick={() => window.location.reload()}
-          className="h-11 px-8 rounded-xl bg-white/5 border border-white/10 text-[#eef2ff] hover:bg-white/10 text-[13px] font-bold font-dm-sans transition-all"
+          className="h-11 px-6 rounded-xl border border-dash-border bg-white text-dash-text hover:bg-dash-surface text-[13px] font-semibold transition-colors motion-reduce:transition-none"
         >
           {t('scheduleAnother')}
         </button>
@@ -84,11 +89,11 @@ export function BookingFlow({
   }
 
   return (
-    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <section className="space-y-4">
-        <div className="flex items-center gap-3 mb-2">
-          <Calendar className="h-5 w-5 text-[#3b82f6]" />
-          <h3 className="text-[13px] font-black text-[#eef2ff] uppercase tracking-[0.15em]">{t('selectSlot')}</h3>
+    <div className="space-y-8">
+      <section className="space-y-3.5">
+        <div className="flex items-center gap-2">
+          <CalendarClock className="h-4 w-4 text-dash-accent" strokeWidth={2} />
+          <h3 className="text-[13px] font-semibold text-dash-text">{t('selectSlot')}</h3>
         </div>
         <TimeSlotPicker
           slots={optimisticSlots}
@@ -98,13 +103,13 @@ export function BookingFlow({
         />
       </section>
 
-      <section className="space-y-4">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="h-5 w-5 rounded-full border-2 border-[#4a5a82] flex items-center justify-center text-[10px] font-black text-[#4a5a82]">2</div>
-          <h3 className="text-[13px] font-black text-[#eef2ff] uppercase tracking-[0.15em]">{t('enterDetails')}</h3>
+      <section className="space-y-3.5">
+        <div className="flex items-center gap-2">
+          <span className="h-4 w-4 rounded-full border border-dash-border flex items-center justify-center text-[9px] font-bold text-dash-textMuted">2</span>
+          <h3 className="text-[13px] font-semibold text-dash-text">{t('enterDetails')}</h3>
         </div>
         {joiningWaitlist && (
-          <p className="text-[12px] text-amber-400 font-bold -mt-2">
+          <p className="text-[12px] font-medium text-amber -mt-1">
             This session is full — submit your details to join the waitlist.
           </p>
         )}

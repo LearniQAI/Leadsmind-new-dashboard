@@ -11,6 +11,8 @@ import { filterNavByPermissions } from "@/lib/nav/filterNavByPermissions";
 import NavRail from "./NavRail";
 import NavSubPanel from "./NavSubPanel";
 import NavItemsList from "./NavItemsList";
+import HoverInfoTrigger from "./hover-info/HoverInfoTrigger";
+import { level1Content, level1LenaQuestion } from "@/data/sidebar-hover-content";
 
 const DashBoardSidebar = () => {
   const { isCollapse, setIsCollapse, sideMenuOpen, setSideMenuOpen } = useGlobalContext();
@@ -151,20 +153,37 @@ const DashBoardSidebar = () => {
         {/* Mobile: rail modules as an accordion, no second column */}
         <div className="flex lg:hidden flex-col flex-1 min-h-0 overflow-y-auto no-scrollbar py-4 px-3 gap-1">
           {visibleModules.map((module) => {
+            const hoverContent = level1Content[module.id];
+            const infoTrigger = hoverContent && (
+              <HoverInfoTrigger
+                className="w-7 h-7 shrink-0"
+                content={{
+                  level: 1,
+                  icon: module.icon,
+                  title: module.label,
+                  description: hoverContent.description,
+                  quickActions: hoverContent.quickActions,
+                  lenaQuestion: level1LenaQuestion(module.label),
+                }}
+              />
+            );
+
             if (!module.items) {
               return (
-                <Link
-                  key={module.id}
-                  href={module.link!}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
-                    module.id === activeNav?.moduleId
-                      ? "bg-dash-accent/10 text-dash-accent font-bold"
-                      : "text-dash-textMuted hover:bg-dash-surface hover:text-dash-text"
-                  }`}
-                >
-                  <i className={`${module.icon} text-[15px] w-5 text-center`}></i>
-                  <span className="text-[13px]">{module.label}</span>
-                </Link>
+                <div key={module.id} className="flex items-center gap-0.5">
+                  <Link
+                    href={module.link!}
+                    className={`flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
+                      module.id === activeNav?.moduleId
+                        ? "bg-dash-accent/10 text-dash-accent font-bold"
+                        : "text-dash-textMuted hover:bg-dash-surface hover:text-dash-text"
+                    }`}
+                  >
+                    <i className={`${module.icon} text-[15px] w-5 text-center`}></i>
+                    <span className="text-[13px]">{module.label}</span>
+                  </Link>
+                  {infoTrigger}
+                </div>
               );
             }
 
@@ -172,22 +191,25 @@ const DashBoardSidebar = () => {
 
             return (
               <div key={module.id}>
-                <button
-                  type="button"
-                  onClick={() => setMobileExpandedId(isExpanded ? null : module.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
-                    module.id === activeNav?.moduleId
-                      ? "text-dash-accent font-bold"
-                      : "text-dash-textMuted hover:bg-dash-surface hover:text-dash-text"
-                  }`}
-                >
-                  <i className={`${module.icon} text-[15px] w-5 text-center`}></i>
-                  <span className="text-[13px] flex-1 text-left">{module.label}</span>
-                  <ChevronDown
-                    size={14}
-                    className={`opacity-50 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
-                  />
-                </button>
+                <div className="flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setMobileExpandedId(isExpanded ? null : module.id)}
+                    className={`flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
+                      module.id === activeNav?.moduleId
+                        ? "text-dash-accent font-bold"
+                        : "text-dash-textMuted hover:bg-dash-surface hover:text-dash-text"
+                    }`}
+                  >
+                    <i className={`${module.icon} text-[15px] w-5 text-center`}></i>
+                    <span className="text-[13px] flex-1 text-left">{module.label}</span>
+                    <ChevronDown
+                      size={14}
+                      className={`opacity-50 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                  {infoTrigger}
+                </div>
                 {isExpanded && (
                   <div className="pl-6 mt-1">
                     <NavItemsList
@@ -195,6 +217,7 @@ const DashBoardSidebar = () => {
                       pathname={pathName}
                       activeItemId={activeNav?.itemId}
                       onNavigate={() => setSideMenuOpen(false)}
+                      moduleLabel={module.label}
                     />
                   </div>
                 )}

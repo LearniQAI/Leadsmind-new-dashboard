@@ -32,13 +32,13 @@ export default function AttendeeManageClient({ token, booking }: { token: string
 
   if (view === 'cancelled') {
     return (
-      <div className="p-10 text-center">
-        <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-center mx-auto mb-5">
-          <XCircle size={30} />
+      <div className="p-8 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-red/10 text-red flex items-center justify-center mx-auto mb-5">
+          <XCircle size={26} strokeWidth={2} />
         </div>
-        <h1 className="text-xl font-bold mb-2">Your spot is cancelled</h1>
-        <p className="text-[var(--t3)] text-sm leading-relaxed">
-          We&apos;ve released your spot for <span className="font-semibold text-[var(--t1)]">{booking.title}</span>. A
+        <h1 className="text-lg font-bold font-space text-dash-text mb-1.5">Your spot is cancelled</h1>
+        <p className="text-[14px] leading-relaxed text-dash-textMuted">
+          We&apos;ve released your spot for <span className="font-semibold text-dash-text">{booking.title}</span>. A
           confirmation email is on its way.
         </p>
       </div>
@@ -46,26 +46,25 @@ export default function AttendeeManageClient({ token, booking }: { token: string
   }
 
   return (
-    <div className="p-8">
-      <div className="inline-flex items-center gap-2 mb-5 text-[var(--green)]">
-        <CheckCircle2 size={18} />
-        <span className="text-[11px] font-black uppercase tracking-widest">Your spot is confirmed</span>
-      </div>
+    <div className="p-6 sm:p-8">
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-green/10 px-2.5 py-1 text-[11px] font-semibold text-green mb-4">
+        <CheckCircle2 size={13} strokeWidth={2} /> Your spot is confirmed
+      </span>
 
-      <h1 className="text-[22px] font-bold mb-1">{booking.title ?? 'Your session'}</h1>
-      {booking.sessionName && <p className="text-[var(--t4)] text-sm mb-6">{booking.sessionName}</p>}
+      <h1 className="text-xl font-bold font-space text-dash-text mb-0.5">{booking.title ?? 'Your session'}</h1>
+      {booking.sessionName && <p className="text-[13px] text-dash-textMuted mb-5">{booking.sessionName}</p>}
 
-      <div className="space-y-3 mb-6">
+      <div className="space-y-3 mb-5">
         {booking.when && (
-          <div className="flex items-center gap-3 text-sm">
-            <Calendar size={16} className="text-[var(--accent2)]" />
-            <span className="font-semibold">{booking.when}</span>
+          <div className="flex items-center gap-3 text-[14px]">
+            <Calendar size={16} strokeWidth={2} className="text-dash-accent shrink-0" />
+            <span className="font-medium text-dash-text">{booking.when}</span>
           </div>
         )}
         {booking.meetingLink && !booking.sessionCancelled && (
-          <div className="flex items-center gap-3 text-sm">
-            <Video size={16} className="text-[var(--accent2)]" />
-            <a href={booking.meetingLink} target="_blank" rel="noopener noreferrer" className="text-[var(--accent2)] underline break-all">
+          <div className="flex items-center gap-3 text-[14px]">
+            <Video size={16} strokeWidth={2} className="text-dash-accent shrink-0" />
+            <a href={booking.meetingLink} target="_blank" rel="noopener noreferrer" className="text-dash-accent hover:underline break-all">
               {booking.meetingLink}
             </a>
           </div>
@@ -73,23 +72,23 @@ export default function AttendeeManageClient({ token, booking }: { token: string
       </div>
 
       {booking.sessionCancelled ? (
-        <p className="text-red-400 text-[13px] leading-relaxed">
+        <div className="p-3.5 rounded-xl bg-red/5 border border-red/20 text-[13px] leading-relaxed text-red">
           This session has been cancelled by the host. You don&apos;t need to do anything.
-        </p>
+        </div>
       ) : (
         <>
-          {error && <p className="text-red-400 text-[13px] mb-4">{error}</p>}
+          {error && <p className="text-red text-[13px] mb-4">{error}</p>}
           {booking.cancellable ? (
             <button
               onClick={cancel}
               disabled={busy}
-              className="h-11 px-5 rounded-xl border border-red-500/30 text-red-400 text-[13px] font-bold flex items-center justify-center gap-2 disabled:opacity-60 hover:bg-red-500/10 transition-colors"
+              className="h-11 px-5 rounded-xl border border-red/30 text-red text-[13px] font-semibold flex items-center justify-center gap-2 disabled:opacity-60 hover:bg-red/5 transition-colors motion-reduce:transition-none"
             >
-              {busy ? <Loader2 size={15} className="animate-spin" /> : null}
+              {busy ? <Loader2 size={15} className="animate-spin motion-reduce:hidden" /> : null}
               Cancel my spot
             </button>
           ) : (
-            <p className="text-[var(--t3)] text-[13px] leading-relaxed">
+            <p className="text-[13px] leading-relaxed text-dash-textMuted">
               Cancellations close {booking.cancelWindowHours} hours before the session starts, so this spot can no longer
               be cancelled online. Contact the organiser if you can&apos;t attend.
             </p>

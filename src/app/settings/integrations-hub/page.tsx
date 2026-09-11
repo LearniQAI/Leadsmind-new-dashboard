@@ -149,13 +149,11 @@ export default function IntegrationsHubPage() {
                   desc: 'Emails from clients are automatically logged on their contact record', status: 'available', category: 'email_calendar' },
                 { name: 'Google Calendar', shortName: 'GC', color: '#4285f4',
                   desc: 'Your calendar syncs with LeadsMind, letting contacts book meetings directly', status: 'available', category: 'email_calendar' },
-                // Outlook connect (Task 62) is fully built — /api/auth/microsoft/* + all
-                // sync code is intact — but the Azure app registration +
-                // OUTLOOK_CLIENT_ID/OUTLOOK_CLIENT_SECRET env vars are deferred. Keep it
-                // shown as "coming soon" (a dimmed, non-clickable card) until Azure is
-                // configured; re-enable by flipping this one value back to 'available'.
+                // Outlook connect (Task 62) — /api/auth/microsoft/* + all sync code.
+                // The Azure app registration + OUTLOOK_CLIENT_ID/OUTLOOK_CLIENT_SECRET
+                // must be configured for this to complete a real connection.
                 { name: 'Outlook & Microsoft 365', shortName: 'MS', color: '#0078d4',
-                  desc: 'Sync your Outlook emails and calendar events automatically', status: 'coming_soon', category: 'email_calendar' },
+                  desc: 'Sync your Outlook calendar, and get Microsoft Teams meeting links on bookings', status: 'available', category: 'email_calendar' },
               ].map(item => renderIntegrationCard(item as any))}
             </div>
 
@@ -166,17 +164,16 @@ export default function IntegrationsHubPage() {
             <div className="flex flex-col gap-3 mb-8">
               {[
                 // Task 70 — Zoom connect (/api/auth/zoom/*), token store, meeting
-                // create/update/cancel and the meetingLink.ts `zoom` branch are all
-                // built. Shown as "coming soon" until a Zoom Marketplace app +
-                // ZOOM_CLIENT_ID/ZOOM_CLIENT_SECRET are configured; flip to
-                // 'available' then (mirrors the Task 62 Outlook rollout).
+                // create/update/cancel and the meetingLink.ts `zoom` branch.
+                // Needs a Zoom Marketplace app + ZOOM_CLIENT_ID/ZOOM_CLIENT_SECRET
+                // configured to complete a real connection.
                 { name: 'Zoom', shortName: 'ZM', color: '#2d8cff',
-                  desc: 'Bookings on a Zoom calendar get a real Zoom link, auto-updated on reschedule', status: 'coming_soon', category: 'video_conferencing' },
+                  desc: 'Bookings on a Zoom calendar get a real Zoom link, auto-updated on reschedule', status: 'available', category: 'video_conferencing' },
                 // Microsoft Teams reuses the ONE Outlook/M365 connection (Graph
-                // online meetings). Built; needs the OnlineMeetings.ReadWrite
-                // permission added to the Azure app + a reconnect.
+                // online meetings). Connecting here routes to the Outlook OAuth
+                // flow; needs OnlineMeetings.ReadWrite on the Azure app.
                 { name: 'Microsoft Teams', shortName: 'MT', color: '#4b53bc',
-                  desc: 'Teams meeting links via your connected Microsoft 365 account — no separate connect', status: 'coming_soon', category: 'video_conferencing' },
+                  desc: 'Teams meeting links via your connected Microsoft 365 account — no separate connect', status: 'available', category: 'video_conferencing' },
               ].map(item => renderIntegrationCard(item as any))}
             </div>
 

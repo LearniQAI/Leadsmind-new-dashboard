@@ -2,7 +2,21 @@ import React from 'react';
 import { getWaitlistOffer, getAttendeeBooking } from '@/app/actions/calendar/waitlistAccept';
 import WaitlistAcceptClient from '@/components/calendar/public/WaitlistAcceptClient';
 import AttendeeManageClient from '@/components/calendar/public/AttendeeManageClient';
-import { Sparkles, XCircle } from 'lucide-react';
+import { Sparkles, XCircle, CalendarCheck2 } from 'lucide-react';
+
+function Shell({ eyebrow, icon, children }: { eyebrow: string; icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <main className="min-h-screen bg-dash-bg text-dash-text">
+      <div className="absolute inset-x-0 top-0 h-56 bg-gradient-to-b from-dash-surface to-dash-bg pointer-events-none" />
+      <div className="relative max-w-[540px] mx-auto px-5 sm:px-6 py-10 lg:py-16">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-dash-accent/10 px-2.5 py-1 text-[11px] font-semibold text-dash-accent mb-5">
+          {icon} {eyebrow}
+        </span>
+        <div className="rounded-2xl border border-dash-border bg-white shadow-sm overflow-hidden">{children}</div>
+      </div>
+    </main>
+  );
+}
 
 export default async function WaitlistOfferPage({
   params,
@@ -16,13 +30,9 @@ export default async function WaitlistOfferPage({
   const attendee = await getAttendeeBooking(token);
   if (attendee.success) {
     return (
-      <main className="min-h-screen bg-[var(--n900)] text-[var(--t1)] selection:bg-[var(--accent)] selection:text-white">
-        <div className="relative max-w-[520px] mx-auto px-6 py-12 lg:py-24">
-          <div className="bg-[var(--n800)] rounded-[var(--r32)] border border-[var(--bdr)] shadow-2xl overflow-hidden">
-            <AttendeeManageClient token={token} booking={attendee.data} />
-          </div>
-        </div>
-      </main>
+      <Shell eyebrow="Your session" icon={<CalendarCheck2 size={13} strokeWidth={2} />}>
+        <AttendeeManageClient token={token} booking={attendee.data} />
+      </Shell>
     );
   }
 
@@ -32,34 +42,21 @@ export default async function WaitlistOfferPage({
 
   if (!result.success) {
     return (
-      <main className="min-h-screen bg-[var(--n900)] text-[var(--t1)] flex items-center justify-center px-6">
-        <div className="max-w-md w-full bg-[var(--n800)] border border-[var(--bdr)] rounded-[var(--r24)] p-10 text-center shadow-2xl">
-          <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-center mx-auto mb-6">
-            <XCircle size={28} />
+      <main className="min-h-screen bg-dash-bg text-dash-text flex items-center justify-center px-5">
+        <div className="max-w-md w-full rounded-2xl border border-dash-border bg-white p-8 text-center shadow-sm">
+          <div className="w-12 h-12 rounded-2xl bg-red/10 text-red flex items-center justify-center mx-auto mb-5">
+            <XCircle size={24} strokeWidth={2} />
           </div>
-          <h1 className="text-xl font-bold mb-2">Offer unavailable</h1>
-          <p className="text-[var(--t3)] text-sm leading-relaxed">{result.error}</p>
+          <h1 className="text-lg font-bold font-space text-dash-text mb-1.5">Offer unavailable</h1>
+          <p className="text-[14px] leading-relaxed text-dash-textMuted">{result.error}</p>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[var(--n900)] text-[var(--t1)] selection:bg-[var(--accent)] selection:text-white">
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[var(--accent)] opacity-[0.03] blur-[120px] rounded-full" />
-      </div>
-
-      <div className="relative max-w-[520px] mx-auto px-6 py-12 lg:py-24">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--accent)] bg-opacity-10 border border-[var(--accent)] border-opacity-20 mb-6">
-          <Sparkles size={14} className="text-[var(--accent2)]" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-[var(--accent2)]">A spot opened up</span>
-        </div>
-
-        <div className="bg-[var(--n800)] rounded-[var(--r32)] border border-[var(--bdr)] shadow-2xl overflow-hidden">
-          <WaitlistAcceptClient token={token} offer={result.data} />
-        </div>
-      </div>
-    </main>
+    <Shell eyebrow="A spot opened up" icon={<Sparkles size={13} strokeWidth={2} />}>
+      <WaitlistAcceptClient token={token} offer={result.data} />
+    </Shell>
   );
 }

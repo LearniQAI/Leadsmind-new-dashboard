@@ -72,7 +72,7 @@ export const ShareButtons: React.FC<ShareButtonsProps> = ({ url, title, vertical
             target="_blank"
             rel="noopener noreferrer"
             title={`Share on ${link.name}`}
-            className={`w-9 h-9 flex items-center justify-center rounded-xl border border-white/10 bg-[#080f28]/60 text-white/60 transition duration-300 ${link.color}`}
+            className={`w-9 h-9 flex items-center justify-center rounded-xl border border-[#E2E8F0] bg-white text-[#64748B] transition duration-300 ${link.color}`}
           >
             {link.icon}
           </a>
@@ -80,8 +80,8 @@ export const ShareButtons: React.FC<ShareButtonsProps> = ({ url, title, vertical
         <button
           onClick={handleCopy}
           title="Copy Link"
-          className={`w-9 h-9 flex items-center justify-center rounded-xl border border-white/10 bg-[#080f28]/60 transition duration-300 ${
-            copied ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'text-white/60 hover:bg-white/10 hover:text-white'
+          className={`w-9 h-9 flex items-center justify-center rounded-xl border border-[#E2E8F0] bg-white transition duration-300 ${
+            copied ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A]'
           }`}
         >
           {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
@@ -91,8 +91,8 @@ export const ShareButtons: React.FC<ShareButtonsProps> = ({ url, title, vertical
   }
 
   return (
-    <div className="space-y-2 border-t border-white/5 pt-4">
-      <div className="flex items-center gap-1.5 text-[10px] font-bold text-white/30 uppercase tracking-widest"><Share2 className="w-3 h-3 text-primary" /> Share Article</div>
+    <div className="space-y-2 border-t border-[#F1F5F9] pt-4">
+      <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#94A3B8] uppercase tracking-widest"><Share2 className="w-3 h-3 text-primary" /> Share Article</div>
       <div className="flex flex-wrap items-center gap-2">
         {shareLinks.map((link) => (
           <a
@@ -100,7 +100,7 @@ export const ShareButtons: React.FC<ShareButtonsProps> = ({ url, title, vertical
             href={link.url}
             target="_blank"
             rel="noopener noreferrer"
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[10px] font-bold uppercase tracking-wider text-white/60 transition duration-300 ${link.color}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E2E8F0] bg-white text-[10px] font-bold uppercase tracking-wider text-[#64748B] transition duration-300 ${link.color}`}
           >
             {link.icon}
             <span>{link.name}</span>
@@ -108,8 +108,8 @@ export const ShareButtons: React.FC<ShareButtonsProps> = ({ url, title, vertical
         ))}
         <button
           onClick={handleCopy}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[10px] font-bold uppercase tracking-wider transition duration-300 ${
-            copied ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'text-white/60 hover:bg-white/10 hover:text-white'
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E2E8F0] bg-white text-[10px] font-bold uppercase tracking-wider transition duration-300 ${
+            copied ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A]'
           }`}
         >
           {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}

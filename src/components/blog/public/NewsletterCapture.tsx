@@ -35,36 +35,36 @@ export const NewsletterCapture: React.FC<NewsletterCaptureProps> = ({ workspaceI
   };
 
   return (
-    <div className="bg-gradient-to-br from-[#0c1535] to-[#080f28] border border-white/10 rounded-2xl p-6 sm:p-8 space-y-6 shadow-xl relative overflow-hidden font-dm-sans">
-      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
-      
+    <div className="bg-gradient-to-br from-[#EEF2FF] to-white border border-[#E2E8F0] rounded-2xl p-6 sm:p-8 space-y-6 shadow-sm relative overflow-hidden font-sans">
+      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+
       <div className="space-y-2">
-        <h3 className="font-space-grotesk text-lg sm:text-xl font-bold text-white tracking-tight">
+        <h3 className="font-space text-lg sm:text-xl font-bold text-[#0F172A] tracking-tight">
           Subscribe to <span className="text-primary">Corporate Insights</span>
         </h3>
-        <p className="text-xs text-white/50 leading-relaxed max-w-md">
+        <p className="text-xs text-[#64748B] leading-relaxed max-w-md">
           Join 10,000+ industry executives. Get curated frameworks, marketing strategies, and conversion blueprints delivered directly to your inbox.
         </p>
       </div>
 
       {status === 'success' ? (
-        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl flex items-start gap-2.5 animate-fade-in">
+        <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl flex items-start gap-2.5">
           <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
           <div>
             <p className="text-xs font-bold uppercase tracking-wider">Lead Capture Successful</p>
-            <p className="text-xs mt-0.5 text-white/70">{message}</p>
+            <p className="text-xs mt-0.5 text-emerald-600">{message}</p>
           </div>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="relative">
-            <Mail className="w-4 h-4 text-white/30 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Mail className="w-4 h-4 text-[#94A3B8] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your professional email..."
-              className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-xs text-white placeholder-white/30 outline-none focus:border-primary transition"
+              className="w-full bg-white border border-[#E2E8F0] rounded-xl pl-10 pr-4 py-3 text-xs text-[#0F172A] placeholder-[#94A3B8] outline-none focus:border-primary transition"
               required
               disabled={status === 'loading'}
             />
@@ -83,14 +83,14 @@ export const NewsletterCapture: React.FC<NewsletterCaptureProps> = ({ workspaceI
           </button>
 
           {status === 'error' && (
-            <p className="text-[10px] text-rose-400 font-semibold mt-1.5 leading-normal">
+            <p className="text-[10px] text-red-600 font-semibold mt-1.5 leading-normal">
               ⚠️ {message}
             </p>
           )}
         </form>
       )}
 
-      <p className="text-[9px] text-white/30 leading-normal text-center pt-2">
+      <p className="text-[9px] text-[#94A3B8] leading-normal text-center pt-2">
         🔒 GDPR Compliant. Your data is piped directly into the secure LeadsMind CRM. Unsubscribe at any time.
       </p>
     </div>

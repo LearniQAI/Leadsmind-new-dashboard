@@ -16,9 +16,9 @@ interface TimeSlotPickerProps {
 export function TimeSlotPicker({ slots, selectedSlot, onSelectSlot, isLoading }: TimeSlotPickerProps) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {[1, 2, 3, 4, 5, 6].map(i => (
-          <div key={i} className="h-12 rounded-xl bg-white/5 animate-pulse border border-white/5"></div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="h-12 rounded-xl bg-dash-surface border border-dash-border animate-pulse motion-reduce:animate-none" />
         ))}
       </div>
     );
@@ -26,21 +26,20 @@ export function TimeSlotPicker({ slots, selectedSlot, onSelectSlot, isLoading }:
 
   if (slots.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 px-4 rounded-2xl border border-dashed border-white/10 bg-[#080f28]/20 text-center">
-        <Clock className="h-8 w-8 text-[#4a5a82] mb-3 opacity-50" />
-        <h3 className="text-[13px] font-bold text-[#eef2ff] mb-1">No slots available</h3>
-        <p className="text-[11px] text-[#4a5a82]">Try selecting a different date</p>
+      <div className="flex flex-col items-center justify-center py-10 px-4 rounded-xl border border-dashed border-dash-border bg-dash-surface text-center">
+        <Clock className="h-7 w-7 text-dash-textMuted mb-2.5" strokeWidth={2} />
+        <h3 className="text-[13px] font-semibold text-dash-text mb-0.5">No times available</h3>
+        <p className="text-[12px] text-dash-textMuted">Try another date</p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
       {slots.map((slot) => {
         const s = slot as any;
         const isSelected = selectedSlot === slot.start;
         const timeStr = format(parseISO(slot.start), 'HH:mm');
-        const periodStr = format(parseISO(slot.start), 'aa');
         const isFull = s.full === true;
         const spotsLeft: number | undefined = typeof s.spotsLeft === 'number' ? s.spotsLeft : undefined;
 
@@ -49,46 +48,26 @@ export function TimeSlotPicker({ slots, selectedSlot, onSelectSlot, isLoading }:
             key={slot.start}
             onClick={() => onSelectSlot(slot.start)}
             className={cn(
-              "relative group h-12 rounded-xl border transition-all duration-200 flex flex-col items-center justify-center gap-0",
+              'relative h-12 rounded-xl border text-center flex flex-col items-center justify-center transition-colors motion-reduce:transition-none',
               isSelected
                 ? isFull
-                  ? "bg-amber-500 border-amber-500 shadow-lg shadow-amber-500/20"
-                  : "bg-[#2563eb] border-[#2563eb] shadow-lg shadow-[#2563eb]/20"
+                  ? 'bg-amber text-white border-amber'
+                  : 'bg-dash-accent text-white border-dash-accent'
                 : isFull
-                  ? "bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/15"
-                  : "bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10"
+                  ? 'bg-amber/5 border-amber/40 text-amber hover:bg-amber/10'
+                  : 'bg-white border-dash-border text-dash-text hover:border-dash-accent/40'
             )}
           >
-            <div className="flex items-baseline gap-1">
-              <span className={cn(
-                "text-[14px] font-bold font-space tracking-tight",
-                isSelected ? "text-white" : isFull ? "text-amber-300" : "text-[#eef2ff]"
-              )}>
-                {timeStr}
-              </span>
-              <span className={cn(
-                "text-[8px] font-black uppercase tracking-widest opacity-50",
-                isSelected ? "text-white" : "text-[#4a5a82]"
-              )}>
-                {periodStr}
-              </span>
-            </div>
-
+            <span className="text-[14px] font-bold font-space tracking-tight leading-none">{timeStr}</span>
             {isFull ? (
-              <span className={cn("text-[8px] font-black uppercase tracking-wider", isSelected ? "text-white/80" : "text-amber-400")}>
-                Full · Waitlist
+              <span className={cn('text-[10px] font-semibold leading-none mt-0.5', isSelected ? 'text-white/85' : 'text-amber')}>
+                Full · waitlist
               </span>
             ) : spotsLeft !== undefined && spotsLeft <= 3 ? (
-              <span className={cn("text-[8px] font-black uppercase tracking-wider", isSelected ? "text-white/80" : "text-[#4a5a82]")}>
+              <span className={cn('text-[10px] font-medium leading-none mt-0.5', isSelected ? 'text-white/85' : 'text-dash-textMuted')}>
                 {spotsLeft} left
               </span>
             ) : null}
-
-            {isSelected && (
-              <div className="absolute top-1 right-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-white shadow-sm shadow-black/20"></div>
-              </div>
-            )}
           </button>
         );
       })}
