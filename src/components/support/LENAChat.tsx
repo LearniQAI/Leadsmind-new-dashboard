@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 import { createSupportTicketFromLena } from '@/app/actions/help';
 import LENAChatMessageList from './components/LENAChatMessageList';
 import LENAChatInput from './components/LENAChatInput';
+import { LENA_ASK_EVENT, LenaAskDetail } from '@/lib/lena/askLena';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -64,9 +65,8 @@ export default function LENAChat() {
     setTouchStartX(null);
   };
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = query.trim();
+  const sendMessage = async (text: string) => {
+    const trimmed = text.trim();
     if (!trimmed || loading) return;
 
     const userMsg: Message = { role: 'user', content: trimmed };
@@ -76,7 +76,7 @@ export default function LENAChat() {
 
     try {
       const chatHistory = messages.map(m => ({ role: m.role, content: m.content }));
-      
+
       const res = await fetch('/api/support/lena/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -112,6 +112,26 @@ export default function LENAChat() {
       setLoading(false);
     }
   };
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await sendMessage(query);
+  };
+
+  // External trigger for "Ask LENA about this" hover-card links (sidebar hover
+  // panels) — opens this real, live widget and asks the given question,
+  // instead of linking to a page-scoped help panel that doesn't exist yet.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const question = (e as CustomEvent<LenaAskDetail>).detail?.question;
+      if (!question) return;
+      setIsOpen(true);
+      setTimeout(() => sendMessage(question), 50);
+    };
+    window.addEventListener(LENA_ASK_EVENT, handler);
+    return () => window.removeEventListener(LENA_ASK_EVENT, handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, loading]);
 
   const handleEscalateTicket = async (index: number) => {
     const targetMsg = messages[index];

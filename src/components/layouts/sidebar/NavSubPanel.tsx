@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from "react";
 import { NavModule } from "@/interface";
 import NavItemsList from "./NavItemsList";
+import HoverInfoTrigger from "./hover-info/HoverInfoTrigger";
+import { level1Content, level1LenaQuestion } from "@/data/sidebar-hover-content";
 
 interface NavSubPanelProps {
   module: NavModule | undefined;
@@ -21,6 +23,8 @@ const NavSubPanel: React.FC<NavSubPanelProps> = ({ module, pathname, activeItemI
 
   if (!module?.items) return null;
 
+  const hoverContent = level1Content[module.id];
+
   return (
     <div
       key={module.id}
@@ -28,13 +32,32 @@ const NavSubPanel: React.FC<NavSubPanelProps> = ({ module, pathname, activeItemI
         transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none motion-reduce:transform-none
         ${isVisible ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-1"}`}
     >
-      <div className="h-[70px] flex items-center px-5 border-b border-dash-border flex-shrink-0">
-        <h2 className="text-[13px] font-black uppercase tracking-wider !text-dash-text truncate">
+      <div className="h-[70px] flex items-center gap-2 px-5 border-b border-dash-border flex-shrink-0">
+        <h2 className="min-w-0 flex-1 text-[13px] font-black uppercase tracking-wider !text-dash-text truncate">
           {module.label}
         </h2>
+        {hoverContent && (
+          <HoverInfoTrigger
+            className="w-6 h-6"
+            content={{
+              level: 1,
+              icon: module.icon,
+              title: module.label,
+              description: hoverContent.description,
+              quickActions: hoverContent.quickActions,
+              lenaQuestion: level1LenaQuestion(module.label),
+            }}
+          />
+        )}
       </div>
       <div className="flex-1 overflow-y-auto no-scrollbar py-4 px-3">
-        <NavItemsList items={module.items} pathname={pathname} activeItemId={activeItemId} onNavigate={onNavigate} />
+        <NavItemsList
+          items={module.items}
+          pathname={pathname}
+          activeItemId={activeItemId}
+          onNavigate={onNavigate}
+          moduleLabel={module.label}
+        />
       </div>
     </div>
   );

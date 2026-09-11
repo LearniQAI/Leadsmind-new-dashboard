@@ -3,6 +3,8 @@ import Link from "next/link";
 import React, { useLayoutEffect, useRef, useState } from "react";
 import { NavModule } from "@/interface";
 import NavItemsList from "./NavItemsList";
+import HoverInfoTrigger from "./hover-info/HoverInfoTrigger";
+import { level1Content, level1LenaQuestion } from "@/data/sidebar-hover-content";
 
 interface NavRailModuleProps {
   module: NavModule;
@@ -106,6 +108,8 @@ const NavRailModule: React.FC<NavRailModuleProps> = ({
     </button>
   );
 
+  const hoverContent = level1Content[module.id];
+
   return (
     <div
       ref={triggerRef}
@@ -123,6 +127,26 @@ const NavRailModule: React.FC<NavRailModuleProps> = ({
         button
       )}
 
+      {/* Direct-link modules (e.g. Dashboard) have no flyout to host their
+          Level 1 info trigger's header, so it sits as its own small overlay
+          on the row instead — kept outside the Link so it isn't a nested
+          interactive element. */}
+      {isDirectLink && hoverContent && (
+        <div className={isCollapse ? "absolute top-0.5 right-1" : "absolute right-2.5 top-1/2 -translate-y-1/2"}>
+          <HoverInfoTrigger
+            className={isCollapse ? "w-4 h-4 bg-dash-bg rounded-full shadow-sm" : "w-5 h-5"}
+            content={{
+              level: 1,
+              icon: module.icon,
+              title: module.label,
+              description: hoverContent.description,
+              quickActions: hoverContent.quickActions,
+              lenaQuestion: level1LenaQuestion(module.label),
+            }}
+          />
+        </div>
+      )}
+
       {isCollapse && module.items && (
         <div
           ref={flyoutRef}
@@ -131,14 +155,30 @@ const NavRailModule: React.FC<NavRailModuleProps> = ({
             transition-opacity duration-150 motion-reduce:transition-none z-[1100]
             w-[220px] bg-dash-surface border border-dash-border rounded-xl shadow-xl p-3 overflow-y-auto`}
         >
-          <h3 className="text-[11px] font-black uppercase tracking-wider !text-dash-text px-2 pb-2">
-            {module.label}
-          </h3>
+          <div className="flex items-center gap-2 px-2 pb-2">
+            <h3 className="min-w-0 flex-1 text-[11px] font-black uppercase tracking-wider !text-dash-text truncate">
+              {module.label}
+            </h3>
+            {hoverContent && (
+              <HoverInfoTrigger
+                className="w-6 h-6"
+                content={{
+                  level: 1,
+                  icon: module.icon,
+                  title: module.label,
+                  description: hoverContent.description,
+                  quickActions: hoverContent.quickActions,
+                  lenaQuestion: level1LenaQuestion(module.label),
+                }}
+              />
+            )}
+          </div>
           <NavItemsList
             items={module.items}
             pathname={pathname}
             activeItemId={activeItemId}
             onNavigate={onNavigate}
+            moduleLabel={module.label}
           />
         </div>
       )}
