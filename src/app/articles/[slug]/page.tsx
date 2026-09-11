@@ -140,13 +140,13 @@ export default async function HelpArticlePage({ params }: PageProps) {
         .help-article-content table td {
           min-width: 120px;
           padding: 0.75rem 1rem;
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          border: 1px solid #E2E8F0;
           font-size: 13px;
         }
         .help-article-content table th {
-          background-color: rgba(255, 255, 255, 0.03);
+          background-color: #F8F9FC;
           font-weight: 600;
-          color: #ffffff;
+          color: #0F172A;
         }
         .help-article-content img {
           max-width: 100% !important;
@@ -154,51 +154,51 @@ export default async function HelpArticlePage({ params }: PageProps) {
         }
       `}</style>
 
-      <div className="min-h-screen bg-[#04091a] text-white font-dm-sans py-16 px-4 md:px-8 relative overflow-hidden help-article-content">
+      <div className="min-h-screen bg-dash-surface font-dm-sans py-16 px-4 md:px-8 relative overflow-hidden help-article-content">
         {/* Background radial highlight */}
-        <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl -z-10" />
+        <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-dash-accent/5 rounded-full blur-3xl -z-10" />
 
         <div className="max-w-4xl mx-auto space-y-8">
-          
+
           {/* Back Link & Navigation Breadcrumb */}
           <div className="space-y-4">
             <Link
               href="/articles"
-              className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-white/40 hover:text-white transition duration-200"
+              className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider !text-dash-textMuted hover:!text-dash-text transition duration-200"
             >
               <ArrowLeft className="w-4 h-4" /> Back to Documentation
             </Link>
 
             {/* breadcrumb path */}
-            <div className="flex items-center gap-1.5 text-xs text-white/30 font-medium">
-              <Link href="/articles" className="hover:text-white transition">Documentation</Link>
+            <div className="flex items-center gap-1.5 text-xs !text-dash-textMuted font-medium">
+              <Link href="/articles" className="hover:!text-dash-text transition">Documentation</Link>
               <ChevronRight className="w-3 h-3" />
-              <span className="text-white/50">{article.category}</span>
+              <span>{article.category}</span>
               <ChevronRight className="w-3 h-3" />
-              <span className="text-white/80 line-clamp-1">{article.title}</span>
+              <span className="!text-dash-text line-clamp-1">{article.title}</span>
             </div>
           </div>
 
           {/* 1. Header Metrics block */}
-          <div className="bg-[#080f28]/60 border border-white/5 p-6 sm:p-8 rounded-3xl space-y-4 shadow-xl">
+          <div className="bg-white border border-dash-border p-6 sm:p-8 rounded-3xl space-y-4 shadow-sm">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-block text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-lg border bg-primary/10 text-primary border-primary/20">
+              <span className="inline-block text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-lg border bg-dash-accent/10 text-dash-accent border-dash-accent/20">
                 {article.category}
               </span>
-              <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
+              <span className="bg-green/10 text-green border border-green/25 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3 shrink-0" /> Verified Guide
               </span>
             </div>
-            
-            <h1 className="font-space-grotesk text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-white leading-tight">
+
+            <h1 className="font-space-grotesk text-2xl sm:text-3xl md:text-4xl font-black tracking-tight !text-dash-text leading-tight">
               {article.title}
             </h1>
 
-            <div className="flex items-center gap-4 text-[10px] text-white/40 uppercase tracking-widest font-semibold pt-2 border-t border-white/[0.04]">
+            <div className="flex items-center gap-4 text-[10px] !text-dash-textMuted uppercase tracking-widest font-semibold pt-2 border-t border-dash-border">
               <span className="flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5" /> Reviewed {formattedDate}
               </span>
-              <span className="w-1 h-1 bg-white/20 rounded-full" />
+              <span className="w-1 h-1 bg-dash-border rounded-full" />
               <span className="flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5" /> {readingTimeMinutes} min read
               </span>
@@ -208,11 +208,11 @@ export default async function HelpArticlePage({ params }: PageProps) {
           {/* 2. Walkthrough Video Canvas */}
           {article.video_url && (
             <div className="space-y-3.5">
-              <span className="text-[10px] font-bold text-white/45 uppercase tracking-wider block">
+              <span className="text-[10px] font-bold !text-dash-textMuted uppercase tracking-wider block">
                 🎬 Interactive Video Walkthrough Tutorial
               </span>
-              <HelpVideoPlayer 
-                videoUrl={article.video_url} 
+              <HelpVideoPlayer
+                videoUrl={article.video_url}
                 chapters={Array.isArray(article.video_chapters_json) ? (article.video_chapters_json as any[]) : []}
               />
             </div>
@@ -220,9 +220,9 @@ export default async function HelpArticlePage({ params }: PageProps) {
 
           {/* Article plain body description */}
           {article.body_plain && (
-            <div className="bg-[#080f28]/20 border border-white/5 p-6 rounded-2xl">
-              <div 
-                className="text-xs sm:text-sm md:text-base text-white/70 leading-relaxed font-light"
+            <div className="bg-white border border-dash-border p-6 rounded-2xl shadow-sm">
+              <div
+                className="text-xs sm:text-sm md:text-base !text-dash-textMuted leading-relaxed"
                 dangerouslySetInnerHTML={{ __html: article.body_plain }}
               />
             </div>
@@ -230,40 +230,40 @@ export default async function HelpArticlePage({ params }: PageProps) {
 
           {/* 3. Step-by-Step Layout Engine with annotations */}
           {article.content_json && article.content_json.length > 0 && (
-            <div className="bg-[#080f28]/30 border border-white/5 p-6 sm:p-8 rounded-3xl space-y-6 shadow-lg">
-              <div className="flex items-center gap-2 pb-3.5 border-b border-white/[0.04]">
-                <BookOpen className="w-5 h-5 text-primary" />
-                <h3 className="text-lg font-bold text-white uppercase tracking-wider font-space-grotesk">
+            <div className="bg-white border border-dash-border p-6 sm:p-8 rounded-3xl space-y-6 shadow-sm">
+              <div className="flex items-center gap-2 pb-3.5 border-b border-dash-border">
+                <BookOpen className="w-5 h-5 text-dash-accent" />
+                <h3 className="text-lg font-bold !text-dash-text uppercase tracking-wider font-space-grotesk">
                   Sequential Steps
                 </h3>
               </div>
-              
-              <div className="relative border-l border-white/10 pl-6 sm:pl-8 ml-4.5 space-y-10">
+
+              <div className="relative border-l border-dash-border pl-6 sm:pl-8 ml-4.5 space-y-10">
                 {article.content_json.map((step: any, idx: number) => {
                   const stepScreenshot = (screenshots || []).find((s: any) => s.step_index === idx);
-                  
+
                   return (
                     <div key={idx} className="relative group space-y-3">
                       {/* Step marker */}
-                      <span className="absolute -left-11 top-0 w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-md">
+                      <span className="absolute -left-11 top-0 w-8 h-8 rounded-full bg-dash-accent/10 border border-dash-accent/20 flex items-center justify-center text-xs font-bold text-dash-accent group-hover:bg-dash-accent group-hover:text-white transition-all duration-300 shadow-sm">
                         {step.step || idx + 1}
                       </span>
-                      
+
                       <div className="space-y-1.5">
-                        <h4 className="text-sm sm:text-base font-bold text-white group-hover:text-primary transition-colors duration-200">
+                        <h4 className="text-sm sm:text-base font-bold !text-dash-text group-hover:text-dash-accent transition-colors duration-200">
                           {step.title}
                         </h4>
-                        <p className="text-xs sm:text-sm text-white/50 leading-relaxed font-light">
+                        <p className="text-xs sm:text-sm !text-dash-textMuted leading-relaxed">
                           {step.description}
                         </p>
                       </div>
 
                       {/* Step screenshot annotation frame (scaled with w-full max-w-full on mobile) */}
                       {stepScreenshot && (
-                        <div className="rounded-xl overflow-hidden border border-white/10 bg-[#020510]/80 p-2 shadow-inner w-full max-w-full md:max-w-xl">
-                          <img 
-                            src={stepScreenshot.image_url} 
-                            alt={stepScreenshot.image_alt || step.title} 
+                        <div className="rounded-xl overflow-hidden border border-dash-border bg-dash-surface p-2 shadow-inner w-full max-w-full md:max-w-xl">
+                          <img
+                            src={stepScreenshot.image_url}
+                            alt={stepScreenshot.image_alt || step.title}
                             className="w-full h-auto object-cover rounded-lg"
                           />
                         </div>
@@ -277,16 +277,16 @@ export default async function HelpArticlePage({ params }: PageProps) {
 
           {/* 4. FAQ Accordion Block */}
           {article.faq_json && article.faq_json.length > 0 && (
-            <div className="bg-[#080f28]/30 border border-white/5 p-6 sm:p-8 rounded-3xl shadow-lg">
+            <div className="bg-white border border-dash-border p-6 sm:p-8 rounded-3xl shadow-sm">
               <HelpFaq faqItems={article.faq_json} />
             </div>
           )}
 
           {/* 5. Interactive Feedback Controller */}
-          <HelpFeedback 
-            articleId={article.id} 
-            yesInitial={article.helpful_yes} 
-            noInitial={article.helpful_no} 
+          <HelpFeedback
+            articleId={article.id}
+            yesInitial={article.helpful_yes}
+            noInitial={article.helpful_no}
           />
 
         </div>

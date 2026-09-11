@@ -145,8 +145,6 @@ export default function IntegrationsHubPage() {
             </p>
             <div className="flex flex-col gap-3 mb-8">
               {[
-                { name: 'Gmail', shortName: 'GM', color: '#ea4335',
-                  desc: 'Emails from clients are automatically logged on their contact record', status: 'available', category: 'email_calendar' },
                 { name: 'Google Calendar', shortName: 'GC', color: '#4285f4',
                   desc: 'Your calendar syncs with LeadsMind, letting contacts book meetings directly', status: 'available', category: 'email_calendar' },
                 // Outlook connect (Task 62) — /api/auth/microsoft/* + all sync code.
@@ -177,55 +175,14 @@ export default function IntegrationsHubPage() {
               ].map(item => renderIntegrationCard(item as any))}
             </div>
 
-            {/* Team Communication */}
-            <p className="text-[10px] font-semibold mb-3 !text-dash-textMuted">
-              Team communication
-            </p>
-            <div className="flex flex-col gap-3 mb-8">
-              {[
-                { name: 'Slack', shortName: 'SL', color: '#4a154b',
-                  desc: 'Get notified in Slack when leads fill in forms or buy products', status: 'coming_soon', category: 'communication' },
-              ].map(item => renderIntegrationCard(item as any))}
-            </div>
-
             {/* Automation Platforms */}
             <p className="text-[10px] font-semibold mb-3 !text-dash-textMuted">
               Automation platforms
             </p>
-            <div className="flex flex-col gap-3 mb-8">
+            <div className="flex flex-col gap-3">
               {[
                 { name: 'Zapier', shortName: 'ZAP', color: '#ff4a00',
                   desc: 'Connect LeadsMind to 5,000+ apps via Zapier triggers and actions', status: 'available', category: 'automation' },
-                { name: 'Make.com', shortName: 'MK', color: '#6d00cc',
-                  desc: 'Build advanced workflows and scenarios', status: 'coming_soon', category: 'automation' },
-              ].map(item => renderIntegrationCard(item as any))}
-            </div>
-
-            {/* E-Commerce */}
-            <p className="text-[10px] font-semibold mb-3 !text-dash-textMuted">
-              E-commerce
-            </p>
-            <div className="flex flex-col gap-3 mb-8">
-              {[
-                { name: 'Shopify', shortName: 'SH', color: '#95bf47',
-                  desc: 'Sync customers, products, and order data in real time', status: 'coming_soon', category: 'ecommerce' },
-                { name: 'WooCommerce', shortName: 'WC', color: '#7f54b3',
-                  desc: 'Import WooCommerce order history and update contact stages', status: 'coming_soon', category: 'ecommerce' },
-              ].map(item => renderIntegrationCard(item as any))}
-            </div>
-
-            {/* Marketing & Social */}
-            <p className="text-[10px] font-semibold mb-3 !text-dash-textMuted">
-              Marketing & social
-            </p>
-            <div className="flex flex-col gap-3">
-              {[
-                { name: 'Meta Ads', shortName: 'FB', color: '#1877f2',
-                  desc: 'Sync Meta Lead Ads forms directly to your LeadsMind CRM pipelines', status: 'coming_soon', category: 'marketing' },
-                { name: 'Google Ads', shortName: 'GA', color: '#fbbc04',
-                  desc: 'Track conversions and sync lead acquisition data', status: 'coming_soon', category: 'marketing' },
-                { name: 'Mailchimp', shortName: 'MC', color: '#ffe01b',
-                  desc: 'Sync contact lists and newsletter subscriptions automatically', status: 'coming_soon', category: 'marketing' },
               ].map(item => renderIntegrationCard(item as any))}
             </div>
           </>
