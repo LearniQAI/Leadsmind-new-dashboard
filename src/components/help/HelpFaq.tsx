@@ -27,8 +27,8 @@ export default function HelpFaq({ faqItems }: HelpFaqProps) {
   return (
     <div className="space-y-3.5">
       <div className="flex items-center gap-2.5 mb-4">
-        <HelpCircle className="w-5 h-5 text-primary shrink-0" />
-        <h3 className="text-lg font-bold text-white uppercase tracking-wider font-space-grotesk">Frequently Asked Questions</h3>
+        <HelpCircle className="w-5 h-5 text-dash-accent shrink-0" />
+        <h3 className="text-lg font-bold !text-dash-text uppercase tracking-wider font-space-grotesk">Frequently Asked Questions</h3>
       </div>
       <div className="space-y-3">
         {faqItems.map((item, index) => {
@@ -36,17 +36,17 @@ export default function HelpFaq({ faqItems }: HelpFaqProps) {
           return (
             <div
               key={index}
-              className="bg-[#080f28]/60 border border-white/5 rounded-xl overflow-hidden shadow-md transition-all duration-250"
+              className="bg-dash-surface border border-dash-border rounded-xl overflow-hidden transition-all duration-250"
             >
               <button
                 onClick={() => toggleIndex(index)}
-                className="w-full flex items-center justify-between px-5 py-4 text-left font-bold text-white text-xs sm:text-sm hover:bg-white/[0.02] transition"
+                className="w-full flex items-center justify-between px-5 py-4 text-left font-bold !text-dash-text text-xs sm:text-sm hover:bg-white transition"
               >
                 <span>{item.q}</span>
-                <ChevronDown className={`w-4 h-4 text-white/40 shrink-0 transition-transform duration-250 ${isOpen ? 'rotate-180 text-primary' : ''}`} />
+                <ChevronDown className={`w-4 h-4 !text-dash-textMuted shrink-0 transition-transform duration-250 ${isOpen ? 'rotate-180 !text-dash-accent' : ''}`} />
               </button>
               {isOpen && (
-                <div className="px-5 pb-4.5 pt-1 border-t border-white/[0.03] text-xs sm:text-sm text-white/60 leading-relaxed animate-fade-in">
+                <div className="px-5 pb-4.5 pt-1 border-t border-dash-border text-xs sm:text-sm !text-dash-textMuted leading-relaxed bg-white animate-fade-in">
                   {item.a}
                 </div>
               )}

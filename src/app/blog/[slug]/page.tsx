@@ -12,6 +12,7 @@ import BlogTracker from '@/components/blog/public/BlogTracker';
 import BlogComments from '@/components/blog/public/BlogComments';
 import ExitIntentCapture from '@/components/blog/public/ExitIntentCapture';
 import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,15 +78,32 @@ export default async function PublicBlogPostPage({ params, searchParams }: PageP
   const readTime = Math.max(1, Math.ceil(wordCount / 200));
 
   // H2 Indexing Observer & Dynamic Anchor Generator
-  let bodyHtml = sanitizeRichTextHtml(post.body_html);
+  //
+  // Deliberately wrapped: this pipeline runs on arbitrary saved post content
+  // (including malformed/partial embed markup a user may have pasted). A
+  // failure here must degrade to plain sanitized content, never take down
+  // the whole public page with a 500.
   const headings: { text: string; id: string; }[] = [];
-  let headingCounter = 0;
-
-  bodyHtml = bodyHtml.replace(/<h2>(.*?)<\/h2>/gi, (m, titleText) => {
-    const id = `heading-${headingCounter++}`;
-    headings.push({ text: titleText.replace(/<[^>]*>/g, ''), id });
-    return `<h2 id="${id}">${titleText}</h2>`;
-  });
+  let bodyHtml = '';
+  try {
+    bodyHtml = sanitizeRichTextHtml(post.body_html);
+    let headingCounter = 0;
+    bodyHtml = bodyHtml.replace(/<h2>(.*?)<\/h2>/gi, (m, titleText) => {
+      const id = `heading-${headingCounter++}`;
+      headings.push({ text: titleText.replace(/<[^>]*>/g, ''), id });
+      return `<h2 id="${id}">${titleText}</h2>`;
+    });
+  } catch (err) {
+    logger.error({ err, slug: post.slug }, 'public_blog.body_html.render_failed');
+    try {
+      // Fall back to sanitized content without heading anchors rather than
+      // an empty article — only skip the transform step that failed.
+      bodyHtml = sanitizeRichTextHtml(post.body_html);
+    } catch (sanitizeErr) {
+      logger.error({ err: sanitizeErr, slug: post.slug }, 'public_blog.sanitize.failed');
+      bodyHtml = '<p style="color:#94A3B8;font-style:italic;">Some content on this page could not be displayed.</p>';
+    }
+  }
 
   const articleUrl = post.canonical_url || `https://www.leadsmind.io/blog/${post.slug}`;
   const authorName = post.author ? `${post.author.first_name} ${post.author.last_name || ''}` : 'Corporate Content Director';
@@ -283,6 +301,8 @@ export default async function PublicBlogPostPage({ params, searchParams }: PageP
 
   // Check if article body contains a youtube embed
   const hasYoutubeEmbed = bodyHtml.includes('youtube.com/embed') || bodyHtml.includes('youtu.be');
+  // Facebook post embeds need the FB JS SDK loaded once per page to render (XFBML auto-parses on load).
+  const hasFacebookEmbed = bodyHtml.includes('fb-post');
 
   // Main visual layout rendering selector
   const renderLayoutContent = () => {
@@ -708,6 +728,19 @@ export default async function PublicBlogPostPage({ params, searchParams }: PageP
 
       {!isDraft && !isPreview && settings?.analytics_enabled && (
         <BlogTracker postId={post.id} workspaceId={post.workspace_id} />
+      )}
+
+      {hasFacebookEmbed && (
+        <>
+          <div id="fb-root" />
+          {/* Loaded once per page render; XFBML auto-parses any .fb-post divs already in the DOM on load. */}
+          <script
+            async
+            defer
+            crossOrigin="anonymous"
+            src="https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v19.0"
+          />
+        </>
       )}
 
       {schemaJson && (

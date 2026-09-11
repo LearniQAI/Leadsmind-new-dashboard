@@ -17,7 +17,7 @@ export interface NavModule {
   id: string; // stable slug, e.g. "crm-sales" — used for active-state id
   label: string;
   icon: string;
-  link?: string; // present only for Dashboard (direct link, no sub-nav)
-  items?: NavItem[]; // absent only for Dashboard
+  link?: string; // present for a direct-link module with no sub-nav (e.g. Dashboard, Help Center)
+  items?: NavItem[]; // absent for a direct-link module (e.g. Dashboard, Help Center)
   permission?: string;
 }

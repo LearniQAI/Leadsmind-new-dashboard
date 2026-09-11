@@ -232,23 +232,116 @@ body{${PAGE}font-family:'Archivo',system-ui,sans-serif;color:#0f172a;background:
 }
 
 /* ------------------------------------------------------------- custom upload */
+
+// A4 landscape at 96dpi (1mm = 96/25.4px) — same conversion the admin preview iframe
+// renders at (1122x794, see CertPreview in CertificateDesignForm.tsx), so collision math
+// here matches what the admin actually sees while placing fields.
+const PAGE_WIDTH_PX = 297 * (96 / 25.4);
+const PAGE_HEIGHT_PX = 210 * (96 / 25.4);
+const FIELD_MAX_WIDTH_PCT = 80; // matches `max-width:80%` on each field below
+const MIN_GAP_PCT = 0.9; // ~7px vertical buffer between two fields' estimated boxes
+
+// Real, previously-flagged bug: each field was independently centred on its own fixed
+// yPct with no measurement of another field's rendered height, so a long value (e.g. a
+// long student name) wrapping to multiple lines could visually overlap the field placed
+// below it. Fixed below by estimating each field's real rendered box (from its actual
+// text length, font size, and max-width) and, when two fields' estimated boxes overlap
+// both vertically AND horizontally, pushing the lower one down just enough to clear the
+// one above it. The admin's saved xPct/yPct placement is never mutated — only the
+// rendered position for this specific value is adjusted, so short values still render
+// exactly where the admin placed them.
+
+/** Average glyph width as a fraction of font size — a real, if approximate, metric for
+ *  proportional Latin sans-serif text (Inter), good enough to estimate wrap without a
+ *  real text-measurement API (unavailable in this pure, dependency-free HTML generator). */
+const AVG_CHAR_WIDTH_RATIO = 0.55;
+const LINE_HEIGHT_RATIO = 1.2;
+
+function estimateBoxPx(text: string, fontSize: number): { widthPx: number; heightPx: number } {
+  const maxWidthPx = PAGE_WIDTH_PX * (FIELD_MAX_WIDTH_PCT / 100);
+  const avgCharWidthPx = fontSize * AVG_CHAR_WIDTH_RATIO;
+  const charsPerLine = Math.max(1, Math.floor(maxWidthPx / avgCharWidthPx));
+  const lineCount = Math.max(1, Math.ceil(text.length / charsPerLine));
+  const widthPx = Math.min(maxWidthPx, text.length * avgCharWidthPx);
+  const heightPx = lineCount * fontSize * LINE_HEIGHT_RATIO;
+  return { widthPx, heightPx };
+}
+
+interface ResolvedField {
+  key: string;
+  val: string;
+  p: CertificatePlacement;
+  renderYPct: number; // possibly shifted down from p.yPct to avoid a collision
+  leftPct: number;
+  rightPct: number;
+  topPct: number;
+  bottomPct: number;
+}
+
+function resolveCollisionSafeFields(
+  fields: { key: string; val: string; p: CertificatePlacement }[]
+): ResolvedField[] {
+  const resolved: ResolvedField[] = fields.map(({ key, val, p }) => {
+    const { widthPx, heightPx } = estimateBoxPx(val, p.fontSize);
+    const widthPct = (widthPx / PAGE_WIDTH_PX) * 100;
+    const heightPct = (heightPx / PAGE_HEIGHT_PX) * 100;
+    const leftPct = p.align === 'center' ? p.xPct - widthPct / 2 : p.align === 'right' ? p.xPct - widthPct : p.xPct;
+    return {
+      key,
+      val,
+      p,
+      renderYPct: p.yPct,
+      leftPct,
+      rightPct: leftPct + widthPct,
+      topPct: p.yPct - heightPct / 2,
+      bottomPct: p.yPct + heightPct / 2,
+    };
+  });
+
+  // Walk fields top-to-bottom; a lower field whose horizontal range overlaps a higher
+  // field's gets pushed down just enough to clear it, then cascades to whatever's below.
+  const byY = resolved.slice().sort((a, b) => a.topPct - b.topPct);
+  for (let i = 1; i < byY.length; i++) {
+    const above = byY[i - 1];
+    const cur = byY[i];
+    const overlapsHorizontally = cur.leftPct < above.rightPct && cur.rightPct > above.leftPct;
+    if (!overlapsHorizontally) continue;
+    const requiredTop = above.bottomPct + MIN_GAP_PCT;
+    if (cur.topPct < requiredTop) {
+      const shift = requiredTop - cur.topPct;
+      cur.renderYPct += shift;
+      cur.topPct += shift;
+      cur.bottomPct += shift;
+    }
+  }
+
+  return resolved;
+}
+
 function customUpload(d: CertificateData, c: CertificateConfig): string {
   const cu = c.customUpload!;
-  const fields: { key: keyof typeof d; val: string }[] = [
+  const fieldDefs: { key: keyof typeof d; val: string }[] = [
     { key: 'studentName', val: d.studentName },
     { key: 'courseTitle', val: d.courseTitle },
     { key: 'completionDate', val: d.completionDate },
     { key: 'validationId', val: d.validationId },
   ];
-  const layers = fields
+  const placed = fieldDefs
     .map(({ key, val }) => {
       const p = cu.placements?.[key];
-      if (!p) return '';
-      return `<div style="position:absolute;left:${p.xPct}%;top:${p.yPct}%;transform:${
-        p.align === 'center' ? 'translate(-50%,-50%)' : p.align === 'right' ? 'translate(-100%,-50%)' : 'translate(0,-50%)'
-      };font-size:${p.fontSize}px;color:${esc(p.color)};font-weight:${p.bold ? 700 : 400};
-      text-align:${p.align};max-width:80%;line-height:1.2;white-space:pre-wrap">${esc(val)}</div>`;
+      return p ? { key, val, p } : null;
     })
+    .filter((f): f is { key: keyof typeof d; val: string; p: CertificatePlacement } => f !== null);
+
+  const resolved = resolveCollisionSafeFields(placed);
+
+  const layers = resolved
+    .map(
+      (f) => `<div style="position:absolute;left:${f.p.xPct}%;top:${f.renderYPct}%;transform:${
+        f.p.align === 'center' ? 'translate(-50%,-50%)' : f.p.align === 'right' ? 'translate(-100%,-50%)' : 'translate(0,-50%)'
+      };font-size:${f.p.fontSize}px;color:${esc(f.p.color)};font-weight:${f.p.bold ? 700 : 400};
+      text-align:${f.p.align};max-width:${FIELD_MAX_WIDTH_PCT}%;line-height:${LINE_HEIGHT_RATIO};white-space:pre-wrap">${esc(f.val)}</div>`
+    )
     .join('');
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
 *{margin:0;padding:0;box-sizing:border-box}

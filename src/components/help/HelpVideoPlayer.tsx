@@ -120,14 +120,14 @@ export default function HelpVideoPlayer({ videoUrl, chapters = [] }: HelpVideoPl
   };
 
   return (
-    <div className="bg-[#080f28]/60 border border-white/5 rounded-3xl overflow-hidden shadow-2xl space-y-4 p-5 font-dm-sans">
-      
+    <div className="bg-white border border-dash-border rounded-3xl overflow-hidden shadow-sm space-y-4 p-5 font-dm-sans">
+
       {/* Playback Pipeline Edge Banner */}
-      <div className="flex items-center justify-between text-[10px] text-white/40 uppercase tracking-widest font-black pb-2.5 border-b border-white/[0.04]">
+      <div className="flex items-center justify-between text-[10px] !text-dash-textMuted uppercase tracking-widest font-black pb-2.5 border-b border-dash-border">
         <span className="flex items-center gap-1">
-          <Sparkles className="w-3.5 h-3.5 text-primary" /> Cloudflare CDN Johannesburg Edge (JNB)
+          <Sparkles className="w-3.5 h-3.5 text-dash-accent" /> Cloudflare CDN Johannesburg Edge (JNB)
         </span>
-        <span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/25">
+        <span className="bg-green/10 text-green px-2 py-0.5 rounded border border-green/25">
           Low Latency Stream
         </span>
       </div>
@@ -135,7 +135,7 @@ export default function HelpVideoPlayer({ videoUrl, chapters = [] }: HelpVideoPl
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: Interactive Media Screen */}
         <div className="lg:col-span-2 space-y-3">
-          <div className="relative aspect-video rounded-2xl overflow-hidden bg-[#020510] border border-white/10 group">
+          <div className="relative aspect-video rounded-2xl overflow-hidden bg-dash-text border border-dash-border group">
             {videoUrl.includes('iframe') || videoUrl.includes('embed') || videoUrl.includes('youtube') || videoUrl.includes('vimeo') ? (
               <iframe
                 src={videoUrl}
@@ -155,38 +155,38 @@ export default function HelpVideoPlayer({ videoUrl, chapters = [] }: HelpVideoPl
                 />
 
                 {/* Custom overlays / control indicators */}
-                <div className="absolute bottom-4 left-4 right-4 bg-[#060b1f]/95 border border-white/5 p-3.5 rounded-xl flex items-center justify-between gap-4 shadow-2xl opacity-90 group-hover:opacity-100 transition-opacity">
+                <div className="absolute bottom-4 left-4 right-4 bg-white/95 border border-dash-border p-3.5 rounded-xl flex items-center justify-between gap-4 shadow-lg opacity-90 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={togglePlay}
                     type="button"
-                    className="p-2 bg-primary hover:bg-primary/95 text-white rounded-lg transition active:scale-95"
+                    className="p-2 bg-dash-accent hover:bg-dash-accent/90 text-white rounded-lg transition active:scale-95"
                   >
                     {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                   </button>
 
                   {/* Progress Slider */}
                   <div className="flex-1 flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-white/50">{formatTime(currentTime)}</span>
+                    <span className="text-[10px] font-bold !text-dash-textMuted">{formatTime(currentTime)}</span>
                     <input
                       type="range"
                       min="0"
                       max={duration || 100}
                       value={currentTime}
                       onChange={handleScrub}
-                      className="flex-1 h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
+                      className="flex-1 h-1 bg-dash-border rounded-lg appearance-none cursor-pointer accent-dash-accent"
                     />
-                    <span className="text-[10px] font-bold text-white/50">{formatTime(duration)}</span>
+                    <span className="text-[10px] font-bold !text-dash-textMuted">{formatTime(duration)}</span>
                   </div>
 
                   {/* Speed Preset indicator badge */}
                   <div className="flex items-center gap-3">
-                    <button onClick={toggleMute} className="text-white/40 hover:text-white transition">
-                      {isMuted ? <VolumeX className="w-4.5 h-4.5 text-rose-500" /> : <Volume2 className="w-4.5 h-4.5" />}
+                    <button onClick={toggleMute} className="!text-dash-textMuted hover:!text-dash-text transition">
+                      {isMuted ? <VolumeX className="w-4.5 h-4.5 text-red" /> : <Volume2 className="w-4.5 h-4.5" />}
                     </button>
 
-                    <div className="px-2.5 py-1 rounded bg-white/5 border border-white/5 flex items-center gap-1.5">
-                      <span className="text-[9px] font-bold text-white/40">Speed:</span>
-                      <span className={`text-[10px] font-black tracking-wider ${playbackSpeed === 1.0 ? 'text-amber-400' : 'text-primary'}`}>
+                    <div className="px-2.5 py-1 rounded bg-dash-surface border border-dash-border flex items-center gap-1.5">
+                      <span className="text-[9px] font-bold !text-dash-textMuted">Speed:</span>
+                      <span className={`text-[10px] font-black tracking-wider ${playbackSpeed === 1.0 ? 'text-amber' : 'text-dash-accent'}`}>
                         {playbackSpeed.toFixed(1)}x
                       </span>
                     </div>
@@ -199,14 +199,14 @@ export default function HelpVideoPlayer({ videoUrl, chapters = [] }: HelpVideoPl
 
         {/* Right: Chapters Timeline */}
         <div className="space-y-3 flex flex-col">
-          <div className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-wider">
-            <List className="w-4 h-4 text-primary" />
+          <div className="flex items-center gap-2 text-xs font-bold !text-dash-text uppercase tracking-wider">
+            <List className="w-4 h-4 text-dash-accent" />
             <span>Interactive Setup Chapters</span>
           </div>
 
           <div className="flex-1 overflow-y-auto max-h-[220px] lg:max-h-none space-y-2 pr-1 no-scrollbar">
             {chapters.length === 0 ? (
-              <div className="text-xs text-white/35 py-8 text-center border border-dashed border-white/5 rounded-2xl">
+              <div className="text-xs !text-dash-textMuted py-8 text-center border border-dashed border-dash-border rounded-2xl">
                 No chapter jumps provisioned.
               </div>
             ) : (
@@ -218,26 +218,26 @@ export default function HelpVideoPlayer({ videoUrl, chapters = [] }: HelpVideoPl
                     onClick={() => handleJumpToChapter(chap.start_time)}
                     className={`w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between gap-3 group ${
                       isActive
-                        ? 'bg-primary/10 border-primary/30 text-white'
-                        : 'bg-white/[0.01] border-white/5 text-white/60 hover:border-white/10 hover:bg-white/[0.02]'
+                        ? 'bg-dash-accent/10 border-dash-accent/30 !text-dash-text'
+                        : 'bg-dash-surface border-dash-border !text-dash-textMuted hover:border-dash-accent/20 hover:bg-white'
                     }`}
                   >
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold tracking-tight text-white group-hover:text-primary transition line-clamp-1">
+                        <span className="text-[10px] font-bold tracking-tight !text-dash-text group-hover:text-dash-accent transition line-clamp-1">
                           {chap.title}
                         </span>
                         {chap.is_critical && (
-                          <span className="text-[8px] font-black uppercase tracking-widest text-amber-400 bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.5 rounded shrink-0">
+                          <span className="text-[8px] font-black uppercase tracking-widest text-amber bg-amber/10 border border-amber/20 px-1.5 py-0.5 rounded shrink-0">
                             Critical Section
                           </span>
                         )}
                       </div>
-                      <span className="text-[9px] text-white/30 font-semibold uppercase tracking-widest block">
+                      <span className="text-[9px] !text-dash-textMuted font-semibold uppercase tracking-widest block">
                         Start: {formatTime(chap.start_time)}
                       </span>
                     </div>
-                    <PlayCircle className="w-4.5 h-4.5 text-white/20 group-hover:text-primary group-hover:scale-105 transition" />
+                    <PlayCircle className="w-4.5 h-4.5 !text-dash-textMuted group-hover:text-dash-accent group-hover:scale-105 transition" />
                   </button>
                 );
               })

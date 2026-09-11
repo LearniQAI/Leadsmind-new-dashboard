@@ -37,7 +37,7 @@ export function filterNavByPermissions(modules: NavModule[], ctx: NavRoleContext
   return modules
     .map((module): NavModule | null => {
       if (!module.items) {
-        // Direct-link module (Dashboard) — gate itself using the item-level rule.
+        // Direct-link module (Dashboard, Help Center) — gate itself using the item-level rule.
         return isItemAllowed(module, ctx) ? module : null;
       }
 

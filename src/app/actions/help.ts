@@ -402,14 +402,15 @@ export async function seedHelpArticles() {
       {
         slug: 'bank-account-connections',
         category: 'Getting Started',
-        title: 'Connecting Bank Accounts and Uploading Statements',
-        body_plain: 'LeadsMind has one live bank API connection today: Investec, connected via OAuth and API credentials under Finance then Connected Accounts, which reads your account balances and transactions and cannot move money. For any other South African bank, including FNB, Standard Bank, Nedbank, and Discovery, you upload a CSV, OFX, or QIF statement export instead. There is no live sync for those banks.',
+        title: 'Connected Accounts: Bank Connections and Statement Uploads',
+        body_plain: 'Connected Accounts is where you link your bank data into Finance. LeadsMind has one live bank API connection today: Investec, connected via OAuth and API credentials under Finance then Connected Accounts, which reads your account balances and transactions and cannot move money. For any other South African bank, including FNB, Standard Bank, Nedbank, and Discovery, you upload a CSV, OFX, or QIF statement export instead. There is no live sync for those banks.',
         content_json: [
           { step: 1, title: 'Investec: Connect Directly', description: 'Go to Finance then Connected Accounts and enter your Investec API credentials to connect live.' },
           { step: 2, title: 'Other Banks: Export a Statement', description: 'Download a CSV, OFX, or QIF statement from your bank’s own online banking.' },
           { step: 3, title: 'Upload for Reconciliation', description: 'Upload the statement file under Finance for reconciliation.' }
         ],
         faq_json: [
+          { q: 'What is Connected Accounts in Finance & Accounting?', a: 'Connected Accounts is where you link bank data into Finance — a live Investec API connection, or a CSV/OFX/QIF statement upload for any other bank.' },
           { q: 'Can I connect Absa or Capitec directly the way I can with Investec?', a: 'Not through a live API today; only Investec has a direct connection. You can still reconcile Absa or Capitec activity by uploading a CSV statement export.' }
         ]
       },
@@ -472,14 +473,15 @@ export async function seedHelpArticles() {
       {
         slug: 'creating-a-contact',
         category: 'CRM Foundations',
-        title: 'Creating a Contact Manually',
-        body_plain: 'Add a single contact directly from Contacts by clicking Add Contact and entering their name, email, phone, and any tags. This is separate from bulk CSV import, which is for adding many contacts at once.',
+        title: 'Contacts: Your CRM Contact List and Records',
+        body_plain: 'Contacts is the CRM\'s central list of every person and business you track — from CRM then Contacts you see the full list, and opening one shows its record: tags, linked tasks, pipeline/stage assignment, and activity history. Add a single contact directly by clicking Add Contact and entering their name, email, phone, and any tags. This is separate from bulk CSV import, which is for adding many contacts at once.',
         content_json: [
           { step: 1, title: 'Open Contacts', description: 'Go to CRM then Contacts.' },
           { step: 2, title: 'Click Add Contact', description: 'Enter the contact\'s name, email, phone number, and any tags.' },
           { step: 3, title: 'Save', description: 'Save to add them to your CRM immediately.' }
         ],
         faq_json: [
+          { q: 'What is Contacts in CRM & Sales?', a: 'Contacts is the CRM\'s full list of people and businesses, each with its own record showing tags, tasks, pipeline stage, and activity history.' },
           { q: 'How can I create contacts in the CRM?', a: 'Go to Contacts and click Add Contact to add one manually, or use Import for adding many contacts at once from a CSV or Excel file.' },
           { q: 'Can I add a contact directly to a pipeline stage?', a: 'Add the contact first, then assign them to a pipeline and stage from their contact record or the pipeline board.' }
         ]
@@ -527,14 +529,15 @@ export async function seedHelpArticles() {
         slug: 'calendar-booking-scheduling',
         category: 'CRM Foundations',
         title: 'Calendar Booking Pages and Round-Robin Assignment',
-        body_plain: 'Activate booking pages under Calendar, defining time-slot sizes, buffers, and available hours. Round-robin assignment is available for meeting bookings, assigning the rep with the lowest current booking count and the oldest prior assignment. This round-robin logic is scoped to calendar bookings; it is not a general-purpose CRM-wide lead-routing-by-criteria engine.',
+        body_plain: 'Activate booking pages under Calendar, defining time-slot sizes, buffers, and available hours. Round-robin assignment is per booking calendar: on a round-robin calendar, use the Manage Team button to enroll or remove reps from that specific calendar\'s pool. Each new booking is assigned to the enrolled rep with the lowest current booking count, tie-broken by whoever was assigned longest ago; a "Sales Calls" calendar and a "Support Calls" calendar rotate their own reps independently of each other. Meetings also support real recurring series (daily, weekly, or monthly, with an end date or occurrence count) created from the booking modal\'s Repeat option, and support real Google Meet, Zoom, and Microsoft Teams links when the host has connected that provider, falling back to an internal video room otherwise. This round-robin logic is scoped to calendar bookings; it is not a general-purpose CRM-wide lead-routing-by-criteria engine.',
         content_json: [
           { step: 1, title: 'Create a Booking Page', description: 'Go to Calendar then Schedule Widgets.' },
           { step: 2, title: 'Set Available Hours', description: 'Specify weekly available time slots and buffers.' },
-          { step: 3, title: 'Enable Round-Robin', description: 'Add multiple team members to distribute bookings automatically.' }
+          { step: 3, title: 'Enable Round-Robin', description: 'Set the calendar type to round-robin, then use Manage Team to enroll the reps who should share its bookings.' }
         ],
         faq_json: [
-          { q: 'Can I route any incoming contact by country or score, not just bookings?', a: 'Not currently. Round-robin routing exists specifically for calendar bookings, not as a general contact-assignment rules engine.' }
+          { q: 'Can I route any incoming contact by country or score, not just bookings?', a: 'Not currently. Round-robin routing exists specifically for calendar bookings, not as a general contact-assignment rules engine.' },
+          { q: 'Is round-robin shared across all my booking calendars, or per calendar?', a: 'Per calendar. Each round-robin booking calendar has its own enrolled team and its own fairness rotation, managed from that calendar\'s Manage Team button.' }
         ]
       },
       {
@@ -562,6 +565,113 @@ export async function seedHelpArticles() {
         ],
         faq_json: [
           { q: 'Can I remove a negative review?', a: 'No, Google policy does not allow editing or removing reviews; automation only helps you request more positive reviews over time.' }
+        ]
+      },
+      {
+        slug: 'lead-finder-google-places-search',
+        category: 'CRM Foundations',
+        title: 'Finding New Leads with Lead Finder',
+        body_plain: 'Lead Finder searches Google Places for businesses by keyword (e.g. "best pizza") or business type (e.g. "Plumber") within a city or region, using an adjustable radius from 1km to 50km. Matching businesses are enriched and saved to your workspace as leads, and past searches are kept in a Saved Search list so you can re-run or revisit them later. The Employee Size and Rating Filter fields shown on the search form are locked as Pro placeholders in the current build and are not yet functional filters. Searches are rate-limited to one every 3 seconds to prevent accidental duplicate runs.',
+        content_json: [
+          { step: 1, title: 'Choose Search Type', description: 'Pick Keyword or Business Type, then enter a location and radius.' },
+          { step: 2, title: 'Run the Search', description: 'Click Search Leads. Results are pulled from Google Places and enriched automatically.' },
+          { step: 3, title: 'Save or Revisit', description: 'Each search is saved automatically; use the Saved Search panel to re-run a past search later.' }
+        ],
+        faq_json: [
+          { q: 'Can I filter by employee count or star rating?', a: 'Those filter fields are visible on the search form but are locked Pro placeholders right now — they do not yet filter results.' },
+          { q: 'Where do Lead Finder results go?', a: 'They are saved into your CRM as leads tied to the search, and can be viewed on the results page or plotted on the Territory Map.' }
+        ]
+      },
+      {
+        slug: 'territory-map-lead-visualization',
+        category: 'CRM Foundations',
+        title: 'Visualizing Leads on the Territory Map',
+        body_plain: 'The Territory Map plots your geocoded Lead Finder results on a real Google Map, color-coded by opportunity: green markers are high-score leads (lead score 70 or above), amber markers are coverage gaps (no website, or a rating below 4), and blue markers are everything else. Filter buttons let you switch between All, High Opportunity, and Gaps. Leads without saved coordinates are geocoded automatically in the background the first time you open the map. The "High Opp Zones" and "Detected Networks" stat tiles shown above the map are not yet computed from real scoring or franchise-detection logic in the current build — they currently return placeholder values rather than a genuine calculation, so do not rely on them for real opportunity or franchise-network analysis yet; the map itself and its lead-level color coding are fully real.',
+        content_json: [
+          { step: 1, title: 'Open Territory Map', description: 'From Lead Finder results, click through to the Territory Map, or open it directly to see all workspace leads.' },
+          { step: 2, title: 'Filter the View', description: 'Use the All / High Opportunity / Gaps filter to narrow which leads are shown.' },
+          { step: 3, title: 'Inspect a Lead', description: 'Click a marker to see the business name and address in an info window.' }
+        ],
+        faq_json: [
+          { q: 'Are the "High Opp Zones" and "Detected Networks" numbers accurate?', a: 'Not yet — those two summary tiles currently return placeholder values rather than a real calculation. The map itself and the per-lead color coding (high score / gap / other) are real and driven by actual lead data.' },
+          { q: 'Why is a lead missing from the map?', a: 'Only leads with valid latitude/longitude are plotted. Leads without an address or that failed geocoding appear in a separate "no location" list instead.' }
+        ]
+      },
+      {
+        slug: 'quotes-ledger-conversion',
+        category: 'CRM Foundations',
+        title: 'Managing Quotes and Converting to Invoices',
+        body_plain: 'The Quotes Ledger lists every quote with its status (sent, accepted, converted) and a running Pipeline Value total across all open quotes. Quotes and Proposals share the same underlying document and the same ledger page — the "Create Proposal" button starts the same quote-builder, and adding the e-signature step is what turns a quote into what LeadsMind calls a proposal, not a separate feature. An accepted quote can be converted directly into an invoice with one click, which runs as a single database transaction so a quote cannot be converted twice, and you can update a quote\'s status or delete it from the ledger.',
+        content_json: [
+          { step: 1, title: 'Create a Quote', description: 'Go to Quotes and click Create Proposal to build a quote with client and line items.' },
+          { step: 2, title: 'Track Status', description: 'Watch it move through sent, accepted, and converted in the ledger stats row.' },
+          { step: 3, title: 'Convert to Invoice', description: 'Once accepted, convert the quote to an invoice directly from the ledger.' }
+        ],
+        faq_json: [
+          { q: 'What is the difference between a Quote and a Proposal?', a: 'None structurally — a Proposal is a Quote with the optional e-signature step enabled. They live on the same ledger and use the same builder.' },
+          { q: 'Can I convert the same quote to an invoice twice?', a: 'No, conversion is a single guarded database operation; re-running it on an already-converted quote returns the existing invoice instead of creating a duplicate.' }
+        ]
+      },
+      {
+        slug: 'crm-tasks-assignees-activity',
+        category: 'CRM Foundations',
+        title: 'Creating and Tracking Tasks',
+        body_plain: 'Tasks in the CRM have a title, description, status, priority, and an optional due date and time, and can be linked to a specific contact so they show up on that contact\'s record. A task can have multiple assignees rather than just one owner, and each task keeps an activity log and file attachments, so you can see a history of what happened on it and who did what.',
+        content_json: [
+          { step: 1, title: 'Create a Task', description: 'Go to Tasks and add a title, priority, and optional due date.' },
+          { step: 2, title: 'Assign and Link', description: 'Assign one or more team members, and optionally link the task to a contact.' },
+          { step: 3, title: 'Track Progress', description: 'Update status as work progresses; comments and attachments are kept in the task\'s activity log.' }
+        ],
+        faq_json: [
+          { q: 'Can more than one person be assigned to a task?', a: 'Yes, tasks support multiple assignees, not just a single owner.' },
+          { q: 'Do tasks show up on the related contact\'s record?', a: 'Yes, if a task is linked to a contact it appears in that contact\'s activity.' }
+        ]
+      },
+      {
+        slug: 'projects-tasks-milestones',
+        category: 'CRM Foundations',
+        title: 'Projects: Task Boards and Client-Approved Milestones',
+        body_plain: 'Projects is where you run client work: each project has its own task board with four statuses (To Do, In Progress, Review, Done), assignees per task, and an automatically calculated progress percentage based on how many tasks are marked Done. A project task can also be used as a client-facing milestone: when a client approves it from their client portal, the task is marked Done, the approval is timestamped and logged to that contact\'s CRM activity feed, and it fires a real "milestone_approved" automation trigger, so you can chain follow-up actions like sending a notification or invoice off a client\'s milestone sign-off.',
+        content_json: [
+          { step: 1, title: 'Open a Project', description: 'Go to Projects and open a project to see its task board and progress.' },
+          { step: 2, title: 'Add and Assign Tasks', description: 'Create tasks, set priority and due dates, and assign a team member.' },
+          { step: 3, title: 'Use Client Milestones', description: 'For client-facing checkpoints, the client approves the task from their portal, which marks it Done and can trigger an automation.' }
+        ],
+        faq_json: [
+          { q: 'What is Projects in CRM & Sales?', a: 'Projects is the module for running client work as a task board, with statuses, assignees, automatic progress tracking, and client-approved milestones.' },
+          { q: 'How is project progress calculated?', a: 'It is the percentage of that project\'s tasks currently marked Done — not a manually entered number.' },
+          { q: 'Can a client approving a milestone trigger an automation?', a: 'Yes, client milestone approval fires a real "milestone_approved" automation trigger that a workflow can act on.' }
+        ]
+      },
+      {
+        slug: 'calendar-waitlists-group-sessions',
+        category: 'CRM Foundations',
+        title: 'Waitlists for Group and Class Booking Calendars',
+        body_plain: 'Waitlists only apply to a calendar set up as a group/class session with a capacity limit and waitlisting turned on — a normal one-on-one booking calendar has no waitlist concept, since it only ever holds one person per slot. Once a class session is full, the public booking page shows "Full · Waitlist" instead of a bookable time, and a visitor can join the waitlist for that session. When a confirmed attendee cancels their spot, the system automatically emails the next person on the waitlist with a time-limited offer to claim it; if that offer expires unanswered, it automatically advances to the next person on the list. Each attendee, whether confirmed or waiting, gets their own private management link to view or cancel their own spot without needing to log in.',
+        content_json: [
+          { step: 1, title: 'Turn On Waitlisting', description: 'On a group/class booking calendar, set a capacity and enable waitlisting in its settings.' },
+          { step: 2, title: 'Visitors Join When Full', description: 'Once the session is full, the public page shows "Full · Waitlist" and lets visitors join.' },
+          { step: 3, title: 'Automatic Offers', description: 'A cancelled spot automatically emails the next waitlisted person a time-limited offer; an unclaimed offer automatically moves to the next person.' }
+        ],
+        faq_json: [
+          { q: 'Does every booking calendar have a waitlist?', a: 'No, only group/class-session calendars with a capacity limit and waitlisting enabled. One-on-one booking calendars don\'t have a waitlist.' },
+          { q: 'What happens if someone doesn\'t respond to a waitlist offer?', a: 'The offer expires automatically and the spot is offered to the next person on the waitlist, with no manual step needed.' },
+          { q: 'Can a waitlisted person manage their own spot?', a: 'Yes, every waitlist entry and confirmed attendee gets a private link to view status or cancel, without needing an account.' }
+        ]
+      },
+      {
+        slug: 'instant-meet-video-room',
+        category: 'CRM Foundations',
+        title: 'Starting an Instant Meeting',
+        body_plain: 'Instant Meet launches an ad-hoc video meeting immediately, with no advance booking. Set a title and a room lifespan (15 minutes, 30 minutes, 1 hour, or 2 hours) and generate the room: if you have Google Meet connected, it creates a real Google Meet link; otherwise it falls back to an internal Jitsi-based WebRTC video room. Either way, a real appointment record is created automatically so the meeting shows up in your calendar history and diagnostics, and the meeting link can be copied to share immediately. The page also shows a small diagnostics cockpit of your recent booking calendars and appointments for quick reference while testing.',
+        content_json: [
+          { step: 1, title: 'Open Instant Meet', description: 'Go to Calendar then Instant Meet.' },
+          { step: 2, title: 'Set Title and Duration', description: 'Enter a meeting title and choose how long the room should stay active.' },
+          { step: 3, title: 'Generate and Share', description: 'Click Generate Instant Meeting, then copy the link to share it right away.' }
+        ],
+        faq_json: [
+          { q: 'Do I need to book a time slot to use Instant Meet?', a: 'No, it starts a room immediately for right now — there\'s no advance scheduling involved.' },
+          { q: 'What video platform does Instant Meet use?', a: 'A real Google Meet link if you have Google Meet connected; otherwise an internal Jitsi WebRTC video room.' }
         ]
       }
     ];
@@ -609,6 +719,122 @@ export async function seedHelpArticles() {
         ]
       },
       {
+        slug: 'hr-employee-directory',
+        category: 'CRM Foundations',
+        title: 'Employees: Your HR Employee Directory',
+        body_plain: 'Employees is the HR module\'s directory of registered staff: each record holds name, contact details, SA ID/passport number, role, department, employment type (full-time, part-time, contractor, or intern), start date, and salary with its pay frequency (monthly, weekly, or hourly). Adding an employee can autofill their name, email, and role from an existing workspace member, or be entered from scratch. An employee\'s record feeds their Schedules, Leave, Time Tracking, and Payroll entries elsewhere in HR.',
+        content_json: [
+          { step: 1, title: 'Open Employees', description: 'Go to HR then Employees.' },
+          { step: 2, title: 'Add Employee', description: 'Autofill from an existing workspace member, or enter their details manually.' },
+          { step: 3, title: 'Set Salary and Type', description: 'Set employment type, salary amount, and pay frequency.' }
+        ],
+        faq_json: [
+          { q: 'Can I create an employee record from an existing team member?', a: 'Yes, the Add Employee form can autofill name, email, and role from anyone already a member of your workspace.' },
+          { q: 'What employment types are supported?', a: 'Full-time, part-time, contractor, and intern.' }
+        ]
+      },
+      {
+        slug: 'hr-schedules-shifts',
+        category: 'CRM Foundations',
+        title: 'Setting Up Work Schedules',
+        body_plain: 'Schedules define the working pattern employees are assigned to: a named schedule sets which days of the week apply, a start and end time, standard hours per day, and the overtime threshold in hours. Managing schedules is restricted to admin, owner, and hr roles.',
+        content_json: [
+          { step: 1, title: 'Open Schedules', description: 'Go to HR then Schedules (admin, owner, or hr role required).' },
+          { step: 2, title: 'Define the Pattern', description: 'Set the working days, start/end time, standard hours, and overtime threshold.' },
+          { step: 3, title: 'Assign It', description: 'Mark a schedule as default or assign it to specific employees.' }
+        ],
+        faq_json: [
+          { q: 'Who can create or edit schedules?', a: 'Only admin, owner, and hr roles can manage schedules.' }
+        ]
+      },
+      {
+        slug: 'hr-leave-requests',
+        category: 'CRM Foundations',
+        title: 'Leave: Employee Time-Off Requests',
+        body_plain: 'Leave is the HR module\'s employee time-off tracker, covering seven real leave types — annual, sick, maternity, paternity, family, unpaid, and study — each request with a start date, end date, day count, and reason. A submitted leave request starts as pending and is then approved, rejected (with a reason), or cancelled.',
+        content_json: [
+          { step: 1, title: 'Open Leave', description: 'Go to HR then Leave.' },
+          { step: 2, title: 'Submit a Request', description: 'Choose the leave type, date range, and reason.' },
+          { step: 3, title: 'Approve or Reject', description: 'A manager approves the request, or rejects it with a reason.' }
+        ],
+        faq_json: [
+          { q: 'What is Leave in HR & Payroll?', a: 'Leave is the employee time-off request tracker, covering annual, sick, maternity, paternity, family, unpaid, and study leave, with an approve/reject workflow.' },
+          { q: 'What leave types are supported?', a: 'Annual, sick, maternity, paternity, family, unpaid, and study leave.' },
+          { q: 'What happens after I submit a leave request?', a: 'It starts as pending until a manager approves or rejects it; you can also cancel it yourself before it\'s actioned.' }
+        ]
+      },
+      {
+        slug: 'hr-time-tracking-billable',
+        category: 'CRM Foundations',
+        title: 'Logging Time and Billable Hours',
+        body_plain: 'Time Tracking logs hours worked per employee against a project name and description, for a given date, marked billable or non-billable with an hourly rate. A "billed" flag on each entry is a manual marker you set yourself once you\'ve actually invoiced that time — logging or flagging an entry does not automatically create or attach it to an invoice.',
+        content_json: [
+          { step: 1, title: 'Open Time Tracking', description: 'Go to HR then Time Tracking.' },
+          { step: 2, title: 'Log an Entry', description: 'Enter the employee, project, date, hours, and whether it\'s billable.' },
+          { step: 3, title: 'Filter and Review', description: 'Filter by employee or billable status to review logged time.' }
+        ],
+        faq_json: [
+          { q: 'Does marking time as billable automatically create an invoice?', a: 'No, billable and billed are just tracking flags on the entry — you still create the invoice yourself elsewhere; there is no automatic invoice generation from time entries.' }
+        ]
+      },
+      {
+        slug: 'finance-overview-dashboard',
+        category: 'Accounting & Finance',
+        title: 'The Finance Overview Dashboard',
+        body_plain: 'Finance Overview is the landing dashboard for the Finance module: it shows total income, total expenses, your outstanding-invoices count, and current cash balance, plus a feed of your 5 most recent transactions. It is a read-only summary view — to record or edit money movements, use Transactions, Invoices, or Expenses directly.',
+        content_json: [
+          { step: 1, title: 'Open Finance Overview', description: 'Go to Finance to land on the Overview dashboard.' },
+          { step: 2, title: 'Check the Numbers', description: 'Review total income, total expenses, outstanding invoices, and cash balance at a glance.' },
+          { step: 3, title: 'Drill In', description: 'Click into Transactions, Invoices, or Expenses for the full detail behind any number.' }
+        ],
+        faq_json: [
+          { q: 'Can I record a transaction from the Overview page?', a: 'No, Overview is a read-only summary; record or edit transactions from the Transactions, Invoices, or Expenses pages.' }
+        ]
+      },
+      {
+        slug: 'finance-transactions-ledger',
+        category: 'Accounting & Finance',
+        title: 'The Transactions Ledger',
+        body_plain: 'Transactions is the full, searchable ledger of every money movement in your workspace: entries generated automatically from invoices and expenses appear alongside transactions you add manually as income or expense. You can search, filter by source type and date range, and edit or delete any entry, with pagination for larger histories.',
+        content_json: [
+          { step: 1, title: 'Open Transactions', description: 'Go to Finance then Transactions.' },
+          { step: 2, title: 'Filter or Search', description: 'Use search, source type, and date range filters to narrow the ledger.' },
+          { step: 3, title: 'Add or Edit', description: 'Add a manual income or expense entry, or edit/delete an existing one.' }
+        ],
+        faq_json: [
+          { q: 'Do invoices and expenses automatically show up in Transactions?', a: 'Yes, invoice and expense records feed into the ledger automatically alongside any transactions you add manually.' }
+        ]
+      },
+      {
+        slug: 'finance-expenses-tracking',
+        category: 'Accounting & Finance',
+        title: 'Tracking Business Expenses',
+        body_plain: 'Expenses lets you log business spending with a category, vendor, amount, and date, so it can be tracked against income on the Finance Overview and included in the Transactions ledger and Profit & Loss reports.',
+        content_json: [
+          { step: 1, title: 'Open Expenses', description: 'Go to Finance then Expenses.' },
+          { step: 2, title: 'Log an Expense', description: 'Enter the category, vendor, amount, and date.' },
+          { step: 3, title: 'Track Impact', description: 'Logged expenses flow into your Transactions ledger and Profit & Loss reporting.' }
+        ],
+        faq_json: [
+          { q: 'Does logging an expense affect my reports automatically?', a: 'Yes, expenses feed into the Transactions ledger and Profit & Loss reports without any extra step.' }
+        ]
+      },
+      {
+        slug: 'compliance-hub-str-reports',
+        category: 'Accounting & Finance',
+        title: 'Compliance Hub: FICA Suspicious Transaction Reports',
+        body_plain: 'Compliance Hub is a FICA (Financial Intelligence Centre Act) compliance tool restricted to admin and compliance roles. It shows your contacts with their KYC risk rating, and lets you draft a formal Suspicious Transaction Report (STR) against a contact: selecting the subject, transaction amount, currency, date, a narrative, and verification-anomaly flags. A draft STR can be finalized and locked, which permanently write-locks the record and registers it in the compliance vault — this action cannot be undone. Reports can be exported in goAML XML format, the standard format used to submit STRs to a Financial Intelligence Centre, for your compliance team to file; this is an export and internal audit-trail tool, not a live, automatic transmission integration with the FIC\'s own systems.',
+        content_json: [
+          { step: 1, title: 'Open Compliance Hub', description: 'Go to Compliance Hub (admin or compliance role required).' },
+          { step: 2, title: 'Draft an STR', description: 'Select the subject contact, enter transaction details and a narrative, and flag any anomalies.' },
+          { step: 3, title: 'Finalize and Export', description: 'Lock the finished report, then export it in goAML XML format for filing.' }
+        ],
+        faq_json: [
+          { q: 'Does Compliance Hub automatically submit reports to the Financial Intelligence Centre?', a: 'No, it prepares and locks the report and can export it in goAML XML format for your compliance team to file — it does not transmit it to the FIC automatically.' },
+          { q: 'Can a locked STR be edited afterward?', a: 'No, finalizing an STR write-locks the record permanently; this cannot be undone.' }
+        ]
+      },
+      {
         slug: 'bank-reconciliation',
         category: 'Accounting & Finance',
         title: 'Bank Reconciliation',
@@ -653,13 +879,15 @@ export async function seedHelpArticles() {
       {
         slug: 'invoice-numbering-currency',
         category: 'Invoicing & Automated Payments',
-        title: 'Invoice Numbering and Multi-Currency Invoices',
-        body_plain: 'Invoices and credit notes receive real sequential numbers, such as INV-2026-1001, generated automatically. Invoices carry a currency field and reporting and forecasting tools group figures by that currency, but LeadsMind has no exchange-rate or conversion source, so this is a currency tag on each invoice rather than real foreign-exchange conversion.',
+        title: 'Invoices: Creating, Numbering, and Currency',
+        body_plain: 'Invoices lets you bill clients with line items, a due date, and a status that moves from draft through sent to paid as payment comes in. Invoices and credit notes receive real sequential numbers, such as INV-2026-1001, generated automatically. Invoices carry a currency field and reporting and forecasting tools group figures by that currency, but LeadsMind has no exchange-rate or conversion source, so this is a currency tag on each invoice rather than real foreign-exchange conversion.',
         content_json: [
-          { step: 1, title: 'Create an Invoice', description: 'Create an invoice; a sequential number is assigned automatically.' },
-          { step: 2, title: 'Set the Currency', description: 'Choose the invoice currency; it is stored as a tag, not converted.' }
+          { step: 1, title: 'Create an Invoice', description: 'Create an invoice with line items and a due date; a sequential number is assigned automatically.' },
+          { step: 2, title: 'Set the Currency', description: 'Choose the invoice currency; it is stored as a tag, not converted.' },
+          { step: 3, title: 'Track Payment Status', description: 'Status moves from draft to sent to paid as the invoice is paid.' }
         ],
         faq_json: [
+          { q: 'What is Invoices in Finance & Accounting?', a: 'Invoices is where you bill clients: build line-item invoices with automatic sequential numbering, track status from draft to sent to paid, and set a currency (a tag, not live conversion).' },
           { q: 'Can I set a custom invoice numbering sequence or prefix?', a: 'Not currently confirmed as a configurable setting; numbering is generated automatically by the system.' }
         ]
       },
@@ -1108,6 +1336,344 @@ export async function seedHelpArticles() {
       }
     ];
 
+    const marketingCommsArticles: any[] = [
+      {
+        slug: 'email-sequences-builder',
+        category: 'Email Marketing System',
+        title: 'Building Automated Email Sequences',
+        body_plain: 'Email Sequences is a simplified builder for automated multi-email drip sequences: alternating email and wait steps (e.g. send an email, wait 2 days, send the next), starting from a real trigger such as a new contact being created. Under the hood it runs on the same real automation engine as the full Workflow Builder. A sequence built by hand in the full Workflow Builder with branching or non-alternating steps can\'t be edited in this simplified view — it opens in the full builder instead.',
+        content_json: [
+          { step: 1, title: 'Create a Sequence', description: 'Go to Email Sequences and start a new sequence.' },
+          { step: 2, title: 'Add Emails and Waits', description: 'Alternate email steps with a wait of minutes, hours, or days between each.' },
+          { step: 3, title: 'Set the Trigger', description: 'Choose what starts the sequence, such as a new contact being created.' }
+        ],
+        faq_json: [
+          { q: 'Is Email Sequences a separate automation system from the Workflow Builder?', a: 'No, it runs on the same real automation engine, just presented as a simpler alternating email-and-wait view for straightforward drip sequences.' }
+        ]
+      },
+      {
+        slug: 'bulk-sms-campaigns',
+        category: 'Email Marketing System',
+        title: 'Sending Bulk SMS Campaigns',
+        body_plain: 'Bulk SMS sends a one-time scheduled text message to an audience you choose by segment, an automation rule group, or specific tags. It is not a recurring campaign — each campaign is a single send, either immediately or at a scheduled future time, handled by a background dispatch worker.',
+        content_json: [
+          { step: 1, title: 'Write the Message', description: 'Compose the SMS text.' },
+          { step: 2, title: 'Choose an Audience', description: 'Select a segment, rule group, or tags to target.' },
+          { step: 3, title: 'Send or Schedule', description: 'Send immediately, or schedule it for a future date and time.' }
+        ],
+        faq_json: [
+          { q: 'Does Bulk SMS repeat automatically?', a: 'No, each campaign is a one-time send, whether sent right away or scheduled for later — it does not recur on its own.' }
+        ]
+      },
+      {
+        slug: 'whatsapp-broadcasts-templates',
+        category: 'Email Marketing System',
+        title: 'WhatsApp Broadcasts and Message Templates',
+        body_plain: 'WhatsApp Broadcasts sends a one-time message to a chosen audience (segment, rule group, or tags), using a free-text message, an approved WhatsApp template, or both. Meta only allows free-text messages to a contact within a 24-hour window since their last message to you; the dispatch worker automatically checks each contact\'s session window at send time and uses the approved template instead for anyone outside it, so a broadcast can still legally reach contacts who haven\'t messaged recently. Approved templates are pulled live from your connected WhatsApp Business account; new templates can\'t be created from this screen. Bot Rules on the same page also let you configure automatic replies.',
+        content_json: [
+          { step: 1, title: 'Write the Broadcast', description: 'Write a free-text message, choose an approved template, or both.' },
+          { step: 2, title: 'Choose an Audience', description: 'Select a segment, rule group, or tags.' },
+          { step: 3, title: 'Send', description: 'The system automatically uses free-text or the template per contact based on their 24-hour session window.' }
+        ],
+        faq_json: [
+          { q: 'Why does WhatsApp Broadcasts need both a free-text message and a template?', a: 'Meta only allows free-text messages within 24 hours of a contact\'s last message to you; outside that window the system automatically falls back to an approved template so contacts outside the window are still reached compliantly.' },
+          { q: 'Can I create a new WhatsApp template from this page?', a: 'No, it lists templates already approved on your connected WhatsApp Business account; template creation happens with Meta directly.' }
+        ]
+      },
+      {
+        slug: 'funnels-page-builder',
+        category: 'CRM Foundations',
+        title: 'Building Marketing Funnels',
+        body_plain: 'Funnels is a real drag-and-drop, multi-step page builder (opt-in pages, upsells, thank-you pages, etc.) published to your own subdomain. Each funnel starts with an Opt-in Page step and can be built from a template or from scratch; pages stay in draft until you publish them.',
+        content_json: [
+          { step: 1, title: 'Create a Funnel', description: 'Start from a template or a blank funnel.' },
+          { step: 2, title: 'Build Steps', description: 'Add and design each page step with the drag-and-drop builder.' },
+          { step: 3, title: 'Publish', description: 'Publish the funnel to make it live on your funnel subdomain.' }
+        ],
+        faq_json: [
+          { q: 'Is the funnel builder a real drag-and-drop editor?', a: 'Yes, each funnel step is a real page built with a drag-and-drop editor, not a template you can only fill text into.' }
+        ]
+      },
+      {
+        slug: 'forms-builder-variants',
+        category: 'CRM Foundations',
+        title: 'Building Forms with A/B Variants',
+        body_plain: 'Forms lets you build lead-capture forms and tracks real submission counts per form. You can create A/B variants of a form with a traffic-split weight to test different copy, and wire a form to trigger an automation workflow on submission.',
+        content_json: [
+          { step: 1, title: 'Build a Form', description: 'Add your fields and design.' },
+          { step: 2, title: 'Add a Variant (Optional)', description: 'Create an A/B variant with its own traffic weight to test against the original.' },
+          { step: 3, title: 'Trigger a Workflow', description: 'Connect the form to an automation that runs on each submission.' }
+        ],
+        faq_json: [
+          { q: 'Can a form trigger an automation when submitted?', a: 'Yes, a form can be wired to trigger a workflow automatically on submission.' },
+          { q: 'Can I A/B test a form?', a: 'Yes, you can create a variant with its own traffic-split weight to test against the original.' }
+        ]
+      },
+      {
+        slug: 'ads-campaign-tracking',
+        category: 'CRM Foundations',
+        title: 'Tracking Ad Campaigns',
+        body_plain: 'Ads is a manual ad-campaign tracker for Meta and Google campaigns: you record the campaign name, platform, status, daily budget, spend, impressions, clicks, conversions, and leads created yourself. It is not a live-synced integration with Meta Ads Manager or Google Ads — there is no automatic pulling of real-time metrics from either platform, so figures are only as current as what you enter.',
+        content_json: [
+          { step: 1, title: 'Add a Campaign', description: 'Enter the campaign name and choose Meta or Google as the platform.' },
+          { step: 2, title: 'Log Performance', description: 'Enter budget, spend, impressions, clicks, conversions, and leads created.' },
+          { step: 3, title: 'Update as You Go', description: 'Update the figures manually as the campaign progresses.' }
+        ],
+        faq_json: [
+          { q: 'Does Ads automatically sync spend and clicks from Meta or Google?', a: 'No, there is no live API sync — you enter and update campaign metrics manually.' }
+        ]
+      },
+      {
+        slug: 'content-studio-editor',
+        category: 'CRM Foundations',
+        title: 'Content Studio: Writing, Checking, and Publishing',
+        body_plain: 'Content Studio is a rich-text document editor with version history, and real writing-quality tools: grammar and style checking, an originality/plagiarism scan with AI paraphrasing (both metered by workspace credits), and SEO analysis with keyword density. A finished document can be published straight out as a blog post or a social post, or sent directly to a contact — it is a broader writing workspace, not the same tool as the simpler AI Text Generation feature under AI Studio.',
+        content_json: [
+          { step: 1, title: 'Write the Document', description: 'Draft in the rich-text editor; versions are saved as you go.' },
+          { step: 2, title: 'Check Quality', description: 'Run grammar/style check, plagiarism scan, or SEO analysis.' },
+          { step: 3, title: 'Publish or Send', description: 'Publish as a blog post or social post, or send directly to a contact.' }
+        ],
+        faq_json: [
+          { q: 'Is Content Studio the same as AI Text Generation?', a: 'No, Content Studio is a fuller writing workspace with version history, plagiarism/grammar/SEO checks, and direct publishing; AI Text Generation is the simpler standalone content generator.' },
+          { q: 'Do plagiarism scans and paraphrasing cost anything?', a: 'Yes, both are metered against your workspace\'s AI credits.' }
+        ]
+      },
+      {
+        slug: 'websites-multi-page-builder',
+        category: 'CRM Foundations',
+        title: 'Building Websites',
+        body_plain: 'Websites lets you build full multi-page sites with the same real drag-and-drop page builder Funnels uses, published live to your own subdomain (yoursite.leadsmind.io). A site can be Live or Draft, and you can start from a template.',
+        content_json: [
+          { step: 1, title: 'Create a Website', description: 'Name your site and optionally start from a template.' },
+          { step: 2, title: 'Build Pages', description: 'Design pages with the drag-and-drop builder.' },
+          { step: 3, title: 'Publish', description: 'Publish to make the site live on its subdomain.' }
+        ],
+        faq_json: [
+          { q: 'What is the difference between Websites and Funnels?', a: 'Both use the same real page builder; Websites is for a general multi-page site, while Funnels is structured specifically as a step-by-step conversion sequence.' }
+        ]
+      },
+      {
+        slug: 'blogs-post-management',
+        category: 'CRM Foundations',
+        title: 'Managing Blog Posts',
+        body_plain: 'Blogs is where you create, edit, and organize blog posts into categories for your site. Posts can also be started directly from Content Studio and published straight to the blog from there.',
+        content_json: [
+          { step: 1, title: 'Open Blogs', description: 'Go to Blogs to see all posts and categories.' },
+          { step: 2, title: 'Create or Edit a Post', description: 'Write a new post or edit an existing one, and assign a category.' },
+          { step: 3, title: 'Publish', description: 'Publish the post to make it live.' }
+        ],
+        faq_json: [
+          { q: 'Can I write a blog post from Content Studio instead?', a: 'Yes, a document drafted in Content Studio can be published directly as a blog post.' }
+        ]
+      },
+      {
+        slug: 'social-inbox-comments',
+        category: 'Social Media',
+        title: 'Social Inbox: Replying to Comments',
+        body_plain: 'Social Inbox brings comments on your published Facebook, Instagram, and YouTube posts into one place, so you can read and reply without leaving LeadsMind — replies post back to the real platform. It covers Page comments specifically, not the separate Messenger direct-message channel.',
+        content_json: [
+          { step: 1, title: 'Open Social Inbox', description: 'Go to Social then Inbox.' },
+          { step: 2, title: 'Filter by Platform', description: 'Filter comments by Facebook, Instagram, YouTube, or view all together.' },
+          { step: 3, title: 'Reply', description: 'Reply directly; it posts back to the real comment on the original platform.' }
+        ],
+        faq_json: [
+          { q: 'Does Social Inbox include Facebook Messenger DMs?', a: 'No, it covers comments on your published posts, not the Messenger direct-message channel.' },
+          { q: 'Are replies from Social Inbox real, or just logged internally?', a: 'Real — replying posts the reply back to the actual comment on Facebook, Instagram, or YouTube.' }
+        ]
+      },
+      {
+        slug: 'communications-hub-chat',
+        category: 'CRM Foundations',
+        title: 'Chat: The Team Communications Hub',
+        body_plain: 'Chat, also called the Communications Hub, is your team\'s unified inbox for conversations with contacts across every connected messaging channel — email, SMS, WhatsApp, and other connected platforms — in one threaded view, updating in real time. This is your team\'s own inbox for talking with contacts, separate from any customer-facing chatbot-widget configuration elsewhere in Settings.',
+        content_json: [
+          { step: 1, title: 'Open Chat', description: 'Go to Communication then Chat.' },
+          { step: 2, title: 'Pick a Conversation', description: 'Select a contact conversation from any connected channel.' },
+          { step: 3, title: 'Reply', description: 'Reply in-thread; new messages arrive in real time.' }
+        ],
+        faq_json: [
+          { q: 'What is Chat in Communication?', a: 'Chat is your team\'s unified inbox for real-time conversations with contacts across every connected messaging channel, in one threaded view.' }
+        ]
+      }
+    ];
+
+    const systemControlsExtras: any[] = [
+      {
+        slug: 'lena-chat-widget-builder',
+        category: 'System Controls & Extensions',
+        title: 'LENA Chat: Your Own Website Chatbot Widget',
+        body_plain: 'LENA Chat, under Settings, configures an embeddable AI-plus-live-agent chatbot widget for your own website\'s visitors — a customer-facing chatbot product, separate from the in-app LENA assistant that answers questions about LeadsMind itself, and separate from the team\'s own Chat inbox. LENA Chat has its own knowledge base, configurable widget appearance, assignable agents, a conversations log, and an HTML embed snippet with install instructions for platforms like Wix and Webflow.',
+        content_json: [
+          { step: 1, title: 'Set Widget Appearance', description: 'Customize how the chat widget looks on your site.' },
+          { step: 2, title: 'Add Knowledge Base Articles', description: 'Add your own articles so the widget can answer visitor questions.' },
+          { step: 3, title: 'Embed on Your Site', description: 'Copy the HTML snippet and add it to your website (e.g. via Wix or Webflow custom code).' }
+        ],
+        faq_json: [
+          { q: 'What is LENA Chat in Communication?', a: 'LENA Chat is the settings page for configuring your own embeddable AI-plus-live-agent chatbot widget for your website\'s visitors, with its own separate knowledge base and embed code.' },
+          { q: 'Is LENA Chat the same as the in-app help assistant, or the team Chat inbox?', a: 'No, both are separate. LENA Chat configures a chatbot widget for your own website\'s visitors, with its own knowledge base.' }
+        ]
+      }
+    ];
+
+    const commerceOpsArticles: any[] = [
+      {
+        slug: 'commerce-products-catalog',
+        category: 'CRM Foundations',
+        title: 'Products: Your Product Catalog',
+        body_plain: 'Products is your catalog of what you sell — each product has a name, description, price, currency, a type (e.g. service), and whether it\'s recurring. This catalog is separate from Inventory: Products has no stock or SKU tracking of its own, and Inventory is a completely separate stock-tracking system with its own item list, not automatically linked to your product catalog.',
+        content_json: [
+          { step: 1, title: 'Open Products', description: 'Go to Commerce & Ops then Products.' },
+          { step: 2, title: 'Add a Product', description: 'Enter name, description, price, currency, and type.' },
+          { step: 3, title: 'Mark Recurring If Needed', description: 'Flag a product as recurring if it\'s a subscription-style item.' }
+        ],
+        faq_json: [
+          { q: 'Is Products linked to Inventory stock levels?', a: 'No, they are separate systems today — Products is a pricing/catalog list, and Inventory tracks stock quantity independently, with its own separate item list.' }
+        ]
+      },
+      {
+        slug: 'commerce-orders-tracking',
+        category: 'CRM Foundations',
+        title: 'Orders: Viewing and Managing Customer Orders',
+        body_plain: 'Orders lists every customer order with its total and status, and lets you search by customer or order ID and update an order\'s status. New orders are created through the public Orders API (API-key authenticated, for an external storefront, checkout, or integration to submit into) rather than through a "create order" form in this dashboard page — this page is for viewing and managing orders that already exist, not manually building one from scratch with line items.',
+        content_json: [
+          { step: 1, title: 'Open Orders', description: 'Go to Commerce & Ops then Orders.' },
+          { step: 2, title: 'Search or Filter', description: 'Search by customer name or order ID.' },
+          { step: 3, title: 'Update Status', description: 'Change an order\'s status as it progresses.' }
+        ],
+        faq_json: [
+          { q: 'Can I manually create a new order from the Orders page?', a: 'No, there is no create-order form here; orders are created through the public Orders API by an external storefront or integration. This page is for viewing and managing status on orders that already exist.' }
+        ]
+      },
+      {
+        slug: 'commerce-shipments-courier-tracking',
+        category: 'CRM Foundations',
+        title: 'Shipments: Real Courier Tracking',
+        body_plain: 'Shipments is a real courier-tracking tool: enter a tracking number and it auto-detects the courier where possible, registers the shipment with AfterShip (a real third-party tracking API) for live status updates, and normalizes each courier\'s own status wording into a consistent set of stages. You can also set your own brand logo for tracking pages, and customers get real status update emails as the shipment progresses.',
+        content_json: [
+          { step: 1, title: 'Add a Shipment', description: 'Enter the tracking number; the courier is auto-detected where possible.' },
+          { step: 2, title: 'Track Status Live', description: 'Status updates come from a real AfterShip courier-tracking connection.' },
+          { step: 3, title: 'Brand the Tracking Page', description: 'Optionally set your own logo for the customer-facing tracking experience.' }
+        ],
+        faq_json: [
+          { q: 'Is shipment tracking live, or do I update status manually?', a: 'It\'s live — shipments register with AfterShip, a real courier-tracking API, so status updates arrive automatically rather than needing manual updates.' }
+        ]
+      },
+      {
+        slug: 'commerce-affiliates-program',
+        category: 'CRM Foundations',
+        title: 'Running an Affiliate Program',
+        body_plain: 'Affiliates lets you run a real affiliate program: create a programme with a commission type (e.g. percentage) and an optional tier-2 override percentage for multi-level referrals, approve affiliates automatically or manually depending on the programme\'s approval mode, and track commissions and payouts per affiliate. Affiliates get their own portal login, and real emails go out on application, approval, and rejection.',
+        content_json: [
+          { step: 1, title: 'Create a Programme', description: 'Set the commission type, rate, and approval mode.' },
+          { step: 2, title: 'Approve Affiliates', description: 'Applications are approved automatically (per your rules) or manually, with a real email either way.' },
+          { step: 3, title: 'Track Commissions and Payouts', description: 'View commissions earned per affiliate and record payouts.' }
+        ],
+        faq_json: [
+          { q: 'Do affiliates get their own login?', a: 'Yes, affiliates have their own portal login separate from your team\'s workspace login.' },
+          { q: 'Can commissions include a second-tier override for referred affiliates?', a: 'Yes, a programme can set a tier-2 override percentage for multi-level referral commissions.' }
+        ]
+      },
+      {
+        slug: 'commerce-inventory-stock',
+        category: 'CRM Foundations',
+        title: 'Inventory: Tracking Stock Levels',
+        body_plain: 'Inventory tracks physical stock separately from the Products catalog: each item has its own SKU, category, unit, quantity in stock, reorder level, cost price, selling price, and supplier. You can add or remove stock with a dedicated adjustment action rather than only editing the quantity field directly, which keeps a clearer record of stock movements.',
+        content_json: [
+          { step: 1, title: 'Add an Item', description: 'Enter SKU, category, quantity, reorder level, cost, and selling price.' },
+          { step: 2, title: 'Adjust Stock', description: 'Use Add or Remove stock to record incoming or outgoing quantity changes.' },
+          { step: 3, title: 'Watch Reorder Levels', description: 'Set a reorder level so low-stock items are easy to spot.' }
+        ],
+        faq_json: [
+          { q: 'Is Inventory the same list as my Products catalog?', a: 'No, Inventory is a separate stock-tracking system with its own items, not automatically linked to the Products catalog.' }
+        ]
+      },
+      {
+        slug: 'lms-student-portal',
+        category: 'LMS Advanced Workflows',
+        title: 'Student Portal: The Learner Experience',
+        body_plain: 'Student Portal is the real learner-facing dashboard: it shows your enrolled courses with an actual calculated progress percentage per course, a Continue Learning banner pointing at your last-viewed lesson, and real quiz statistics (quizzes passed, average score). It also includes flashcards for review and a course marketplace for enrolling in more courses.',
+        content_json: [
+          { step: 1, title: 'Open Student Portal', description: 'Go to Learning then Student Portal.' },
+          { step: 2, title: 'Continue a Course', description: 'Use the Continue Learning banner to jump back into your last lesson.' },
+          { step: 3, title: 'Check Progress', description: 'Review per-course progress percentage and your quiz stats.' }
+        ],
+        faq_json: [
+          { q: 'Is course progress a real calculated percentage or just a manual marker?', a: 'It\'s a real calculated percentage based on actual lesson and quiz completion, not a manual marker.' }
+        ]
+      },
+      {
+        slug: 'lms-community-forums',
+        category: 'LMS Advanced Workflows',
+        title: 'Community Forums, With LENA Auto-Replies',
+        body_plain: 'Community is a real discussion forum with boards (e.g. "Ask a Question") for posts and comments. A distinctive real feature: when a new post is created, the system automatically searches the same help center content LENA uses and, if it finds a matching article, posts an automatic "LENA AI Forum Moderator" reply with the relevant verified setup steps — so common setup questions can get an instant, accurate answer before a human replies.',
+        content_json: [
+          { step: 1, title: 'Open Community', description: 'Go to Learning then Community.' },
+          { step: 2, title: 'Post or Reply', description: 'Ask a question or reply to an existing post.' },
+          { step: 3, title: 'Watch for LENA\'s Auto-Reply', description: 'If your question matches a help center article, LENA posts an automatic reply with verified steps.' }
+        ],
+        faq_json: [
+          { q: 'Does every forum post get an automatic reply?', a: 'Only when the post matches an existing help center article closely enough — it\'s not a reply to every post, just a real-content-based auto-match.' }
+        ]
+      },
+      {
+        slug: 'lms-media-center',
+        category: 'LMS Advanced Workflows',
+        title: 'Media Center: Your Workspace File Library',
+        body_plain: 'Media Center is your workspace\'s file library, holding uploaded images/files and text drafts saved directly from other tools like Content Studio. It\'s the shared asset pool other features (course lessons, emails, content) pull uploaded media from.',
+        content_json: [
+          { step: 1, title: 'Open Media Center', description: 'Go to Learning then Media Center.' },
+          { step: 2, title: 'Upload or Save', description: 'Upload files directly, or save a text draft here from Content Studio.' },
+          { step: 3, title: 'Reuse Elsewhere', description: 'Reference these files from other features like course lessons or emails.' }
+        ],
+        faq_json: [
+          { q: 'Can I save a draft from Content Studio straight into Media Center?', a: 'Yes, Content Studio can save a text draft directly into Media Center.' }
+        ]
+      },
+      {
+        slug: 'settings-integrations-hub',
+        category: 'System Controls & Extensions',
+        title: 'Integrations Hub: Connecting Third-Party Services',
+        body_plain: 'Integrations Hub, under Settings, is the central place to connect third-party services, grouped by category: Email & Calendar (Gmail, Google Calendar, Outlook & Microsoft 365), Video Conferencing (Zoom, Microsoft Teams — Teams reuses your Outlook connection, no separate connect step), Automation (Zapier), and more, including payment gateways and WhatsApp elsewhere in this project\'s settings. Each card shows a real connection status, and a "coming soon" card means that integration isn\'t available to connect yet, not a broken button.',
+        content_json: [
+          { step: 1, title: 'Open Integrations Hub', description: 'Go to Settings then Integrations Hub.' },
+          { step: 2, title: 'Find the Service', description: 'Locate it under Email & Calendar, Video Conferencing, Automation, or another category.' },
+          { step: 3, title: 'Connect', description: 'Click Connect and complete the provider\'s real OAuth flow (or API-key entry, where applicable).' }
+        ],
+        faq_json: [
+          { q: 'Why does a card say "coming soon" instead of Connect?', a: 'That integration genuinely isn\'t available to connect yet in this environment — it\'s an honest status, not a bug.' },
+          { q: 'Do I need to connect Microsoft Teams separately from Outlook?', a: 'No, Teams meeting links come through your existing Microsoft 365/Outlook connection — there\'s no separate Teams connect step.' }
+        ]
+      },
+      {
+        slug: 'settings-support-tickets',
+        category: 'System Controls & Extensions',
+        title: 'Support: Submitting and Tracking Tickets',
+        body_plain: 'Support is a real support-ticket system: submit a ticket with a subject, message, and priority, and track its status through to resolution from the same page.',
+        content_json: [
+          { step: 1, title: 'Open Support', description: 'Go to Settings then Support.' },
+          { step: 2, title: 'Submit a Ticket', description: 'Enter a subject, message, and priority.' },
+          { step: 3, title: 'Track Status', description: 'Follow the ticket\'s status until it\'s resolved.' }
+        ],
+        faq_json: [
+          { q: 'Can I set a priority when submitting a support ticket?', a: 'Yes, priority is a real field on every ticket you submit.' }
+        ]
+      },
+      {
+        slug: 'settings-help-center',
+        category: 'System Controls & Extensions',
+        title: 'Help Center: Searching Verified Documentation',
+        body_plain: 'Help Center is the searchable library of the same verified help articles LENA answers from — real documentation kept in sync with the actual product, not marketing copy. Searching here uses the same real semantic search as LENA\'s chat, so a short, direct question tends to surface the right article, the same way it would if you asked LENA directly.',
+        content_json: [
+          { step: 1, title: 'Open Help Center', description: 'Go to Settings then Help Center.' },
+          { step: 2, title: 'Search', description: 'Type a question or keyword; results are ranked by real semantic match, not just keyword overlap.' },
+          { step: 3, title: 'Read or Ask LENA', description: 'Open the matching article, or ask LENA directly for a conversational answer from the same content.' }
+        ],
+        faq_json: [
+          { q: 'Is Help Center content the same as what LENA uses to answer questions?', a: 'Yes, it\'s the same real, verified article set — Help Center is for browsing/searching it yourself, LENA is for asking it conversationally.' }
+        ]
+      }
+    ];
+
     const allArticles = [
       ...gettingStarted,
       ...crmFoundations,
@@ -1119,6 +1685,9 @@ export async function seedHelpArticles() {
       ...aiToolsArticles,
       ...workflowAutomationArticles,
       ...systemControlsArticles,
+      ...marketingCommsArticles,
+      ...systemControlsExtras,
+      ...commerceOpsArticles,
     ];
 
     // Remove any previously-seeded articles that are no longer part of the

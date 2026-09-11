@@ -54,6 +54,21 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
   // Hover block drag handles state
   const [hoveredBlock, setHoveredBlock] = useState<{ element: HTMLElement; top: number; id: string } | null>(null);
   const [showBlockMenu, setShowBlockMenu] = useState(false);
+  const blockHandleRef = useRef<HTMLDivElement>(null);
+  const blockMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close the block menu on any click outside the handle or the open menu itself.
+  useEffect(() => {
+    if (!showBlockMenu) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (blockHandleRef.current?.contains(target)) return;
+      if (blockMenuRef.current?.contains(target)) return;
+      setShowBlockMenu(false);
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [showBlockMenu]);
 
   // Slash commands menu state
   const [showSlashMenu, setShowSlashMenu] = useState(false);
@@ -205,6 +220,11 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
   // Hover block listener for Notion six-dot menu
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!editorContainerRef.current) return;
+    // While the block menu is open, keep it pinned to the block it was opened
+    // for — otherwise it would jump to whatever block the mouse is currently
+    // over, which reads as the menu reacting to hover rather than the click
+    // that actually opened it.
+    if (showBlockMenu) return;
     const target = e.target as HTMLElement;
     const block = target.closest('p, h2, h3, h4, blockquote, pre, table, img');
     if (block) {
@@ -371,6 +391,7 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
           {/* Notion-style Block Drag Handle Gutter */}
           {hoveredBlock && !isFullscreen && (
             <div
+              ref={blockHandleRef}
               className="absolute left-2 w-6 h-6 flex items-center justify-center cursor-pointer !text-dash-textMuted hover:!text-dash-text bg-white border border-dash-border rounded z-30 transition-colors motion-reduce:transition-none duration-150"
               style={{ top: `${hoveredBlock.top}px` }}
               onClick={() => setShowBlockMenu(!showBlockMenu)}
@@ -389,6 +410,7 @@ export const BlogEditorContent: React.FC<EditorContentProps> = ({
           {/* Notion Block Action Controller Menu */}
           {showBlockMenu && hoveredBlock && (
             <div
+              ref={blockMenuRef}
               className="absolute left-9 bg-white border border-dash-border p-1.5 rounded-xl shadow-lg z-50 flex flex-col gap-1 w-44 select-none"
               style={{ top: `${hoveredBlock.top}px` }}
             >
