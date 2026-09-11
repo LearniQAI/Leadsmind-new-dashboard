@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import CalendarSettingsModal from '../modals/CalendarSettingsModal';
 import RoundRobinPoolModal from '../modals/RoundRobinPoolModal';
+import ResourceManagerModal from '../modals/ResourceManagerModal';
 import { createCalendar, updateCalendar } from '@/app/actions/calendar/calendars';
 import { toast } from 'sonner';
-import { Copy, Eye, LayoutGrid, MoreVertical, User, Users, Zap } from 'lucide-react';
+import { Building2, Copy, Eye, LayoutGrid, MoreVertical, User, Users, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface CalendarPagesViewProps {
@@ -14,6 +15,9 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCalendar, setEditingCalendar] = useState<any>(null);
   const [teamCalendar, setTeamCalendar] = useState<any>(null);
+  // Task 71 — workspace-wide, not per-calendar, so it's a standalone entry
+  // point rather than a per-card button like round-robin's "Manage team".
+  const [isResourceModalOpen, setIsResourceModalOpen] = useState(false);
 
   const copyToClipboard = (slug: string) => {
     const url = `${window.location.origin}/book/${slug}`;
@@ -57,6 +61,16 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
 
   return (
     <>
+      <div className="flex justify-end mb-5">
+        <Button
+          variant="outline"
+          onClick={() => setIsResourceModalOpen(true)}
+          className="bg-white border-dash-border !text-dash-textMuted hover:!text-dash-text text-[11px] font-bold h-10"
+        >
+          <Building2 size={14} className="mr-2" /> Rooms, desks &amp; equipment
+        </Button>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {calendars.map((cal) => (
           <div key={cal.id} className="bg-white border border-dash-border rounded-2xl overflow-hidden shadow-sm hover:border-dash-accent transition-all motion-reduce:transition-none group">
@@ -164,6 +178,8 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
         calendarId={teamCalendar?.id ?? null}
         calendarName={teamCalendar?.name ?? ''}
       />
+
+      <ResourceManagerModal isOpen={isResourceModalOpen} onClose={() => setIsResourceModalOpen(false)} />
     </>
   );
 }

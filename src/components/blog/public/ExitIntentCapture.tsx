@@ -61,36 +61,36 @@ export default function ExitIntentCapture({ workspaceId }: ExitIntentProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-[#04091a]/80 backdrop-blur-md p-4 animate-fade-in">
-      <div className="relative w-full max-w-md bg-[#080f28] border border-white/10 rounded-2xl p-6 shadow-2xl text-center space-y-5 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-[#0F172A]/60 backdrop-blur-sm p-4">
+      <div className="relative w-full max-w-md bg-white border border-[#E2E8F0] rounded-2xl p-6 shadow-xl text-center space-y-5 max-h-[90vh] overflow-y-auto">
         <button
           onClick={() => setIsOpen(false)}
-          className="absolute top-4 right-4 text-white/40 hover:text-white transition"
+          className="absolute top-4 right-4 text-[#94A3B8] hover:text-[#0F172A] transition"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/20 text-primary flex items-center justify-center mx-auto mb-2 animate-bounce">
+        <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/20 text-primary flex items-center justify-center mx-auto mb-2">
           <Mail className="w-6 h-6" />
         </div>
 
         <div className="space-y-2">
           <span className="text-[9px] font-black text-primary uppercase tracking-widest block">Wait! Before you go</span>
-          <h3 className="font-space-grotesk text-xl font-black text-white leading-tight">Get Exclusive Business Blueprints</h3>
-          <p className="text-xs text-white/50 leading-relaxed max-w-sm mx-auto">
+          <h3 className="font-space text-xl font-black text-[#0F172A] leading-tight">Get Exclusive Business Blueprints</h3>
+          <p className="text-xs text-[#64748B] leading-relaxed max-w-sm mx-auto">
             Subscribe to our weekly newsletter and receive the <b>"Funnel Optimization & WhatsApp Conversion Guide"</b> for free.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3 font-dm-sans text-left">
+        <form onSubmit={handleSubmit} className="space-y-3 font-sans text-left">
           <div className="relative">
-            <Mail className="w-4 h-4 text-white/30 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Mail className="w-4 h-4 text-[#94A3B8] absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your-business-email@co.za"
-              className="w-full bg-[#04091a] border border-white/15 rounded-xl pl-10 pr-4 py-3 text-xs text-white placeholder-white/20 outline-none focus:border-primary/50 transition"
+              className="w-full bg-white border border-[#E2E8F0] rounded-xl pl-10 pr-4 py-3 text-xs text-[#0F172A] placeholder-[#94A3B8] outline-none focus:border-primary/50 transition"
               required
               disabled={subscribing}
             />
@@ -105,13 +105,13 @@ export default function ExitIntentCapture({ workspaceId }: ExitIntentProps) {
           </button>
 
           {subMsg && (
-            <div className="text-[10px] text-emerald-400 font-bold flex items-center justify-center gap-1 mt-1.5 animate-fade-in">
+            <div className="text-[10px] text-emerald-600 font-bold flex items-center justify-center gap-1 mt-1.5">
               <Check className="w-3.5 h-3.5" />
               <span>{subMsg}</span>
             </div>
           )}
           {subError && (
-            <div className="text-[10px] text-red-400 font-bold text-center mt-1.5">
+            <div className="text-[10px] text-red-600 font-bold text-center mt-1.5">
               {subError}
             </div>
           )}

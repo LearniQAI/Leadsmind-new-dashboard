@@ -471,24 +471,20 @@ export const faqs = [
 
 export const footerLinks = {
   product: [
-    { label: 'CRM & Sales', href: '#features' },
-    { label: 'LMS & Courses', href: '#features' },
-    { label: 'Accounting', href: '#features' },
-    { label: 'Automation', href: '#modules' },
-    { label: 'HR & Payroll', href: '#modules' },
-    { label: 'Calendar & Booking', href: '#modules' },
+    { label: 'CRM & Sales', href: '/#features' },
+    { label: 'LMS & Courses', href: '/#features' },
+    { label: 'Accounting', href: '/#features' },
+    { label: 'Automation', href: '/#modules' },
+    { label: 'HR & Payroll', href: '/#modules' },
+    { label: 'Calendar & Booking', href: '/#modules' },
   ],
   company: [
     { label: 'About', href: '/about' },
     { label: 'Blog', href: '/blog' },
     { label: 'Careers', href: '/careers' },
-    { label: 'Press', href: '/press' },
-    { label: 'Contact', href: '/contact' },
   ],
   support: [
     { label: 'Documentation', href: '/docs' },
-    { label: 'Help Center', href: '/help' },
-    { label: 'Status Page', href: '/system' },
     { label: 'Privacy Policy', href: '/privacy-policy' },
     { label: 'Terms of Service', href: '/terms' },
     { label: 'Refund Policy', href: '/refund' },

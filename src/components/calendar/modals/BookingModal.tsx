@@ -33,6 +33,7 @@ import { format, addMinutes, parseISO } from 'date-fns';
 import { searchContacts } from '@/app/actions/contacts';
 import { createAppointment, updateAppointment } from '@/app/actions/calendar/appointments';
 import { createRecurringSeries } from '@/app/actions/calendar/recurringMeetings';
+import { listResources, getResourceAvailability } from '@/app/actions/calendar/resources';
 import { toast } from 'sonner';
 
 const bookingSchema = z.object({
@@ -43,6 +44,8 @@ const bookingSchema = z.object({
   startTime: z.string().min(1, 'Start time is required'),
   endTime: z.string().min(1, 'End time is required'),
   meetingMode: z.enum(['google_meet', 'zoom', 'phone', 'in_person', 'custom_link', 'client_choice', 'internal_meet']),
+  // Task 71 — optional room/desk/equipment reserved alongside this meeting.
+  resourceId: z.string().optional(),
   repeat: z.enum(['none', 'daily', 'weekly', 'monthly']),
   repeatInterval: z.coerce.number().min(1).max(52),
   repeatEndType: z.enum(['count', 'date']),
@@ -58,6 +61,7 @@ interface BookingFormValues {
   startTime: string;
   endTime: string;
   meetingMode: 'google_meet' | 'zoom' | 'phone' | 'in_person' | 'custom_link' | 'client_choice' | 'internal_meet';
+  resourceId?: string;
   repeat: 'none' | 'daily' | 'weekly' | 'monthly';
   repeatInterval: number;
   repeatEndType: 'count' | 'date';
@@ -94,6 +98,13 @@ export default function BookingModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedContact, setSelectedContact] = useState<any>(null);
   const [view, setView] = useState<'agenda' | 'form'>('form');
+  const [resources, setResources] = useState<any[]>([]);
+  // Task 71 follow-up — real-time availability for the currently-selected date/
+  // time, keyed by resource id. `null` = not checked yet (incomplete time, or
+  // the check is still in flight for the first time) — resources render as
+  // available until we actually know otherwise, never as falsely unavailable.
+  const [resourceAvailability, setResourceAvailability] = useState<Record<string, boolean> | null>(null);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
 
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingSchema) as any,
@@ -105,6 +116,7 @@ export default function BookingModal({
       startTime: initialDate ? format(initialDate, 'HH:mm') : '',
       endTime: initialDate ? format(addMinutes(initialDate, 30), 'HH:mm') : '',
       meetingMode: 'internal_meet',
+      resourceId: '',
       repeat: 'none',
       repeatInterval: 1,
       repeatEndType: 'count',
@@ -112,6 +124,67 @@ export default function BookingModal({
       repeatUntil: '',
     },
   });
+
+  // Task 71 — load the workspace's active rooms/desks/equipment once per open.
+  useEffect(() => {
+    if (!isOpen) return;
+    listResources().then((res) => {
+      if (res.success) setResources(res.data);
+    });
+  }, [isOpen]);
+
+  // Real-time resource availability for the selected date/time. Debounced so
+  // rapid time-field edits (typing, clicking through a time picker) don't fire
+  // a request per keystroke — only after the user pauses. The real conflict
+  // guarantee stays the DB constraint (appointments_resource_no_overlap);
+  // this is purely a "don't make them find out at submit time" convenience.
+  const watchedDate = form.watch('date');
+  const watchedStart = form.watch('startTime');
+  const watchedEnd = form.watch('endTime');
+
+  useEffect(() => {
+    if (!isOpen || resources.length === 0) return;
+    if (!watchedDate || !watchedStart || !watchedEnd) {
+      setResourceAvailability(null);
+      return;
+    }
+    const start = new Date(`${watchedDate}T${watchedStart}`);
+    const end = new Date(`${watchedDate}T${watchedEnd}`);
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) {
+      setResourceAvailability(null);
+      return;
+    }
+
+    let cancelled = false;
+    setCheckingAvailability(true);
+    const timer = setTimeout(async () => {
+      const res = await getResourceAvailability(start.toISOString(), end.toISOString(), initialAppointment?.id);
+      if (cancelled) return;
+      setCheckingAvailability(false);
+      if (!res.success) return; // best-effort UI courtesy — a failed check just leaves resources shown as available, submit-time DB check still guards
+      const map: Record<string, boolean> = {};
+      for (const r of res.data as any[]) map[r.id] = r.available;
+      setResourceAvailability(map);
+
+      // If the currently-selected resource just became unavailable for this
+      // time (someone else booked it, or the time changed onto a conflict),
+      // clear the selection rather than silently letting the user submit into
+      // a guaranteed RESOURCE_CONFLICT_MESSAGE rejection.
+      const currentResourceId = form.getValues('resourceId');
+      if (currentResourceId && map[currentResourceId] === false) {
+        form.setValue('resourceId', '');
+        const name = resources.find((r) => r.id === currentResourceId)?.name || 'That resource';
+        toast.warning(`${name} is no longer available for this time — please choose another.`);
+      }
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      setCheckingAvailability(false);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `form` and `resources` are stable enough here; re-running on every render of those would defeat the debounce
+  }, [isOpen, watchedDate, watchedStart, watchedEnd, resources.length, initialAppointment?.id]);
 
   // 2. Sync form when props change
   useEffect(() => {
@@ -126,6 +199,7 @@ export default function BookingModal({
           startTime: format(parseISO(initialAppointment.start_time), 'HH:mm'),
           endTime: format(parseISO(initialAppointment.end_time), 'HH:mm'),
           meetingMode: initialAppointment.meeting_mode || 'internal_meet',
+          resourceId: initialAppointment.resource_id || '',
           repeat: 'none',
           repeatInterval: 1,
           repeatEndType: 'count',
@@ -152,6 +226,7 @@ export default function BookingModal({
           startTime: format(initialDate, 'HH:mm'),
           endTime: format(addMinutes(initialDate, 30), 'HH:mm'),
           meetingMode: calendars[0]?.meeting_mode || 'internal_meet',
+          resourceId: '',
           repeat: 'none',
           repeatInterval: 1,
           repeatEndType: 'count',
@@ -211,6 +286,7 @@ export default function BookingModal({
         start_time: start.toISOString(),
         end_time: end.toISOString(),
         meeting_mode: values.meetingMode,
+        resource_id: values.resourceId || null,
       });
     } else if (values.repeat !== 'none') {
       res = await createRecurringSeries({
@@ -237,6 +313,7 @@ export default function BookingModal({
         startTime: start.toISOString(),
         endTime: end.toISOString(),
         meetingMode: values.meetingMode,
+        resourceId: values.resourceId || null,
       });
     }
 
@@ -503,6 +580,56 @@ export default function BookingModal({
                 )}
               />
             </div>
+
+            {/* Resource (Task 71) — an optional room/desk/equipment for this exact
+                slot. The REAL double-booking guarantee is the DB constraint
+                (appointments_resource_no_overlap) — a submit-time conflict is
+                still caught and surfaced even if this live check says
+                "available" a moment earlier (race condition). This list is a
+                convenience so a person doesn't discover a conflict only after
+                clicking Book: an already-booked resource is shown greyed out
+                with the reason, not hidden — more informative than silently
+                removing it, and it's still visible for context (e.g. seeing
+                what's occupying it). */}
+            {resources.length > 0 && (
+              <FormField
+                control={form.control}
+                name="resourceId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-[11px] font-bold !text-dash-textMuted flex items-center gap-2">
+                      Room / resource (optional)
+                      {checkingAvailability && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium !text-dash-textMuted normal-case">
+                          <Loader2 size={10} className="animate-spin motion-reduce:animate-none" /> Checking availability…
+                        </span>
+                      )}
+                    </FormLabel>
+                    <Select onValueChange={(v) => field.onChange(v === '__none' ? '' : v)} value={field.value || '__none'}>
+                      <FormControl>
+                        <SelectTrigger className="bg-white border-dash-border !text-dash-text h-11">
+                          <SelectValue placeholder="None" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="bg-white border-dash-border z-[1100]">
+                        <SelectItem value="__none">None</SelectItem>
+                        {resources.map((r) => {
+                          const isAvailable = resourceAvailability ? resourceAvailability[r.id] !== false : true;
+                          return (
+                            <SelectItem key={r.id} value={r.id} disabled={!isAvailable} className={cn(!isAvailable && 'opacity-50')}>
+                              <span className="capitalize !text-dash-textMuted mr-1.5">{r.type}</span>
+                              {r.name}
+                              {r.location ? ` · ${r.location}` : ''}
+                              {!isAvailable && <span className="ml-1.5 text-red font-semibold">· booked at this time</span>}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+            )}
 
             {/* Recurrence (Task 69) — new meetings only; edit a series occurrence
                 from the appointment details panel instead. */}
