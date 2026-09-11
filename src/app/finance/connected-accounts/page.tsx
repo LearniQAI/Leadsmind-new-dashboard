@@ -1,10 +1,29 @@
 'use client'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import Wrapper from '@/components/layouts/DefaultWrapper'
 import { useDashboardContext } from '@/components/layouts/DashboardProvider'
-import { Landmark, RefreshCw, X, Eye, EyeOff, Upload, CheckCircle, AlertCircle } from 'lucide-react'
+import { Landmark, RefreshCw, X, Eye, EyeOff, Upload, CheckCircle, AlertCircle, Lock, FileText, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { DashButton } from '@/components/dashboard-ui/Button'
+
+interface FinancialDocument {
+  id: string
+  file_name: string
+  file_size: number
+  mime_type: string
+  document_kind: string
+  status: 'uploaded' | 'processing' | 'processed' | 'password_protected' | 'failed'
+  error_message: string | null
+  created_at: string
+}
+
+const DOCUMENT_MIME_TYPES: Record<string, string> = {
+  pdf: 'application/pdf',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+}
 
 interface BankConnection {
   id: string
@@ -37,6 +56,134 @@ export default function ConnectedAccountsPage() {
   // CSV
   const [csvFile, setCsvFile] = useState<File | null>(null)
   const [csvParsing, setCsvParsing] = useState(false)
+
+  // Document upload (PDF/JPG/PNG/XLSX) — async pipeline
+  const [documents, setDocuments] = useState<FinancialDocument[]>([])
+  const [uploadingCount, setUploadingCount] = useState(0)
+  const [dragActive, setDragActive] = useState(false)
+  const [unlockTargetId, setUnlockTargetId] = useState<string | null>(null)
+  const [unlockPassword, setUnlockPassword] = useState('')
+  const [unlocking, setUnlocking] = useState(false)
+  const [notifyEmail, setNotifyEmail] = useState('')
+  const [useCustomEmail, setUseCustomEmail] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const fetchDocuments = async () => {
+    if (!workspaceId) return
+    try {
+      const res = await fetch('/api/finance/documents')
+      const data = await res.json()
+      setDocuments(data.documents ?? [])
+    } catch {
+      // Silent — this is a background status refresh, not a user-initiated action.
+    }
+  }
+
+  useEffect(() => {
+    fetchDocuments()
+  }, [workspaceId])
+
+  // Poll while anything is still in flight, so uploaded/processing rows flip to their
+  // terminal state (processed/failed/password_protected) without a manual refresh.
+  useEffect(() => {
+    const hasInFlight = documents.some(d => d.status === 'uploaded' || d.status === 'processing')
+    if (hasInFlight && !pollRef.current) {
+      pollRef.current = setInterval(fetchDocuments, 4000)
+    } else if (!hasInFlight && pollRef.current) {
+      clearInterval(pollRef.current)
+      pollRef.current = null
+    }
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current)
+        pollRef.current = null
+      }
+    }
+  }, [documents])
+
+  const uploadDocument = async (file: File, documentKind: string = 'other') => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('documentKind', documentKind)
+    if (useCustomEmail && notifyEmail.trim()) formData.append('notifyEmail', notifyEmail.trim())
+    const res = await fetch('/api/finance/documents', { method: 'POST', body: formData })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Upload failed')
+    return data.document as FinancialDocument
+  }
+
+  const handleFilesSelected = async (fileList: FileList | File[]) => {
+    const files = Array.from(fileList)
+    if (files.length === 0) return
+
+    setUploadingCount(c => c + files.length)
+    let uploaded = 0
+    let rejected = 0
+
+    for (const file of files) {
+      const ext = file.name.split('.').pop()?.toLowerCase() || ''
+
+      // CSV keeps using the existing, already-working immediate-import path unchanged —
+      // this new pipeline is only for the document types that need async processing.
+      if (ext === 'csv') {
+        setCsvFile(file)
+        setShowCSVModal(true)
+        setUploadingCount(c => c - 1)
+        continue
+      }
+
+      const mimeType = DOCUMENT_MIME_TYPES[ext]
+      if (!mimeType) {
+        toast.error(`${file.name}: unsupported file type. Use CSV, XLSX, PDF, JPG, or PNG.`)
+        rejected++
+        setUploadingCount(c => c - 1)
+        continue
+      }
+
+      try {
+        await uploadDocument(file, 'bank_statement')
+        uploaded++
+      } catch (err: any) {
+        toast.error(`${file.name}: ${err.message || 'upload failed'}`)
+        rejected++
+      } finally {
+        setUploadingCount(c => c - 1)
+      }
+    }
+
+    if (uploaded > 0) toast.success(`Uploaded ${uploaded} document${uploaded === 1 ? '' : 's'} — processing in the background`)
+    fetchDocuments()
+  }
+
+  const handleUnlockSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!unlockTargetId || !unlockPassword) return
+    setUnlocking(true)
+    try {
+      const res = await fetch(`/api/finance/documents/${unlockTargetId}/unlock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: unlockPassword }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      toast.success('Document unlocked and processed')
+      setUnlockTargetId(null)
+      setUnlockPassword('')
+      fetchDocuments()
+    } catch (err: any) {
+      toast.error(err.message || 'Incorrect password')
+    } finally {
+      setUnlocking(false)
+    }
+  }
+
+  const formatFileSize = (bytes: number) => {
+    if (!bytes) return ''
+    const kb = bytes / 1024
+    return kb < 1024 ? `${kb.toFixed(0)} KB` : `${(kb / 1024).toFixed(1)} MB`
+  }
 
   const fetchConnections = async () => {
     if (!workspaceId) return
@@ -286,27 +433,146 @@ export default function ConnectedAccountsPage() {
 
         </div>
 
-        {/* CSV Upload Section */}
+        {/* Document Upload Section */}
         <p className="text-[11px] font-semibold mb-3 !text-dash-textMuted">
-          Upload a bank statement
+          Upload your documents
         </p>
-        <div className="bg-dash-surface border border-dashed border-dash-border rounded-xl p-8 flex flex-col items-center text-center gap-3">
+        <div
+          onDragOver={e => { e.preventDefault(); setDragActive(true) }}
+          onDragLeave={() => setDragActive(false)}
+          onDrop={e => {
+            e.preventDefault()
+            setDragActive(false)
+            if (e.dataTransfer.files?.length) handleFilesSelected(e.dataTransfer.files)
+          }}
+          className={`bg-dash-surface border border-dashed rounded-xl p-8 flex flex-col items-center text-center gap-3 transition-colors motion-reduce:transition-none ${dragActive ? 'border-dash-accent bg-dash-accent/5' : 'border-dash-border'}`}
+        >
           <Upload size={28} className="!text-dash-textMuted opacity-60" />
           <p className="text-[13px] font-medium !text-dash-text">
-            Works with any SA bank
+            Upload your documents
           </p>
-          <p className="text-[12px] max-w-xs !text-dash-textMuted">
-            Upload a CSV bank statement and LeadsMind will import your transactions automatically.
-            Supports FNB, Standard Bank, Nedbank, Discovery, and any bank that exports CSV.
+          <p className="text-[12px] max-w-sm !text-dash-textMuted">
+            Bank statements, receipts, invoices, or prior financial records — LeadsMind's AI will organize and analyze them for you.
+            Works with any SA bank. Accepts CSV, XLSX, PDF, JPG, and PNG.
           </p>
-          <button onClick={() => setShowCSVModal(true)}
-            className="bg-white border border-dash-border !text-dash-textMuted text-[12px] font-semibold rounded-lg px-4 py-2 hover:!text-dash-text hover:border-dash-text/20 transition-colors motion-reduce:transition-none">
-            Choose File
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept=".csv,.xlsx,.pdf,.jpg,.jpeg,.png"
+            className="hidden"
+            onChange={e => { if (e.target.files?.length) handleFilesSelected(e.target.files); e.target.value = '' }}
+          />
+          <button onClick={() => fileInputRef.current?.click()} disabled={uploadingCount > 0}
+            className="bg-white border border-dash-border !text-dash-textMuted text-[12px] font-semibold rounded-lg px-4 py-2 hover:!text-dash-text hover:border-dash-text/20 transition-colors motion-reduce:transition-none disabled:opacity-50">
+            {uploadingCount > 0 ? `Uploading ${uploadingCount}...` : 'Choose Files'}
           </button>
           <p className="text-[11px] !text-dash-textMuted italic">
-            Your statement is processed privately inside your workspace and never shared.
+            Your documents are processed privately inside your workspace and never shared.
           </p>
         </div>
+
+        {/* Notification destination — per-upload override, not a permanent account setting */}
+        <div className="mt-3 flex flex-col gap-2">
+          <label className="flex items-center gap-2 text-[12px] !text-dash-textMuted cursor-pointer">
+            <input type="checkbox" checked={useCustomEmail} onChange={e => setUseCustomEmail(e.target.checked)} className="accent-dash-accent" />
+            Send the results summary to a different email for this upload
+          </label>
+          {useCustomEmail && (
+            <input
+              type="email"
+              value={notifyEmail}
+              onChange={e => setNotifyEmail(e.target.value)}
+              placeholder="e.g. our.accountant@example.com"
+              className="w-full max-w-xs bg-white border border-dash-border rounded-lg px-3 py-2 text-[12.5px] !text-dash-text outline-none focus:border-dash-accent transition-colors"
+            />
+          )}
+        </div>
+
+        {/* Per-file status list */}
+        {documents.length > 0 && (
+          <div className="mt-4 flex flex-col gap-2">
+            {documents.map(doc => (
+              <div key={doc.id} className="bg-white border border-dash-border rounded-lg px-4 py-3 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-md bg-dash-accent/10 text-dash-accent flex items-center justify-center flex-shrink-0">
+                  <FileText size={14} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12.5px] font-semibold !text-dash-text truncate">{doc.file_name}</p>
+                  <p className="text-[11px] !text-dash-textMuted">
+                    {formatFileSize(doc.file_size)}
+                    {doc.status === 'failed' && doc.error_message && ` — ${doc.error_message}`}
+                    {doc.status === 'password_protected' && ' — password-protected'}
+                  </p>
+                </div>
+                {(doc.status === 'uploaded' || doc.status === 'processing') && (
+                  <span className="flex items-center gap-1.5 text-[11px] font-semibold text-dash-accent flex-shrink-0">
+                    <Loader2 size={13} className="animate-spin motion-reduce:animate-none" /> Processing
+                  </span>
+                )}
+                {doc.status === 'processed' && (
+                  <a
+                    href={`/finance/documents/${doc.id}`}
+                    className="flex items-center gap-1.5 text-[11px] font-semibold text-green flex-shrink-0 hover:underline"
+                  >
+                    <CheckCircle size={13} /> Received — View report
+                  </a>
+                )}
+                {doc.status === 'failed' && (
+                  <span className="flex items-center gap-1.5 text-[11px] font-semibold text-red flex-shrink-0">
+                    <AlertCircle size={13} /> Failed
+                  </span>
+                )}
+                {doc.status === 'password_protected' && (
+                  <button
+                    onClick={() => { setUnlockTargetId(doc.id); setUnlockPassword('') }}
+                    className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 flex-shrink-0 hover:bg-amber-100 transition-colors motion-reduce:transition-none"
+                  >
+                    <Lock size={12} /> Unlock
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Password unlock inline form */}
+        {unlockTargetId && (
+          <div className="fixed inset-0 bg-dash-text/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white border border-dash-border rounded-2xl w-full max-w-sm p-6 shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-[15px] font-semibold !text-dash-text flex items-center gap-2">
+                  <Lock size={15} className="text-amber-600" /> Unlock document
+                </h3>
+                <button onClick={() => setUnlockTargetId(null)} className="!text-dash-textMuted hover:!text-dash-text">
+                  <X size={16} />
+                </button>
+              </div>
+              <p className="text-[12px] !text-dash-textMuted mb-4">
+                This PDF is password-protected. Enter the password to continue — it's used only to unlock this file and is never stored.
+              </p>
+              <form onSubmit={handleUnlockSubmit} className="space-y-3">
+                <input
+                  type="password"
+                  value={unlockPassword}
+                  onChange={e => setUnlockPassword(e.target.value)}
+                  placeholder="Enter password"
+                  className="w-full bg-dash-surface border border-dash-border rounded-lg px-4 py-2.5 !text-dash-text text-[13px] outline-none focus:border-dash-accent transition-colors"
+                  autoFocus
+                  required
+                />
+                <div className="flex gap-3">
+                  <DashButton type="button" variant="secondary" className="flex-1" onClick={() => setUnlockTargetId(null)}>
+                    Cancel
+                  </DashButton>
+                  <DashButton type="submit" variant="primary" className="flex-1" disabled={unlocking}>
+                    {unlocking ? 'Unlocking...' : 'Unlock'}
+                  </DashButton>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* Investec Connect Modal */}
         {showInvestecModal && (

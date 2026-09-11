@@ -15,6 +15,7 @@ import {
   DashModal, DashModalContent, DashModalHeader, DashModalTitle
 } from '@/components/dashboard-ui/Modal';
 import { DashFormField, DashInput } from '@/components/dashboard-ui/FormField';
+import { extractYoutubeEmbedSrc, extractFacebookPostUrl, loadFacebookSdkAndParse } from '@/lib/blog/embedParsers';
 
 interface BlogEditorClientProps {
   post: any;
@@ -43,6 +44,7 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
   // Embed modal state fields
   const [embedUrl, setEmbedUrl] = useState('');
   const [embedType, setEmbedType] = useState('youtube');
+  const [embedError, setEmbedError] = useState<string | null>(null);
 
   // Ref to the Tiptap editor instance
   const editorRef = useRef<any>(null);
@@ -191,10 +193,32 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
     }
   };
 
-  // Video Embed Insertion
+  // Responsive Embed Insertion — accepts either a plain URL or the provider's
+  // own copy-paste embed snippet for YouTube and Facebook.
   const handleEmbedSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!embedUrl) return;
+    setEmbedError(null);
+
+    let finalSrc = embedUrl.trim();
+
+    if (embedType === 'youtube') {
+      const parsed = extractYoutubeEmbedSrc(embedUrl);
+      if (!parsed) {
+        setEmbedError("This doesn't look like a YouTube URL or embed code.");
+        return;
+      }
+      finalSrc = parsed;
+    } else if (embedType === 'facebook') {
+      const parsed = extractFacebookPostUrl(embedUrl);
+      if (!parsed) {
+        setEmbedError("This doesn't look like a public Facebook post URL or embed code.");
+        return;
+      }
+      finalSrc = parsed;
+    } else if (!finalSrc) {
+      setEmbedError('Please enter a URL.');
+      return;
+    }
 
     if (editorRef.current) {
       editorRef.current
@@ -202,13 +226,20 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
         .focus()
         .insertContent({
           type: 'iframeEmbed',
-          attrs: { src: embedUrl, type: embedType, title: 'Embedded Widget' }
+          attrs: { src: finalSrc, type: embedType, title: 'Embedded Widget' }
         })
         .run();
+
+      if (embedType === 'facebook') {
+        // The fb-post div was just inserted into the DOM — the SDK only
+        // auto-parses on its own load, so re-run XFBML parse explicitly.
+        setTimeout(() => loadFacebookSdkAndParse(), 0);
+      }
     }
 
     setShowEmbedModal(false);
     setEmbedUrl('');
+    setEmbedError(null);
   };
 
   return (
@@ -368,7 +399,7 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
             </DashModalContent>
           </DashModal>
 
-          <DashModal open={showEmbedModal} onOpenChange={setShowEmbedModal}>
+          <DashModal open={showEmbedModal} onOpenChange={(open) => { setShowEmbedModal(open); if (!open) { setEmbedError(null); setEmbedUrl(''); } }}>
             <DashModalContent className="max-w-md">
               <DashModalHeader>
                 <DashModalTitle className="flex items-center gap-2">
@@ -380,26 +411,45 @@ export default function BlogEditorClient({ post: initialPost, categories: initia
                 <DashFormField label="Embed type">
                   <select
                     value={embedType}
-                    onChange={(e) => setEmbedType(e.target.value)}
+                    onChange={(e) => { setEmbedType(e.target.value); setEmbedError(null); }}
                     className="w-full h-11 rounded-xl border border-dash-border bg-white px-3.5 text-sm !text-dash-text outline-none focus-visible:ring-2 focus-visible:ring-dash-accent"
                   >
                     <option value="youtube">YouTube Video Embed</option>
                     <option value="vimeo">Vimeo Video Embed</option>
                     <option value="twitter">Twitter / X Post Embed</option>
                     <option value="instagram">Instagram Post Embed</option>
+                    <option value="facebook">Facebook Post Embed</option>
                     <option value="generic">Generic Iframe Source</option>
                   </select>
                 </DashFormField>
 
-                <DashFormField label="Direct iframe / post URL">
+                <DashFormField
+                  label={
+                    embedType === 'youtube' ? 'YouTube URL or embed code'
+                    : embedType === 'facebook' ? 'Facebook post URL or embed code'
+                    : 'Direct iframe / post URL'
+                  }
+                >
                   <DashInput
-                    type="url"
+                    type="text"
                     value={embedUrl}
                     placeholder="https://..."
-                    onChange={(e) => setEmbedUrl(e.target.value)}
-                    required
+                    onChange={(e) => { setEmbedUrl(e.target.value); setEmbedError(null); }}
                   />
                 </DashFormField>
+
+                {embedError && (
+                  <div className="p-2.5 bg-red/10 border border-red/20 text-red rounded-lg text-[11px] flex items-start gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span>{embedError}</span>
+                  </div>
+                )}
+
+                {embedType === 'facebook' && (
+                  <p className="text-[11px] !text-dash-textMuted leading-relaxed">
+                    Only works for public posts — comments shown depend on the original post&apos;s own comment visibility.
+                  </p>
+                )}
 
                 <div className="flex justify-end gap-3 border-t border-dash-border pt-3">
                   <DashButton type="button" variant="secondary" onClick={() => setShowEmbedModal(false)}>

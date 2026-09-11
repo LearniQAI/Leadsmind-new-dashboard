@@ -12,6 +12,9 @@ const RICH_TEXT_OPTIONS = {
   ALLOWED_ATTR: [
     'align', 'alt', 'class', 'colspan', 'height', 'href', 'id', 'loading', 'rel', 'rowspan',
     'src', 'target', 'title', 'width', 'allow', 'allowfullscreen', 'frameborder',
+    // Required for the Facebook Page Plugin (fb-post div) to know which post to render —
+    // XFBML reads these off the element itself, not a JS attribute we control separately.
+    'data-href', 'data-show-text',
   ],
   ALLOW_DATA_ATTR: false,
   ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel):|#|\/)/i,

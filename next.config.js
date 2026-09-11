@@ -26,7 +26,14 @@ const nextConfig = {
         ],
     },
     experimental: {
-        serverComponentsExternalPackages: ["puppeteer-core", "@sparticuz/chromium", "cheerio", "undici", "@resvg/resvg-js"],
+        // pdfjs-dist added here after a real, live-confirmed bug (AI Bookkeeping Session A):
+        // webpack-bundled pdfjs-dist can't resolve its own pdf.worker.mjs from inside
+        // .next/server/vendor-chunks at runtime ("Setting up fake worker failed: Cannot find
+        // module ... pdf.worker.mjs"), because the worker is loaded via a relative dynamic
+        // import that only resolves correctly against the real node_modules layout — same
+        // class of problem @sparticuz/chromium solves below. Marking it external skips
+        // webpack's rewrite so Node's native resolution (which works) handles it instead.
+        serverComponentsExternalPackages: ["puppeteer-core", "@sparticuz/chromium", "cheerio", "undici", "@resvg/resvg-js", "pdfjs-dist"],
         outputFileTracingExcludes: {
             '*': [
                 'node_modules/@swc/core-linux-x64-gnu',
@@ -46,6 +53,7 @@ const nextConfig = {
             '/**/*': [
                 './node_modules/@sparticuz/chromium/**/*',
                 './node_modules/puppeteer-core/**/*',
+                './node_modules/pdfjs-dist/**/*',
             ],
         },
     },

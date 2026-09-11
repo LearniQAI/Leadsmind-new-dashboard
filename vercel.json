@@ -58,6 +58,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/workers/document-processing",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/workers/tag-expiry",
       "schedule": "15 0 * * *"
     },

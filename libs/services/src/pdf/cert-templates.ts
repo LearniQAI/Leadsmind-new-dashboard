@@ -331,7 +331,7 @@ function customUpload(d: CertificateData, c: CertificateConfig): string {
       const p = cu.placements?.[key];
       return p ? { key, val, p } : null;
     })
-    .filter((f): f is { key: string; val: string; p: CertificatePlacement } => f !== null);
+    .filter((f): f is { key: keyof typeof d; val: string; p: CertificatePlacement } => f !== null);
 
   const resolved = resolveCollisionSafeFields(placed);
 
