@@ -78,18 +78,18 @@ export default async function PortalInvoicesPage({ searchParams }: InvoicesPageP
   // Helper to determine invoice status badges
   const getInvoiceStatusInfo = (inv: any) => {
     if (inv.status === 'paid') {
-      return { label: 'Paid', className: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' };
+      return { label: 'Paid', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
     }
     if (inv.status === 'draft') {
-      return { label: 'Draft', className: 'bg-slate-500/10 text-slate-400 border-slate-500/20' };
+      return { label: 'Draft', className: 'bg-slate-100 text-slate-600 border-slate-200' };
     }
     if (inv.status === 'partially_paid' || inv.status === 'partial') {
-      return { label: 'Partially Paid', className: 'bg-blue-500/10 text-blue-400 border-blue-500/20' };
+      return { label: 'Partially Paid', className: 'bg-dash-accent/10 text-dash-accent border-dash-accent/20' };
     }
     if (inv.due_date && new Date(inv.due_date) < new Date()) {
-      return { label: 'Overdue', className: 'bg-rose-500/10 text-rose-400 border-rose-500/20' };
+      return { label: 'Overdue', className: 'bg-rose-50 text-rose-700 border-rose-200' };
     }
-    return { label: 'Due', className: 'bg-amber-500/10 text-amber-400 border-amber-500/20' };
+    return { label: 'Due', className: 'bg-amber-50 text-amber-700 border-amber-200' };
   };
 
   // Helper to generate a text description
@@ -127,9 +127,9 @@ export default async function PortalInvoicesPage({ searchParams }: InvoicesPageP
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold uppercase tracking-tight font-space">
-              Billing <span className="text-[var(--accent2)]">Invoices</span>
+              Billing <span className="text-dash-accent">Invoices</span>
             </h1>
-            <p className="text-[11.5px] text-[var(--t3)] uppercase tracking-[0.2em] mt-2 font-medium">
+            <p className="text-[11.5px] text-dash-textMuted uppercase tracking-[0.2em] mt-2 font-medium">
               Manage your billing invoices and outstanding balances
             </p>
           </div>
@@ -142,19 +142,19 @@ export default async function PortalInvoicesPage({ searchParams }: InvoicesPageP
         </div>
 
         {/* Total Outstanding Balance Panel */}
-        <div className="bg-[var(--n800)] border border-[var(--bdr)] p-8 rounded-3xl shadow-xl relative overflow-hidden group hover:border-[rgba(255,255,255,0.15)] transition-all">
+        <div className="bg-white border border-dash-border p-8 rounded-3xl shadow-xl relative overflow-hidden group hover:border-dash-accent/30 transition-all">
           <div className="absolute top-0 left-0 right-0 h-[2px] bg-rose-500" />
-          <p className="text-[10px] font-black text-[var(--t4)] uppercase tracking-[0.2em] mb-2 font-mono">Total Outstanding Due</p>
+          <p className="text-[10px] font-black text-dash-textMuted uppercase tracking-[0.2em] mb-2 font-mono">Total Outstanding Due</p>
           <p className="text-4xl font-bold font-space text-rose-500">
             R {outstandingDue.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
           </p>
-          <p className="text-[10px] text-[var(--t4)] font-medium mt-2">
+          <p className="text-[10px] text-dash-textMuted font-medium mt-2">
             Accounts statement ledger includes {(statementInvoices || []).filter(i => i.status !== 'paid').length} unpaid invoices
           </p>
         </div>
 
         {/* Filters and Search Toolbar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[var(--n800)] border border-[var(--bdr)] p-4 rounded-2xl shadow-lg">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border border-dash-border p-4 rounded-2xl shadow-lg">
           {/* Status filter pills & Statement Generator */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex gap-2">
@@ -169,8 +169,8 @@ export default async function PortalInvoicesPage({ searchParams }: InvoicesPageP
                   href={`/portal/invoices?status=${tab.id}&search=${searchQuery}`}
                   className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border ${
                     statusFilter === tab.id
-                      ? 'bg-[var(--accentg)] text-[var(--accent2)] border-blue-500/20'
-                      : 'border-transparent text-[#4a5a82] hover:text-[#94a3c8]'
+                      ? 'bg-dash-accent/10 text-dash-accent border-dash-accent/20'
+                      : 'border-transparent text-dash-textMuted hover:text-dash-text'
                   }`}
                 >
                   {tab.label}
@@ -187,22 +187,22 @@ export default async function PortalInvoicesPage({ searchParams }: InvoicesPageP
               name="search"
               defaultValue={searchQuery}
               placeholder="Search by invoice number..."
-              className="w-full bg-[#111d47]/50 border border-white/5 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 text-white font-mono placeholder-[#4a5a82] transition-colors"
+              className="w-full bg-dash-surface border border-dash-border rounded-xl px-4 py-2.5 text-xs outline-none focus:border-dash-accent text-dash-text font-mono placeholder-dash-textMuted transition-colors"
             />
           </form>
         </div>
 
         {/* Invoices List / Payment History view */}
-        <div className="bg-[var(--n800)] border border-[var(--bdr)] rounded-3xl overflow-hidden shadow-2xl">
+        <div className="bg-white border border-dash-border rounded-3xl overflow-hidden shadow-2xl">
           {statusFilter === 'history' ? (
             settledPayments.length === 0 ? (
               <div className="p-16 flex flex-col items-center justify-center text-center space-y-4">
-                <div className="w-14 h-14 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-center text-[#4a5a82] opacity-55">
+                <div className="w-14 h-14 bg-dash-surface border border-dash-border rounded-2xl flex items-center justify-center text-dash-textMuted opacity-55">
                   <CreditCard size={28} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--t2)]">No Payments Settled</h3>
-                  <p className="text-xs text-[var(--t3)] mt-1.5 max-w-xs leading-relaxed">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-dash-text">No Payments Settled</h3>
+                  <p className="text-xs text-dash-textMuted mt-1.5 max-w-xs leading-relaxed">
                     There are no recorded payments for your client account yet.
                   </p>
                 </div>
@@ -211,7 +211,7 @@ export default async function PortalInvoicesPage({ searchParams }: InvoicesPageP
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-[var(--bdr)] bg-[rgba(255,255,255,0.01)] text-[10px] font-black uppercase tracking-widest text-[var(--t4)]">
+                    <tr className="border-b border-dash-border bg-dash-surface text-[10px] font-black uppercase tracking-widest text-dash-textMuted">
                       <th className="px-6 py-4">Payment Date</th>
                       <th className="px-6 py-4">Invoice Reference</th>
                       <th className="px-6 py-4">Method / Channel</th>
@@ -219,27 +219,27 @@ export default async function PortalInvoicesPage({ searchParams }: InvoicesPageP
                       <th className="px-6 py-4 text-center">Receipt</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[var(--bdr)]">
+                  <tbody className="divide-y divide-dash-border">
                     {settledPayments.map((pay, i) => (
-                      <tr key={i} className="hover:bg-[rgba(255,255,255,0.015)] transition-all group">
-                        <td className="px-6 py-5 text-xs text-[var(--t3)] font-mono">
+                      <tr key={i} className="hover:bg-dash-accent/5 transition-all group">
+                        <td className="px-6 py-5 text-xs text-dash-textMuted font-mono">
                           {new Date(pay.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </td>
-                        <td className="px-6 py-5 text-xs font-bold text-blue-400 font-space">
+                        <td className="px-6 py-5 text-xs font-bold text-dash-accent font-space">
                           <Link href={`/portal/invoices/${pay.invoiceId}`} className="hover:underline">
                             {pay.invoiceNumber}
                           </Link>
                         </td>
-                        <td className="px-6 py-5 text-xs text-[var(--t3)] uppercase font-mono tracking-wider">
+                        <td className="px-6 py-5 text-xs text-dash-textMuted uppercase font-mono tracking-wider">
                           {pay.reference}
                         </td>
-                        <td className="px-6 py-5 text-right text-xs font-bold text-emerald-400 font-space">
+                        <td className="px-6 py-5 text-right text-xs font-bold text-emerald-600 font-space">
                           R {pay.amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
                         </td>
                         <td className="px-6 py-5 text-center">
-                          <Link 
+                          <Link
                             href={`/portal/invoices/${pay.invoiceId}`}
-                            className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase text-emerald-400 hover:text-white hover:bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/10 hover:border-emerald-500/30 transition-all font-sans"
+                            className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 hover:border-emerald-300 transition-all font-sans"
                           >
                             View Receipt <FileText size={12} />
                           </Link>
@@ -253,12 +253,12 @@ export default async function PortalInvoicesPage({ searchParams }: InvoicesPageP
           ) : (
             invoices.length === 0 ? (
               <div className="p-16 flex flex-col items-center justify-center text-center space-y-4">
-                <div className="w-14 h-14 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-center text-[#4a5a82] opacity-55">
+                <div className="w-14 h-14 bg-dash-surface border border-dash-border rounded-2xl flex items-center justify-center text-dash-textMuted opacity-55">
                   <FileText size={28} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--t2)]">No Invoices Found</h3>
-                  <p className="text-xs text-[var(--t3)] mt-1.5 max-w-xs leading-relaxed">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-dash-text">No Invoices Found</h3>
+                  <p className="text-xs text-dash-textMuted mt-1.5 max-w-xs leading-relaxed">
                     There are no invoices matching your filters or linked to your account.
                   </p>
                 </div>
@@ -267,7 +267,7 @@ export default async function PortalInvoicesPage({ searchParams }: InvoicesPageP
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-[var(--bdr)] bg-[rgba(255,255,255,0.01)] text-[10px] font-black uppercase tracking-widest text-[var(--t4)]">
+                    <tr className="border-b border-dash-border bg-dash-surface text-[10px] font-black uppercase tracking-widest text-dash-textMuted">
                       <th className="px-6 py-4">Number</th>
                       <th className="px-6 py-4">Description</th>
                       <th className="px-6 py-4">Issue Date</th>
@@ -277,24 +277,24 @@ export default async function PortalInvoicesPage({ searchParams }: InvoicesPageP
                       <th className="px-6 py-4 text-center">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[var(--bdr)]">
+                  <tbody className="divide-y divide-dash-border">
                     {invoices.map((inv, i) => {
                       const status = getInvoiceStatusInfo(inv);
                       const desc = getInvoiceDescription(inv);
                       return (
-                        <tr key={i} className="hover:bg-[rgba(255,255,255,0.015)] transition-all group">
-                          <td className="px-6 py-5 text-xs font-bold text-blue-400 font-space">
+                        <tr key={i} className="hover:bg-dash-accent/5 transition-all group">
+                          <td className="px-6 py-5 text-xs font-bold text-dash-accent font-space">
                             <Link href={`/portal/invoices/${inv.id}`} className="hover:underline">
                               {inv.invoice_number || `INV-${inv.id.substring(0, 8)}`}
                             </Link>
                           </td>
-                          <td className="px-6 py-5 text-xs text-[var(--t3)] max-w-[150px] truncate" title={desc}>
+                          <td className="px-6 py-5 text-xs text-dash-textMuted max-w-[150px] truncate" title={desc}>
                             {desc}
                           </td>
-                          <td className="px-6 py-5 text-xs text-[var(--t3)] font-mono">
+                          <td className="px-6 py-5 text-xs text-dash-textMuted font-mono">
                             {inv.created_at ? new Date(inv.created_at).toLocaleDateString('en-ZA') : 'N/A'}
                           </td>
-                          <td className="px-6 py-5 text-xs text-[var(--t3)] font-mono">
+                          <td className="px-6 py-5 text-xs text-dash-textMuted font-mono">
                             {inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-ZA') : 'N/A'}
                           </td>
                           <td className="px-6 py-5">
@@ -302,13 +302,13 @@ export default async function PortalInvoicesPage({ searchParams }: InvoicesPageP
                               {status.label}
                             </span>
                           </td>
-                          <td className="px-6 py-5 text-right text-xs font-bold text-[var(--t1)] font-space">
+                          <td className="px-6 py-5 text-right text-xs font-bold text-dash-text font-space">
                             R {Number(inv.total_amount || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
                           </td>
                           <td className="px-6 py-5 text-center">
-                            <Link 
+                            <Link
                               href={`/portal/invoices/${inv.id}`}
-                              className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase text-blue-400 hover:text-white hover:bg-blue-500/10 px-3 py-1.5 rounded-lg border border-blue-500/10 hover:border-blue-500/30 transition-all font-sans"
+                              className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase text-dash-accent hover:text-white bg-dash-accent/5 hover:bg-dash-accent px-3 py-1.5 rounded-lg border border-dash-accent/10 hover:border-dash-accent transition-all font-sans"
                             >
                               View Details <Eye size={12} />
                             </Link>

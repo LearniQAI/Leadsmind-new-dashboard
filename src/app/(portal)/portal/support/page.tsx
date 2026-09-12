@@ -32,9 +32,9 @@ export default async function PortalSupportPage() {
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold uppercase tracking-tight font-space">
-            Help & <span className="text-[var(--accent2)]">Support</span>
+            Help & <span className="text-dash-accent">Support</span>
           </h1>
-          <p className="text-[11.5px] text-[var(--t3)] uppercase tracking-[0.2em] mt-2 font-medium">
+          <p className="text-[11.5px] text-dash-textMuted uppercase tracking-[0.2em] mt-2 font-medium">
             Open a support ticket, track dialogue threads, or provide CSAT reviews
           </p>
         </div>

@@ -38,7 +38,7 @@ export function KanbanBoard({ stages, opportunities: initialDeals }: KanbanBoard
     removed.stage_id = destination.droppableId;
     removed.position = destination.index;
     updatedDeals.splice(destination.index, 0, removed);
-    
+
     setDeals(updatedDeals);
 
     try {
@@ -79,29 +79,29 @@ export function KanbanBoard({ stages, opportunities: initialDeals }: KanbanBoard
             const stageDeals = opportunitiesByStage[stage.id] || [];
 
             return (
-              <div key={stage.id} className="w-[300px] shrink-0 flex flex-col gap-4 h-full group/column">
+              <div key={stage.id} className="w-[280px] sm:w-[300px] shrink-0 flex flex-col gap-4 h-full group/column">
                 {/* Column Header */}
-                <div className="bg-[#080f28] border border-white/5 rounded-[16px] p-4 shrink-0 shadow-xl relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-[3px] h-full bg-[#2563eb]" />
+                <div className="bg-dash-surface border border-dash-border rounded-[16px] p-4 shrink-0 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-[3px] h-full bg-dash-accent" />
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
-                      <span className="text-[11px] font-bold text-[#eef2ff] bg-white/5 w-6 h-6 rounded-md flex items-center justify-center font-space-grotesk">
+                      <span className="text-[11px] font-bold text-dash-text bg-dash-bg w-6 h-6 rounded-md flex items-center justify-center font-space-grotesk">
                         {stageDeals.length}
                       </span>
-                      <h3 className="text-[13px] font-bold text-[#eef2ff] uppercase tracking-widest font-space-grotesk truncate max-w-[150px]">
+                      <h3 className="text-[13px] font-bold text-dash-text uppercase tracking-widest font-space-grotesk truncate max-w-[150px]">
                         {stage.name}
                       </h3>
                     </div>
-                    <button 
+                    <button
                       onClick={() => openNewDeal(stage.id)}
-                      className="text-[#4a5a82] hover:text-[#eef2ff] transition-colors"
+                      className="text-dash-textMuted hover:text-dash-text transition-colors"
                     >
                       <i className="fa-solid fa-plus text-[12px]"></i>
                     </button>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.5px] font-dm-sans">Value:</span>
-                    <span className="text-[13px] font-bold text-[#10b981] font-space-grotesk">
+                    <span className="text-[10px] font-bold text-dash-textMuted uppercase tracking-[1.5px] font-dm-sans">Value:</span>
+                    <span className="text-[13px] font-bold text-emerald-600 font-space-grotesk">
                       ${stageTotal.toLocaleString()}
                     </span>
                   </div>
@@ -115,7 +115,7 @@ export function KanbanBoard({ stages, opportunities: initialDeals }: KanbanBoard
                       ref={provided.innerRef}
                       className={cn(
                         "flex-1 flex flex-col gap-3 min-h-[200px] rounded-[16px] transition-all duration-300",
-                        snapshot.isDraggingOver ? "bg-white/[0.03]" : "bg-transparent"
+                        snapshot.isDraggingOver ? "bg-dash-accent/5" : "bg-transparent"
                       )}
                     >
                       {stageDeals.map((opp, index) => (
@@ -127,40 +127,40 @@ export function KanbanBoard({ stages, opportunities: initialDeals }: KanbanBoard
                               {...provided.dragHandleProps}
                               onClick={() => openEditDeal(opp)}
                               className={cn(
-                                "bg-[#080f28] border border-white/5 rounded-[12px] p-4 cursor-pointer transition-all hover:border-[#2563eb]/40 group",
-                                snapshot.isDragging ? "shadow-[0_20px_50px_rgba(37,99,235,0.2)] border-[#2563eb]/60 z-50 scale-[1.02]" : "shadow-lg"
+                                "bg-dash-bg border border-dash-border rounded-[12px] p-4 cursor-pointer transition-all hover:border-dash-accent/40 hover:shadow-md group",
+                                snapshot.isDragging ? "shadow-[0_20px_50px_rgba(19,89,255,0.18)] border-dash-accent/60 z-50 scale-[1.02]" : "shadow-sm"
                               )}
                             >
                               <div className="flex flex-col gap-4">
                                 <div className="flex items-start justify-between gap-3">
-                                  <h4 className="text-[13.5px] font-bold text-[#eef2ff] group-hover:text-[#3b82f6] transition-colors font-dm-sans leading-tight">
+                                  <h4 className="text-[13.5px] font-bold text-dash-text group-hover:text-dash-accent transition-colors font-dm-sans leading-tight">
                                     {opp.title}
                                   </h4>
-                                  <i className="fa-solid fa-ellipsis-vertical text-[#4a5a82] text-[12px] opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                                  <i className="fa-solid fa-ellipsis-vertical text-dash-textMuted text-[12px] opacity-0 group-hover:opacity-100 transition-opacity"></i>
                                 </div>
 
                                 {opp.contact && (
-                                  <div className="flex items-center gap-2.5 py-2 px-2.5 bg-white/[0.02] border border-white/5 rounded-lg">
-                                    <div className="w-5 h-5 rounded-md bg-white/5 flex items-center justify-center text-[9px] font-bold text-[#4a5a82] font-space-grotesk uppercase">
+                                  <div className="flex items-center gap-2.5 py-2 px-2.5 bg-dash-surface border border-dash-border rounded-lg">
+                                    <div className="w-5 h-5 rounded-md bg-dash-border/60 flex items-center justify-center text-[9px] font-bold text-dash-textMuted font-space-grotesk uppercase">
                                       {opp.contact.first_name[0]}{opp.contact.last_name[0]}
                                     </div>
-                                    <span className="text-[10.5px] font-semibold text-[#94a3c8] truncate font-dm-sans">
+                                    <span className="text-[10.5px] font-semibold text-dash-textMuted truncate font-dm-sans">
                                       {opp.contact.first_name} {opp.contact.last_name}
                                     </span>
                                   </div>
                                 )}
-                                
-                                <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                                  <div className="flex items-center gap-1.5 text-[#10b981]">
+
+                                <div className="flex items-center justify-between pt-3 border-t border-dash-border">
+                                  <div className="flex items-center gap-1.5 text-emerald-600">
                                     <i className="fa-solid fa-dollar-sign text-[11px]"></i>
                                     <span className="text-[14px] font-bold font-space-grotesk">
                                       {opp.value.toLocaleString()}
                                     </span>
                                   </div>
-                                  
+
                                   {opp.tags && opp.tags.length > 0 && (
                                     <div className="flex gap-1">
-                                      <span className="text-[8px] bg-[#2563eb]/10 text-[#3b82f6] px-1.5 py-0.5 rounded uppercase font-bold tracking-tighter">
+                                      <span className="text-[8px] bg-dash-accent/10 text-dash-accent px-1.5 py-0.5 rounded uppercase font-bold tracking-tighter">
                                         {opp.tags[0]}
                                       </span>
                                     </div>
@@ -181,7 +181,7 @@ export function KanbanBoard({ stages, opportunities: initialDeals }: KanbanBoard
         </div>
       </DragDropContext>
 
-      <DealModal 
+      <DealModal
         isOpen={modalState.isOpen}
         onClose={() => setModalState({ isOpen: false })}
         stageId={modalState.stageId}

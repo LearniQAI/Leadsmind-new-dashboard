@@ -234,46 +234,46 @@ export default function PropertyDealClient({
   const showComplianceWarning = !isBuyerGreen || !isSellerGreen;
 
   return (
-    <div className="flex-1 flex flex-col overflow-y-auto px-6 py-6 space-y-6 text-[#eef2ff]">
-      
+    <div className="flex-1 flex flex-col overflow-y-auto px-4 sm:px-6 py-6 space-y-6 text-dash-text bg-dash-bg">
+
       {/* Top Banner Actions */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-dash-border pb-5">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-500/10 border border-blue-500/20 text-[#3b82f6]">
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-500/10 border border-blue-500/20 text-blue-600">
               Real Estate Pipeline
             </span>
-            <span className="text-[11.5px] font-bold text-[#10b981] font-space-grotesk bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
+            <span className="text-[11.5px] font-bold text-emerald-600 font-space-grotesk bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
               PPRA / EAAB Compliance Panel
             </span>
           </div>
-          <h1 className="text-2xl font-bold font-space-grotesk tracking-tight">
+          <h1 className="text-2xl font-bold font-space-grotesk tracking-tight text-dash-text">
             {deal.title}
           </h1>
-          <p className="text-xs text-[#4a5a82] font-dm-sans">
-            Ref ID: <span className="font-mono text-[11px] text-[#94a3c8]">{deal.id}</span> • Deal Value: <span className="text-emerald-400 font-bold font-space-grotesk">${deal.value?.toLocaleString()}</span>
+          <p className="text-xs text-dash-textMuted font-dm-sans">
+            Ref ID: <span className="font-mono text-[11px] text-dash-textMuted">{deal.id}</span> • Deal Value: <span className="text-emerald-600 font-bold font-space-grotesk">${deal.value?.toLocaleString()}</span>
           </p>
         </div>
 
         {/* Tactical Stage Selection */}
         <div className="flex items-center gap-3">
-          <div className="bg-[#080f28] border border-white/5 rounded-lg px-3 py-1.5 flex flex-col">
-            <span className="text-[9px] font-bold text-[#4a5a82] uppercase tracking-[1px] font-space-grotesk">Transaction Stage</span>
+          <div className="bg-dash-surface border border-dash-border rounded-lg px-3 py-1.5 flex flex-col">
+            <span className="text-[9px] font-bold text-dash-textMuted uppercase tracking-[1px] font-space-grotesk">Transaction Stage</span>
             <select
               value={deal.stage_id}
               onChange={handleStageChange}
-              className="bg-transparent text-sm font-bold text-[#eef2ff] border-none focus:outline-none cursor-pointer pr-5 font-dm-sans"
+              className="bg-transparent text-sm font-bold text-dash-text border-none focus:outline-none cursor-pointer pr-5 font-dm-sans"
             >
               {stages.map((st: any) => (
-                <option key={st.id} value={st.id} className="bg-[#04091a] text-[#eef2ff]">
+                <option key={st.id} value={st.id} className="bg-dash-surface text-dash-text">
                   {st.name}
                 </option>
               ))}
             </select>
           </div>
-          <button 
+          <button
             onClick={() => router.push('/pipelines')}
-            className="h-10 px-4 rounded-[8px] bg-white/5 border border-white/5 text-[#eef2ff] hover:bg-white/10 text-xs font-bold font-dm-sans flex items-center gap-2 transition-all"
+            className="h-10 px-4 rounded-[8px] bg-dash-surface border border-dash-border text-dash-text hover:bg-dash-border/40 text-xs font-bold font-dm-sans flex items-center gap-2 transition-all"
           >
             Back to Kanban
           </button>
@@ -288,10 +288,10 @@ export default function PropertyDealClient({
             <ShieldAlert className="w-5 h-5" />
           </div>
           <div className="space-y-1.5">
-            <h4 className="text-sm font-bold font-space-grotesk uppercase tracking-wider text-amber-400">
+            <h4 className="text-sm font-bold font-space-grotesk uppercase tracking-wider text-amber-600">
               Active Warning: Compliance Block In Effect
             </h4>
-            <p className="text-xs font-dm-sans text-[#94a3c8] leading-relaxed">
+            <p className="text-xs font-dm-sans text-dash-textMuted leading-relaxed">
               {!isBuyerGreen && !isSellerGreen && (
                 <span>KYC incomplete for both <strong>{buyer ? `${buyer.first_name} ${buyer.last_name}` : 'Buyer'}</strong> and <strong>{seller ? `${seller.first_name} ${seller.last_name}` : 'Seller'}</strong>.</span>
               )}
@@ -302,7 +302,7 @@ export default function PropertyDealClient({
                 <span>KYC incomplete for Seller: <strong>{seller ? `${seller.first_name} ${seller.last_name}` : 'Unassigned'}</strong> — identity verification required before submitting offer.</span>
               )}
               <br />
-              <span className="text-[#a5b4fc] font-semibold mt-1 block">
+              <span className="text-dash-accent font-semibold mt-1 block">
                 The database trigger will block stage progression to "Offer to Purchase Submitted" or "Under Contract" until both profiles display a FICA Verified Green status.
               </span>
             </p>
@@ -314,41 +314,41 @@ export default function PropertyDealClient({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Buyer KYC Dial */}
-        <div className={`bg-[#080f28]/70 border ${buyerRating === 'green' ? 'border-emerald-500/20 shadow-emerald-950/10' : 'border-white/5'} rounded-xl p-5 shadow-xl relative overflow-hidden flex flex-col justify-between`}>
+        <div className={`bg-dash-surface border ${buyerRating === 'green' ? 'border-emerald-500/30' : 'border-dash-border'} rounded-xl p-5 shadow-sm relative overflow-hidden flex flex-col justify-between`}>
           {buyerRating === 'green' && (
             <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-xl" />
           )}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                <div className="w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500">
                   <User className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold font-space-grotesk uppercase tracking-[0.5px]">Buyer KYC status</h3>
-                  <p className="text-[10px] text-[#4a5a82] font-mono">ROLE: TRANSACTING CLIENT</p>
+                  <h3 className="text-sm font-bold font-space-grotesk uppercase tracking-[0.5px] text-dash-text">Buyer KYC status</h3>
+                  <p className="text-[10px] text-dash-textMuted font-mono">ROLE: TRANSACTING CLIENT</p>
                 </div>
               </div>
 
               {/* Status Badge */}
               <div className="flex items-center">
                 {buyerRating === 'green' && (
-                  <span className="px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center gap-1 shadow-lg shadow-emerald-500/5 animate-pulse">
+                  <span className="px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 flex items-center gap-1">
                     <CheckCircle className="w-3.5 h-3.5" /> FICA VERIFIED (GREEN)
                   </span>
                 )}
                 {buyerRating === 'amber' && (
-                  <span className="px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center gap-1">
+                  <span className="px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center gap-1">
                     <AlertTriangle className="w-3.5 h-3.5" /> MEDIUM RISK (AMBER)
                   </span>
                 )}
                 {buyerRating === 'red' && (
-                  <span className="px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-red-500/10 border border-red-500/20 text-red-400 flex items-center gap-1">
+                  <span className="px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-red-500/10 border border-red-500/20 text-red-600 flex items-center gap-1">
                     <ShieldAlert className="w-3.5 h-3.5" /> HIGH RISK (RED)
                   </span>
                 )}
                 {buyerRating === 'grey' && (
-                  <span className="px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-white/5 border border-white/5 text-[#94a3c8] flex items-center gap-1">
+                  <span className="px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-dash-border/60 border border-dash-border text-dash-textMuted flex items-center gap-1">
                     <Clock className="w-3.5 h-3.5" /> UNVERIFIED (GREY)
                   </span>
                 )}
@@ -356,26 +356,26 @@ export default function PropertyDealClient({
             </div>
 
             {buyer ? (
-              <div className="bg-white/[0.02] border border-white/5 rounded-lg p-3 space-y-2 text-xs font-dm-sans">
+              <div className="bg-dash-bg border border-dash-border rounded-lg p-3 space-y-2 text-xs font-dm-sans">
                 <div className="flex justify-between">
-                  <span className="text-[#4a5a82]">Full Name:</span>
-                  <span className="font-bold text-[#eef2ff]">{buyer.first_name} {buyer.last_name}</span>
+                  <span className="text-dash-textMuted">Full Name:</span>
+                  <span className="font-bold text-dash-text">{buyer.first_name} {buyer.last_name}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#4a5a82]">Email:</span>
-                  <span className="text-[#94a3c8]">{buyer.email || 'N/A'}</span>
+                  <span className="text-dash-textMuted">Email:</span>
+                  <span className="text-dash-textMuted">{buyer.email || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#4a5a82]">Mobile No:</span>
-                  <span className="text-[#94a3c8]">{buyer.phone || 'N/A'}</span>
+                  <span className="text-dash-textMuted">Mobile No:</span>
+                  <span className="text-dash-textMuted">{buyer.phone || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#4a5a82]">FICA Verified At:</span>
-                  <span className="text-[#94a3c8]">{buyer.kyc_risk_ratings?.fica_completed_at ? new Date(buyer.kyc_risk_ratings.fica_completed_at).toLocaleString() : 'Never'}</span>
+                  <span className="text-dash-textMuted">FICA Verified At:</span>
+                  <span className="text-dash-textMuted">{buyer.kyc_risk_ratings?.fica_completed_at ? new Date(buyer.kyc_risk_ratings.fica_completed_at).toLocaleString() : 'Never'}</span>
                 </div>
               </div>
             ) : (
-              <div className="border border-dashed border-white/10 rounded-lg p-6 text-center text-xs text-[#4a5a82] font-dm-sans">
+              <div className="border border-dashed border-dash-border rounded-lg p-6 text-center text-xs text-dash-textMuted font-dm-sans">
                 No buyer contact linked to this property transaction record.
               </div>
             )}
@@ -383,41 +383,41 @@ export default function PropertyDealClient({
         </div>
 
         {/* Seller KYC Dial */}
-        <div className={`bg-[#080f28]/70 border ${sellerRating === 'green' ? 'border-emerald-500/20 shadow-emerald-950/10' : 'border-white/5'} rounded-xl p-5 shadow-xl relative overflow-hidden flex flex-col justify-between`}>
+        <div className={`bg-dash-surface border ${sellerRating === 'green' ? 'border-emerald-500/30' : 'border-dash-border'} rounded-xl p-5 shadow-sm relative overflow-hidden flex flex-col justify-between`}>
           {sellerRating === 'green' && (
             <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-xl" />
           )}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                <div className="w-9 h-9 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-500">
                   <User className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold font-space-grotesk uppercase tracking-[0.5px]">Seller KYC status</h3>
-                  <p className="text-[10px] text-[#4a5a82] font-mono">ROLE: TRANSACTING OWNER</p>
+                  <h3 className="text-sm font-bold font-space-grotesk uppercase tracking-[0.5px] text-dash-text">Seller KYC status</h3>
+                  <p className="text-[10px] text-dash-textMuted font-mono">ROLE: TRANSACTING OWNER</p>
                 </div>
               </div>
 
               {/* Status Badge */}
               <div className="flex items-center">
                 {sellerRating === 'green' && (
-                  <span className="px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center gap-1 shadow-lg shadow-emerald-500/5 animate-pulse">
+                  <span className="px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 flex items-center gap-1">
                     <CheckCircle className="w-3.5 h-3.5" /> FICA VERIFIED (GREEN)
                   </span>
                 )}
                 {sellerRating === 'amber' && (
-                  <span className="px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center gap-1">
+                  <span className="px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center gap-1">
                     <AlertTriangle className="w-3.5 h-3.5" /> MEDIUM RISK (AMBER)
                   </span>
                 )}
                 {sellerRating === 'red' && (
-                  <span className="px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-red-500/10 border border-red-500/20 text-red-400 flex items-center gap-1">
+                  <span className="px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-red-500/10 border border-red-500/20 text-red-600 flex items-center gap-1">
                     <ShieldAlert className="w-3.5 h-3.5" /> HIGH RISK (RED)
                   </span>
                 )}
                 {sellerRating === 'grey' && (
-                  <span className="px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-white/5 border border-white/5 text-[#94a3c8] flex items-center gap-1">
+                  <span className="px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-dash-border/60 border border-dash-border text-dash-textMuted flex items-center gap-1">
                     <Clock className="w-3.5 h-3.5" /> UNVERIFIED (GREY)
                   </span>
                 )}
@@ -425,26 +425,26 @@ export default function PropertyDealClient({
             </div>
 
             {seller ? (
-              <div className="bg-white/[0.02] border border-white/5 rounded-lg p-3 space-y-2 text-xs font-dm-sans">
+              <div className="bg-dash-bg border border-dash-border rounded-lg p-3 space-y-2 text-xs font-dm-sans">
                 <div className="flex justify-between">
-                  <span className="text-[#4a5a82]">Full Name:</span>
-                  <span className="font-bold text-[#eef2ff]">{seller.first_name} {seller.last_name}</span>
+                  <span className="text-dash-textMuted">Full Name:</span>
+                  <span className="font-bold text-dash-text">{seller.first_name} {seller.last_name}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#4a5a82]">Email:</span>
-                  <span className="text-[#94a3c8]">{seller.email || 'N/A'}</span>
+                  <span className="text-dash-textMuted">Email:</span>
+                  <span className="text-dash-textMuted">{seller.email || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#4a5a82]">Mobile No:</span>
-                  <span className="text-[#94a3c8]">{seller.phone || 'N/A'}</span>
+                  <span className="text-dash-textMuted">Mobile No:</span>
+                  <span className="text-dash-textMuted">{seller.phone || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#4a5a82]">FICA Verified At:</span>
-                  <span className="text-[#94a3c8]">{seller.kyc_risk_ratings?.fica_completed_at ? new Date(seller.kyc_risk_ratings.fica_completed_at).toLocaleString() : 'Never'}</span>
+                  <span className="text-dash-textMuted">FICA Verified At:</span>
+                  <span className="text-dash-textMuted">{seller.kyc_risk_ratings?.fica_completed_at ? new Date(seller.kyc_risk_ratings.fica_completed_at).toLocaleString() : 'Never'}</span>
                 </div>
               </div>
             ) : (
-              <div className="border border-dashed border-white/10 rounded-lg p-6 text-center text-xs text-[#4a5a82] font-dm-sans">
+              <div className="border border-dashed border-dash-border rounded-lg p-6 text-center text-xs text-dash-textMuted font-dm-sans">
                 No seller contact linked to this property transaction record.
               </div>
             )}
@@ -453,20 +453,20 @@ export default function PropertyDealClient({
       </div>
 
       {/* BINDING FORM PANEL */}
-      <div className="bg-[#080f28]/70 border border-white/5 rounded-xl p-5 shadow-xl">
-        <h3 className="text-sm font-bold font-space-grotesk uppercase tracking-wider mb-4 flex items-center gap-2 text-[#3b82f6]">
+      <div className="bg-dash-surface border border-dash-border rounded-xl p-5 shadow-sm">
+        <h3 className="text-sm font-bold font-space-grotesk uppercase tracking-wider mb-4 flex items-center gap-2 text-dash-accent">
           <Link2 className="w-4 h-4" /> Dual Contact Linkage Settings
         </h3>
-        
+
         <form onSubmit={handleUpdateContacts} className="grid grid-cols-1 md:grid-cols-3 gap-5 items-end">
           <div>
-            <label className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.5px] block mb-2 font-space-grotesk">
+            <label className="text-[10px] font-bold text-dash-textMuted uppercase tracking-[1.5px] block mb-2 font-space-grotesk">
               Assign Buyer (Contact)
             </label>
             <select
               value={selectedBuyerId}
               onChange={(e) => setSelectedBuyerId(e.target.value)}
-              className="w-full h-10 px-3 bg-[#04091a] border border-white/5 rounded-[8px] text-xs text-[#eef2ff] focus:outline-none focus:border-[#3b82f6] font-dm-sans"
+              className="w-full h-10 px-3 bg-dash-bg border border-dash-border rounded-[8px] text-xs text-dash-text focus:outline-none focus:border-dash-accent font-dm-sans"
             >
               <option value="">-- Select Buyer Contact --</option>
               {contacts.map((c: any) => (
@@ -478,13 +478,13 @@ export default function PropertyDealClient({
           </div>
 
           <div>
-            <label className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[1.5px] block mb-2 font-space-grotesk">
+            <label className="text-[10px] font-bold text-dash-textMuted uppercase tracking-[1.5px] block mb-2 font-space-grotesk">
               Assign Seller (Contact)
             </label>
             <select
               value={selectedSellerId}
               onChange={(e) => setSelectedSellerId(e.target.value)}
-              className="w-full h-10 px-3 bg-[#04091a] border border-white/5 rounded-[8px] text-xs text-[#eef2ff] focus:outline-none focus:border-[#3b82f6] font-dm-sans"
+              className="w-full h-10 px-3 bg-dash-bg border border-dash-border rounded-[8px] text-xs text-dash-text focus:outline-none focus:border-dash-accent font-dm-sans"
             >
               <option value="">-- Select Seller Contact --</option>
               {contacts.map((c: any) => (
@@ -498,7 +498,7 @@ export default function PropertyDealClient({
           <button
             type="submit"
             disabled={isUpdatingContacts}
-            className="w-full h-10 rounded-[8px] bg-[#2563eb] text-white hover:bg-[#2563eb]/90 disabled:bg-[#2563eb]/50 text-xs font-bold font-dm-sans transition-all flex items-center justify-center gap-2"
+            className="w-full h-10 rounded-[8px] bg-dash-accent text-white hover:bg-dash-accent/90 disabled:bg-dash-accent/50 text-xs font-bold font-dm-sans transition-all flex items-center justify-center gap-2"
           >
             {isUpdatingContacts ? 'Linking...' : 'Apply Linked Entities'}
           </button>
@@ -509,20 +509,20 @@ export default function PropertyDealClient({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* SOURCE OF FUNDS DISPATCH WORKSPACE */}
-        <div className="bg-[#080f28]/70 border border-white/5 rounded-xl p-5 shadow-xl space-y-5 flex flex-col justify-between">
+        <div className="bg-dash-surface border border-dash-border rounded-xl p-5 shadow-sm space-y-5 flex flex-col justify-between">
           <div className="space-y-4">
-            <h3 className="text-sm font-bold font-space-grotesk uppercase tracking-wider flex items-center gap-2 text-[#eef2ff]">
-              <DollarSign className="w-4 h-4 text-emerald-400" /> Source of Funds WhatsApp declarations
+            <h3 className="text-sm font-bold font-space-grotesk uppercase tracking-wider flex items-center gap-2 text-dash-text">
+              <DollarSign className="w-4 h-4 text-emerald-600" /> Source of Funds WhatsApp declarations
             </h3>
-            
-            <p className="text-[11.5px] text-[#4a5a82] font-dm-sans leading-relaxed">
+
+            <p className="text-[11.5px] text-dash-textMuted font-dm-sans leading-relaxed">
               Generate a digital compliance form to capture source of funds declarations for cash transactions. Sends a secure link directly to the buyer's mobile number via WhatsApp.
             </p>
 
             <form onSubmit={handleDispatchDeclaration} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[9px] font-bold text-[#4a5a82] uppercase tracking-[1px] block mb-1.5 font-space-grotesk">
+                  <label className="text-[9px] font-bold text-dash-textMuted uppercase tracking-[1px] block mb-1.5 font-space-grotesk">
                     WhatsApp Mobile Number
                   </label>
                   <input
@@ -530,18 +530,18 @@ export default function PropertyDealClient({
                     placeholder="e.g. +27721234567"
                     value={fundsPhone}
                     onChange={(e) => setFundsPhone(e.target.value)}
-                    className="w-full h-9 px-3 bg-[#04091a] border border-white/5 rounded-lg text-xs focus:outline-none focus:border-emerald-500 font-mono"
+                    className="w-full h-9 px-3 bg-dash-bg border border-dash-border rounded-lg text-xs text-dash-text focus:outline-none focus:border-emerald-500 font-mono"
                   />
                 </div>
                 <div>
-                  <label className="text-[9px] font-bold text-[#4a5a82] uppercase tracking-[1px] block mb-1.5 font-space-grotesk">
+                  <label className="text-[9px] font-bold text-dash-textMuted uppercase tracking-[1px] block mb-1.5 font-space-grotesk">
                     Transaction Value
                   </label>
                   <input
                     type="number"
                     value={fundsAmount}
                     onChange={(e) => setFundsAmount(Number(e.target.value))}
-                    className="w-full h-9 px-3 bg-[#04091a] border border-white/5 rounded-lg text-xs focus:outline-none focus:border-emerald-500 font-mono"
+                    className="w-full h-9 px-3 bg-dash-bg border border-dash-border rounded-lg text-xs text-dash-text focus:outline-none focus:border-emerald-500 font-mono"
                   />
                 </div>
               </div>
@@ -549,38 +549,38 @@ export default function PropertyDealClient({
               <button
                 type="submit"
                 disabled={isDispatchingFunds || !buyer}
-                className="w-full h-9 rounded-lg bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-600/35 text-xs font-bold font-dm-sans transition-all flex items-center justify-center gap-2 text-slate-950"
+                className="w-full h-9 rounded-lg bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-600/35 text-xs font-bold font-dm-sans transition-all flex items-center justify-center gap-2 text-white"
               >
                 <Send className="w-3.5 h-3.5" /> Dispatch Declaration via WhatsApp
               </button>
             </form>
           </div>
 
-          <div className="pt-4 border-t border-white/5 space-y-3">
-            <h4 className="text-[10px] font-bold uppercase tracking-[1px] text-[#4a5a82] font-space-grotesk">Recent Dispatched Declarations</h4>
+          <div className="pt-4 border-t border-dash-border space-y-3">
+            <h4 className="text-[10px] font-bold uppercase tracking-[1px] text-dash-textMuted font-space-grotesk">Recent Dispatched Declarations</h4>
             <div className="max-h-[140px] overflow-y-auto space-y-2 common-scrollbar">
               {declarations.length === 0 ? (
-                <p className="text-[10px] text-[#4a5a82] italic">No funds declarations dispatched yet.</p>
+                <p className="text-[10px] text-dash-textMuted italic">No funds declarations dispatched yet.</p>
               ) : (
                 declarations.map((dec: any) => (
-                  <div key={dec.id} className="bg-white/[0.01] border border-white/5 p-2 rounded-lg flex items-center justify-between text-[11px] font-dm-sans">
+                  <div key={dec.id} className="bg-dash-bg border border-dash-border p-2 rounded-lg flex items-center justify-between text-[11px] font-dm-sans">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-[#eef2ff]">Status:</span>
-                        <span className={`px-1.5 py-0.5 rounded-[4px] text-[9px] font-bold uppercase ${dec.status === 'submitted' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
+                        <span className="font-semibold text-dash-text">Status:</span>
+                        <span className={`px-1.5 py-0.5 rounded-[4px] text-[9px] font-bold uppercase ${dec.status === 'submitted' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 border border-amber-500/20'}`}>
                           {dec.status}
                         </span>
                       </div>
                       {dec.status === 'submitted' && (
-                        <div className="text-[10px] text-[#94a3c8] mt-0.5">
-                          Source: <span className="text-[#a5b4fc] font-bold capitalize">{dec.funds_source?.replace('_', ' ')}</span> • Amt: <span className="text-[#10b981] font-bold font-space-grotesk">${dec.amount?.toLocaleString()}</span>
+                        <div className="text-[10px] text-dash-textMuted mt-0.5">
+                          Source: <span className="text-dash-accent font-bold capitalize">{dec.funds_source?.replace('_', ' ')}</span> • Amt: <span className="text-emerald-600 font-bold font-space-grotesk">${dec.amount?.toLocaleString()}</span>
                         </div>
                       )}
-                      <div className="text-[9px] text-[#4a5a82] mt-0.5">Sent at: {new Date(dec.whatsapp_sent_at).toLocaleString()}</div>
+                      <div className="text-[9px] text-dash-textMuted mt-0.5">Sent at: {new Date(dec.whatsapp_sent_at).toLocaleString()}</div>
                     </div>
                     <button
                       onClick={() => copyToClipboard(`${window.location.origin}/portal/funds-declaration/${dec.token}`)}
-                      className="p-1 rounded bg-white/5 hover:bg-white/10 text-[#94a3c8]"
+                      className="p-1 rounded bg-dash-border/50 hover:bg-dash-border text-dash-textMuted"
                       title="Copy sharing link"
                     >
                       <Copy className="w-3.5 h-3.5" />
@@ -593,20 +593,20 @@ export default function PropertyDealClient({
         </div>
 
         {/* CONVEYANCING ATTORNEY DATA EXCHANGE */}
-        <div className="bg-[#080f28]/70 border border-white/5 rounded-xl p-5 shadow-xl space-y-5 flex flex-col justify-between">
+        <div className="bg-dash-surface border border-dash-border rounded-xl p-5 shadow-sm space-y-5 flex flex-col justify-between">
           <div className="space-y-4">
-            <h3 className="text-sm font-bold font-space-grotesk uppercase tracking-wider flex items-center gap-2 text-[#eef2ff]">
-              <Share2 className="w-4 h-4 text-blue-400" /> Conveyancing Attorney Portal
+            <h3 className="text-sm font-bold font-space-grotesk uppercase tracking-wider flex items-center gap-2 text-dash-text">
+              <Share2 className="w-4 h-4 text-blue-500" /> Conveyancing Attorney Portal
             </h3>
-            
-            <p className="text-[11.5px] text-[#4a5a82] font-dm-sans leading-relaxed">
+
+            <p className="text-[11.5px] text-dash-textMuted font-dm-sans leading-relaxed">
               Securely share verified client FICA folders directly with external legal firms. Creates a tokenized workspace permitting access to verified ID copies, passports, and utility proof of address.
             </p>
 
             <form onSubmit={handleCreateConveyancingShare} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[9px] font-bold text-[#4a5a82] uppercase tracking-[1px] block mb-1.5 font-space-grotesk">
+                  <label className="text-[9px] font-bold text-dash-textMuted uppercase tracking-[1px] block mb-1.5 font-space-grotesk">
                     Attorney / Firm Name
                   </label>
                   <input
@@ -614,11 +614,11 @@ export default function PropertyDealClient({
                     placeholder="e.g. Bowmans Law"
                     value={attorneyName}
                     onChange={(e) => setAttorneyName(e.target.value)}
-                    className="w-full h-9 px-3 bg-[#04091a] border border-white/5 rounded-lg text-xs focus:outline-none focus:border-blue-500 font-dm-sans"
+                    className="w-full h-9 px-3 bg-dash-bg border border-dash-border rounded-lg text-xs text-dash-text focus:outline-none focus:border-blue-500 font-dm-sans"
                   />
                 </div>
                 <div>
-                  <label className="text-[9px] font-bold text-[#4a5a82] uppercase tracking-[1px] block mb-1.5 font-space-grotesk">
+                  <label className="text-[9px] font-bold text-dash-textMuted uppercase tracking-[1px] block mb-1.5 font-space-grotesk">
                     Attorney Email Address
                   </label>
                   <input
@@ -626,7 +626,7 @@ export default function PropertyDealClient({
                     placeholder="attorney@firm.co.za"
                     value={attorneyEmail}
                     onChange={(e) => setAttorneyEmail(e.target.value)}
-                    className="w-full h-9 px-3 bg-[#04091a] border border-white/5 rounded-lg text-xs focus:outline-none focus:border-blue-500 font-dm-sans"
+                    className="w-full h-9 px-3 bg-dash-bg border border-dash-border rounded-lg text-xs text-dash-text focus:outline-none focus:border-blue-500 font-dm-sans"
                   />
                 </div>
               </div>
@@ -641,25 +641,25 @@ export default function PropertyDealClient({
             </form>
           </div>
 
-          <div className="pt-4 border-t border-white/5 space-y-3">
-            <h4 className="text-[10px] font-bold uppercase tracking-[1px] text-[#4a5a82] font-space-grotesk">Active Exchange Links (FICA Shares)</h4>
+          <div className="pt-4 border-t border-dash-border space-y-3">
+            <h4 className="text-[10px] font-bold uppercase tracking-[1px] text-dash-textMuted font-space-grotesk">Active Exchange Links (FICA Shares)</h4>
             <div className="max-h-[140px] overflow-y-auto space-y-2 common-scrollbar">
               {shares.length === 0 ? (
-                <p className="text-[10px] text-[#4a5a82] italic">No conveyancing attorney portals generated yet.</p>
+                <p className="text-[10px] text-dash-textMuted italic">No conveyancing attorney portals generated yet.</p>
               ) : (
                 shares.map((sh: any) => {
                   const isExpired = new Date(sh.expires_at) < new Date();
                   return (
-                    <div key={sh.id} className="bg-white/[0.01] border border-white/5 p-2 rounded-lg flex items-center justify-between text-[11px] font-dm-sans">
+                    <div key={sh.id} className="bg-dash-bg border border-dash-border p-2 rounded-lg flex items-center justify-between text-[11px] font-dm-sans">
                       <div>
-                        <div className="font-semibold text-[#eef2ff]">{sh.attorney_name}</div>
-                        <div className="text-[10px] text-[#94a3c8] mt-0.5">{sh.attorney_email}</div>
-                        <div className="text-[9px] text-[#4a5a82] mt-0.5">Expires: {new Date(sh.expires_at).toLocaleDateString()}</div>
+                        <div className="font-semibold text-dash-text">{sh.attorney_name}</div>
+                        <div className="text-[10px] text-dash-textMuted mt-0.5">{sh.attorney_email}</div>
+                        <div className="text-[9px] text-dash-textMuted mt-0.5">Expires: {new Date(sh.expires_at).toLocaleDateString()}</div>
                       </div>
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => copyToClipboard(`${window.location.origin}/portal/conveyancing/${sh.token}`)}
-                          className="p-1 rounded bg-white/5 hover:bg-white/10 text-[#94a3c8]"
+                          className="p-1 rounded bg-dash-border/50 hover:bg-dash-border text-dash-textMuted"
                           title="Copy portal URL"
                         >
                           <Copy className="w-3.5 h-3.5" />
@@ -668,7 +668,7 @@ export default function PropertyDealClient({
                           href={`/portal/conveyancing/${sh.token}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="p-1 rounded bg-white/5 hover:bg-white/10 text-blue-400"
+                          className="p-1 rounded bg-dash-border/50 hover:bg-dash-border text-blue-600"
                           title="Preview attorney portal"
                         >
                           <ExternalLink className="w-3.5 h-3.5" />

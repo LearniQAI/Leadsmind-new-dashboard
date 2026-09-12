@@ -75,13 +75,13 @@ export default function LockedLessonPlaceholder({
 }: LockedLessonPlaceholderProps) {
   if (activeLockReason.type === 'paid_locked') {
     return (
-      <div className="bg-[#080f28]/80 border border-white/5 p-12 rounded-2xl max-w-xl mx-auto text-center space-y-6 backdrop-blur-md shadow-2xl py-16 flex flex-col items-center justify-center">
-        <div className="w-16 h-16 bg-[#2563eb]/10 border border-primary/20 text-primary rounded-full flex items-center justify-center animate-pulse">
+      <div className="bg-dash-surface border border-dash-border p-12 rounded-2xl max-w-xl mx-auto text-center space-y-6 shadow-lg py-16 flex flex-col items-center justify-center">
+        <div className="w-16 h-16 bg-primary/10 border border-primary/20 text-primary rounded-full flex items-center justify-center animate-pulse">
           <BookOpen size={28} />
         </div>
         <div className="space-y-2">
-          <h3 className="text-xl font-space-grotesk font-black uppercase text-white tracking-tight">Unlock this lesson</h3>
-          <p className="text-xs text-white/50 leading-relaxed max-w-sm">
+          <h3 className="text-xl font-space-grotesk font-black uppercase !text-dash-text tracking-tight">Unlock this lesson</h3>
+          <p className="text-xs !text-dash-textMuted leading-relaxed max-w-sm">
             This lecture is reserved for premium tier members. Upgrade now to gain instant access.
           </p>
         </div>

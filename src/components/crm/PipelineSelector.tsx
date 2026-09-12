@@ -26,12 +26,12 @@ export function PipelineSelector({ pipelines, activePipelineId }: PipelineSelect
 
  return (
   <Select defaultValue={activePipelineId} onValueChange={handleValueChange}>
-   <SelectTrigger className="w-[200px] bg-white/[0.03] border-white/10 text-white h-11 rounded-xl focus:ring-primary/50">
+   <SelectTrigger className="w-[200px] bg-dash-bg border-dash-border text-dash-text h-11 rounded-xl focus:ring-primary/50">
     <SelectValue placeholder="Select Pipeline" />
    </SelectTrigger>
-   <SelectContent className="bg-[#1a1a24] border-white/10 text-white">
+   <SelectContent className="bg-dash-surface border-dash-border text-dash-text">
     {pipelines.map((p) => (
-     <SelectItem key={p.id} value={p.id} className="focus:bg-primary/20 focus:text-primary">
+     <SelectItem key={p.id} value={p.id} className="focus:bg-primary/10 focus:text-primary">
       {p.name}
      </SelectItem>
     ))}

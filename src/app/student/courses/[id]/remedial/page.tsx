@@ -88,9 +88,9 @@ export default async function RemedialPage({ params, searchParams }: RemedialPag
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto py-8 text-white min-h-[calc(100vh-80px)] font-body">
-      <div className="flex items-center gap-1.5 text-xs text-white/40 font-mono uppercase tracking-widest">
-        <Link href={`/student/courses/${courseId}`} className="hover:text-white transition-all flex items-center gap-0.5">
+    <div className="space-y-6 max-w-4xl mx-auto py-8 text-dash-text min-h-[calc(100vh-80px)] font-body bg-dash-bg">
+      <div className="flex items-center gap-1.5 text-xs text-dash-textMuted font-mono uppercase tracking-widest">
+        <Link href={`/student/courses/${courseId}`} className="hover:text-dash-text transition-all flex items-center gap-0.5">
           <ChevronLeft size={12} /> Back to Course Player
         </Link>
       </div>

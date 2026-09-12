@@ -117,58 +117,58 @@ export default function StatementGeneratorModal({
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="inline-flex items-center gap-2 px-4 py-2 bg-[#111d47]/60 hover:bg-[#111d47] text-blue-400 hover:text-white border border-blue-500/10 hover:border-blue-500/30 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
+        className="inline-flex items-center gap-2 px-4 py-2 bg-dash-accent/5 hover:bg-dash-accent/10 text-dash-accent hover:text-dash-accent border border-dash-accent/10 hover:border-dash-accent/30 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
       >
         <FileText size={14} /> Account Statement
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 bg-[#04091a]/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto no-print">
-          <div className="bg-[#0b1121] border border-white/10 rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-[#000000c1] backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto no-print">
+          <div className="bg-white border border-dash-border rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+            <div className="p-6 border-b border-dash-border flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold uppercase tracking-tight text-white font-space">
-                  Generate <span className="text-[var(--accent2)]">Account Statement</span>
+                <h2 className="text-lg font-bold uppercase tracking-tight text-dash-text font-space">
+                  Generate <span className="text-dash-accent">Account Statement</span>
                 </h2>
-                <p className="text-[10px] text-t3 uppercase tracking-wider mt-1">SARS tax compliance self-generation</p>
+                <p className="text-[10px] text-dash-textMuted uppercase tracking-wider mt-1">SARS tax compliance self-generation</p>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="w-8 h-8 rounded-lg hover:bg-white/5 flex items-center justify-center text-[#4a5a82] hover:text-white transition-colors"
+                className="w-8 h-8 rounded-lg hover:bg-dash-accent/5 flex items-center justify-center text-dash-textMuted hover:text-dash-text transition-colors"
               >
                 <X size={16} />
               </button>
             </div>
 
             {/* Date Selection Panel */}
-            <div className="p-6 bg-[#111d47]/20 border-b border-white/5 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-6 bg-dash-surface border-b border-dash-border grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-widest text-[#4a5a82]">Start Date</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-dash-textMuted">Start Date</label>
                 <div className="relative">
                   <input
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full bg-[#080f28] border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500 font-mono"
+                    className="w-full bg-white border border-dash-border rounded-xl px-4 py-2.5 text-xs text-dash-text outline-none focus:border-dash-accent font-mono"
                   />
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-widest text-[#4a5a82]">End Date</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-dash-textMuted">End Date</label>
                 <div className="relative">
                   <input
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full bg-[#080f28] border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500 font-mono"
+                    className="w-full bg-white border border-dash-border rounded-xl px-4 py-2.5 text-xs text-dash-text outline-none focus:border-dash-accent font-mono"
                   />
                 </div>
               </div>
             </div>
 
             {/* Statement Preview */}
-            <div className="flex-1 overflow-y-auto p-8 bg-gray-100/10 min-h-[400px]">
+            <div className="flex-1 overflow-y-auto p-8 bg-dash-surface min-h-[400px]">
               {statementData ? (
                 <div id="sars-statement" className="bg-white text-gray-900 p-12 shadow-inner font-sans max-w-[210mm] mx-auto min-h-[297mm] printable-area border border-gray-200">
                   {/* Print Styles */}
@@ -318,23 +318,23 @@ export default function StatementGeneratorModal({
                   </div>
                 </div>
               ) : (
-                <div className="h-full flex items-center justify-center text-[#4a5a82] text-xs">
+                <div className="h-full flex items-center justify-center text-dash-textMuted text-xs">
                   Please select valid dates.
                 </div>
               )}
             </div>
 
             {/* Modal Footer Controls */}
-            <div className="p-6 border-t border-white/5 flex items-center justify-end gap-3">
+            <div className="p-6 border-t border-dash-border flex items-center justify-end gap-3">
               <button
                 onClick={() => setIsOpen(false)}
-                className="px-5 py-2.5 rounded-xl border border-white/5 text-xs text-t3 hover:text-white font-bold transition-all"
+                className="px-5 py-2.5 rounded-xl border border-dash-border text-xs text-dash-textMuted hover:text-dash-text font-bold transition-all"
               >
                 Close
               </button>
               <button
                 onClick={handlePrint}
-                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all inline-flex items-center gap-2"
+                className="px-6 py-2.5 bg-dash-accent hover:bg-dash-accent/90 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all inline-flex items-center gap-2"
               >
                 <Printer size={14} /> Print / Save PDF
               </button>

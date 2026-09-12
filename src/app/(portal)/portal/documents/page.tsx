@@ -41,9 +41,9 @@ export default async function PortalDocumentsPage() {
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold uppercase tracking-tight font-space">
-            Client <span className="text-[var(--accent2)]">Documents & E-Signs</span>
+            Client <span className="text-dash-accent">Documents & E-Signs</span>
           </h1>
-          <p className="text-[11.5px] text-[var(--t3)] uppercase tracking-[0.2em] mt-2 font-medium">
+          <p className="text-[11.5px] text-dash-textMuted uppercase tracking-[0.2em] mt-2 font-medium">
             Access contract agreements, project briefs, and e-signature requirements
           </p>
         </div>

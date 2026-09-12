@@ -27,15 +27,15 @@ export default function ReadingModal({ title, embedUrl, downloadUrl, onClose }: 
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 bg-[#04091a]/80 backdrop-blur-sm z-[999] flex items-center justify-center animate-in fade-in duration-200">
+    <div className="fixed inset-0 bg-slate-900/55 backdrop-blur-sm z-[999] flex items-center justify-center animate-in fade-in duration-200">
       <div
         style={{ width: '60vw', height: '60vh' }}
-        className="flex flex-col bg-[#080f28] border border-white/10 rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200"
+        className="flex flex-col bg-white border border-dash-border rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200"
       >
-        <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#080f28]/60 shrink-0">
+        <div className="flex items-center justify-between p-4 border-b border-dash-border bg-dash-surface shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <FileText size={16} className="text-primary shrink-0" />
-            <span className="text-xs font-bold text-white uppercase tracking-wider truncate">{title}</span>
+            <span className="text-xs font-bold text-dash-text uppercase tracking-wider truncate">{title}</span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {downloadUrl && (
@@ -43,14 +43,14 @@ export default function ReadingModal({ title, embedUrl, downloadUrl, onClose }: 
                 href={downloadUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex bg-white/5 hover:bg-white/10 text-white border border-white/5 rounded-lg text-[10px] font-black uppercase tracking-wider h-9 px-3.5 items-center justify-center gap-1.5 transition-all"
+                className="inline-flex bg-white hover:bg-dash-border/40 text-dash-text border border-dash-border rounded-lg text-[10px] font-black uppercase tracking-wider h-9 px-3.5 items-center justify-center gap-1.5 transition-all"
               >
                 <Download size={13} /> Download
               </a>
             )}
             <Button
               onClick={onClose}
-              className="bg-white/5 hover:bg-white/10 text-white border border-white/5 rounded-lg text-[10px] font-black uppercase tracking-wider h-9 px-3.5 flex items-center justify-center gap-1.5"
+              className="bg-white hover:bg-dash-border/40 text-dash-text border border-dash-border rounded-lg text-[10px] font-black uppercase tracking-wider h-9 px-3.5 flex items-center justify-center gap-1.5"
             >
               <X size={13} /> Close
             </Button>

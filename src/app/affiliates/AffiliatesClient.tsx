@@ -304,44 +304,44 @@ export default function AffiliatesClient({
   return (
     <div className="space-y-6">
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white/5 border border-white/5 p-6 rounded-xl backdrop-blur-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-dash-surface border border-dash-border p-6 rounded-xl">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Programmes</span>
-            <Layers className="w-5 h-5 text-blue-500" />
+            <span className="text-xs font-bold text-dash-textMuted uppercase tracking-wider">Programmes</span>
+            <Layers className="w-5 h-5 text-dash-accent" />
           </div>
-          <div className="text-2xl font-bold text-white mt-2">{programmes.length}</div>
+          <div className="text-2xl font-bold text-dash-text mt-2">{programmes.length}</div>
         </div>
 
-        <div className="bg-white/5 border border-white/5 p-6 rounded-xl backdrop-blur-sm">
+        <div className="bg-dash-surface border border-dash-border p-6 rounded-xl">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Affiliates</span>
+            <span className="text-xs font-bold text-dash-textMuted uppercase tracking-wider">Affiliates</span>
             <Users className="w-5 h-5 text-purple-500" />
           </div>
-          <div className="text-2xl font-bold text-white mt-2">{affiliates.length}</div>
+          <div className="text-2xl font-bold text-dash-text mt-2">{affiliates.length}</div>
         </div>
 
-        <div className="bg-white/5 border border-white/5 p-6 rounded-xl backdrop-blur-sm">
+        <div className="bg-dash-surface border border-dash-border p-6 rounded-xl">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Commissions</span>
-            <DollarSign className="w-5 h-5 text-green-500" />
+            <span className="text-xs font-bold text-dash-textMuted uppercase tracking-wider">Total Commissions</span>
+            <DollarSign className="w-5 h-5 text-emerald-600" />
           </div>
-          <div className="text-2xl font-bold text-white mt-2">R {totalCommissionsVal.toFixed(2)}</div>
+          <div className="text-2xl font-bold text-dash-text mt-2">R {totalCommissionsVal.toFixed(2)}</div>
         </div>
 
-        <div className="bg-white/5 border border-white/5 p-6 rounded-xl backdrop-blur-sm">
+        <div className="bg-dash-surface border border-dash-border p-6 rounded-xl">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Payout Queue</span>
-            <Clock className="w-5 h-5 text-yellow-500" />
+            <span className="text-xs font-bold text-dash-textMuted uppercase tracking-wider">Payout Queue</span>
+            <Clock className="w-5 h-5 text-amber-500" />
           </div>
-          <div className="text-2xl font-bold text-white mt-2">
+          <div className="text-2xl font-bold text-dash-text mt-2">
             {payouts.filter(p => p.status === 'requested').length} Requested
           </div>
         </div>
       </div>
 
       {/* Nav & Search Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white/5 border border-white/5 p-4 rounded-xl backdrop-blur-sm">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-dash-surface border border-dash-border p-4 rounded-xl">
         <div className="flex gap-2 overflow-x-auto w-full sm:w-auto pb-2 sm:pb-0">
           {[
             { id: 'programmes', label: 'Programmes' },
@@ -353,7 +353,7 @@ export default function AffiliatesClient({
               key={tab.id}
               onClick={() => setActiveView(tab.id as any)}
               className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap ${
-                activeView === tab.id ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+                activeView === tab.id ? 'bg-dash-accent text-white' : 'text-dash-textMuted hover:text-dash-text'
               }`}
             >
               {tab.label}
@@ -366,15 +366,15 @@ export default function AffiliatesClient({
             <>
               <Link
                 href="/affiliate-marketplace"
-                className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white text-sm font-medium flex items-center justify-center gap-2 border border-white/10 transition-colors w-full sm:w-auto"
+                className="px-4 py-2 rounded-lg bg-dash-bg hover:bg-dash-border text-dash-text text-sm font-medium flex items-center justify-center gap-2 border border-dash-border transition-colors w-full sm:w-auto"
               >
-                <Layers className="w-4 h-4 text-blue-400" /> Marketplace
+                <Layers className="w-4 h-4 text-dash-accent" /> Marketplace
               </Link>
               <Link
                 href="/affiliate-portal"
-                className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white text-sm font-medium flex items-center justify-center gap-2 border border-white/10 transition-colors w-full sm:w-auto"
+                className="px-4 py-2 rounded-lg bg-dash-bg hover:bg-dash-border text-dash-text text-sm font-medium flex items-center justify-center gap-2 border border-dash-border transition-colors w-full sm:w-auto"
               >
-                <Handshake className="w-4 h-4 text-purple-400" /> Affiliate Portal
+                <Handshake className="w-4 h-4 text-purple-500" /> Affiliate Portal
               </Link>
               <button
                 onClick={() => {
@@ -392,7 +392,7 @@ export default function AffiliatesClient({
                   setTerms('')
                   setShowProgModal(true)
                 }}
-                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium flex items-center justify-center gap-2 transition-colors w-full sm:w-auto"
+                className="px-4 py-2 rounded-lg bg-dash-accent hover:opacity-90 text-white text-sm font-medium flex items-center justify-center gap-2 transition-colors w-full sm:w-auto"
               >
                 <Plus className="w-4 h-4" /> Create Programme
               </button>
@@ -402,7 +402,7 @@ export default function AffiliatesClient({
           {activeView === 'payouts' && (
             <button
               onClick={handleExportEftBatch}
-              className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium flex items-center justify-center gap-2 transition-colors w-full sm:w-auto"
+              className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium flex items-center justify-center gap-2 transition-colors w-full sm:w-auto"
             >
               <Download className="w-4 h-4" /> Export EFT Batch
             </button>
@@ -411,17 +411,17 @@ export default function AffiliatesClient({
       </div>
 
       {/* Main View Area */}
-      <div className="bg-white/5 border border-white/5 rounded-xl overflow-hidden backdrop-blur-sm">
+      <div className="bg-dash-surface border border-dash-border rounded-xl overflow-hidden">
         {activeView === 'programmes' && (
           <div className="overflow-x-auto">
             {programmes.length === 0 ? (
-              <div className="p-8 text-center text-gray-400">
+              <div className="p-8 text-center text-dash-textMuted">
                 No affiliate programmes created yet. Click "Create Programme" to start.
               </div>
             ) : (
               <table className="w-full text-left border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-white/10 bg-white/[0.02] text-gray-400">
+                  <tr className="border-b border-dash-border bg-dash-bg text-dash-textMuted">
                     <th className="p-4 font-semibold">Name</th>
                     <th className="p-4 font-semibold">Commission structure</th>
                     <th className="p-4 font-semibold">Attribution window</th>
@@ -430,21 +430,21 @@ export default function AffiliatesClient({
                     <th className="p-4 font-semibold text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-dash-border">
                   {programmes.map((p) => (
-                    <tr key={p.id} className="hover:bg-white/[0.01] transition-colors">
-                      <td className="p-4 font-semibold text-white">{p.name}</td>
-                      <td className="p-4 text-white">
+                    <tr key={p.id} className="hover:bg-dash-bg transition-colors">
+                      <td className="p-4 font-semibold text-dash-text">{p.name}</td>
+                      <td className="p-4 text-dash-text">
                         {p.commission_type === 'percentage' ? `${p.commission_value}%` : `R ${p.commission_value}`}
                         {p.two_tier_enabled && (
-                          <div className="text-xs text-green-400 mt-0.5">Tier 2: {p.tier2_override_percent}%</div>
+                          <div className="text-xs text-emerald-600 mt-0.5">Tier 2: {p.tier2_override_percent}%</div>
                         )}
                       </td>
-                      <td className="p-4 text-gray-300">{p.cookie_days === 0 ? 'Unlimited' : `${p.cookie_days} days`}</td>
-                      <td className="p-4 text-gray-300 uppercase text-xs font-semibold">{p.approval_mode.replace('_', ' ')}</td>
+                      <td className="p-4 text-dash-textMuted">{p.cookie_days === 0 ? 'Unlimited' : `${p.cookie_days} days`}</td>
+                      <td className="p-4 text-dash-textMuted uppercase text-xs font-semibold">{p.approval_mode.replace('_', ' ')}</td>
                       <td className="p-4">
                         <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${
-                          p.status === 'active' ? 'bg-green-500/10 text-green-500' : 'bg-yellow-500/10 text-yellow-500'
+                          p.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
                         }`}>
                           {p.status}
                         </span>
@@ -453,7 +453,7 @@ export default function AffiliatesClient({
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => handleCopyInviteLink(p.id)}
-                            className="p-1 hover:bg-white/10 rounded text-gray-400 hover:text-blue-400"
+                            className="p-1 hover:bg-dash-border rounded text-dash-textMuted hover:text-dash-accent"
                             title="Copy invite link"
                           >
                             <Copy className="w-4 h-4" />
@@ -476,13 +476,13 @@ export default function AffiliatesClient({
                               setTerms(settings.terms || '')
                               setShowProgModal(true)
                             }}
-                            className="p-1 hover:bg-white/10 rounded text-gray-400 hover:text-white"
+                            className="p-1 hover:bg-dash-border rounded text-dash-textMuted hover:text-dash-text"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDeleteProg(p.id)}
-                            className="p-1 hover:bg-white/10 rounded text-gray-400 hover:text-red-500"
+                            className="p-1 hover:bg-dash-border rounded text-dash-textMuted hover:text-rose-600"
                           >
                             <Trash className="w-4 h-4" />
                           </button>
@@ -499,13 +499,13 @@ export default function AffiliatesClient({
         {activeView === 'affiliates' && (
           <div className="overflow-x-auto">
             {affiliates.length === 0 ? (
-              <div className="p-8 text-center text-gray-400">
+              <div className="p-8 text-center text-dash-textMuted">
                 No affiliate applications recorded yet.
               </div>
             ) : (
               <table className="w-full text-left border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-white/10 bg-white/[0.02] text-gray-400">
+                  <tr className="border-b border-dash-border bg-dash-bg text-dash-textMuted">
                     <th className="p-4 font-semibold">Affiliate</th>
                     <th className="p-4 font-semibold">Programme</th>
                     <th className="p-4 font-semibold">Referral code</th>
@@ -514,38 +514,38 @@ export default function AffiliatesClient({
                     <th className="p-4 font-semibold text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-dash-border">
                   {affiliates.map((a) => (
-                    <tr key={a.id} className="hover:bg-white/[0.01] transition-colors">
+                    <tr key={a.id} className="hover:bg-dash-bg transition-colors">
                       <td className="p-4">
-                        <div className="font-semibold text-white">{a.full_name || 'N/A'}</div>
-                        <div className="text-xs text-gray-400 mt-0.5">{a.email}</div>
+                        <div className="font-semibold text-dash-text">{a.full_name || 'N/A'}</div>
+                        <div className="text-xs text-dash-textMuted mt-0.5">{a.email}</div>
                       </td>
-                      <td className="p-4 text-gray-300 font-medium">{a.programme?.name || 'N/A'}</td>
-                      <td className="p-4 text-blue-400 font-mono text-xs">{a.short_code}</td>
+                      <td className="p-4 text-dash-textMuted font-medium">{a.programme?.name || 'N/A'}</td>
+                      <td className="p-4 text-dash-accent font-mono text-xs">{a.short_code}</td>
                       <td className="p-4">
                         <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${
-                          a.status === 'approved' ? 'bg-green-500/10 text-green-500' :
-                          a.status === 'pending' ? 'bg-yellow-500/10 text-yellow-500' :
-                          a.status === 'suspended' ? 'bg-red-500/10 text-red-400' : 'bg-red-500/10 text-red-500'
+                          a.status === 'approved' ? 'bg-emerald-50 text-emerald-600' :
+                          a.status === 'pending' ? 'bg-amber-50 text-amber-600' :
+                          a.status === 'suspended' ? 'bg-rose-50 text-rose-500' : 'bg-rose-50 text-rose-600'
                         }`}>
                           {a.status}
                         </span>
                       </td>
-                      <td className="p-4 text-gray-400">{new Date(a.created_at).toLocaleDateString()}</td>
+                      <td className="p-4 text-dash-textMuted">{new Date(a.created_at).toLocaleDateString()}</td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-1">
                           {a.status === 'pending' && (
                             <>
                               <button
                                 onClick={() => handleApproveAff(a.id)}
-                                className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-semibold"
+                                className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold"
                               >
                                 Approve
                               </button>
                               <button
                                 onClick={() => handleRejectAff(a.id)}
-                                className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-semibold"
+                                className="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded text-xs font-semibold"
                               >
                                 Reject
                               </button>
@@ -554,14 +554,14 @@ export default function AffiliatesClient({
                           {a.status === 'approved' && (
                             <button
                               onClick={() => handleSuspendAff(a.id)}
-                              className="px-2 py-1 border border-white/10 hover:bg-white/5 text-gray-300 rounded text-xs font-semibold flex items-center gap-1"
+                              className="px-2 py-1 border border-dash-border hover:bg-dash-bg text-dash-textMuted rounded text-xs font-semibold flex items-center gap-1"
                             >
                               <Ban className="w-3.5 h-3.5" /> Suspend
                             </button>
                           )}
                           <button
                             onClick={() => handleDeleteAff(a.id)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs bg-rose-50 text-rose-600 hover:bg-rose-100"
                           >
                             <Trash className="w-3.5 h-3.5" /> Delete
                           </button>
@@ -578,13 +578,13 @@ export default function AffiliatesClient({
         {activeView === 'commissions' && (
           <div className="overflow-x-auto">
             {commissions.length === 0 ? (
-              <div className="p-8 text-center text-gray-400">
+              <div className="p-8 text-center text-dash-textMuted">
                 No commissions recorded in the queue yet.
               </div>
             ) : (
               <table className="w-full text-left border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-white/10 bg-white/[0.02] text-gray-400">
+                  <tr className="border-b border-dash-border bg-dash-bg text-dash-textMuted">
                     <th className="p-4 font-semibold">Affiliate</th>
                     <th className="p-4 font-semibold">Source</th>
                     <th className="p-4 font-semibold">Amount</th>
@@ -593,35 +593,35 @@ export default function AffiliatesClient({
                     <th className="p-4 font-semibold text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-dash-border">
                   {commissions.map((c) => (
-                    <tr key={c.id} className="hover:bg-white/[0.01] transition-colors">
+                    <tr key={c.id} className="hover:bg-dash-bg transition-colors">
                       <td className="p-4">
-                        <div className="font-semibold text-white">{c.affiliate?.full_name || 'N/A'}</div>
-                        <div className="text-xs text-gray-400 mt-0.5">{c.affiliate?.email}</div>
+                        <div className="font-semibold text-dash-text">{c.affiliate?.full_name || 'N/A'}</div>
+                        <div className="text-xs text-dash-textMuted mt-0.5">{c.affiliate?.email}</div>
                       </td>
-                      <td className="p-4 text-gray-300">
-                        <span className="uppercase text-xs bg-white/10 px-2 py-0.5 rounded mr-2 text-white">
+                      <td className="p-4 text-dash-textMuted">
+                        <span className="uppercase text-xs bg-dash-border/60 px-2 py-0.5 rounded mr-2 text-dash-text">
                           {c.source_type}
                         </span>
                         {c.source_id ? `...${c.source_id.slice(-8)}` : 'N/A'}
                       </td>
-                      <td className="p-4 text-green-400 font-bold">R {Number(c.amount).toFixed(2)}</td>
-                      <td className="p-4 text-gray-400">
+                      <td className="p-4 text-emerald-600 font-bold">R {Number(c.amount).toFixed(2)}</td>
+                      <td className="p-4 text-dash-textMuted">
                         {c.hold_until ? new Date(c.hold_until).toLocaleDateString() : 'Immediate'}
                       </td>
                       <td className="p-4">
                         <div className="flex flex-col gap-1 items-start">
                           <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${
-                            c.status === 'approved' ? 'bg-green-500/10 text-green-500' :
-                            c.status === 'pending' ? 'bg-yellow-500/10 text-yellow-500' :
-                            c.status === 'paid' ? 'bg-blue-500/10 text-blue-500' : 'bg-red-500/10 text-red-500'
+                            c.status === 'approved' ? 'bg-emerald-50 text-emerald-600' :
+                            c.status === 'pending' ? 'bg-amber-50 text-amber-600' :
+                            c.status === 'paid' ? 'bg-blue-50 text-dash-accent' : 'bg-rose-50 text-rose-600'
                           }`}>
                             {c.status}
                           </span>
                           {c.flagged && (
                             <span
-                              className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-500/10 text-red-400 uppercase flex items-center gap-1 cursor-help"
+                              className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-600 uppercase flex items-center gap-1 cursor-help"
                               title={c.flag_reason || 'Fraud flag detected'}
                             >
                               <AlertTriangle className="w-3 h-3" /> Flagged
@@ -634,7 +634,7 @@ export default function AffiliatesClient({
                           {c.status === 'pending' && (
                             <button
                               onClick={() => handleUpdateCommStatus(c.id, 'approved')}
-                              className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-semibold"
+                              className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold"
                             >
                               Approve
                             </button>
@@ -642,13 +642,13 @@ export default function AffiliatesClient({
                           {['approved', 'paid'].includes(c.status) && (
                             <button
                               onClick={() => handleUpdateCommStatus(c.id, 'reversed')}
-                              className="px-2 py-1 border border-red-500/20 bg-red-600/10 text-red-400 hover:bg-red-600 hover:text-white rounded text-xs font-semibold flex items-center gap-1 transition-all"
+                              className="px-2 py-1 border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded text-xs font-semibold flex items-center gap-1 transition-all"
                             >
                               <ReverseIcon className="w-3.5 h-3.5" /> Reverse
                             </button>
                           )}
                           {c.status === 'reversed' && (
-                            <span className="text-xs text-red-400 font-semibold uppercase">Reversed</span>
+                            <span className="text-xs text-rose-600 font-semibold uppercase">Reversed</span>
                           )}
                         </div>
                       </td>
@@ -663,13 +663,13 @@ export default function AffiliatesClient({
         {activeView === 'payouts' && (
           <div className="overflow-x-auto">
             {payouts.length === 0 ? (
-              <div className="p-8 text-center text-gray-400">
+              <div className="p-8 text-center text-dash-textMuted">
                 No payout requests in the queue.
               </div>
             ) : (
               <table className="w-full text-left border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-white/10 bg-white/[0.02] text-gray-400">
+                  <tr className="border-b border-dash-border bg-dash-bg text-dash-textMuted">
                     <th className="p-4 font-semibold">Affiliate</th>
                     <th className="p-4 font-semibold">Amount</th>
                     <th className="p-4 font-semibold">Method</th>
@@ -678,26 +678,26 @@ export default function AffiliatesClient({
                     <th className="p-4 font-semibold text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-dash-border">
                   {payouts.map((p) => (
-                    <tr key={p.id} className="hover:bg-white/[0.01] transition-colors">
+                    <tr key={p.id} className="hover:bg-dash-bg transition-colors">
                       <td className="p-4">
-                        <div className="font-semibold text-white">{p.affiliate?.full_name || 'N/A'}</div>
-                        <div className="text-xs text-gray-400 mt-0.5">{p.affiliate?.email}</div>
+                        <div className="font-semibold text-dash-text">{p.affiliate?.full_name || 'N/A'}</div>
+                        <div className="text-xs text-dash-textMuted mt-0.5">{p.affiliate?.email}</div>
                       </td>
-                      <td className="p-4 text-green-400 font-bold">R {Number(p.amount).toFixed(2)}</td>
-                      <td className="p-4 text-gray-300 uppercase text-xs font-semibold">
+                      <td className="p-4 text-emerald-600 font-bold">R {Number(p.amount).toFixed(2)}</td>
+                      <td className="p-4 text-dash-textMuted uppercase text-xs font-semibold">
                         {p.method.replace('_', ' ')}
                       </td>
                       <td className="p-4">
                         <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${
-                          p.status === 'paid' ? 'bg-green-500/10 text-green-500' :
-                          p.status === 'requested' ? 'bg-yellow-500/10 text-yellow-500' : 'bg-red-500/10 text-red-500'
+                          p.status === 'paid' ? 'bg-emerald-50 text-emerald-600' :
+                          p.status === 'requested' ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'
                         }`}>
                           {p.status}
                         </span>
                       </td>
-                      <td className="p-4 text-gray-400">
+                      <td className="p-4 text-dash-textMuted">
                         {new Date(p.created_at).toLocaleDateString()}
                       </td>
                       <td className="p-4 text-right">
@@ -705,7 +705,7 @@ export default function AffiliatesClient({
                           {p.method === 'bank_eft' && (
                             <button
                               onClick={() => handleViewBankDetails(p)}
-                              className="px-2 py-1 border border-white/10 hover:bg-white/5 text-gray-300 rounded text-xs font-semibold flex items-center gap-1"
+                              className="px-2 py-1 border border-dash-border hover:bg-dash-bg text-dash-textMuted rounded text-xs font-semibold flex items-center gap-1"
                               title="View secure bank account details"
                             >
                               <Eye className="w-3.5 h-3.5" /> View Bank
@@ -719,13 +719,13 @@ export default function AffiliatesClient({
                                   setPayoutReference(`EFT-${Date.now()}`)
                                   setShowPayoutApprovalModal(true)
                                 }}
-                                className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-semibold"
+                                className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold"
                               >
                                 Pay
                               </button>
                               <button
                                 onClick={() => handleRejectPayout(p.id)}
-                                className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-semibold"
+                                className="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded text-xs font-semibold"
                               >
                                 Reject
                               </button>
@@ -744,23 +744,23 @@ export default function AffiliatesClient({
 
       {/* Programme Modal */}
       {showProgModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-[#0b1329] border border-white/10 rounded-xl p-6 max-w-2xl w-full relative overflow-y-auto max-h-[90vh]">
+        <div className="fixed inset-0 bg-[#000000c1] flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-dash-surface border border-dash-border rounded-xl p-6 max-w-2xl w-full relative overflow-y-auto max-h-[90vh]">
             <button
               onClick={() => {
                 setShowProgModal(false)
                 setEditingProg(null)
               }}
-              className="absolute right-4 top-4 text-gray-400 hover:text-white"
+              className="absolute right-4 top-4 text-dash-textMuted hover:text-dash-text"
             >
               <X className="w-5 h-5" />
             </button>
-            <h3 className="text-lg font-bold text-white mb-4">
+            <h3 className="text-lg font-bold text-dash-text mb-4">
               {editingProg ? 'Edit Affiliate Programme' : 'Create Affiliate Programme'}
             </h3>
             <form onSubmit={handleCreateOrUpdateProg} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">
+                <label className="block text-xs font-bold text-dash-textMuted uppercase tracking-wide mb-1.5">
                   Programme Name *
                 </label>
                 <input
@@ -768,19 +768,19 @@ export default function AffiliatesClient({
                   value={progName}
                   onChange={(e) => setProgName(e.target.value)}
                   placeholder="e.g. LeadsMind Partner Network"
-                  className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm focus:outline-none focus:border-blue-500 text-white"
+                  className="w-full px-3 py-2 rounded-lg border border-dash-border bg-dash-bg text-sm focus:outline-none focus:border-dash-accent text-dash-text"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">
+                  <label className="block text-xs font-bold text-dash-textMuted uppercase tracking-wide mb-1.5">
                     Commission Type
                   </label>
                   <select
                     value={progCommissionType}
                     onChange={(e) => setProgCommissionType(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-white/10 bg-[#0b1329] text-sm focus:outline-none focus:border-blue-500 text-white"
+                    className="w-full px-3 py-2 rounded-lg border border-dash-border bg-dash-bg text-sm focus:outline-none focus:border-dash-accent text-dash-text"
                   >
                     <option value="percentage">Percentage (%)</option>
                     <option value="fixed">Fixed (ZAR)</option>
@@ -788,7 +788,7 @@ export default function AffiliatesClient({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">
+                  <label className="block text-xs font-bold text-dash-textMuted uppercase tracking-wide mb-1.5">
                     Commission Value
                   </label>
                   <input
@@ -796,20 +796,20 @@ export default function AffiliatesClient({
                     required
                     value={progCommissionValue}
                     onChange={(e) => setProgCommissionValue(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm focus:outline-none focus:border-blue-500 text-white"
+                    className="w-full px-3 py-2 rounded-lg border border-dash-border bg-dash-bg text-sm focus:outline-none focus:border-dash-accent text-dash-text"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">
+                  <label className="block text-xs font-bold text-dash-textMuted uppercase tracking-wide mb-1.5">
                     Cookie Attrib Window
                   </label>
                   <select
                     value={progCookieDays}
                     onChange={(e) => setProgCookieDays(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-lg border border-white/10 bg-[#0b1329] text-sm focus:outline-none focus:border-blue-500 text-white"
+                    className="w-full px-3 py-2 rounded-lg border border-dash-border bg-dash-bg text-sm focus:outline-none focus:border-dash-accent text-dash-text"
                   >
                     <option value="7">7 Days</option>
                     <option value="30">30 Days</option>
@@ -820,13 +820,13 @@ export default function AffiliatesClient({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">
+                  <label className="block text-xs font-bold text-dash-textMuted uppercase tracking-wide mb-1.5">
                     Approval Mode
                   </label>
                   <select
                     value={progApprovalMode}
                     onChange={(e) => setProgApprovalMode(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-white/10 bg-[#0b1329] text-sm focus:outline-none focus:border-blue-500 text-white"
+                    className="w-full px-3 py-2 rounded-lg border border-dash-border bg-dash-bg text-sm focus:outline-none focus:border-dash-accent text-dash-text"
                   >
                     <option value="manual">Manual Approval</option>
                     <option value="auto_all">Auto Approve All</option>
@@ -834,23 +834,23 @@ export default function AffiliatesClient({
                 </div>
               </div>
 
-              <div className="border-t border-white/10 pt-4">
+              <div className="border-t border-dash-border pt-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h5 className="text-sm font-semibold text-white">Two-Tier Affiliate Commissions</h5>
-                    <p className="text-xs text-gray-400 mt-0.5">Let affiliates refer other sub-affiliates.</p>
+                    <h5 className="text-sm font-semibold text-dash-text">Two-Tier Affiliate Commissions</h5>
+                    <p className="text-xs text-dash-textMuted mt-0.5">Let affiliates refer other sub-affiliates.</p>
                   </div>
                   <input
                     type="checkbox"
                     checked={twoTierEnabled}
                     onChange={(e) => setTwoTierEnabled(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 border-white/10 rounded focus:ring-blue-500 bg-white/5"
+                    className="w-4 h-4 text-dash-accent border-dash-border rounded focus:ring-dash-accent bg-dash-bg"
                   />
                 </div>
 
                 {twoTierEnabled && (
                   <div className="mt-3 animate-in fade-in duration-200">
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">
+                    <label className="block text-xs font-bold text-dash-textMuted uppercase tracking-wide mb-1.5">
                       Sub-Affiliate Override Commission (% of parent's commission)
                     </label>
                     <input
@@ -858,46 +858,46 @@ export default function AffiliatesClient({
                       required
                       value={tier2Percent}
                       onChange={(e) => setTier2Percent(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm focus:outline-none focus:border-blue-500 text-white"
+                      className="w-full px-3 py-2 rounded-lg border border-dash-border bg-dash-bg text-sm focus:outline-none focus:border-dash-accent text-dash-text"
                     />
                   </div>
                 )}
               </div>
 
-              <div className="border-t border-white/10 pt-4 space-y-4">
-                <h4 className="text-sm font-semibold text-white">Registration Page Branding</h4>
-                
+              <div className="border-t border-dash-border pt-4 space-y-4">
+                <h4 className="text-sm font-semibold text-dash-text">Registration Page Branding</h4>
+
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">
+                  <label className="block text-xs font-bold text-dash-textMuted uppercase tracking-wide mb-1.5">
                     Logo URL
                   </label>
                   <input
                     value={logoUrl}
                     onChange={(e) => setLogoUrl(e.target.value)}
                     placeholder="https://example.com/logo.png"
-                    className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm focus:outline-none focus:border-blue-500 text-white"
+                    className="w-full px-3 py-2 rounded-lg border border-dash-border bg-dash-bg text-sm focus:outline-none focus:border-dash-accent text-dash-text"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">
+                  <label className="block text-xs font-bold text-dash-textMuted uppercase tracking-wide mb-1.5">
                     Headline
                   </label>
                   <input
                     value={headline}
                     onChange={(e) => setHeadline(e.target.value)}
                     placeholder="Partner with us and earn"
-                    className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm focus:outline-none focus:border-blue-500 text-white"
+                    className="w-full px-3 py-2 rounded-lg border border-dash-border bg-dash-bg text-sm focus:outline-none focus:border-dash-accent text-dash-text"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5 flex justify-between items-center">
+                  <label className="block text-xs font-bold text-dash-textMuted uppercase tracking-wide mb-1.5 flex justify-between items-center">
                     <span>Benefits List</span>
                     <button
                       type="button"
                       onClick={() => setBenefits([...benefits, ''])}
-                      className="text-[10px] text-blue-400 hover:text-blue-300 font-semibold font-mono"
+                      className="text-[10px] text-dash-accent hover:opacity-80 font-semibold font-mono"
                     >
                       + Add Benefit
                     </button>
@@ -913,13 +913,13 @@ export default function AffiliatesClient({
                             setBenefits(newB)
                           }}
                           placeholder="e.g. 30-day cookie window"
-                          className="flex-1 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-sm focus:outline-none focus:border-blue-500 text-white"
+                          className="flex-1 px-3 py-1.5 rounded-lg border border-dash-border bg-dash-bg text-sm focus:outline-none focus:border-dash-accent text-dash-text"
                         />
                         {benefits.length > 1 && (
                           <button
                             type="button"
                             onClick={() => setBenefits(benefits.filter((_, i) => i !== idx))}
-                            className="text-red-400 hover:text-red-300 px-2 text-xs"
+                            className="text-rose-600 hover:text-rose-500 px-2 text-xs"
                           >
                             Remove
                           </button>
@@ -930,19 +930,19 @@ export default function AffiliatesClient({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5 flex justify-between items-center">
+                  <label className="block text-xs font-bold text-dash-textMuted uppercase tracking-wide mb-1.5 flex justify-between items-center">
                     <span>Custom Application Questions</span>
                     <button
                       type="button"
                       onClick={() => setCustomQuestions([...customQuestions, { id: Math.random().toString(36).substr(2, 9), label: '', required: false }])}
-                      className="text-[10px] text-blue-400 hover:text-blue-300 font-semibold font-mono"
+                      className="text-[10px] text-dash-accent hover:opacity-80 font-semibold font-mono"
                     >
                       + Add Question
                     </button>
                   </label>
                   <div className="space-y-3">
                     {customQuestions.map((q, idx) => (
-                      <div key={q.id || idx} className="flex flex-col gap-2 p-2 border border-white/5 bg-white/[0.02] rounded-lg">
+                      <div key={q.id || idx} className="flex flex-col gap-2 p-2 border border-dash-border bg-dash-bg rounded-lg">
                         <div className="flex gap-2">
                           <input
                             value={q.label}
@@ -952,17 +952,17 @@ export default function AffiliatesClient({
                               setCustomQuestions(newQ)
                             }}
                             placeholder="Question Label (e.g. Website URL or Social handles)"
-                            className="flex-1 px-3 py-1.5 rounded-lg border border-white/10 bg-[#0b1329] text-sm focus:outline-none focus:border-blue-500 text-white"
+                            className="flex-1 px-3 py-1.5 rounded-lg border border-dash-border bg-dash-surface text-sm focus:outline-none focus:border-dash-accent text-dash-text"
                           />
                           <button
                             type="button"
                             onClick={() => setCustomQuestions(customQuestions.filter((_, i) => i !== idx))}
-                            className="text-red-400 hover:text-red-300 px-2 text-xs"
+                            className="text-rose-600 hover:text-rose-500 px-2 text-xs"
                           >
                             Remove
                           </button>
                         </div>
-                        <label className="flex items-center gap-2 text-xs text-gray-400">
+                        <label className="flex items-center gap-2 text-xs text-dash-textMuted">
                           <input
                             type="checkbox"
                             checked={q.required || false}
@@ -971,7 +971,7 @@ export default function AffiliatesClient({
                               newQ[idx] = { ...newQ[idx], required: e.target.checked }
                               setCustomQuestions(newQ)
                             }}
-                            className="w-3.5 h-3.5 text-blue-600 border-white/10 rounded focus:ring-blue-500 bg-white/5"
+                            className="w-3.5 h-3.5 text-dash-accent border-dash-border rounded focus:ring-dash-accent bg-dash-bg"
                           />
                           Required question
                         </label>
@@ -981,7 +981,7 @@ export default function AffiliatesClient({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">
+                  <label className="block text-xs font-bold text-dash-textMuted uppercase tracking-wide mb-1.5">
                     Terms & Conditions (Optional Checkbox Text)
                   </label>
                   <textarea
@@ -989,26 +989,26 @@ export default function AffiliatesClient({
                     onChange={(e) => setTerms(e.target.value)}
                     placeholder="e.g. I agree to the programme terms and privacy policy."
                     rows={2}
-                    className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm focus:outline-none focus:border-blue-500 text-white"
+                    className="w-full px-3 py-2 rounded-lg border border-dash-border bg-dash-bg text-sm focus:outline-none focus:border-dash-accent text-dash-text"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-4 border-t border-white/10">
+              <div className="flex justify-end gap-2 pt-4 border-t border-dash-border">
                 <button
                   type="button"
                   onClick={() => {
                     setShowProgModal(false)
                     setEditingProg(null)
                   }}
-                  className="px-4 py-2 rounded-lg border border-white/10 text-sm hover:bg-white/5 text-white"
+                  className="px-4 py-2 rounded-lg border border-dash-border text-sm hover:bg-dash-bg text-dash-text"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submittingProg}
-                  className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                  className="px-4 py-2 rounded-lg bg-dash-accent text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
                 >
                   {submittingProg && <RefreshCw className="w-4 h-4 animate-spin" />}
                   {submittingProg ? 'Saving...' : 'Save'}
@@ -1021,25 +1021,25 @@ export default function AffiliatesClient({
 
       {/* Payout Approval Modal */}
       {showPayoutApprovalModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-[#0b1329] border border-white/10 rounded-xl p-6 max-w-sm w-full relative">
+        <div className="fixed inset-0 bg-[#000000c1] flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-dash-surface border border-dash-border rounded-xl p-6 max-w-sm w-full relative">
             <button
               onClick={() => {
                 setShowPayoutApprovalModal(false)
                 setSelectedPayout(null)
               }}
-              className="absolute right-4 top-4 text-gray-400 hover:text-white"
+              className="absolute right-4 top-4 text-dash-textMuted hover:text-dash-text"
             >
               <X className="w-5 h-5" />
             </button>
-            <h3 className="text-lg font-bold text-white mb-4">Process Payout</h3>
+            <h3 className="text-lg font-bold text-dash-text mb-4">Process Payout</h3>
             <form onSubmit={handleApprovePayoutSubmit} className="space-y-4">
-              <p className="text-sm text-gray-300">
+              <p className="text-sm text-dash-textMuted">
                 You are marking the payout of <strong>R {Number(selectedPayout?.amount).toFixed(2)}</strong> for <strong>{selectedPayout?.affiliate?.full_name}</strong> as Paid.
               </p>
-              
+
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1.5">
+                <label className="block text-xs font-bold text-dash-textMuted uppercase tracking-wide mb-1.5">
                   Payment Reference (EFT Reference, Transaction ID) *
                 </label>
                 <input
@@ -1047,25 +1047,25 @@ export default function AffiliatesClient({
                   value={payoutReference}
                   onChange={(e) => setPayoutReference(e.target.value)}
                   placeholder="e.g. EFT-19283746"
-                  className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm focus:outline-none focus:border-blue-500 text-white"
+                  className="w-full px-3 py-2 rounded-lg border border-dash-border bg-dash-bg text-sm focus:outline-none focus:border-dash-accent text-dash-text"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-4 border-t border-white/10">
+              <div className="flex justify-end gap-2 pt-4 border-t border-dash-border">
                 <button
                   type="button"
                   onClick={() => {
                     setShowPayoutApprovalModal(false)
                     setSelectedPayout(null)
                   }}
-                  className="px-4 py-2 rounded-lg border border-white/10 text-sm hover:bg-white/5 text-white"
+                  className="px-4 py-2 rounded-lg border border-dash-border text-sm hover:bg-dash-bg text-dash-text"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submittingPayoutApproval}
-                  className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+                  className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-2"
                 >
                   {submittingPayoutApproval && <RefreshCw className="w-4 h-4 animate-spin" />}
                   {submittingPayoutApproval ? 'Processing...' : 'Mark Paid'}
@@ -1078,43 +1078,43 @@ export default function AffiliatesClient({
 
       {/* View Bank Details Modal */}
       {showBankDetailsModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-[#0b1329] border border-white/10 rounded-xl p-6 max-w-sm w-full relative">
+        <div className="fixed inset-0 bg-[#000000c1] flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-dash-surface border border-dash-border rounded-xl p-6 max-w-sm w-full relative">
             <button
               onClick={() => {
                 setShowBankDetailsModal(false)
                 setViewingBankDetails(null)
               }}
-              className="absolute right-4 top-4 text-gray-400 hover:text-white"
+              className="absolute right-4 top-4 text-dash-textMuted hover:text-dash-text"
             >
               <X className="w-5 h-5" />
             </button>
-            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-green-400" /> Bank Payout Details
+            <h3 className="text-lg font-bold text-dash-text mb-4 flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-emerald-600" /> Bank Payout Details
             </h3>
 
             {loadingBankDetails ? (
-              <div className="flex items-center gap-2 text-gray-400 py-6 justify-center">
+              <div className="flex items-center gap-2 text-dash-textMuted py-6 justify-center">
                 <RefreshCw className="w-4 h-4 animate-spin" /> Decrypting payload...
               </div>
             ) : viewingBankDetails?.bank_details ? (
               <div className="space-y-4">
-                <div className="bg-slate-950 p-4 border border-white/5 rounded-xl space-y-2.5 text-sm">
+                <div className="bg-dash-bg p-4 border border-dash-border rounded-xl space-y-2.5 text-sm">
                   <div>
-                    <span className="text-[10px] text-gray-400 block uppercase font-bold">Bank Name</span>
-                    <span className="text-white font-medium">{viewingBankDetails.bank_details.bank_name || 'N/A'}</span>
+                    <span className="text-[10px] text-dash-textMuted block uppercase font-bold">Bank Name</span>
+                    <span className="text-dash-text font-medium">{viewingBankDetails.bank_details.bank_name || 'N/A'}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-gray-400 block uppercase font-bold">Account Number</span>
-                    <span className="text-white font-mono font-medium">{viewingBankDetails.bank_details.account_number || 'N/A'}</span>
+                    <span className="text-[10px] text-dash-textMuted block uppercase font-bold">Account Number</span>
+                    <span className="text-dash-text font-mono font-medium">{viewingBankDetails.bank_details.account_number || 'N/A'}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-gray-400 block uppercase font-bold">Branch Code</span>
-                    <span className="text-white font-mono font-medium">{viewingBankDetails.bank_details.branch_code || 'N/A'}</span>
+                    <span className="text-[10px] text-dash-textMuted block uppercase font-bold">Branch Code</span>
+                    <span className="text-dash-text font-mono font-medium">{viewingBankDetails.bank_details.branch_code || 'N/A'}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-gray-400 block uppercase font-bold">Account Holder</span>
-                    <span className="text-white font-medium">{viewingBankDetails.bank_details.account_holder || 'N/A'}</span>
+                    <span className="text-[10px] text-dash-textMuted block uppercase font-bold">Account Holder</span>
+                    <span className="text-dash-text font-medium">{viewingBankDetails.bank_details.account_holder || 'N/A'}</span>
                   </div>
                 </div>
                 <div className="flex justify-end pt-2">
@@ -1123,14 +1123,14 @@ export default function AffiliatesClient({
                       setShowBankDetailsModal(false)
                       setViewingBankDetails(null)
                     }}
-                    className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
+                    className="px-4 py-2 rounded-lg bg-dash-accent text-white text-sm font-semibold hover:opacity-90"
                   >
                     Close
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="text-center py-6 text-gray-400">
+              <div className="text-center py-6 text-dash-textMuted">
                 No bank account details configured or decryptable.
               </div>
             )}

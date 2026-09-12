@@ -104,25 +104,25 @@ export default function SingleInvoiceView({
   };
 
   return (
-    <div className="min-h-screen bg-[#04091a] text-[var(--t1)] selection:bg-[var(--accent)] selection:text-white">
+    <div className="min-h-screen bg-dash-bg text-dash-text selection:bg-[var(--accent)] selection:text-white">
       {/* Top Navbar */}
-      <nav className="border-b border-[var(--bdr)] bg-[rgba(11,17,33,0.8)] backdrop-blur-md sticky top-0 z-50 no-print">
+      <nav className="border-b border-dash-border bg-white/95 backdrop-blur-md sticky top-0 z-50 no-print">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="text-xl font-space font-black tracking-tighter text-[var(--accent2)]">
+            <div className="text-xl font-space font-black tracking-tighter text-dash-accent">
               {invoice.workspace?.name || 'LEADSMIND'}
             </div>
-            <span className="h-4 w-px bg-[var(--bdr)] mx-2" />
-            <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--t3)] font-sans">Secure Portal</span>
+            <span className="h-4 w-px bg-dash-border mx-2" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-dash-textMuted font-sans">Secure Portal</span>
           </div>
 
           {/* Toggle View Mode Buttons */}
-          <div className="flex items-center bg-[#111d47]/40 border border-white/5 p-1 rounded-xl">
+          <div className="flex items-center bg-dash-surface border border-dash-border p-1 rounded-xl">
             <button
               onClick={() => setViewMode('detail')}
               className={cn(
                 "flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all",
-                viewMode === 'detail' ? "bg-accent text-white" : "text-[#4a5a82] hover:text-white"
+                viewMode === 'detail' ? "bg-accent text-white" : "text-dash-textMuted hover:text-dash-text"
               )}
             >
               <Monitor size={14} /> Detail Info
@@ -131,7 +131,7 @@ export default function SingleInvoiceView({
               onClick={() => setViewMode('pdf')}
               className={cn(
                 "flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all",
-                viewMode === 'pdf' ? "bg-accent text-white" : "text-[#4a5a82] hover:text-white"
+                viewMode === 'pdf' ? "bg-accent text-white" : "text-dash-textMuted hover:text-dash-text"
               )}
             >
               <FileText size={14} /> PDF Document Reader
@@ -258,13 +258,13 @@ export default function SingleInvoiceView({
 
           {/* Right Column: Sidebar Actions */}
           <div className="space-y-8 no-print">
-             <div className="bg-[var(--n800)] border border-[var(--bdr)] rounded-[var(--r24)] p-8 shadow-xl">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-[var(--accent2)] mb-6 flex items-center gap-2 font-space">
+             <div className="bg-white border border-dash-border rounded-[var(--r24)] p-8 shadow-xl">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-dash-accent mb-6 flex items-center gap-2 font-space">
                    <CreditCard size={14} /> Settlement Options
                 </h3>
                 <div className="space-y-6">
                    {invoice.status === 'paid' ? (
-                     <div className="w-full flex flex-col items-center justify-center py-6 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-black uppercase rounded-[var(--r16)] text-xs tracking-widest select-none gap-2 font-space">
+                     <div className="w-full flex flex-col items-center justify-center py-6 bg-emerald-50 border border-emerald-200 text-emerald-700 font-black uppercase rounded-[var(--r16)] text-xs tracking-widest select-none gap-2 font-space">
                        <CheckCircle2 size={24} />
                        Invoice Fully Settled
                      </div>
@@ -272,16 +272,16 @@ export default function SingleInvoiceView({
                      <div className="space-y-4">
                        {/* Partial Payment Card toggles */}
                        {allowPartial && (
-                         <div className="bg-[#111d47]/20 border border-white/5 rounded-2xl p-4 space-y-4">
-                           <p className="text-[9px] font-black uppercase tracking-widest text-[#4a5a82]">Payment Type</p>
+                         <div className="bg-dash-surface border border-dash-border rounded-2xl p-4 space-y-4">
+                           <p className="text-[9px] font-black uppercase tracking-widest text-dash-textMuted">Payment Type</p>
                            <div className="grid grid-cols-2 gap-2">
                              <button
                                onClick={() => setPaymentMode('full')}
                                className={cn(
                                  "py-2 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border",
-                                 paymentMode === 'full' 
-                                   ? "bg-accent/10 text-white border-accent" 
-                                   : "bg-[#080f28]/40 text-[#4a5a82] border-transparent hover:border-white/5"
+                                 paymentMode === 'full'
+                                   ? "bg-accent/10 text-dash-accent border-accent"
+                                   : "bg-white text-dash-textMuted border-transparent hover:border-dash-accent/20"
                                )}
                              >
                                Pay In Full
@@ -290,9 +290,9 @@ export default function SingleInvoiceView({
                                onClick={() => setPaymentMode('partial')}
                                className={cn(
                                  "py-2 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border",
-                                 paymentMode === 'partial' 
-                                   ? "bg-accent/10 text-white border-accent" 
-                                   : "bg-[#080f28]/40 text-[#4a5a82] border-transparent hover:border-white/5"
+                                 paymentMode === 'partial'
+                                   ? "bg-accent/10 text-dash-accent border-accent"
+                                   : "bg-white text-dash-textMuted border-transparent hover:border-dash-accent/20"
                                )}
                              >
                                Part Payment
@@ -301,13 +301,13 @@ export default function SingleInvoiceView({
 
                            {paymentMode === 'partial' && (
                              <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-200">
-                               <label className="text-[9px] font-black uppercase tracking-widest text-t3">Enter Custom Amount (ZAR)</label>
+                               <label className="text-[9px] font-black uppercase tracking-widest text-dash-textMuted">Enter Custom Amount (ZAR)</label>
                                <input
                                  type="number"
                                  value={customAmount}
                                  onChange={(e) => setCustomAmount(e.target.value)}
                                  placeholder={`Max: R ${outstanding.toLocaleString('en-ZA')}`}
-                                 className="w-full bg-[#080f28] border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500 font-mono"
+                                 className="w-full bg-white border border-dash-border rounded-xl px-4 py-2.5 text-xs text-dash-text outline-none focus:border-dash-accent font-mono"
                                />
                              </div>
                            )}
@@ -328,13 +328,13 @@ export default function SingleInvoiceView({
                        </button>
                      </div>
                    )}
-                   <p className="text-[10px] text-[var(--t4)] text-center font-medium">
+                   <p className="text-[10px] text-dash-textMuted text-center font-medium">
                       Secure South African checkout via PayFast (EFT, Credit Cards, Masterpass)
                    </p>
                 </div>
                 
-                <div className="mt-12 pt-8 border-t border-[var(--bdr)]">
-                   <h4 className="text-[10px] font-black uppercase tracking-widest text-[var(--t3)] mb-4 flex items-center gap-2 font-space">
+                <div className="mt-12 pt-8 border-t border-dash-border">
+                   <h4 className="text-[10px] font-black uppercase tracking-widest text-dash-textMuted mb-4 flex items-center gap-2 font-space">
                       <Package size={14} /> Attachments & Assets
                    </h4>
                    {attachments.length > 0 ? (
@@ -344,21 +344,21 @@ export default function SingleInvoiceView({
                               key={idx}
                               href={file.file_path}
                               target="_blank"
-                              className="flex items-center justify-between p-3 rounded-[var(--r12)] bg-[var(--n900)] border border-[var(--bdr)] hover:border-[var(--accent)] transition-all group"
+                              className="flex items-center justify-between p-3 rounded-[var(--r12)] bg-dash-bg border border-dash-border hover:border-[var(--accent)] transition-all group"
                             >
                                <div className="flex items-center gap-3 min-w-0">
-                                  <FileText className="h-4 w-4 text-[var(--t4)] group-hover:text-[var(--accent2)]" />
+                                  <FileText className="h-4 w-4 text-dash-textMuted group-hover:text-dash-accent" />
                                   <div className="min-w-0">
-                                     <p className="text-[10px] font-bold text-[var(--t1)] truncate">{file.file_name}</p>
-                                     <p className="text-[9px] text-[var(--t4)]">{(file.file_size / 1024 / 1024).toFixed(1)} MB</p>
+                                     <p className="text-[10px] font-bold text-dash-text truncate">{file.file_name}</p>
+                                     <p className="text-[9px] text-dash-textMuted">{(file.file_size / 1024 / 1024).toFixed(1)} MB</p>
                                   </div>
                                </div>
-                               <ExternalLink size={12} className="text-[var(--t4)]" />
+                               <ExternalLink size={12} className="text-dash-textMuted" />
                             </a>
                          ))}
                       </div>
                    ) : (
-                      <p className="text-[10px] text-[var(--t4)] italic font-medium">No additional files provided</p>
+                      <p className="text-[10px] text-dash-textMuted italic font-medium">No additional files provided</p>
                    )}
                 </div>
              </div>
@@ -366,26 +366,26 @@ export default function SingleInvoiceView({
         </div>
       ) : (
         /* SARS In-Browser PDF reader layout */
-        <div className="bg-[#121620] min-h-[calc(100vh-80px)] flex flex-col p-6 animate-in fade-in duration-300 no-print">
+        <div className="bg-dash-surface min-h-[calc(100vh-80px)] flex flex-col p-6 animate-in fade-in duration-300 no-print">
           {/* Reader Toolbar */}
-          <div className="max-w-4xl w-full mx-auto bg-[#1a1f2e] border border-white/5 h-12 rounded-xl px-4 flex items-center justify-between shadow-lg mb-6">
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-t3">
-              <FileText size={14} className="text-blue-400" /> In-Browser PDF Engine
+          <div className="max-w-4xl w-full mx-auto bg-white border border-dash-border h-12 rounded-xl px-4 flex items-center justify-between shadow-sm mb-6">
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-dash-textMuted">
+              <FileText size={14} className="text-dash-accent" /> In-Browser PDF Engine
             </div>
-            
+
             {/* Zoom Controls */}
-            <div className="flex items-center gap-3 bg-[#080f28]/40 border border-white/5 rounded-lg p-0.5">
-              <button 
+            <div className="flex items-center gap-3 bg-dash-surface border border-dash-border rounded-lg p-0.5">
+              <button
                 onClick={() => setZoom(prev => Math.max(50, prev - 10))}
-                className="w-7 h-7 hover:bg-white/5 rounded text-[#4a5a82] hover:text-white flex items-center justify-center transition-colors"
+                className="w-7 h-7 hover:bg-dash-accent/5 rounded text-dash-textMuted hover:text-dash-text flex items-center justify-center transition-colors"
                 title="Zoom Out"
               >
                 <ZoomOut size={13} />
               </button>
-              <span className="text-[10px] font-mono font-bold text-white px-1">{zoom}%</span>
-              <button 
+              <span className="text-[10px] font-mono font-bold text-dash-text px-1">{zoom}%</span>
+              <button
                 onClick={() => setZoom(prev => Math.min(200, prev + 10))}
-                className="w-7 h-7 hover:bg-white/5 rounded text-[#4a5a82] hover:text-white flex items-center justify-center transition-colors"
+                className="w-7 h-7 hover:bg-dash-accent/5 rounded text-dash-textMuted hover:text-dash-text flex items-center justify-center transition-colors"
                 title="Zoom In"
               >
                 <ZoomIn size={13} />

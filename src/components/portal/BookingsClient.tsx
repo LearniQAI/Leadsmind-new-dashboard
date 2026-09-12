@@ -213,14 +213,14 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
     <div className="space-y-10">
       {/* ── TOP SECTION: SCHEDULED MEETINGS & VIRTUAL LOUNGE ── */}
       <div className="space-y-4">
-        <h3 className="text-xs font-bold text-[#4a5a82] uppercase tracking-[1.5px] mb-2 flex items-center gap-1.5">
+        <h3 className="text-xs font-bold text-dash-textMuted uppercase tracking-[1.5px] mb-2 flex items-center gap-1.5">
           <Calendar size={14} className="text-[#8b5cf6]" /> Active Consultation Sessions
         </h3>
 
         {appointments.filter(a => a.status === 'scheduled').length === 0 ? (
-          <div className="bg-[var(--n800)] border border-[var(--bdr)] p-12 rounded-3xl text-center space-y-3 shadow-lg">
-            <Clock size={32} className="text-[#4a5a82] opacity-40 mx-auto" />
-            <p className="text-xs text-[var(--t3)] font-sans">No upcoming consultation meetings scheduled.</p>
+          <div className="bg-white border border-dash-border p-12 rounded-3xl text-center space-y-3 shadow-lg">
+            <Clock size={32} className="text-dash-textMuted opacity-40 mx-auto" />
+            <p className="text-xs text-dash-textMuted font-sans">No upcoming consultation meetings scheduled.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -231,7 +231,7 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
               return (
                 <div 
                   key={i} 
-                  className="bg-[var(--n800)] border border-[var(--bdr)] rounded-[24px] p-6 shadow-xl flex flex-col justify-between hover:border-white/10 hover:translate-y-[-1px] transition-all relative overflow-hidden group"
+                  className="bg-white border border-dash-border rounded-[24px] p-6 shadow-xl flex flex-col justify-between hover:border-dash-accent/30 hover:translate-y-[-1px] transition-all relative overflow-hidden group"
                 >
                   <div className="absolute top-0 right-0 w-24 h-24 bg-blue-600/5 rounded-full blur-2xl pointer-events-none" />
 
@@ -240,26 +240,26 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
                       <span className={cn(
                         "text-[9px] font-black uppercase px-2.5 py-1 rounded-full border tracking-wider flex items-center gap-1",
                         lounge.unlock 
-                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                          : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : "bg-dash-accent/10 text-dash-accent border-dash-accent/20"
                       )}>
                         <Clock size={10} /> {lounge.unlock ? "Room Active" : "Scheduled"}
                       </span>
-                      <Calendar size={16} className="text-blue-400 opacity-60" />
+                      <Calendar size={16} className="text-dash-accent opacity-60" />
                     </div>
 
                     <div>
-                      <h4 className="text-sm font-bold text-[#eef2ff] line-clamp-1 font-space uppercase">
+                      <h4 className="text-sm font-bold text-dash-text line-clamp-1 font-space uppercase">
                         {appt.title}
                       </h4>
-                      <p className="text-xs text-[#94a3c8] font-semibold mt-1 font-sans">
+                      <p className="text-xs text-dash-textMuted font-semibold mt-1 font-sans">
                         {appt.calendar?.name || 'Standard Consultation'}
                       </p>
-                      <p className="text-xs text-blue-400 font-bold mt-2 font-mono uppercase">
+                      <p className="text-xs text-dash-accent font-bold mt-2 font-mono uppercase">
                         {formatLocalDate(appt.start_time)}
                       </p>
                       {appt.metadata?.notes && (
-                        <p className="text-[11px] text-[var(--t3)] italic mt-2.5 line-clamp-2 bg-white/[0.01] border border-white/5 p-2 rounded-xl">
+                        <p className="text-[11px] text-dash-textMuted italic mt-2.5 line-clamp-2 bg-dash-surface border border-dash-border p-2 rounded-xl">
                           Notes: {appt.metadata.notes}
                         </p>
                       )}
@@ -267,8 +267,8 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
                   </div>
 
                   {/* Lounge Action Bar */}
-                  <div className="pt-6 border-t border-white/5 mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <span className="text-[10px] font-mono text-[#4a5a82] uppercase tracking-wider font-semibold">
+                  <div className="pt-6 border-t border-dash-border mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <span className="text-[10px] font-mono text-dash-textMuted uppercase tracking-wider font-semibold">
                       {lounge.label}
                     </span>
 
@@ -277,7 +277,7 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
                         <button
                           onClick={() => setReschedulingAppt(appt)}
                           disabled={isPending}
-                          className="px-3.5 h-10 rounded-xl bg-white/5 hover:bg-white/10 text-[#eef2ff] text-[9.5px] font-black uppercase tracking-wider border border-white/5 transition-colors disabled:opacity-50"
+                          className="px-3.5 h-10 rounded-xl bg-dash-surface hover:bg-dash-accent/10 text-dash-text text-[9.5px] font-black uppercase tracking-wider border border-dash-border transition-colors disabled:opacity-50"
                         >
                           Reschedule
                         </button>
@@ -285,7 +285,7 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
                       <button
                         onClick={() => handleCancelBooking(appt)}
                         disabled={isPending}
-                        className="px-3.5 h-10 rounded-xl bg-red-500/5 hover:bg-red-500/15 text-red-400 text-[9.5px] font-black uppercase tracking-wider border border-red-500/10 transition-colors disabled:opacity-50"
+                        className="px-3.5 h-10 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-[9.5px] font-black uppercase tracking-wider border border-rose-200 transition-colors disabled:opacity-50"
                         title={`Subject to ${cancelWindowHours} hour modification window`}
                       >
                         Cancel
@@ -305,8 +305,8 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
                           className={cn(
                             "inline-flex items-center gap-1.5 px-4.5 h-10 rounded-xl text-[9.5px] font-black uppercase tracking-wider transition-all shadow-lg active:scale-95",
                             lounge.unlock
-                              ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/10 hover:shadow-blue-600/20"
-                              : "bg-[#0b1329] text-[#4a5a82] border border-white/5 cursor-not-allowed opacity-50"
+                              ? "bg-dash-accent hover:bg-dash-accent/90 text-white shadow-md"
+                              : "bg-dash-surface text-dash-textMuted border border-dash-border cursor-not-allowed opacity-50"
                           )}
                         >
                           Join Meet <Video size={12} />
@@ -322,12 +322,12 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
       </div>
 
       {/* ── MIDDLE SECTION: BOOK A NEW CONSULTATION ── */}
-      <div className="space-y-6 pt-6 border-t border-white/5">
+      <div className="space-y-6 pt-6 border-t border-dash-border">
         <div>
-          <h3 className="text-xs font-bold text-[#4a5a82] uppercase tracking-[1.5px] mb-1 flex items-center gap-1.5">
+          <h3 className="text-xs font-bold text-dash-textMuted uppercase tracking-[1.5px] mb-1 flex items-center gap-1.5">
             <Sparkles size={14} className="text-[#8b5cf6]" /> Book a New Consulting Session
           </h3>
-          <p className="text-[10px] text-[var(--t3)] uppercase tracking-wider">
+          <p className="text-[10px] text-dash-textMuted uppercase tracking-wider">
             Select a scheduling configuration to pick available time slots
           </p>
         </div>
@@ -346,41 +346,41 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
                   setSelectedSlot(null);
                 }}
                 className={cn(
-                  "p-5 rounded-2xl border cursor-pointer transition-all bg-[var(--n800)] relative overflow-hidden group shadow-md",
+                  "p-5 rounded-2xl border cursor-pointer transition-all bg-white relative overflow-hidden group shadow-md",
                   isSelected
-                    ? "border-[#8b5cf6] shadow-[#8b5cf6]/5"
-                    : "border-white/5 hover:border-white/15"
+                    ? "border-purple-400 shadow-purple-400/10"
+                    : "border-dash-border hover:border-dash-accent/30"
                 )}
               >
                 <div className="flex justify-between items-start gap-3">
                   <div className="space-y-1">
-                    <h4 className="text-xs font-bold text-[#eef2ff] uppercase tracking-wide font-space group-hover:text-white">
+                    <h4 className="text-xs font-bold text-dash-text uppercase tracking-wide font-space group-hover:text-dash-accent">
                       {cal.name}
                     </h4>
                     {cal.slot_duration && (
-                      <span className="inline-block text-[9.5px] font-mono text-[#4a5a82] uppercase">
+                      <span className="inline-block text-[9.5px] font-mono text-dash-textMuted uppercase">
                         Duration: {cal.slot_duration} Minutes
                       </span>
                     )}
                   </div>
                   <span className={cn(
                     "text-[8.5px] font-black uppercase px-2 py-0.5 rounded-full font-mono border",
-                    price > 0 
-                      ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
-                      : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                    price > 0
+                      ? "bg-amber-50 text-amber-700 border-amber-200"
+                      : "bg-emerald-50 text-emerald-700 border-emerald-200"
                   )}>
                     {price > 0 ? `R ${price}` : 'Free'}
                   </span>
                 </div>
 
                 {cal.description && (
-                  <p className="text-[10.5px] text-[var(--t3)] mt-3 leading-relaxed font-sans line-clamp-2">
+                  <p className="text-[10.5px] text-dash-textMuted mt-3 leading-relaxed font-sans line-clamp-2">
                     {cal.description}
                   </p>
                 )}
 
-                <div className="mt-4 pt-3 border-t border-white/5 flex justify-end">
-                  <span className="text-[9px] font-black uppercase tracking-wider text-blue-400 flex items-center gap-0.5">
+                <div className="mt-4 pt-3 border-t border-dash-border flex justify-end">
+                  <span className="text-[9px] font-black uppercase tracking-wider text-dash-accent flex items-center gap-0.5">
                     Select <ChevronRight size={10} />
                   </span>
                 </div>
@@ -391,11 +391,11 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
 
         {/* 2. Interactive Time Slot Picker (Mounts when Calendar Selected) */}
         {selectedCalendar && (
-          <div className="bg-[var(--n800)] border border-[var(--bdr)] rounded-[24px] p-6 shadow-2xl space-y-6 animate-in slide-in-from-bottom-2 duration-300">
-            <div className="flex justify-between items-start pb-4 border-b border-white/5">
+          <div className="bg-white border border-dash-border rounded-[24px] p-6 shadow-lg space-y-6 animate-in slide-in-from-bottom-2 duration-300">
+            <div className="flex justify-between items-start pb-4 border-b border-dash-border">
               <div>
-                <span className="text-[9px] font-black uppercase tracking-widest text-[#4a5a82]">Selected Configuration</span>
-                <h4 className="text-sm font-bold text-[#eef2ff] uppercase font-space mt-0.5">
+                <span className="text-[9px] font-black uppercase tracking-widest text-dash-textMuted">Selected Configuration</span>
+                <h4 className="text-sm font-bold text-dash-text uppercase font-space mt-0.5">
                   Available Slots for: {selectedCalendar.name}
                 </h4>
               </div>
@@ -404,7 +404,7 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
                   setSelectedCalendar(null);
                   setSelectedSlot(null);
                 }}
-                className="text-[#4a5a82] hover:text-white"
+                className="text-dash-textMuted hover:text-dash-text"
               >
                 ✕ Close
               </button>
@@ -412,7 +412,7 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
 
             {/* Date Pick Picker */}
             <div className="space-y-2">
-              <span className="text-[9px] font-black uppercase tracking-wider text-[#4a5a82]">Choose Booking Date</span>
+              <span className="text-[9px] font-black uppercase tracking-wider text-dash-textMuted">Choose Booking Date</span>
               <div className="flex gap-2 overflow-x-auto py-1.5 scrollbar-thin">
                 {[0, 1, 2, 3, 4, 5, 6].map(offset => {
                   const d = new Date();
@@ -427,8 +427,8 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
                       className={cn(
                         "w-12 h-12 rounded-xl flex flex-col items-center justify-center shrink-0 transition-all border",
                         isDateSelected
-                          ? "bg-[#8b5cf6] text-white border-[#8b5cf6] shadow-lg shadow-[#8b5cf6]/20"
-                          : "bg-[#0b1329] text-[#4a5a82] border-white/5 hover:bg-white/5 hover:border-white/10"
+                          ? "bg-purple-500 text-white border-purple-500 shadow-lg shadow-purple-500/20"
+                          : "bg-dash-surface text-dash-textMuted border-dash-border hover:bg-dash-accent/5 hover:border-dash-accent/30"
                       )}
                     >
                       <span className="text-[8px] font-black uppercase">{format(d, 'EEE')}</span>
@@ -441,15 +441,15 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
 
             {/* Time Slot List Selection */}
             <div className="space-y-2">
-              <span className="text-[9px] font-black uppercase tracking-wider text-[#4a5a82]">Select Available Time</span>
+              <span className="text-[9px] font-black uppercase tracking-wider text-dash-textMuted">Select Available Time</span>
               
               {loadingSlots ? (
-                <div className="flex items-center gap-2 text-xs text-[#4a5a82] py-6 justify-center">
-                  <RefreshCw className="animate-spin text-[#8b5cf6]" size={16} />
+                <div className="flex items-center gap-2 text-xs text-dash-textMuted py-6 justify-center">
+                  <RefreshCw className="animate-spin text-purple-500" size={16} />
                   <span>Checking slot availability...</span>
                 </div>
               ) : slots.length === 0 ? (
-                <div className="p-6 bg-[#080f28]/45 border border-white/5 rounded-2xl text-center text-xs text-[#4a5a82]">
+                <div className="p-6 bg-dash-surface border border-dash-border rounded-2xl text-center text-xs text-dash-textMuted">
                   No available time slots found for {format(parseISO(selectedDate), 'MMMM d')}.
                 </div>
               ) : (
@@ -457,7 +457,7 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
                   {slots.map((slot, sIdx) => {
                     const isSlotSelected = selectedSlot === slot.start;
                     const timeLabel = format(parseISO(slot.start), 'HH:mm');
-                    
+
                     return (
                       <button
                         key={sIdx}
@@ -465,8 +465,8 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
                         className={cn(
                           "h-10 text-xs font-semibold rounded-xl border transition-all text-center flex items-center justify-center font-mono",
                           isSlotSelected
-                            ? "bg-[#8b5cf6] text-white border-[#8b5cf6]"
-                            : "bg-[#080f28]/60 text-[#eef2ff] border-white/5 hover:border-white/15"
+                            ? "bg-purple-500 text-white border-purple-500"
+                            : "bg-white text-dash-text border-dash-border hover:border-dash-accent/30"
                         )}
                       >
                         {timeLabel}
@@ -479,16 +479,16 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
 
             {/* Optional notes textarea */}
             {selectedSlot && (
-              <div className="space-y-4 pt-2 border-t border-white/5 animate-in fade-in duration-300">
+              <div className="space-y-4 pt-2 border-t border-dash-border animate-in fade-in duration-300">
                 <div className="space-y-2">
-                  <label className="text-[9px] font-black uppercase tracking-wider text-[#4a5a82]">
+                  <label className="text-[9px] font-black uppercase tracking-wider text-dash-textMuted">
                     Meeting notes & briefs (Optional)
                   </label>
                   <textarea
                     placeholder="Provide any background info, questions, or links regarding this consultation"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    className="w-full bg-[#080f28] border border-white/5 rounded-xl px-4 py-3 text-white focus:border-[#8b5cf6]/50 outline-none text-xs leading-relaxed h-20 resize-none font-sans"
+                    className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-dash-text focus:border-purple-400 outline-none text-xs leading-relaxed h-20 resize-none font-sans"
                   />
                 </div>
 
@@ -496,7 +496,7 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
                   <button
                     onClick={handleCreateBooking}
                     disabled={isPending}
-                    className="h-11 px-8 rounded-xl bg-[#8b5cf6] hover:bg-[#7c3aed] disabled:opacity-50 text-white text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-lg shadow-[#8b5cf6]/10 active:scale-95"
+                    className="h-11 px-8 rounded-xl bg-purple-500 hover:bg-purple-600 disabled:opacity-50 text-white text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-lg shadow-purple-500/10 active:scale-95"
                   >
                     {isPending ? "Booking..." : "Confirm & Book Session"}
                   </button>
@@ -509,17 +509,17 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
 
       {/* ── MODAL OVERLAY: RESCHEDULING POPUP ── */}
       {reschedulingAppt && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
-          <div className="bg-[#080f28] border border-white/10 rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl flex flex-col animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 bg-[#000000c1] backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
+          <div className="bg-white border border-dash-border rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl flex flex-col animate-in zoom-in-95 duration-300">
             {/* Header */}
-            <div className="p-6 border-b border-white/5 flex justify-between items-center bg-[#0b1329]/50">
+            <div className="p-6 border-b border-dash-border flex justify-between items-center bg-dash-surface">
               <div>
-                <span className="text-[9px] font-black uppercase tracking-widest text-[#4a5a82]">Reschedule Panel</span>
-                <h4 className="text-base font-bold text-white font-space uppercase mt-0.5">Change Meeting Date</h4>
+                <span className="text-[9px] font-black uppercase tracking-widest text-dash-textMuted">Reschedule Panel</span>
+                <h4 className="text-base font-bold text-dash-text font-space uppercase mt-0.5">Change Meeting Date</h4>
               </div>
-              <button 
+              <button
                 onClick={() => setReschedulingAppt(null)}
-                className="text-[#4a5a82] hover:text-white"
+                className="text-dash-textMuted hover:text-dash-text"
               >
                 ✕
               </button>
@@ -527,8 +527,8 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
 
             {/* Date Pick & Slot Pick */}
             <div className="p-6 space-y-6">
-              <div className="p-4 bg-white/5 border border-white/5 rounded-2xl flex gap-3 text-xs leading-relaxed text-[#94a3c8]">
-                <ShieldAlert size={16} className="text-amber-400 shrink-0 mt-0.5" />
+              <div className="p-4 bg-dash-surface border border-dash-border rounded-2xl flex gap-3 text-xs leading-relaxed text-dash-textMuted">
+                <ShieldAlert size={16} className="text-amber-500 shrink-0 mt-0.5" />
                 <span>
                   <strong>Rescheduling constraints:</strong> Changing dates is subject to the calendar's <strong>{reschedulingAppt.calendar?.cancellation_window_hours ?? 24} hour</strong> lockout window rules.
                 </span>
@@ -536,7 +536,7 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
 
               {/* Date selection navigation */}
               <div className="space-y-2">
-                <span className="text-[9px] font-black uppercase tracking-wider text-[#4a5a82]">Select Reschedule Date</span>
+                <span className="text-[9px] font-black uppercase tracking-wider text-dash-textMuted">Select Reschedule Date</span>
                 <div className="flex gap-2 overflow-x-auto py-1 scrollbar-none">
                   {[0, 1, 2, 3, 4, 5, 6].map(offset => {
                     const d = new Date();
@@ -551,8 +551,8 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
                         className={cn(
                           "w-12 h-12 rounded-xl flex flex-col items-center justify-center shrink-0 transition-all border",
                           isDateSelected
-                            ? "bg-[#8b5cf6] text-white border-[#8b5cf6]"
-                            : "bg-[#0b1329] text-[#4a5a82] border-white/5 hover:bg-white/5"
+                            ? "bg-purple-500 text-white border-purple-500"
+                            : "bg-dash-surface text-dash-textMuted border-dash-border hover:bg-dash-accent/5"
                         )}
                       >
                         <span className="text-[8px] font-black uppercase">{format(d, 'EEE')}</span>
@@ -565,15 +565,15 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
 
               {/* Slots selection */}
               <div className="space-y-2">
-                <span className="text-[9px] font-black uppercase tracking-wider text-[#4a5a82]">Select New Time Slot</span>
+                <span className="text-[9px] font-black uppercase tracking-wider text-dash-textMuted">Select New Time Slot</span>
 
                 {loadingRescheduleSlots ? (
-                  <div className="flex items-center gap-2 text-xs text-[#4a5a82] py-4 justify-center">
-                    <RefreshCw className="animate-spin text-[#8b5cf6]" size={14} />
+                  <div className="flex items-center gap-2 text-xs text-dash-textMuted py-4 justify-center">
+                    <RefreshCw className="animate-spin text-purple-500" size={14} />
                     <span>Querying slot matrix...</span>
                   </div>
                 ) : rescheduleSlots.length === 0 ? (
-                  <div className="p-4 bg-[#080f28]/45 border border-white/5 rounded-xl text-center text-xs text-[#4a5a82]">
+                  <div className="p-4 bg-dash-surface border border-dash-border rounded-xl text-center text-xs text-dash-textMuted">
                     No available time slots found.
                   </div>
                 ) : (
@@ -589,8 +589,8 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
                           className={cn(
                             "h-9 text-xs font-semibold rounded-xl border transition-all text-center flex items-center justify-center font-mono",
                             isSelected
-                              ? "bg-[#8b5cf6] text-white border-[#8b5cf6]"
-                              : "bg-[#0b1329] text-[#eef2ff] border-white/5 hover:border-white/10"
+                              ? "bg-purple-500 text-white border-purple-500"
+                              : "bg-dash-surface text-dash-text border-dash-border hover:border-dash-accent/30"
                           )}
                         >
                           {timeLabel}
@@ -603,17 +603,17 @@ export default function BookingsClient({ initialAppointments, calendars }: Booki
             </div>
 
             {/* Footer */}
-            <div className="p-6 bg-[#0b1329]/50 border-t border-white/5 flex justify-end gap-3">
-              <button 
+            <div className="p-6 bg-dash-surface border-t border-dash-border flex justify-end gap-3">
+              <button
                 onClick={() => setReschedulingAppt(null)}
-                className="h-11 px-5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-[10px] font-black uppercase tracking-wider transition-colors"
+                className="h-11 px-5 rounded-xl bg-white border border-dash-border hover:bg-dash-border/40 text-dash-text text-[10px] font-black uppercase tracking-wider transition-colors"
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={handleRescheduleBooking}
                 disabled={!selectedRescheduleSlot || isPending}
-                className="h-11 px-8 rounded-xl bg-[#8b5cf6] hover:bg-[#7c3aed] disabled:opacity-50 text-white text-[10px] font-black uppercase tracking-wider transition-all shadow-lg flex items-center gap-1.5 active:scale-95"
+                className="h-11 px-8 rounded-xl bg-purple-500 hover:bg-purple-600 disabled:opacity-50 text-white text-[10px] font-black uppercase tracking-wider transition-all shadow-lg flex items-center gap-1.5 active:scale-95"
               >
                 {isPending ? "Updating..." : "Save Reschedule"}
               </button>

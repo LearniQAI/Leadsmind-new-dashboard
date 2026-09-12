@@ -71,7 +71,7 @@ export function ContactDetailLayout({ contact, children }: ContactDetailLayoutPr
         <XCircle className="h-5 w-5 text-danger" />
        </div>
        <h4 className="text-[10px] font-black text-danger uppercase tracking-[0.2em] mb-1">High Risk Contact</h4>
-       <p className="text-[11px] text-white/50 leading-relaxed font-bold">
+       <p className="text-[11px] text-dash-textMuted leading-relaxed font-bold">
         {contact.no_show_count} NO-SHOWS DETECTED
        </p>
       </div>
@@ -87,13 +87,13 @@ export function ContactDetailLayout({ contact, children }: ContactDetailLayoutPr
           {initials}
          </AvatarFallback>
         </Avatar>
-        <div className="absolute bottom-1 right-1 h-6 w-6 bg-success rounded-full border-4 border-[#0b0b10] shadow-lg shadow-success/20" />
+        <div className="absolute bottom-1 right-1 h-6 w-6 bg-success rounded-full border-4 border-dash-surface shadow-lg shadow-success/20" />
        </div>
 
-       <h4 className="text-xl font-black text-white mb-1 uppercase tracking-tighter">
+       <h4 className="text-xl font-black text-dash-text mb-1 uppercase tracking-tighter">
         {contact.first_name} {contact.last_name}
        </h4>
-       <p className="text-[10px] text-white/30 uppercase font-black tracking-[0.2em] mb-6">Relationship Profile</p>
+       <p className="text-[10px] text-dash-textMuted uppercase font-black tracking-[0.2em] mb-6">Relationship Profile</p>
 
        <div className="flex gap-2 mb-8">
         <Link href={`/apps/contacts/${contact.id}/edit`} className="btn btn-md btn-primary !rounded-xl text-[10px] uppercase font-black tracking-widest px-8 shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5">
@@ -105,77 +105,77 @@ export function ContactDetailLayout({ contact, children }: ContactDetailLayoutPr
        </div>
 
        {/* AI Lead Score */}
-       <div className="w-full bg-white/[0.02] border border-white/5 rounded-2xl p-5 mb-8 group hover:border-primary/20 transition-all">
+       <div className="w-full bg-dash-bg border border-dash-border rounded-2xl p-5 mb-8 group hover:border-primary/30 transition-all">
         <div className="flex items-center justify-between mb-4">
          <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
            <Zap className="h-4 w-4 text-primary" />
           </div>
-          <span className="text-[9px] font-black text-white/60 uppercase tracking-[0.2em]">AI Engagement</span>
+          <span className="text-[9px] font-black text-dash-textMuted uppercase tracking-[0.2em]">AI Engagement</span>
          </div>
          <span className={`text-2xl font-black tracking-tighter ${(contact.lead_score || 0) > 75 ? 'text-success' :
-           (contact.lead_score || 0) > 40 ? 'text-warning' : 'text-white/20'
+           (contact.lead_score || 0) > 40 ? 'text-warning' : 'text-dash-textMuted'
           }`}>
           {contact.lead_score || 0}%
          </span>
         </div>
-        <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden mb-4">
+        <div className="h-1.5 w-full bg-dash-border rounded-full overflow-hidden mb-4">
          <div
-          className="h-full bg-primary transition-all duration-1000 shadow-[0_0_10px_rgba(56,96,226,0.5)]"
+          className="h-full bg-primary transition-all duration-1000"
           style={{ width: `${contact.lead_score || 0}%` }}
          />
         </div>
         {contact.lead_score_explanation && (
-         <p className="text-[10px] text-white/40 leading-relaxed text-left border-l-2 border-primary/20 pl-4 py-1">
+         <p className="text-[10px] text-dash-textMuted leading-relaxed text-left border-l-2 border-primary/30 pl-4 py-1">
           "{contact.lead_score_explanation}"
          </p>
         )}
        </div>
       </div>
 
-      <div className="space-y-6 pt-6 border-t border-white/5">
+      <div className="space-y-6 pt-6 border-t border-dash-border">
        <div className="space-y-5">
         <div className="flex items-center gap-4">
-         <div className="h-8 w-8 rounded-lg bg-white/[0.03] flex items-center justify-center text-white/20">
+         <div className="h-8 w-8 rounded-lg bg-dash-bg flex items-center justify-center text-dash-textMuted">
           <Mail size={14} />
          </div>
          <div className="flex flex-col">
-          <span className="text-[9px] uppercase tracking-widest text-white/20 font-black">Email Address</span>
-          <span className="text-xs text-white/80 font-bold truncate max-w-[180px]">{contact.email || 'N/A'}</span>
+          <span className="text-[9px] uppercase tracking-widest text-dash-textMuted font-black">Email Address</span>
+          <span className="text-xs text-dash-text font-bold truncate max-w-[180px]">{contact.email || 'N/A'}</span>
          </div>
         </div>
         <div className="flex items-center gap-4">
-         <div className="h-8 w-8 rounded-lg bg-white/[0.03] flex items-center justify-center text-white/20">
+         <div className="h-8 w-8 rounded-lg bg-dash-bg flex items-center justify-center text-dash-textMuted">
           <Phone size={14} />
          </div>
          <div className="flex flex-col">
-          <span className="text-[9px] uppercase tracking-widest text-white/20 font-black">Phone Number</span>
-          <span className="text-xs text-white/80 font-bold">{contact.phone || 'N/A'}</span>
+          <span className="text-[9px] uppercase tracking-widest text-dash-textMuted font-black">Phone Number</span>
+          <span className="text-xs text-dash-text font-bold">{contact.phone || 'N/A'}</span>
          </div>
         </div>
         <div className="flex items-center gap-4">
-         <div className="h-8 w-8 rounded-lg bg-white/[0.03] flex items-center justify-center text-white/20">
+         <div className="h-8 w-8 rounded-lg bg-dash-bg flex items-center justify-center text-dash-textMuted">
           <MapPin size={14} />
          </div>
          <div className="flex flex-col">
-          <span className="text-[9px] uppercase tracking-widest text-white/20 font-black">Traffic Source</span>
-          <span className="text-xs text-white/80 font-bold uppercase tracking-tighter">{contact.source || 'Direct'}</span>
+          <span className="text-[9px] uppercase tracking-widest text-dash-textMuted font-black">Traffic Source</span>
+          <span className="text-xs text-dash-text font-bold uppercase tracking-tighter">{contact.source || 'Direct'}</span>
          </div>
         </div>
         <div className="flex items-center gap-4">
-         <div className="h-8 w-8 rounded-lg bg-white/[0.03] flex items-center justify-center text-white/20">
+         <div className="h-8 w-8 rounded-lg bg-dash-bg flex items-center justify-center text-dash-textMuted">
           <Calendar size={14} />
          </div>
          <div className="flex flex-col">
-          <span className="text-[9px] uppercase tracking-widest text-white/20 font-black">Member Since</span>
-          <span className="text-xs text-white/80 font-bold">{format(new Date(contact.created_at), 'MMMM d, yyyy')}</span>
+          <span className="text-[9px] uppercase tracking-widest text-dash-textMuted font-black">Member Since</span>
+          <span className="text-xs text-dash-text font-bold">{format(new Date(contact.created_at), 'MMMM d, yyyy')}</span>
          </div>
         </div>
        </div>
 
-       <div className="pt-6 border-t border-white/5 space-y-4">
+       <div className="pt-6 border-t border-dash-border space-y-4">
         <div className="flex items-center justify-between">
-         <span className="text-[9px] uppercase tracking-widest text-white/20 font-black flex items-center gap-2">
+         <span className="text-[9px] uppercase tracking-widest text-dash-textMuted font-black flex items-center gap-2">
           <Tag size={12} className="text-primary" /> Tags
          </span>
          <button
@@ -192,7 +192,7 @@ export function ContactDetailLayout({ contact, children }: ContactDetailLayoutPr
            <input
             autoFocus
             placeholder="Add new tag..."
-            className="w-full h-10 bg-white/[0.03] border border-white/5 text-[10px] uppercase font-black tracking-widest px-4 rounded-xl outline-none focus:border-primary/30 transition-all"
+            className="w-full h-10 bg-dash-bg border border-dash-border text-[10px] uppercase font-black tracking-widest px-4 rounded-xl outline-none focus:border-primary/40 transition-all text-dash-text"
             value={newTag}
             onChange={(e) => setNewTag(e.target.value)}
             disabled={isLoading}
@@ -212,7 +212,7 @@ export function ContactDetailLayout({ contact, children }: ContactDetailLayoutPr
            {tag}
           </Badge>
          ))}
-         {(!contact.tags || contact.tags.length === 0) && !isAddingTag && <span className="text-[10px] text-white/10 uppercase font-black tracking-widest">No tags</span>}
+         {(!contact.tags || contact.tags.length === 0) && !isAddingTag && <span className="text-[10px] text-dash-textMuted uppercase font-black tracking-widest">No tags</span>}
         </div>
        </div>
       </div>

@@ -104,39 +104,39 @@ export default function PortalLenaChat() {
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
       {/* Chat Window Container */}
       {isOpen && (
-        <div className="mb-4 w-[380px] sm:w-[400px] h-[520px] rounded-2xl border border-white/10 dark:border-neutral-800 bg-white/90 dark:bg-neutral-900/90 shadow-2xl backdrop-blur-xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
-          
+        <div className="mb-4 w-[380px] sm:w-[400px] max-w-[calc(100vw-2.5rem)] h-[520px] max-h-[70vh] rounded-2xl border border-dash-border bg-white shadow-xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
+
           {/* Header */}
-          <div className="px-5 py-4 border-b border-white/10 dark:border-neutral-800 flex items-center justify-between bg-gradient-to-r from-blue-600/10 via-indigo-600/10 to-transparent">
+          <div className="px-5 py-4 border-b border-dash-border flex items-center justify-between bg-dash-accent/5">
             <div className="flex items-center space-x-2.5">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--btn-color,#2563eb)]">
                 <img src="/icon0.svg" alt="LeadsMind" className="h-6 w-6" />
               </div>
               <div>
-                <h4 className="font-semibold text-neutral-800 dark:text-neutral-100 text-sm tracking-wide">LENA AI</h4>
-                <p className="text-[11px] text-neutral-500 dark:text-neutral-400">Virtual Assistant</p>
+                <h4 className="font-semibold text-dash-text text-sm tracking-wide">LENA AI</h4>
+                <p className="text-[11px] text-dash-textMuted">Virtual Assistant</p>
               </div>
             </div>
-            <button 
+            <button
               onClick={() => setIsOpen(false)}
-              className="p-1 rounded-md text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors"
+              className="p-1 rounded-md text-dash-textMuted hover:text-dash-text transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 scrollbar-thin scrollbar-thumb-neutral-800">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
             {messages.map((msg, index) => (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <div 
+                <div
                   className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
                     msg.role === 'user'
-                      ? 'bg-blue-600 text-white rounded-br-none shadow-md shadow-blue-600/10'
-                      : 'bg-neutral-100 dark:bg-neutral-800/80 text-neutral-800 dark:text-neutral-200 rounded-bl-none border border-neutral-200/50 dark:border-neutral-700/30'
+                      ? 'text-white rounded-br-none shadow-md'
+                      : 'bg-dash-surface text-dash-text rounded-bl-none border border-dash-border'
                   }`}
                   style={msg.role === 'user' ? { backgroundColor: 'var(--btn-color, #2563eb)' } : undefined}
                 >
@@ -147,11 +147,11 @@ export default function PortalLenaChat() {
                 </div>
               </div>
             ))}
-            
+
             {isLoading && (
               <div className="flex justify-start">
-                <div className="bg-neutral-100 dark:bg-neutral-800/80 text-neutral-500 rounded-2xl rounded-bl-none px-4 py-3 border border-neutral-200/50 dark:border-neutral-700/30 flex items-center space-x-2 text-sm">
-                  <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                <div className="bg-dash-surface text-dash-textMuted rounded-2xl rounded-bl-none px-4 py-3 border border-dash-border flex items-center space-x-2 text-sm">
+                  <Loader2 className="w-4 h-4 animate-spin text-dash-accent" />
                   <span>LENA is thinking...</span>
                 </div>
               </div>
@@ -160,16 +160,16 @@ export default function PortalLenaChat() {
           </div>
 
           {/* Input Form */}
-          <form 
+          <form
             onSubmit={handleSend}
-            className="p-3 border-t border-white/10 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 flex items-center space-x-2"
+            className="p-3 border-t border-dash-border bg-dash-surface flex items-center space-x-2"
           >
             <input
               type="text"
               value={inputValue}
               onChange={e => setInputValue(e.target.value)}
               placeholder="Ask LENA something..."
-              className="flex-1 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-neutral-800 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500"
+              className="flex-1 bg-white border border-dash-border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-dash-accent text-dash-text placeholder-dash-textMuted"
             />
             <button
               type="submit"

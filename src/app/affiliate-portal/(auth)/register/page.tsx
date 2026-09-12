@@ -58,19 +58,19 @@ export default async function AffiliateRegisterPage({ searchParams }: PageProps)
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-dash-bg flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
-          <span className="text-3xl font-extrabold text-blue-500 tracking-wider">
-            LEADS<span className="text-white">MIND</span>
+          <span className="text-3xl font-extrabold text-dash-accent tracking-wider">
+            LEADS<span className="text-dash-text">MIND</span>
           </span>
         </div>
-        <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-white">
+        <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-dash-text">
           Become a Partner
         </h2>
-        <p className="mt-2 text-center text-sm text-slate-400">
+        <p className="mt-2 text-center text-sm text-dash-textMuted">
           Or{' '}
-          <a href="/affiliate-portal/login" className="font-medium text-blue-500 hover:text-blue-400 transition-colors">
+          <a href="/affiliate-portal/login" className="font-medium text-dash-accent hover:opacity-80 transition-colors">
             sign in to your dashboard
           </a>
         </p>
@@ -78,7 +78,7 @@ export default async function AffiliateRegisterPage({ searchParams }: PageProps)
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         {activeProgrammes.length === 0 ? (
-          <div className="bg-slate-900 py-8 px-4 shadow-2xl border border-slate-800 sm:rounded-2xl sm:px-10 text-center text-slate-400 text-sm">
+          <div className="bg-dash-surface py-8 px-4 shadow-sm border border-dash-border sm:rounded-2xl sm:px-10 text-center text-dash-textMuted text-sm">
             There are currently no active affiliate programmes available. Please check back later.
           </div>
         ) : (
