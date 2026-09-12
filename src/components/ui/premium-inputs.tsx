@@ -12,7 +12,7 @@ const PremiumInput = React.forwardRef<HTMLInputElement, InputProps>(
       <input
         type={type}
         className={cn(
-          "flex h-12 w-full rounded-xl border border-white/10 bg-[#080f28]/95 backdrop-blur-[8px] px-4 py-2 text-sm text-white font-dm-sans placeholder:text-[#4a5a82] focus:outline-none focus:border-[#2563eb] transition-all duration-300 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]",
+          "flex h-12 w-full rounded-xl border border-dash-border bg-white px-4 py-2 text-sm text-dash-text font-dm-sans placeholder:text-dash-textMuted focus:outline-none focus:border-dash-accent transition-all duration-300",
           className
         )}
         ref={ref}
@@ -28,7 +28,7 @@ const PremiumTextarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTML
     return (
       <textarea
         className={cn(
-          "flex min-h-[120px] w-full rounded-xl border border-white/10 bg-[#080f28]/95 backdrop-blur-[8px] px-4 py-3 text-sm text-white font-dm-sans placeholder:text-[#4a5a82] focus:outline-none focus:border-[#2563eb] transition-all duration-300 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)] resize-none",
+          "flex min-h-[120px] w-full rounded-xl border border-dash-border bg-white px-4 py-3 text-sm text-dash-text font-dm-sans placeholder:text-dash-textMuted focus:outline-none focus:border-dash-accent transition-all duration-300 resize-none",
           className
         )}
         ref={ref}

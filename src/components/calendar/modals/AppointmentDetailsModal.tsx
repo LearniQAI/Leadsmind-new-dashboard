@@ -8,7 +8,7 @@ import {
   DialogTitle,
   DialogFooter
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { DashButton } from '@/components/dashboard-ui';
 import { meetingLinkNote, type MeetingLinkStatus } from '@/lib/calendar/meetingLinkStatus';
 import {
   Clock,
@@ -156,28 +156,17 @@ export default function AppointmentDetailsModal({
 
         <DialogFooter className="border-t border-dash-border pt-4 mt-2 gap-2 sm:gap-0">
           <div className="flex-1 flex gap-2">
-            <Button
-              variant="ghost"
-              onClick={() => onCancel?.(appointment.id)}
-              className="text-red hover:text-red/80 hover:bg-red/10 text-[11px] font-bold"
-            >
-              <Trash2 size={16} className="mr-2" /> Cancel
-            </Button>
+            <DashButton variant="ghost" size="sm" onClick={() => onCancel?.(appointment.id)} className="!text-danger hover:!bg-danger/10">
+              <Trash2 size={16} /> Cancel
+            </DashButton>
           </div>
           <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              onClick={() => onEdit?.(appointment)}
-              className="!text-dash-textMuted hover:!text-dash-text text-[11px] font-bold"
-            >
-              <Edit size={16} className="mr-2" /> Edit
-            </Button>
-            <Button
-              onClick={() => onReschedule?.(appointment)}
-              className="bg-dash-accent hover:bg-dash-accent/90 text-white text-[11px] font-bold px-6 transition-colors motion-reduce:transition-none"
-            >
+            <DashButton variant="ghost" size="sm" onClick={() => onEdit?.(appointment)}>
+              <Edit size={16} /> Edit
+            </DashButton>
+            <DashButton variant="primary" size="sm" onClick={() => onReschedule?.(appointment)} className="px-6">
               Reschedule
-            </Button>
+            </DashButton>
           </div>
         </DialogFooter>
       </DialogContent>

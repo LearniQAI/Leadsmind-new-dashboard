@@ -2,6 +2,7 @@
 import React from 'react';
 import { Plus, Edit, Trash2, X } from 'lucide-react';
 import { useDashboardContext } from '@/components/layouts/DashboardProvider';
+import { DashButton } from '@/components/dashboard-ui';
 
 interface TeamTabProps {
   members: any[];
@@ -41,12 +42,9 @@ export default function TeamTab({
           <p className="text-[11px] !text-dash-textMuted font-medium mt-0.5">People with access to this workspace</p>
         </div>
         {isAdmin && (
-          <button
-            onClick={onInviteClick}
-            className="bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-[10px] h-10 px-6 rounded-xl shadow-[0_4px_16px_rgba(19,89,255,0.3)] flex items-center gap-2 transition-colors motion-reduce:transition-none active:scale-95"
-          >
+          <DashButton onClick={onInviteClick} variant="primary" size="sm">
             <Plus size={14} /> Invite team member
-          </button>
+          </DashButton>
         )}
       </div>
 

@@ -16,6 +16,7 @@ import {
 } from '@/app/actions/seo';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { DashButton } from '@/components/dashboard-ui';
 
 export default function SeoTab() {
   // Database States
@@ -541,14 +542,10 @@ export default function SeoTab() {
               </p>
             </div>
           </div>
-          <button
-            onClick={handleTriggerHealthCrawl}
-            disabled={isCrawlingHealth || !project?.domain_url}
-            className="w-full mt-4 flex items-center justify-center gap-2 bg-dash-accent hover:bg-dash-accent/90 disabled:bg-dash-surface disabled:!text-dash-textMuted disabled:opacity-50 text-white font-bold text-[11px] py-2.5 rounded-xl transition-all motion-reduce:transition-none shadow-lg shadow-dash-accent/10"
-          >
+          <DashButton onClick={handleTriggerHealthCrawl} disabled={isCrawlingHealth || !project?.domain_url} variant="primary" size="sm" className="w-full mt-4">
             <RefreshCw size={12} className={isCrawlingHealth ? 'animate-spin' : ''} />
             {isCrawlingHealth ? 'Auditing...' : 'Run Health Audit'}
-          </button>
+          </DashButton>
         </div>
 
         {/* Card 2: Composite Health Score */}
@@ -786,13 +783,9 @@ export default function SeoTab() {
                   className="w-full bg-dash-surface border border-dash-border rounded-xl pl-11 pr-4 py-3 !text-dash-text font-bold focus:border-dash-accent/50 transition-all outline-none text-sm"
                 />
               </div>
-              <button
-                type="submit"
-                disabled={isSavingDomain}
-                className="bg-dash-accent hover:bg-dash-accent text-white font-bold text-[11px] px-8 rounded-xl shadow-lg shadow-dash-accent/20 transition-all disabled:opacity-50 h-[46px]"
-              >
+              <DashButton type="submit" disabled={isSavingDomain} variant="primary" className="h-[46px] px-8">
                 {isSavingDomain ? 'Updating...' : 'Save Domain'}
-              </button>
+              </DashButton>
             </div>
             <p className="text-[10px] !text-dash-textMuted font-medium leading-relaxed">
               * Configure your clean domain (without https://) so search indexes match GSC properties correctly.
@@ -842,13 +835,9 @@ export default function SeoTab() {
           </div>
 
           <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={isSavingCompetitors}
-              className="bg-purple hover:bg-purple/80 text-white font-bold text-[11px] px-8 py-3 rounded-xl shadow-lg shadow-purple/20 transition-all disabled:opacity-50"
-            >
+            <DashButton type="submit" disabled={isSavingCompetitors} variant="primary">
               {isSavingCompetitors ? 'Saving...' : 'Save Competitors'}
-            </button>
+            </DashButton>
           </div>
         </form>
       </div>
@@ -869,26 +858,20 @@ export default function SeoTab() {
 
           <div className="flex items-center gap-3">
             {project?.gsc_connected && (
-              <button
-                onClick={handleManualSync}
-                disabled={isSyncingGSC}
-                className="flex items-center gap-2 px-4 py-2 bg-white/[0.04] hover:bg-white/[0.08] !text-dash-textMuted hover:!text-dash-text rounded-xl text-[11px] font-bold transition-all border border-dash-border"
-              >
+              <DashButton onClick={handleManualSync} disabled={isSyncingGSC} variant="secondary" size="sm">
                 <RefreshCw size={12} className={isSyncingGSC ? 'animate-spin text-dash-accent' : ''} />
                 Sync Telemetry
-              </button>
+              </DashButton>
             )}
-            <button
+            <DashButton
               onClick={handleConnectGSC}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[11px] font-bold transition-all ${
-                project?.gsc_connected 
-                  ? 'bg-green/10 text-green border border-green/20 hover:bg-green/20' 
-                  : 'bg-dash-accent hover:bg-dash-accent text-white shadow-lg shadow-dash-accent/20'
-              }`}
+              variant={project?.gsc_connected ? 'secondary' : 'primary'}
+              size="sm"
+              className={project?.gsc_connected ? '!bg-green/10 !text-green border-green/20 hover:!bg-green/20' : ''}
             >
               <CheckCircle size={14} />
               {project?.gsc_connected ? 'Connected (Re-auth)' : 'Connect GSC'}
-            </button>
+            </DashButton>
           </div>
         </div>
 
@@ -940,23 +923,15 @@ export default function SeoTab() {
           </div>
           
           <div className="flex items-center gap-3">
-            <button
-              onClick={handleSyncRanks}
-              disabled={isSyncingRanks}
-              className="flex items-center gap-2 px-4 py-2.5 bg-dash-accent hover:bg-dash-accent text-white rounded-xl text-[11px] font-bold transition-all shadow-lg shadow-dash-accent/20"
-            >
+            <DashButton onClick={handleSyncRanks} disabled={isSyncingRanks} variant="primary" size="sm">
               <RefreshCw size={12} className={isSyncingRanks ? 'animate-spin' : ''} />
               {isSyncingRanks ? 'Checking SERPs...' : 'Sync Rank Telemetry'}
-            </button>
+            </DashButton>
 
-            <button
-              onClick={handleSyncCompetitorKeywords}
-              disabled={isSyncingCompetitorKeywords}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] !text-dash-textMuted hover:!text-dash-text rounded-xl text-[11px] font-bold border border-dash-border transition-all"
-            >
+            <DashButton onClick={handleSyncCompetitorKeywords} disabled={isSyncingCompetitorKeywords} variant="secondary" size="sm">
               <Calendar size={12} className={isSyncingCompetitorKeywords ? 'animate-spin text-purple' : ''} />
               {isSyncingCompetitorKeywords ? 'Scanning...' : 'Weekly Competitor Scan'}
-            </button>
+            </DashButton>
           </div>
         </div>
 
@@ -1025,17 +1000,19 @@ export default function SeoTab() {
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-right">
-                      <button
+                      <DashButton
                         onClick={() => {
                           setPipelineKeywordInput(gap.keyword);
                           setPipelineTitleInput(`SEO Capture Campaign: ${gap.keyword}`);
                           toast.info(`Pre-filled Content Pipeline form for "${gap.keyword}". Create your campaign card below.`);
                         }}
-                        className="flex items-center gap-1.5 px-3 py-1 bg-amber text-black hover:bg-amber/80 text-[10px] font-bold rounded-lg transition-all ml-auto shadow-md"
+                        variant="primary"
+                        size="sm"
+                        className="ml-auto"
                       >
                         <Plus size={10} />
                         Queue Editorial
-                      </button>
+                      </DashButton>
                     </td>
                   </tr>
                 ))}
@@ -1066,23 +1043,15 @@ export default function SeoTab() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={handleRunPipelineAutomation}
-              disabled={isRunningAutomation}
-              className="flex items-center gap-2 px-4 py-2.5 bg-dash-surface hover:bg-dash-border/60 !text-dash-textMuted hover:!text-dash-text rounded-xl text-[12px] font-bold border border-dash-border transition-colors motion-reduce:transition-none"
-            >
+            <DashButton onClick={handleRunPipelineAutomation} disabled={isRunningAutomation} variant="secondary" size="sm">
               <RefreshCw size={12} className={isRunningAutomation ? 'animate-spin motion-reduce:animate-none text-amber' : ''} />
               {isRunningAutomation ? 'Promoting...' : 'Run Pipeline Automation'}
-            </button>
+            </DashButton>
 
-            <button
-              onClick={handleRunRollup}
-              disabled={isRunningRollup}
-              className="flex items-center gap-2 px-4 py-2.5 bg-green hover:bg-green/90 text-white rounded-xl text-[12px] font-bold transition-colors motion-reduce:transition-none shadow-[0_4px_12px_rgba(16,185,129,0.2)]"
-            >
+            <DashButton onClick={handleRunRollup} disabled={isRunningRollup} variant="primary" size="sm">
               <Play size={12} className={isRunningRollup ? 'animate-spin motion-reduce:animate-none' : ''} />
               {isRunningRollup ? 'Calculating...' : 'Run Revenue Rollup'}
-            </button>
+            </DashButton>
           </div>
         </div>
 
@@ -1198,14 +1167,10 @@ export default function SeoTab() {
             />
           </div>
           <div className="flex items-end justify-end">
-            <button
-              type="submit"
-              disabled={isAddingKeyword || !project}
-              className="w-full bg-purple hover:bg-purple/80 text-white font-bold text-[10px] h-[34px] px-6 rounded-lg shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-1"
-            >
+            <DashButton type="submit" disabled={isAddingKeyword || !project} variant="primary" size="sm" className="w-full">
               <Plus size={12} />
               {isAddingKeyword ? 'Adding...' : 'Add Keyword'}
-            </button>
+            </DashButton>
           </div>
         </form>
 
@@ -1373,14 +1338,10 @@ export default function SeoTab() {
             </select>
           </div>
           <div className="flex items-end justify-end">
-            <button
-              type="submit"
-              disabled={isAddingPipeline || !project}
-              className="w-full bg-amber hover:bg-amber/80 text-white font-bold text-[10px] h-[34px] px-6 rounded-lg shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-1"
-            >
+            <DashButton type="submit" disabled={isAddingPipeline || !project} variant="primary" size="sm" className="w-full">
               <Plus size={12} />
               {isAddingPipeline ? 'Create Card' : 'Create Card'}
-            </button>
+            </DashButton>
           </div>
         </form>
 

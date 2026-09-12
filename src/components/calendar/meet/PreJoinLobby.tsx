@@ -3,6 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Mic, MicOff, Video, VideoOff, ShieldCheck, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DashButton } from '@/components/dashboard-ui';
 
 interface PreJoinLobbyProps {
   appointment: any;
@@ -110,12 +111,9 @@ export default function PreJoinLobby({
               </div>
             </div>
 
-            <button
-              onClick={onJoin}
-              className="w-full h-12 rounded-xl bg-gradient-to-b from-dash-accent to-[#0F47CC] text-white text-[15px] font-bold shadow-[0_4px_16px_rgba(19,89,255,0.3)] hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 transition-all duration-200 motion-reduce:transition-none"
-            >
+            <DashButton onClick={onJoin} variant="primary" size="lg" className="w-full">
               Join meeting
-            </button>
+            </DashButton>
           </div>
         </div>
       </div>

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Globe, Plus, CheckCircle2, AlertTriangle, Clock, Trash2, RefreshCw, Copy, Check } from 'lucide-react';
 import { addDomain, getDomains, deleteDomain } from '@/app/actions/domains';
 import { toast } from 'sonner';
+import { DashButton } from '@/components/dashboard-ui';
 
 const STATUS: Record<string, { label: string; className: string; icon: any }> = {
   pending:          { label: 'Pending',          className: 'text-amber-600 bg-amber-50', icon: Clock },
@@ -101,13 +102,9 @@ export default function CustomDomainsTab({ workspaceId }: { workspaceId?: string
           placeholder="app.yourdomain.com"
           className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-dash-border bg-white !text-dash-text text-sm focus:outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none"
         />
-        <button
-          type="submit"
-          disabled={adding || !hostname.trim()}
-          className="px-4 py-2 rounded-lg bg-dash-accent hover:bg-dash-accent/90 text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50 transition-colors motion-reduce:transition-none"
-        >
+        <DashButton type="submit" disabled={adding || !hostname.trim()} variant="primary" size="sm">
           <Plus className="w-4 h-4" /> {adding ? 'Adding…' : 'Add domain'}
-        </button>
+        </DashButton>
       </form>
 
       {loading ? (
@@ -132,15 +129,10 @@ export default function CustomDomainsTab({ workspaceId }: { workspaceId?: string
                   </div>
                   <div className="flex items-center gap-2">
                     {d.status !== 'active' && (
-                      <button
-                        type="button"
-                        onClick={() => handleVerify(d)}
-                        disabled={verifyingId === d.id}
-                        className="inline-flex items-center gap-1.5 rounded-md bg-dash-accent px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-dash-accent/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors motion-reduce:transition-none"
-                      >
+                      <DashButton type="button" onClick={() => handleVerify(d)} disabled={verifyingId === d.id} variant="primary" size="sm">
                         <RefreshCw className={`w-3 h-3 ${verifyingId === d.id ? 'animate-spin motion-reduce:animate-none' : ''}`} />
                         {verifyingId === d.id ? 'Verifying…' : 'Verify'}
-                      </button>
+                      </DashButton>
                     )}
                     <button type="button" onClick={() => handleDelete(d.id)} className="!text-dash-textMuted hover:text-red transition-colors motion-reduce:transition-none">
                       <Trash2 className="w-4 h-4" />

@@ -5,7 +5,7 @@ import ResourceManagerModal from '../modals/ResourceManagerModal';
 import { createCalendar, updateCalendar } from '@/app/actions/calendar/calendars';
 import { toast } from 'sonner';
 import { Building2, Copy, Eye, LayoutGrid, MoreVertical, User, Users, Zap } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { DashButton } from '@/components/dashboard-ui';
 
 interface CalendarPagesViewProps {
   calendars: any[];
@@ -62,13 +62,9 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
   return (
     <>
       <div className="flex justify-end mb-5">
-        <Button
-          variant="outline"
-          onClick={() => setIsResourceModalOpen(true)}
-          className="bg-white border-dash-border !text-dash-textMuted hover:!text-dash-text text-[11px] font-bold h-10"
-        >
-          <Building2 size={14} className="mr-2" /> Rooms, desks &amp; equipment
-        </Button>
+        <DashButton variant="secondary" size="sm" onClick={() => setIsResourceModalOpen(true)}>
+          <Building2 size={14} /> Rooms, desks &amp; equipment
+        </DashButton>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -110,28 +106,18 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
               </div>
 
               {cal.calendar_type === 'round_robin' && (
-                <button
-                  onClick={() => setTeamCalendar(cal)}
-                  className="mt-5 w-full flex items-center justify-center gap-2 h-10 rounded-lg border border-dash-accent/30 bg-dash-accent/5 text-dash-accent text-[11px] font-bold hover:bg-dash-accent/10 transition-colors motion-reduce:transition-none"
-                >
+                <DashButton variant="secondary" size="sm" onClick={() => setTeamCalendar(cal)} className="mt-5 w-full">
                   <Users size={14} /> Manage team
-                </button>
+                </DashButton>
               )}
 
               <div className="grid grid-cols-2 gap-3 mt-8">
-                <Button
-                  variant="outline"
-                  onClick={() => copyToClipboard(cal.slug)}
-                  className="bg-white border-dash-border !text-dash-textMuted text-[11px] font-bold h-10"
-                >
-                  <Copy size={14} className="mr-2" /> Copy link
-                </Button>
-                <Button
-                  onClick={() => window.open(`${window.location.origin}/book/${cal.slug}`, '_blank')}
-                  className="bg-dash-accent hover:bg-dash-accent/90 text-white text-[11px] font-bold h-10 transition-colors motion-reduce:transition-none"
-                >
-                  <Eye size={14} className="mr-2" /> Preview
-                </Button>
+                <DashButton variant="secondary" size="sm" onClick={() => copyToClipboard(cal.slug)}>
+                  <Copy size={14} /> Copy link
+                </DashButton>
+                <DashButton variant="primary" size="sm" onClick={() => window.open(`${window.location.origin}/book/${cal.slug}`, '_blank')}>
+                  <Eye size={14} /> Preview
+                </DashButton>
               </div>
             </div>
 

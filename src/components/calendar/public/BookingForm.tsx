@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { DashFormField, DashInput, DashTextarea } from '@/components/dashboard-ui';
+import { DashFormField, DashInput, DashTextarea, DashButton } from '@/components/dashboard-ui';
 import { CalendarCheck2, AlertCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface CustomField {
   id: string;
@@ -172,16 +171,7 @@ export function BookingForm({
       )}
 
       <div className="pt-1">
-        <button
-          type="submit"
-          disabled={isSubmitting || !selectedTime}
-          className={cn(
-            'w-full h-12 rounded-xl bg-gradient-to-b from-dash-accent to-[#0F47CC] text-white text-[14px] font-bold',
-            'shadow-[0_4px_16px_rgba(19,89,255,0.3)] hover:shadow-[0_10px_28px_rgba(19,89,255,0.45)] hover:-translate-y-0.5',
-            'motion-reduce:hover:translate-y-0 transition-all duration-200 motion-reduce:transition-none',
-            'disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2'
-          )}
-        >
+        <DashButton type="submit" disabled={isSubmitting || !selectedTime} variant="primary" size="lg" className="w-full">
           {isSubmitting ? (
             <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin motion-reduce:animate-none" />
           ) : (
@@ -190,7 +180,7 @@ export function BookingForm({
               {submitLabel ?? t('confirmBooking')}
             </>
           )}
-        </button>
+        </DashButton>
         {!selectedTime && (
           <p className="text-center text-[12px] text-dash-textMuted mt-2.5">{t('selectSlotFirst')}</p>
         )}

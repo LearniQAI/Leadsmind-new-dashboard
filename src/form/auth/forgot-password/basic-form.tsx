@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { forgotPassword } from '@/app/actions/auth';
+import { DashButton } from '@/components/dashboard-ui';
 
 const ForgotBasicForm = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -56,9 +57,9 @@ const ForgotBasicForm = () => {
           </div>
         </div>
         <div className="mb-4">
-          <button className="btn btn-primary w-full" type="submit" disabled={isLoading}>
+          <DashButton variant="primary" className="w-full" type="submit" disabled={isLoading}>
             {isLoading ? "Sending..." : "Send Reset Link"}
-          </button>
+          </DashButton>
         </div>
         <div className="text-center">
           <Link className="back-to-btn" href="/auth/signin-basic">Back to login</Link>

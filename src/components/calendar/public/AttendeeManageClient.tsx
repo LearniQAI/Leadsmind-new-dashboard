@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { CheckCircle2, Calendar, Video, Loader2, XCircle } from 'lucide-react';
+import { DashButton } from '@/components/dashboard-ui';
 import { cancelAttendeeByToken } from '@/app/actions/calendar/waitlistAccept';
 
 interface AttendeeBooking {
@@ -79,14 +80,10 @@ export default function AttendeeManageClient({ token, booking }: { token: string
         <>
           {error && <p className="text-red text-[13px] mb-4">{error}</p>}
           {booking.cancellable ? (
-            <button
-              onClick={cancel}
-              disabled={busy}
-              className="h-11 px-5 rounded-xl border border-red/30 text-red text-[13px] font-semibold flex items-center justify-center gap-2 disabled:opacity-60 hover:bg-red/5 transition-colors motion-reduce:transition-none"
-            >
+            <DashButton onClick={cancel} disabled={busy} variant="destructive">
               {busy ? <Loader2 size={15} className="animate-spin motion-reduce:hidden" /> : null}
               Cancel my spot
-            </button>
+            </DashButton>
           ) : (
             <p className="text-[13px] leading-relaxed text-dash-textMuted">
               Cancellations close {booking.cancelWindowHours} hours before the session starts, so this spot can no longer

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Mail, CheckCircle2, AlertTriangle, RefreshCw, Key } from 'lucide-react';
 import { getEmailProvider, saveEmailProvider, verifyEmailProvider } from '@/app/actions/emailProviders';
 import { toast } from 'sonner';
+import { DashButton } from '@/components/dashboard-ui';
 
 export default function EmailProviderTab({ workspaceId }: { workspaceId?: string }) {
   const [provider, setProvider] = useState('resend');
@@ -189,37 +190,23 @@ export default function EmailProviderTab({ workspaceId }: { workspaceId?: string
         </div>
 
         <div className="flex items-center gap-3 pt-2">
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-4 py-2 rounded-lg bg-dash-accent hover:bg-dash-accent/90 text-white text-sm font-semibold flex items-center gap-2 disabled:opacity-50 transition-colors motion-reduce:transition-none"
-          >
+          <DashButton type="submit" disabled={saving} variant="primary" size="sm">
             {saving && <RefreshCw className="w-4 h-4 animate-spin motion-reduce:animate-none" />}
             {saving ? 'Saving…' : 'Save settings'}
-          </button>
+          </DashButton>
 
           {verified === false && apiKey && (
-            <button
-              type="button"
-              disabled={verifying}
-              onClick={handleVerify}
-              className="px-4 py-2 rounded-lg border border-dash-border hover:bg-dash-surface !text-dash-text text-sm font-semibold flex items-center gap-2 disabled:opacity-50 transition-colors motion-reduce:transition-none"
-            >
+            <DashButton type="button" disabled={verifying} onClick={handleVerify} variant="secondary" size="sm">
               {verifying && <RefreshCw className="w-4 h-4 animate-spin motion-reduce:animate-none" />}
               {verifying ? 'Verifying…' : 'Send test email'}
-            </button>
+            </DashButton>
           )}
 
           {verified === true && (
-            <button
-              type="button"
-              disabled={verifying}
-              onClick={handleVerify}
-              className="px-4 py-2 rounded-lg border border-dash-border hover:bg-dash-surface !text-dash-text text-sm font-semibold flex items-center gap-2 disabled:opacity-50 transition-colors motion-reduce:transition-none"
-            >
+            <DashButton type="button" disabled={verifying} onClick={handleVerify} variant="secondary" size="sm">
               {verifying && <RefreshCw className="w-4 h-4 animate-spin motion-reduce:animate-none" />}
               {verifying ? 'Retesting…' : 'Send test email'}
-            </button>
+            </DashButton>
           )}
         </div>
       </form>

@@ -6,6 +6,7 @@ import { BookingForm } from './BookingForm';
 import { TimeSlot } from '@/lib/calendar/availability';
 import { toast } from 'sonner';
 import { CalendarClock, CheckCircle2, Users } from 'lucide-react';
+import { DashButton } from '@/components/dashboard-ui';
 
 type BookResult = { success: boolean; mode?: 'booked' | 'waitlist'; position?: number };
 
@@ -78,12 +79,9 @@ export function BookingFlow({
             ? `You're #${result.position} on the list. This session is full — if a spot opens up we'll email you a link to claim it (first come, first served).`
             : t('bookingSuccessMsg')}
         </p>
-        <button
-          onClick={() => window.location.reload()}
-          className="h-11 px-6 rounded-xl border border-dash-border bg-white text-dash-text hover:bg-dash-surface text-[13px] font-semibold transition-colors motion-reduce:transition-none"
-        >
+        <DashButton onClick={() => window.location.reload()} variant="secondary">
           {t('scheduleAnother')}
-        </button>
+        </DashButton>
       </div>
     );
   }

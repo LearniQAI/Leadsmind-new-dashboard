@@ -5,6 +5,7 @@ import { getConnectedPlatforms, disconnectPlatform, getMetaAuthUrl } from '@/app
 import { ConnectPlatformsModal } from '@/components/dashboard/ConnectPlatformsModal';
 import { Instagram as InstagramIcon } from '@/components/icons/BrandIcons';
 import { toast } from 'sonner';
+import { DashButton } from '@/components/dashboard-ui';
 
 export function IntegrationsList() {
   const [isOpen, setIsOpen] = useState(false);
@@ -178,12 +179,9 @@ export function IntegrationsList() {
 
               <div className="relative z-10 mt-6">
                 {fbConn ? (
-                  <button
-                    onClick={() => handleDisconnect('facebook')}
-                    className="w-full h-9 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold transition-all"
-                  >
+                  <DashButton onClick={() => handleDisconnect('facebook')} variant="destructive" size="sm" className="w-full">
                     Disconnect Channel
-                  </button>
+                  </DashButton>
                 ) : (
                   <button
                     onClick={() => handleConnect('facebook')}
@@ -232,12 +230,9 @@ export function IntegrationsList() {
 
               <div className="relative z-10 mt-6">
                 {igConn ? (
-                  <button
-                    onClick={() => handleDisconnect('instagram')}
-                    className="w-full h-9 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold transition-all"
-                  >
+                  <DashButton onClick={() => handleDisconnect('instagram')} variant="destructive" size="sm" className="w-full">
                     Disconnect Channel
-                  </button>
+                  </DashButton>
                 ) : (
                   <button
                     onClick={() => handleConnect('instagram')}
@@ -290,12 +285,9 @@ export function IntegrationsList() {
 
               <div className="relative z-10 mt-6">
                 {waConn ? (
-                  <button
-                    onClick={() => handleDisconnect('whatsapp')}
-                    className="w-full h-9 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold transition-all"
-                  >
+                  <DashButton onClick={() => handleDisconnect('whatsapp')} variant="destructive" size="sm" className="w-full">
                     Disconnect Channel
-                  </button>
+                  </DashButton>
                 ) : (
                   <button
                     onClick={() => handleConnect('whatsapp')}

@@ -7,7 +7,7 @@ import {
  DialogHeader,
  DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { DashButton } from '@/components/dashboard-ui';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -173,12 +173,12 @@ export function DealModal({ isOpen, onClose, stageId, initialData }: DealModalPr
      </div>
 
      <div className="flex items-center gap-4 pt-4">
-      <Button type="button" variant="ghost" onClick={onClose} className="text-white/40 hover:text-white h-12 px-6 rounded-xl font-bold uppercase tracking-widest text-[10px]">
+      <DashButton type="button" variant="ghost" onClick={onClose}>
        Cancel
-      </Button>
-      <Button type="submit" disabled={isPending} className="btn btn-primary !h-12 !px-8 !rounded-xl !text-[10px] uppercase font-black tracking-widest flex-1 shadow-lg shadow-primary/20 transition-all hover:scale-[1.02]">
-       {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : (initialData ? 'Update Deal' : 'Create Deal')}
-      </Button>
+      </DashButton>
+      <DashButton type="submit" disabled={isPending} variant="primary" className="flex-1">
+       {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : (initialData ? 'Update Deal' : 'Create Deal')}
+      </DashButton>
      </div>
     </form>
    </DialogContent>

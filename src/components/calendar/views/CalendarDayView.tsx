@@ -11,6 +11,7 @@ import {
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, Clock, MapPin, User, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DashButton } from '@/components/dashboard-ui';
 
 interface CalendarDayViewProps {
   appointments: any[];
@@ -158,9 +159,9 @@ export default function CalendarDayView({ appointments }: CalendarDayViewProps) 
           <p className="text-[12px] opacity-80 mb-4 leading-relaxed font-medium">
             There are 4 people waiting for a spot today. Promote them automatically if a slot opens up.
           </p>
-          <button className="w-full bg-white text-dash-text py-2.5 rounded-lg text-[12px] font-bold hover:bg-white/90 transition-all motion-reduce:transition-none">
+          <DashButton variant="secondary" size="sm" className="w-full">
             Manage waitlist
-          </button>
+          </DashButton>
         </div>
       </div>
     </div>

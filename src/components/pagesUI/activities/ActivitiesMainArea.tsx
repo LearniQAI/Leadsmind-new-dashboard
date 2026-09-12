@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import ActivitiesTable from "./ActivitiesTable";
 import AddActivitiesModal from "./AddActivitiesModal";
+import { DashButton } from "@/components/dashboard-ui";
 
 const ActivitiesMainArea = () => {
  const [modalOpen, setModalOpen] = useState(false);
@@ -22,13 +23,9 @@ const ActivitiesMainArea = () => {
        </ol>
       </nav>
       <div className="breadcrumb__btn">
-       <button
-        type="button"
-        className="btn btn-primary"
-        onClick={() => setModalOpen(true)}
-       >
+       <DashButton type="button" variant="primary" size="sm" onClick={() => setModalOpen(true)}>
         Add Activities
-       </button>
+       </DashButton>
       </div>
      </div>
     </div>

@@ -27,7 +27,7 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { DashButton } from '@/components/dashboard-ui';
 import { Calendar as CalendarIcon, Clock, User, Check, ChevronsUpDown, Loader2, Video, Link as LinkIcon, Sparkles } from 'lucide-react';
 import { format, addMinutes, parseISO } from 'date-fns';
 import { searchContacts } from '@/app/actions/contacts';
@@ -384,12 +384,9 @@ export default function BookingModal({
                 ))}
             </div>
 
-            <Button
-              onClick={() => setView('form')}
-              className="w-full bg-dash-accent/10 hover:bg-dash-accent text-dash-accent hover:text-white border border-dash-accent/20 h-12 text-[11px] font-bold rounded-xl transition-all motion-reduce:transition-none"
-            >
-              <Sparkles size={16} className="mr-2" /> Add New Session
-            </Button>
+            <DashButton onClick={() => setView('form')} variant="primary" size="lg" className="w-full">
+              <Sparkles size={16} /> Add New Session
+            </DashButton>
           </div>
         ) : (
           <>
@@ -729,17 +726,18 @@ export default function BookingModal({
             </Form>
 
             <DialogFooter className="border-t border-dash-border pt-4 mt-2">
-              <Button variant="ghost" onClick={() => setView('agenda')} className="flex-1 !text-dash-textMuted hover:!text-dash-text font-bold text-[11px]">
+              <DashButton variant="ghost" onClick={() => setView('agenda')} className="flex-1">
                 Back to Agenda
-              </Button>
-              <Button
+              </DashButton>
+              <DashButton
+                variant="primary"
                 onClick={form.handleSubmit(onSubmit)}
                 disabled={isSubmitting}
-                className="bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-[11px] px-8 h-11 rounded-lg transition-all motion-reduce:transition-none"
+                className="px-8"
               >
-                {isSubmitting ? <Loader2 className="animate-spin motion-reduce:animate-none mr-2" size={16} /> : <Check className="mr-2" size={16} />}
+                {isSubmitting ? <Loader2 className="animate-spin motion-reduce:animate-none" size={16} /> : <Check size={16} />}
                 Confirm Booking
-              </Button>
+              </DashButton>
             </DialogFooter>
           </>
         )}

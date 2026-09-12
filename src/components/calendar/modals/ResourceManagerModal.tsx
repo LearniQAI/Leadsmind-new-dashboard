@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { DashButton } from '@/components/dashboard-ui';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Building2, Armchair, Wrench, Plus, Pencil, Ban, RotateCcw, X } from 'lucide-react';
@@ -175,14 +175,10 @@ export default function ResourceManagerModal({ isOpen, onClose }: ResourceManage
                   />
                 </div>
               </div>
-              <Button
-                onClick={handleSave}
-                disabled={saving}
-                className="w-full bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-[12px] h-10"
-              >
-                {saving ? <Loader2 className="animate-spin motion-reduce:animate-none mr-2" size={14} /> : null}
+              <DashButton variant="primary" size="sm" onClick={handleSave} disabled={saving} className="w-full">
+                {saving ? <Loader2 className="animate-spin motion-reduce:animate-none" size={14} /> : null}
                 {editingId === 'new' ? 'Add resource' : 'Save changes'}
-              </Button>
+              </DashButton>
             </div>
           )}
 
@@ -238,13 +234,9 @@ export default function ResourceManagerModal({ isOpen, onClose }: ResourceManage
           )}
 
           {editingId === null && (
-            <Button
-              onClick={startAdd}
-              variant="outline"
-              className="w-full bg-white border-dash-border !text-dash-textMuted hover:!text-dash-text text-[12px] font-bold h-10"
-            >
-              <Plus size={14} className="mr-2" /> Add resource
-            </Button>
+            <DashButton variant="secondary" size="sm" onClick={startAdd} className="w-full">
+              <Plus size={14} /> Add resource
+            </DashButton>
           )}
         </div>
       </DialogContent>

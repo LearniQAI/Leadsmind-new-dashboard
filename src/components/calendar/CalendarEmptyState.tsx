@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Calendar, Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { DashButton } from '@/components/dashboard-ui';
 
 interface CalendarEmptyStateProps {
   onCreateClick: () => void;
@@ -23,12 +23,9 @@ export default function CalendarEmptyState({ onCreateClick }: CalendarEmptyState
         Set up your first booking engine to start accepting appointments and growing your business.
       </p>
 
-      <Button
-        onClick={onCreateClick}
-        className="bg-dash-accent hover:bg-dash-accent/90 text-white border-none px-6 py-2.5 h-auto text-[13.5px] font-semibold transition-colors motion-reduce:transition-none"
-      >
-        <Plus className="w-4 h-4 mr-2" /> Create first calendar
-      </Button>
+      <DashButton variant="primary" size="default" onClick={onCreateClick}>
+        <Plus className="w-4 h-4" /> Create first calendar
+      </DashButton>
     </div>
   );
 }

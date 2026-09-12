@@ -3,7 +3,7 @@
 import React, { useState, useTransition } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { DashButton } from '@/components/dashboard-ui';
 import { Input } from '@/components/ui/input';
 import { Users, Clock, Timer, UserPlus, ArrowRight, ShieldCheck, Mail, Send, Loader2, PlusCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -142,13 +142,9 @@ export function WaitlistManager({ initialSession, initialWaitlist, allSessions }
          onChange={(e) => setEmailToAdd(e.target.value)}
          className="bg-white border-dash-border !text-dash-text rounded-xl h-10 text-xs"
         />
-        <Button
-         onClick={handleAddUser}
-         disabled={isAdding}
-         className="h-10 w-10 p-0 rounded-xl bg-dash-accent hover:bg-dash-accent/90 transition-colors motion-reduce:transition-none"
-        >
+        <DashButton variant="primary" size="icon" onClick={handleAddUser} disabled={isAdding}>
          {isAdding ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <PlusCircle className="h-4 w-4" />}
-        </Button>
+        </DashButton>
       </div>
       <p className="text-[10px] !text-dash-textMuted">Adds user to waitlist or books immediately if spot opens.</p>
      </div>
@@ -211,14 +207,10 @@ export function WaitlistManager({ initialSession, initialWaitlist, allSessions }
              </td>
              <td className="px-6 py-6 text-right">
               {!entry.offered_at && (
-               <Button
-                onClick={() => handleManualOffer(entry.id)}
-                disabled={isPending}
-                className="h-9 px-4 rounded-xl bg-dash-surface border border-dash-border text-[11px] font-bold !text-dash-text hover:bg-dash-accent hover:border-dash-accent hover:text-white transition-all motion-reduce:transition-none group/btn"
-               >
-                 {isPending ? <Loader2 className="h-3 w-3 animate-spin motion-reduce:animate-none mr-2" /> : 'Offer Spot'}
-                 <Send className="h-3 w-3 ml-2 group-hover/btn:translate-x-1 motion-reduce:group-hover/btn:translate-x-0 transition-transform motion-reduce:transition-none" />
-               </Button>
+               <DashButton variant="secondary" size="sm" onClick={() => handleManualOffer(entry.id)} disabled={isPending}>
+                 {isPending ? <Loader2 className="h-3 w-3 animate-spin motion-reduce:animate-none" /> : 'Offer Spot'}
+                 <Send className="h-3 w-3" />
+               </DashButton>
               )}
               {entry.offered_at && (
                <div className="flex items-center justify-end gap-2 text-dash-accent">

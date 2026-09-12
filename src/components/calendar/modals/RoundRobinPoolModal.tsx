@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { DashButton } from '@/components/dashboard-ui';
 import { Loader2, Check, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -92,17 +92,19 @@ export default function RoundRobinPoolModal({ isOpen, onClose, calendarId, calen
         </div>
 
         <DialogFooter className="border-t border-dash-border pt-4 gap-2 sm:gap-0">
-          <Button variant="ghost" onClick={onClose} className="!text-dash-textMuted hover:!text-dash-text font-bold text-[11px]">
+          <DashButton variant="ghost" size="sm" onClick={onClose}>
             Cancel
-          </Button>
-          <Button
+          </DashButton>
+          <DashButton
+            variant="primary"
+            size="sm"
             onClick={handleSave}
             disabled={saving || loading || !!error}
-            className="bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-[11px] px-6 h-10 rounded-lg"
+            className="px-6"
           >
-            {saving ? <Loader2 className="animate-spin motion-reduce:animate-none mr-2" size={14} /> : <Check className="mr-2" size={14} />}
+            {saving ? <Loader2 className="animate-spin motion-reduce:animate-none" size={14} /> : <Check size={14} />}
             Save team
-          </Button>
+          </DashButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
