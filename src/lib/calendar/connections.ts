@@ -182,6 +182,9 @@ const PROVIDER_LABELS: Record<CalendarProvider, string> = {
   zoom: 'Zoom',
 };
 
+const TEAMS_LABEL = 'Microsoft Teams';
+const TEAMS_SCOPE = 'https://graph.microsoft.com/OnlineMeetings.ReadWrite';
+
 export async function syncWorkspaceCalendarIntegrationRow(
   workspaceId: string,
   provider: CalendarProvider
@@ -212,11 +215,41 @@ export async function syncWorkspaceCalendarIntegrationRow(
       connected,
       account_label: accountLabel,
       connected_at: connected ? new Date().toISOString() : null,
+      needs_reconnect: false,
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'workspace_id,provider' }
   );
   if (error) throw error;
+
+  // Microsoft Teams has no OAuth of its own — it rides on this same 'outlook'
+  // connection (Task 70's OnlineMeetings.ReadWrite scope). Recompute its
+  // pseudo status row here so the integrations-hub card reflects the REAL
+  // granted scope, not just "an outlook connection exists". A connection made
+  // before the scope was added (or one Azure/tenant consent silently dropped
+  // the scope from) must show "needs reconnect", never a false "Connected".
+  if (provider === 'outlook') {
+    const hasTeamsScope = active.some((r: any) =>
+      typeof (r.credentials as any)?.scope === 'string' &&
+      (r.credentials as any).scope.includes(TEAMS_SCOPE)
+    );
+    const teamsConnected = connected && hasTeamsScope;
+
+    const { error: teamsError } = await supabase.from('workspace_integrations').upsert(
+      {
+        workspace_id: workspaceId,
+        provider: TEAMS_LABEL,
+        category: 'video_conferencing',
+        connected: teamsConnected,
+        account_label: teamsConnected ? accountLabel : null,
+        connected_at: teamsConnected ? new Date().toISOString() : null,
+        needs_reconnect: connected && !hasTeamsScope,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'workspace_id,provider' }
+    );
+    if (teamsError) throw teamsError;
+  }
 }
 
 /** The connected calendar connection for one user + provider, or null. */

@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useDashboardContext } from '@/components/layouts/DashboardProvider'
-import { Receipt, ArrowLeft, ChevronRight } from 'lucide-react'
+import { Receipt, ArrowLeft, ChevronRight, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import {
@@ -54,9 +54,9 @@ const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'danger' | 'neutral
 }
 
 // Self-service payslip view for Task 47: any employee, not just admin/owner/hr/payroll,
-// can see their own real payslips here. No PDF/document exists anywhere in this codebase
-// for payslips (confirmed via audit) -- this renders the real structured data directly
-// rather than faking a download button for a document that was never generated.
+// can see their own real payslips here. Each payslip can also be downloaded as a real PDF
+// via GET /api/hr/payslips/[id]/download, which re-derives the file from this same payslip
+// row (never a separately-stored document).
 export default function MyPayslipsView() {
   const { workspace } = useDashboardContext() as any
   const workspaceId = workspace?.id
@@ -203,9 +203,16 @@ export default function MyPayslipsView() {
                 {detailOpen.payroll_runs?.paid_at ? ` · Paid ${new Date(detailOpen.payroll_runs.paid_at).toLocaleDateString()}` : ''}
               </p>
 
-              <div className="flex justify-end pt-1">
+              <div className="flex justify-end gap-2 pt-1">
                 <DashButton variant="secondary" size="sm" onClick={() => setDetailOpen(null)}>
                   Close
+                </DashButton>
+                <DashButton
+                  size="sm"
+                  onClick={() => window.open(`/api/hr/payslips/${detailOpen.id}/download`, '_blank')}
+                  className="gap-1.5"
+                >
+                  <Download size={14} /> Download PDF
                 </DashButton>
               </div>
             </>

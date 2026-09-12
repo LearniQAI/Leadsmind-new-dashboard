@@ -22,6 +22,18 @@ interface ConnectionCardProps {
   // badge for a gateway nothing in the app can act on. Ignored if `connected` is
   // already true, so a real existing connection is never hidden.
   comingSoon?: boolean
+  // A third real state, distinct from both "Connect" (nothing exists yet) and
+  // "Connected" (fully usable): an underlying connection exists but is missing
+  // something this feature needs (e.g. Microsoft Teams riding the Outlook
+  // connection made before the OnlineMeetings.ReadWrite scope was added).
+  // Ignored when `connected` is true.
+  needsReconnect?: boolean
+  reconnectHint?: string
+  // Some cards (Microsoft Teams) have no connection of their own to remove —
+  // they're a derived view over another provider's connection. Hides the
+  // Disconnect action for those when connected, since clicking it can't
+  // actually do anything real.
+  hideDisconnect?: boolean
 }
 
 export default function ConnectionCard({
@@ -36,6 +48,9 @@ export default function ConnectionCard({
   onDisconnect,
   loading = false,
   comingSoon = false,
+  needsReconnect = false,
+  reconnectHint,
+  hideDisconnect = false,
 }: ConnectionCardProps) {
   return (
     <div className="group relative bg-white border border-dash-border/80
@@ -76,16 +91,29 @@ export default function ConnectionCard({
                 Connected
               </span>
             )}
+            {!connected && needsReconnect && (
+              <span className="inline-flex items-center gap-1 bg-amber-500/10 border border-amber-500/25
+                text-amber-600 text-[10px] font-semibold rounded-full px-2 py-0.5 flex-shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                Reconnect required
+              </span>
+            )}
           </div>
           <p className="!text-dash-textMuted text-[12px] mt-0.5 leading-snug max-w-md">
-            {connected && accountLabel ? accountLabel : description}
+            {connected && accountLabel ? accountLabel
+              : !connected && needsReconnect ? (reconnectHint || description)
+              : description}
           </p>
         </div>
       </div>
 
       {/* Right — action */}
       <div className="relative flex-shrink-0">
-        {connected ? (
+        {connected && hideDisconnect ? (
+          <span className="!text-dash-textMuted text-[11px] font-medium px-1">
+            Auto-enabled
+          </span>
+        ) : connected ? (
           <DashButton
             onClick={onDisconnect}
             disabled={loading}
@@ -96,6 +124,15 @@ export default function ConnectionCard({
             {loading && <span className="w-3.5 h-3.5 border-2 border-red border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />}
             Disconnect
           </DashButton>
+        ) : needsReconnect ? (
+          <button onClick={onConnect} disabled={loading}
+            className="text-white text-[12px] font-semibold rounded-xl px-4 py-2
+              shadow-sm hover:shadow-md hover:brightness-110 active:scale-[0.98]
+              transition-all duration-150 disabled:opacity-50 flex items-center justify-center gap-1.5"
+            style={{ backgroundColor: '#d97706', boxShadow: '0 4px 14px -4px #d9770666' }}>
+            {loading && <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />}
+            Reconnect
+          </button>
         ) : comingSoon ? (
           <button disabled
             className="!text-dash-textMuted text-[11.5px] font-semibold rounded-xl px-4 py-2 cursor-not-allowed opacity-50 border border-dash-border">

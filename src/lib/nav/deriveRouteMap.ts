@@ -20,8 +20,19 @@ const PAGE_ACCESS_UNGATED = new Set([
   "/admin/compliance",
 ]);
 
+/**
+ * Routes that used to live in dashboardNav -- and so got their permission gate
+ * for free via the loop below -- but have since moved out of the sidebar
+ * entirely (Help Center moved to the top bar, DashboardHeader.tsx, next to the
+ * workspace switcher). Their access gate must survive here, or removing the
+ * nav entry would silently make the page ungated for direct-URL access.
+ */
+const EXTRA_PERMISSION_ENTRIES: PermissionEntry[] = [
+  { link: "/articles", permission: "business" },
+];
+
 function buildPermissionIndex(): PermissionEntry[] {
-  const entries: PermissionEntry[] = [];
+  const entries: PermissionEntry[] = [...EXTRA_PERMISSION_ENTRIES];
 
   dashboardNav.forEach((module) => {
     if (module.link) {

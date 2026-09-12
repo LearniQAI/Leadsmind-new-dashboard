@@ -7,6 +7,7 @@ interface Integration {
   connected: boolean
   account_label: string | null
   connected_at: string | null
+  needs_reconnect: boolean
 }
 
 export function useWorkspaceIntegrations(workspaceId: string | null) {
@@ -42,6 +43,14 @@ export function useWorkspaceIntegrations(workspaceId: string | null) {
   const getLabel = (provider: string) =>
     integrations.find(i => i.provider.toLowerCase() === provider.toLowerCase())?.account_label ?? null
 
+  // True only for the Microsoft Teams pseudo-row (Task 70): the underlying
+  // Outlook connection exists but was made/consented before the
+  // OnlineMeetings.ReadWrite scope, so Teams meeting creation would 403 even
+  // though the card must not silently claim "Connect" (Outlook already
+  // exists) or "Connected" (Teams doesn't actually work yet).
+  const needsReconnect = (provider: string) =>
+    integrations.find(i => i.provider.toLowerCase() === provider.toLowerCase())?.needs_reconnect ?? false
+
   const connect = async (provider: string, category: string, accountLabel?: string) => {
     await window.fetch('/api/settings/integrations', {
       method: 'POST',
@@ -58,5 +67,5 @@ export function useWorkspaceIntegrations(workspaceId: string | null) {
     await fetch()
   }
 
-  return { integrations, loading, error, isConnected, getLabel, connect, disconnect, refetch: fetch }
+  return { integrations, loading, error, isConnected, getLabel, needsReconnect, connect, disconnect, refetch: fetch }
 }

@@ -226,6 +226,20 @@ const HR_OVERVIEW_LINK_REMOVED = new Set([
   "/hr",
 ]);
 
+/**
+ * Help Center ("/articles") moved out of the sidebar rail entirely and now lives
+ * in the top bar next to the workspace switcher (DashboardHeader.tsx) instead --
+ * unlike HR_OVERVIEW_LINK_REMOVED this isn't "no longer a distinct link," it's
+ * "no longer part of this nav config at all," so filterNavByPermissions() never
+ * sees it and it can't appear in newLinks. Its real access gate (permission:
+ * "business") is preserved separately in deriveRouteMap.ts's
+ * EXTRA_PERMISSION_ENTRIES, not here -- this set only affects the sidebar-link
+ * parity check below.
+ */
+const HELP_CENTER_MOVED_TO_TOPBAR = new Set([
+  "/articles",
+]);
+
 describe("filterNavByPermissions matches the old inline filtering logic exactly", () => {
   const scenarios: Array<[label: string, role: string, permissions: string[]]> = [
     ["admin", "admin", []],
@@ -250,7 +264,10 @@ describe("filterNavByPermissions matches the old inline filtering logic exactly"
     // frozen snapshot with different, role-restricted visibility. Its own equivalence
     // test below covers the real new behavior.
     const oldLinksExcludingChanges = [...oldLinks].filter(
-      (l) => !HR_PAYROLL_NOW_OPEN_TO_ALL.has(l) && !HR_OVERVIEW_LINK_REMOVED.has(l)
+      (l) =>
+        !HR_PAYROLL_NOW_OPEN_TO_ALL.has(l) &&
+        !HR_OVERVIEW_LINK_REMOVED.has(l) &&
+        !HELP_CENTER_MOVED_TO_TOPBAR.has(l)
     );
     const newLinksExcludingAdditions = [...newLinks].filter(
       (l) =>

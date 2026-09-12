@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 
     const { data, error } = await supabase
       .from('workspace_integrations')
-      .select('provider, category, connected, account_label, connected_at')
+      .select('provider, category, connected, account_label, connected_at, needs_reconnect')
       .eq('workspace_id', workspaceId)
 
     if (error) throw error;
@@ -218,6 +218,17 @@ export async function DELETE(req: NextRequest) {
       const { deleteCalendarConnection } = await import('@/lib/calendar/connections');
       await deleteCalendarConnection(workspaceId, userId, calendarProvider);
       return NextResponse.json({ success: true });
+    }
+
+    // Microsoft Teams has no connection of its own to remove (Task 70) — it's
+    // a derived status row over the 'outlook' connection. Disconnect Outlook
+    // instead; nothing here should ever flip Teams's row directly since the
+    // next outlook sync would just recompute it back to its real state anyway.
+    if (provider === 'Microsoft Teams') {
+      return NextResponse.json(
+        { error: 'Microsoft Teams uses your Outlook & Microsoft 365 connection — disconnect Outlook to remove it.' },
+        { status: 400 }
+      );
     }
 
     // Deactivate associated webhook endpoints

@@ -73,7 +73,10 @@ describe("resolveActiveNav — every inventoried dashboard route resolves to its
     ["/settings/integrations-hub", "settings"],
     ["/settings/developer", "settings"],
     ["/support", "settings"],
-    ["/articles", "help-center"],
+    // Help Center ("/articles") moved out of dashboardNav entirely -- it now
+    // lives in the top bar next to the workspace switcher, not the sidebar
+    // rail -- so it no longer resolves to any rail module. Covered separately
+    // below instead of as a module-id case here.
   ];
 
   it.each(cases)("%s resolves to module %s", (route, expectedModuleId) => {
@@ -94,5 +97,9 @@ describe("resolveActiveNav — every inventoried dashboard route resolves to its
   it("returns null for routes with no nav entry", () => {
     expect(resolveActiveNav("/auth/signin-basic")).toBeNull();
     expect(resolveActiveNav("/crm")).toBeNull();
+  });
+
+  it("/articles has no sidebar rail module (Help Center lives in the top bar instead)", () => {
+    expect(resolveActiveNav("/articles")).toBeNull();
   });
 });

@@ -26,7 +26,7 @@ export default function IntegrationsHubPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
 
-  const { isConnected, getLabel, connect, disconnect, loading, error, refetch } =
+  const { isConnected, getLabel, needsReconnect, connect, disconnect, loading, error, refetch } =
     useWorkspaceIntegrations(workspaceId)
 
   // Surface the result of a calendar OAuth round-trip (Task 62 — the connect
@@ -72,7 +72,18 @@ export default function IntegrationsHubPage() {
           description={item.desc}
           connected={isConnected(item.name)}
           accountLabel={getLabel(item.name)}
-          onConnect={() => setConnectingProvider({ provider: item.name, category: item.category })}
+          needsReconnect={needsReconnect(item.name)}
+          reconnectHint={
+            item.name === 'Microsoft Teams'
+              ? 'Your Outlook connection predates Teams meeting links — reconnect Outlook to enable them.'
+              : undefined
+          }
+          hideDisconnect={item.name === 'Microsoft Teams'}
+          onConnect={() =>
+            item.name === 'Microsoft Teams'
+              ? (window.location.href = '/api/auth/microsoft')
+              : setConnectingProvider({ provider: item.name, category: item.category })
+          }
           onDisconnect={() => disconnect(item.name)}
         />
       )

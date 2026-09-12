@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import Wrapper from '@/components/layouts/DefaultWrapper'
 import { useDashboardContext } from '@/components/layouts/DashboardProvider'
-import { Plus, X, Receipt, Landmark, Info } from 'lucide-react'
+import { Plus, X, Receipt, Landmark, Info, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import MyPayslipsView from './MyPayslipsView'
@@ -401,7 +401,7 @@ function PayrollAdminView() {
                             <div className="w-9 h-9 rounded-xl bg-dash-accent/10 flex items-center justify-center shrink-0">
                               <Receipt size={15} className="text-dash-accent" />
                             </div>
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex-1">
                               <span className="text-[13px] font-bold text-dash-text block truncate">
                                 {slip.employees?.first_name} {slip.employees?.last_name}
                               </span>
@@ -409,6 +409,14 @@ function PayrollAdminView() {
                                 <span className="text-[11px] text-dash-textMuted block truncate">{slip.employees.email}</span>
                               )}
                             </div>
+                            <DashButton
+                              variant="secondary"
+                              size="sm"
+                              className="shrink-0 gap-1.5"
+                              onClick={() => window.open(`/api/hr/payslips/${slip.id}/download`, '_blank')}
+                            >
+                              <Download size={13} /> PDF
+                            </DashButton>
                           </div>
                           <PayslipBreakdown slip={slip} variant="compact" />
                         </div>
