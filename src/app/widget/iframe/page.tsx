@@ -14,7 +14,7 @@ export default async function SupportWidgetIframePage({
   const key = searchParams.key;
   if (!key) {
     return (
-      <div className="min-h-screen bg-[#04091a] text-red-500 font-bold flex items-center justify-center p-6 text-center text-xs font-mono uppercase tracking-wider">
+      <div className="min-h-screen bg-dash-bg text-red-600 font-bold flex items-center justify-center p-6 text-center text-xs font-mono uppercase tracking-wider">
         ❌ Error: Widget Token Key is Missing
       </div>
     );
@@ -29,7 +29,7 @@ export default async function SupportWidgetIframePage({
 
   if (!settings) {
     return (
-      <div className="min-h-screen bg-[#04091a] text-red-500 font-bold flex items-center justify-center p-6 text-center text-xs font-mono uppercase tracking-wider">
+      <div className="min-h-screen bg-dash-bg text-red-600 font-bold flex items-center justify-center p-6 text-center text-xs font-mono uppercase tracking-wider">
         ❌ Error: Invalid Support Widget Token
       </div>
     );

@@ -101,13 +101,13 @@ export default async function PublishedSubdomainChildPage({
 
     if (!targetPageContent) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-bgBody dark:bg-bgBody-dark text-heading dark:text-heading-dark p-6 text-center">
-                <div className="w-16 h-16 rounded-full bg-rose-500/10 text-rose-500 flex items-center justify-center mb-4 border border-rose-500/20">
+            <div className="min-h-screen flex flex-col items-center justify-center bg-dash-bg text-dash-text p-6 text-center">
+                <div className="w-16 h-16 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center mb-4 border border-rose-200">
                     <AlertCircle className="w-8 h-8" />
                 </div>
                 <h1 className="text-2xl font-black uppercase tracking-tight mb-2">404: Sub-Route Unresolved</h1>
-                <p className="text-xs text-placeholder max-w-md">
-                    The entity path <span className="text-primary font-bold">{targetPath}</span> is not registered under the subdomain configuration <span className="text-heading font-bold">{subdomain}</span>.
+                <p className="text-xs text-dash-textMuted max-w-md">
+                    The entity path <span className="text-dash-accent font-bold">{targetPath}</span> is not registered under the subdomain configuration <span className="text-dash-text font-bold">{subdomain}</span>.
                 </p>
             </div>
         );

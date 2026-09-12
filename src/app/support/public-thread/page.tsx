@@ -15,7 +15,7 @@ export default async function PublicThreadPage({
   const ticketId = searchParams.id;
   if (!ticketId) {
     return (
-      <div className="min-h-screen bg-[#04091a] text-red-500 font-bold flex items-center justify-center p-6 text-center text-xs font-mono uppercase tracking-wider">
+      <div className="min-h-screen bg-dash-bg text-red-600 font-bold flex items-center justify-center p-6 text-center text-xs font-mono uppercase tracking-wider">
         ❌ Error: Ticket Reference ID is Missing
       </div>
     );
@@ -30,7 +30,7 @@ export default async function PublicThreadPage({
 
   if (!ticket) {
     return (
-      <div className="min-h-screen bg-[#04091a] text-red-500 font-bold flex items-center justify-center p-6 text-center text-xs font-mono uppercase tracking-wider">
+      <div className="min-h-screen bg-dash-bg text-red-600 font-bold flex items-center justify-center p-6 text-center text-xs font-mono uppercase tracking-wider">
         ❌ Error: Ticket reference not found
       </div>
     );

@@ -76,78 +76,78 @@ export default function ProfilesTab({ expert, onSave, supabase }: ProfilesTabPro
     <div className="space-y-5">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest block">Full Name</label>
-          <input 
-            type="text" 
-            value={name} 
-            onChange={e => setName(e.target.value)} 
-            className="w-full bg-[#04091a]/60 border border-white/5 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-primary transition-all font-bold" 
+          <label className="text-[9px] font-bold text-dash-textMuted uppercase tracking-widest block">Full Name</label>
+          <input
+            type="text"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            className="w-full bg-dash-bg border border-dash-border rounded-xl px-4 py-3 text-xs text-dash-text outline-none focus:border-dash-accent transition-all font-bold"
           />
         </div>
         <div className="space-y-1.5">
-          <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest block">Email Address</label>
-          <input 
-            type="email" 
-            value={email} 
-            onChange={e => setEmail(e.target.value)} 
-            className="w-full bg-[#04091a]/60 border border-white/5 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-primary transition-all font-mono" 
+          <label className="text-[9px] font-bold text-dash-textMuted uppercase tracking-widest block">Email Address</label>
+          <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            className="w-full bg-dash-bg border border-dash-border rounded-xl px-4 py-3 text-xs text-dash-text outline-none focus:border-dash-accent transition-all font-mono"
           />
         </div>
         <div className="space-y-1.5">
-          <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest block">Languages (comma-separated)</label>
-          <input 
-            type="text" 
-            value={languages} 
-            onChange={e => setLanguages(e.target.value)} 
-            placeholder="English, Spanish, Zulu" 
-            className="w-full bg-[#04091a]/60 border border-white/5 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-primary transition-all" 
+          <label className="text-[9px] font-bold text-dash-textMuted uppercase tracking-widest block">Languages (comma-separated)</label>
+          <input
+            type="text"
+            value={languages}
+            onChange={e => setLanguages(e.target.value)}
+            placeholder="English, Spanish, Zulu"
+            className="w-full bg-dash-bg border border-dash-border rounded-xl px-4 py-3 text-xs text-dash-text outline-none focus:border-dash-accent transition-all"
           />
         </div>
         <div className="space-y-1.5">
-          <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest block">Specializations (comma-separated)</label>
-          <input 
-            type="text" 
-            value={specializations} 
-            onChange={e => setSpecializations(e.target.value)} 
-            placeholder="Strategy, Tech support, CRM integration" 
-            className="w-full bg-[#04091a]/60 border border-white/5 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-primary transition-all" 
+          <label className="text-[9px] font-bold text-dash-textMuted uppercase tracking-widest block">Specializations (comma-separated)</label>
+          <input
+            type="text"
+            value={specializations}
+            onChange={e => setSpecializations(e.target.value)}
+            placeholder="Strategy, Tech support, CRM integration"
+            className="w-full bg-dash-bg border border-dash-border rounded-xl px-4 py-3 text-xs text-dash-text outline-none focus:border-dash-accent transition-all"
           />
         </div>
         <div className="space-y-1.5">
-          <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest block">Hourly Advisory Rate</label>
+          <label className="text-[9px] font-bold text-dash-textMuted uppercase tracking-widest block">Hourly Advisory Rate</label>
           <div className="relative">
-            <DollarSign size={12} className="absolute left-4 top-4 text-white/40" />
-            <input 
-              type="number" 
-              value={hourlyRate} 
-              onChange={e => setHourlyRate(parseFloat(e.target.value) || 0)} 
-              className="w-full bg-[#04091a]/60 border border-white/5 rounded-xl pl-9 pr-4 py-3 text-xs text-white outline-none focus:border-primary transition-all font-mono font-bold" 
+            <DollarSign size={12} className="absolute left-4 top-4 text-dash-textMuted" />
+            <input
+              type="number"
+              value={hourlyRate}
+              onChange={e => setHourlyRate(parseFloat(e.target.value) || 0)}
+              className="w-full bg-dash-bg border border-dash-border rounded-xl pl-9 pr-4 py-3 text-xs text-dash-text outline-none focus:border-dash-accent transition-all font-mono font-bold"
             />
           </div>
         </div>
         <div className="space-y-1.5">
-          <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest block">Currency Code</label>
-          <input 
-            type="text" 
-            value={currency} 
-            onChange={e => setCurrency(e.target.value)} 
-            className="w-full bg-[#04091a]/60 border border-white/5 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-primary transition-all font-mono uppercase font-bold" 
+          <label className="text-[9px] font-bold text-dash-textMuted uppercase tracking-widest block">Currency Code</label>
+          <input
+            type="text"
+            value={currency}
+            onChange={e => setCurrency(e.target.value)}
+            className="w-full bg-dash-bg border border-dash-border rounded-xl px-4 py-3 text-xs text-dash-text outline-none focus:border-dash-accent transition-all font-mono uppercase font-bold"
           />
         </div>
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest block">Professional Biography</label>
-        <textarea 
-          rows={4} 
-          value={bio} 
-          onChange={e => setBio(e.target.value)} 
-          className="w-full bg-[#04091a]/60 border border-white/5 rounded-xl px-4 py-3.5 text-xs text-white outline-none focus:border-primary transition-all leading-relaxed" 
+        <label className="text-[9px] font-bold text-dash-textMuted uppercase tracking-widest block">Professional Biography</label>
+        <textarea
+          rows={4}
+          value={bio}
+          onChange={e => setBio(e.target.value)}
+          className="w-full bg-dash-bg border border-dash-border rounded-xl px-4 py-3.5 text-xs text-dash-text outline-none focus:border-dash-accent transition-all leading-relaxed"
         />
       </div>
 
       <div className="pt-2">
-        <Button onClick={handleSaveProfile} disabled={savingProfile} className="bg-primary hover:bg-primary/90 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 px-6 flex items-center gap-1.5">
+        <Button onClick={handleSaveProfile} disabled={savingProfile} className="bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 px-6 flex items-center gap-1.5">
           <Check size={14} /> {savingProfile ? 'Saving...' : 'Save Profile Settings'}
         </Button>
       </div>

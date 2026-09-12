@@ -197,7 +197,7 @@ export const Form = (allProps: FormProps & any) => {
          type="checkbox"
          id={field.id}
          required={field.required}
-         className="w-4 h-4 rounded accent-primary bg-muted border-white/10"
+         className="w-4 h-4 rounded accent-primary bg-muted border-dash-border"
          checked={formValues[field.id] || false}
          onChange={(e) => handleInputChange(field.id, e.target.checked)}
         />

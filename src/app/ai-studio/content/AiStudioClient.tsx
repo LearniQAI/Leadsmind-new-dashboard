@@ -39,7 +39,7 @@ export default function AiStudioClient() {
     setGenerating(true);
     try {
       const brief = `Generate a structured document draft for ${productFocus} targeted to ${targetSegment}. Tone: ${tone}. Language: ${language}. Include heading, introduction, problem definition, and solution overview.`;
-      
+
       const response = await fetch('/api/v1/ai/content/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -113,7 +113,7 @@ export default function AiStudioClient() {
       const { saveTextDraftToMedia } = await import('@/app/actions/operations');
       const compiledContent = blocks.map(b => b.text).join('\n\n');
       const docName = `AI Draft - ${new Date().toLocaleDateString()}`;
-      
+
       const res = await saveTextDraftToMedia(docName, compiledContent);
       if (res.error) {
         toast.error(`Save failed: ${res.error}`);
@@ -132,22 +132,22 @@ export default function AiStudioClient() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#04091a] text-white">
-      
+    <div className="flex flex-col min-h-screen bg-dash-bg text-dash-text">
+
       {/* Sticky Studio Topbar */}
-      <div className="h-14 bg-[#080f28] border-b border-white/5 flex items-center justify-between px-6 sticky top-0 z-50">
+      <div className="h-14 bg-white border-b border-dash-border flex items-center justify-between px-6 sticky top-0 z-50">
         <div className="flex items-center gap-3">
-          <button 
-            onClick={() => router.push('/ai-studio')} 
-            className="w-8 h-8 rounded-lg bg-white/5 border border-white/5 flex items-center justify-center text-[#4a5a82] hover:text-white hover:bg-white/10 transition-all"
+          <button
+            onClick={() => router.push('/ai-studio')}
+            className="w-8 h-8 rounded-lg bg-dash-surface border border-dash-border flex items-center justify-center text-dash-textMuted hover:text-dash-text hover:bg-dash-border/40 transition-all"
           >
             <ArrowLeft size={16} />
           </button>
           <div>
-            <h1 className="text-[14px] font-space font-bold uppercase tracking-wider text-t1">
-              Content <span className="text-[#3b82f6]">Studio</span>
+            <h1 className="text-[14px] font-space font-bold uppercase tracking-wider text-dash-text">
+              Content <span className="text-dash-accent">Studio</span>
             </h1>
-            <p className="text-[9px] text-[#4a5a82] uppercase font-bold tracking-widest leading-none mt-0.5">
+            <p className="text-[9px] text-dash-textMuted uppercase font-bold tracking-widest leading-none mt-0.5">
               Distraction-Free Long-Form Production
             </p>
           </div>
@@ -156,54 +156,54 @@ export default function AiStudioClient() {
         <button
           onClick={handleSaveDocument}
           disabled={saving}
-          className="h-9 px-5 rounded-lg bg-[#2563eb] hover:bg-[#2563eb]/90 disabled:opacity-50 text-white text-[12px] font-bold flex items-center gap-2 transition-all shadow-lg shadow-[#2563eb]/20"
+          className="h-9 px-5 rounded-lg bg-dash-accent hover:bg-dash-accent/90 disabled:opacity-50 text-white text-[12px] font-bold flex items-center gap-2 transition-all shadow-sm"
         >
-          {saving ? <i className="fa-solid fa-spinner animate-spin text-[12px]"></i> : <Save size={13} />}
+          {saving ? <RefreshCw size={13} className="animate-spin" /> : <Save size={13} />}
           Save Asset
         </button>
       </div>
 
       {/* Main Studio Split Layout */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        
+
         {/* Left Control Panel: Prompt Design (400px) */}
-        <div className="w-full lg:w-[400px] shrink-0 border-r border-white/5 bg-[#080f28] p-6 space-y-6 overflow-y-auto common-scrollbar">
+        <div className="w-full lg:w-[400px] shrink-0 border-r border-dash-border bg-white p-6 space-y-6 overflow-y-auto common-scrollbar">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-accentg text-accent2 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-dash-accent/10 text-dash-accent flex items-center justify-center">
               <Wand2 size={16} />
             </div>
             <div>
-              <h4 className="text-[13px] font-space font-bold text-t1 uppercase">Prompt Design Panel</h4>
-              <p className="text-[10px] text-t3 uppercase font-medium tracking-wide">Configure document outlines</p>
+              <h4 className="text-[13px] font-space font-bold text-dash-text uppercase">Prompt Design Panel</h4>
+              <p className="text-[10px] text-dash-textMuted uppercase font-medium tracking-wide">Configure document outlines</p>
             </div>
           </div>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-[#4a5a82] block">Core Product Focus Area</label>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-dash-textMuted block">Core Product Focus Area</label>
               <input
                 type="text"
                 value={productFocus}
                 onChange={(e) => setProductFocus(e.target.value)}
                 placeholder="e.g. Enterprise Fleet SaaS"
-                className="w-full bg-[#04091a] border border-white/5 rounded-xl px-4 py-3 text-t1 focus:border-accent/50 transition-all outline-none text-sm font-semibold"
+                className="w-full bg-dash-surface border border-dash-border rounded-xl px-4 py-3 text-dash-text focus:border-dash-accent/50 transition-all outline-none text-sm font-semibold"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-[#4a5a82] block">Target Segment Demographics</label>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-dash-textMuted block">Target Segment Demographics</label>
               <input
                 type="text"
                 value={targetSegment}
                 onChange={(e) => setTargetSegment(e.target.value)}
                 placeholder="e.g. Transport Operators in GP"
-                className="w-full bg-[#04091a] border border-white/5 rounded-xl px-4 py-3 text-t1 focus:border-accent/50 transition-all outline-none text-sm font-semibold"
+                className="w-full bg-dash-surface border border-dash-border rounded-xl px-4 py-3 text-dash-text focus:border-dash-accent/50 transition-all outline-none text-sm font-semibold"
               />
             </div>
 
             {/* Tone strategy radios */}
             <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-[#4a5a82] block">Select Tone Strategy Profile</label>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-dash-textMuted block">Select Tone Strategy Profile</label>
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { id: 'Authoritative', label: '⚖️ Authoritative' },
@@ -211,18 +211,18 @@ export default function AiStudioClient() {
                   { id: 'Bold', label: '🔥 Bold' },
                   { id: 'Persuasive', label: '🎯 Persuasive' }
                 ].map(t => (
-                  <label 
+                  <label
                     key={t.id}
                     className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-xs font-bold cursor-pointer transition-all ${
-                      tone === t.id 
-                        ? 'bg-accentg border-accent/40 text-accent2 shadow-[0_0_12px_rgba(37,99,235,0.15)]' 
-                        : 'bg-[#04091a] border-white/5 text-[#94a3c8] hover:border-white/10 hover:text-white'
+                      tone === t.id
+                        ? 'bg-dash-accent/10 border-dash-accent/40 text-dash-accent shadow-sm'
+                        : 'bg-dash-surface border-dash-border text-dash-textMuted hover:border-dash-text/20 hover:text-dash-text'
                     }`}
                   >
-                    <input 
-                      type="radio" 
-                      name="tone" 
-                      value={t.id} 
+                    <input
+                      type="radio"
+                      name="tone"
+                      value={t.id}
                       checked={tone === t.id}
                       onChange={() => setTone(t.id)}
                       className="hidden"
@@ -235,25 +235,25 @@ export default function AiStudioClient() {
 
             {/* Output Language radios */}
             <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-[#4a5a82] block">Output Language Base Preset</label>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-dash-textMuted block">Output Language Base Preset</label>
               <div className="grid grid-cols-3 gap-2">
                 {[
                   { id: 'en', label: 'English' },
                   { id: 'zu', label: 'Zulu' },
                   { id: 'xh', label: 'Xhosa' }
                 ].map(l => (
-                  <label 
+                  <label
                     key={l.id}
                     className={`flex items-center justify-center py-2.5 rounded-lg border text-xs font-bold cursor-pointer transition-all ${
-                      language === l.id 
-                        ? 'bg-[#8b5cf6]/10 border-[#8b5cf6]/40 text-[#a78bfa] shadow-[0_0_12px_rgba(139,92,246,0.15)]' 
-                        : 'bg-[#04091a] border-white/5 text-[#94a3c8] hover:border-white/10 hover:text-white'
+                      language === l.id
+                        ? 'bg-purple-50 border-purple-300 text-purple-700 shadow-sm'
+                        : 'bg-dash-surface border-dash-border text-dash-textMuted hover:border-dash-text/20 hover:text-dash-text'
                     }`}
                   >
-                    <input 
-                      type="radio" 
-                      name="language" 
-                      value={l.id} 
+                    <input
+                      type="radio"
+                      name="language"
+                      value={l.id}
                       checked={language === l.id}
                       onChange={() => setLanguage(l.id)}
                       className="hidden"
@@ -267,7 +267,7 @@ export default function AiStudioClient() {
             <button
               onClick={handleGenerateDraft}
               disabled={generating}
-              className="w-full bg-accent hover:bg-accent2 text-white font-black uppercase tracking-widest text-[11px] h-11 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-accent/20 transition-all disabled:opacity-50"
+              className="w-full bg-dash-accent hover:bg-dash-accent/90 text-white font-black uppercase tracking-widest text-[11px] h-11 px-4 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-50"
             >
               {generating ? (
                 <>
@@ -285,10 +285,10 @@ export default function AiStudioClient() {
         </div>
 
         {/* Right Panel: Document Surface (flex-1) */}
-        <div className="flex-1 bg-[#04091a] p-8 overflow-y-auto common-scrollbar flex flex-col items-center">
-          <div className="w-full max-w-2xl bg-[#080f28]/70 border border-white/5 rounded-3xl p-8 min-h-[580px] shadow-2xl relative">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-[#2563eb]/5 rounded-full blur-3xl pointer-events-none" />
-            
+        <div className="flex-1 bg-dash-bg p-8 overflow-y-auto common-scrollbar flex flex-col items-center">
+          <div className="w-full max-w-2xl bg-white border border-dash-border rounded-3xl p-8 min-h-[580px] shadow-sm relative">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-dash-accent/5 rounded-full blur-3xl pointer-events-none" />
+
             <div className="space-y-4">
               {blocks.map((block) => {
                 const isHovered = hoveredBlockId === block.id;
@@ -300,10 +300,10 @@ export default function AiStudioClient() {
                     onMouseEnter={() => setHoveredBlockId(block.id)}
                     onMouseLeave={() => setHoveredBlockId(null)}
                     className={`p-4 rounded-xl transition-all relative group ${
-                      isEditing 
-                        ? 'bg-[#0c1535] border border-accent/40 shadow-xl' 
-                        : isHovered 
-                          ? 'bg-[#0c1535]/50 border border-white/5' 
+                      isEditing
+                        ? 'bg-dash-accent/5 border border-dash-accent/40 shadow-sm'
+                        : isHovered
+                          ? 'bg-dash-surface border border-dash-border'
                           : 'border border-transparent'
                     }`}
                   >
@@ -313,12 +313,12 @@ export default function AiStudioClient() {
                           rows={3}
                           value={editingText}
                           onChange={(e) => setEditingText(e.target.value)}
-                          className="w-full bg-[#04091a] border border-white/5 rounded-lg p-2.5 text-t1 text-sm outline-none focus:border-accent"
+                          className="w-full bg-white border border-dash-border rounded-lg p-2.5 text-dash-text text-sm outline-none focus:border-dash-accent"
                         />
                         <div className="flex justify-end gap-2">
                           <button
                             onClick={() => setEditingBlockId(null)}
-                            className="px-3 py-1 bg-white/5 border border-white/5 hover:bg-white/10 rounded-lg text-xs font-bold text-t2"
+                            className="px-3 py-1 bg-dash-surface border border-dash-border hover:bg-dash-border/40 rounded-lg text-xs font-bold text-dash-textMuted"
                           >
                             Cancel
                           </button>
@@ -327,19 +327,19 @@ export default function AiStudioClient() {
                               updateBlockText(block.id, editingText);
                               setEditingBlockId(null);
                             }}
-                            className="px-3 py-1 bg-accent hover:bg-accent2 text-white rounded-lg text-xs font-bold flex items-center gap-1"
+                            className="px-3 py-1 bg-dash-accent hover:bg-dash-accent/90 text-white rounded-lg text-xs font-bold flex items-center gap-1"
                           >
                             <Check size={12} /> Save
                           </button>
                         </div>
                       </div>
                     ) : (
-                      <div 
+                      <div
                         onClick={() => {
                           setEditingBlockId(block.id);
                           setEditingText(block.text);
                         }}
-                        className={`text-t1 text-sm font-medium leading-relaxed cursor-text select-text ${
+                        className={`text-dash-text text-sm font-medium leading-relaxed cursor-text select-text ${
                           block.text.startsWith('#') ? 'font-space font-extrabold text-[18px]' : ''
                         }`}
                       >
@@ -349,10 +349,10 @@ export default function AiStudioClient() {
 
                     {/* Inline Hover Action Toolbar */}
                     {isHovered && !isEditing && (
-                      <div className="absolute right-3 top-[-14px] bg-[#0c1535] border border-white/10 p-1 rounded-lg flex items-center gap-1 shadow-2xl z-30 animate-in fade-in zoom-in-95 duration-100">
+                      <div className="absolute right-3 top-[-14px] bg-white border border-dash-border p-1 rounded-lg flex items-center gap-1 shadow-lg z-30 animate-in fade-in zoom-in-95 duration-100">
                         <button
                           onClick={(e) => { e.stopPropagation(); handleBlockImprovement(block.id, 'persuade'); }}
-                          className="px-2 py-1 rounded hover:bg-white/5 text-[9px] font-black uppercase text-violet-400 flex items-center gap-1"
+                          className="px-2 py-1 rounded hover:bg-dash-surface text-[9px] font-black uppercase text-purple-600 flex items-center gap-1"
                           title="problem-agitation-solution rewrite"
                         >
                           <Wand2 size={9} />
@@ -360,14 +360,14 @@ export default function AiStudioClient() {
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleBlockImprovement(block.id, 'shorten'); }}
-                          className="px-2 py-1 rounded hover:bg-white/5 text-[9px] font-black uppercase text-amber-400 flex items-center gap-1"
+                          className="px-2 py-1 rounded hover:bg-dash-surface text-[9px] font-black uppercase text-amber-600 flex items-center gap-1"
                         >
                           <Scissors size={9} />
                           Shorten
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleBlockImprovement(block.id, 'translate'); }}
-                          className="px-2 py-1 rounded hover:bg-white/5 text-[9px] font-black uppercase text-sky-400 flex items-center gap-1"
+                          className="px-2 py-1 rounded hover:bg-dash-surface text-[9px] font-black uppercase text-sky-600 flex items-center gap-1"
                         >
                           <Languages size={9} />
                           Translate
@@ -386,7 +386,7 @@ export default function AiStudioClient() {
                 setEditingBlockId(newId);
                 setEditingText('Click to write a new paragraph text...');
               }}
-              className="mt-6 w-full py-3 border border-dashed border-white/10 hover:border-accent/40 rounded-xl bg-white/[0.01] hover:bg-accentg/5 text-[11px] font-bold text-[#4a5a82] hover:text-accent2 transition-all flex items-center justify-center gap-2"
+              className="mt-6 w-full py-3 border border-dashed border-dash-border hover:border-dash-accent/40 rounded-xl bg-dash-surface/40 hover:bg-dash-accent/5 text-[11px] font-bold text-dash-textMuted hover:text-dash-accent transition-all flex items-center justify-center gap-2"
             >
               <PlusCircle size={14} />
               Add Narrative Copy Block

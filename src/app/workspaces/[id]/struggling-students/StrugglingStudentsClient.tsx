@@ -17,10 +17,10 @@ export default function StrugglingStudentsClient({ initialScores, workspaceId }:
   const [recalculating, setRecalculating] = useState(false);
 
   const getRiskColor = (score: number) => {
-    if (score >= 80) return { text: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20', label: 'Critical Risk (Red)' };
-    if (score >= 60) return { text: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20', label: 'High Risk (Orange)' };
-    if (score >= 40) return { text: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', label: 'Moderate Risk (Amber)' };
-    return { text: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', label: 'Low Risk' };
+    if (score >= 80) return { text: 'text-rose-600', bg: 'bg-rose-100', border: 'border-rose-200', label: 'Critical Risk (Red)' };
+    if (score >= 60) return { text: 'text-orange-600', bg: 'bg-orange-100', border: 'border-orange-200', label: 'High Risk (Orange)' };
+    if (score >= 40) return { text: 'text-amber-600', bg: 'bg-amber-100', border: 'border-amber-200', label: 'Moderate Risk (Amber)' };
+    return { text: 'text-emerald-600', bg: 'bg-emerald-100', border: 'border-emerald-200', label: 'Low Risk' };
   };
 
   const handleRecalculate = async (contactId: string, courseId: string) => {
@@ -66,37 +66,37 @@ export default function StrugglingStudentsClient({ initialScores, workspaceId }:
     <div className="space-y-6">
       {/* Page Title */}
       <div>
-        <span className="text-[10px] font-black uppercase tracking-[0.25em] text-primary">Student Telemetry Control</span>
-        <h1 className="text-3xl font-space-grotesk font-black uppercase tracking-tighter text-white mt-1.5">
-          Struggle <span className="text-[#3b82f6]">Analytics</span>
+        <span className="text-[10px] font-black uppercase tracking-[0.25em] text-dash-accent">Student Telemetry Control</span>
+        <h1 className="text-3xl font-space-grotesk font-black uppercase tracking-tighter text-dash-text mt-1.5">
+          Struggle <span className="text-blue-500">Analytics</span>
         </h1>
-        <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mt-2">
+        <p className="text-[10px] text-dash-textMuted font-bold uppercase tracking-widest mt-2">
           Monitor student learning bottlenecks, quiz performance margins, and time allocation anomalies.
         </p>
       </div>
 
       {/* Toolbar filters */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-[#080f28] border border-white/5 p-4 rounded-2xl">
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-dash-surface border border-dash-border p-4 rounded-2xl">
         <div className="relative w-full md:w-80">
-          <Search size={14} className="absolute left-3.5 top-3 text-white/30" />
+          <Search size={14} className="absolute left-3.5 top-3 text-dash-textMuted" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search student name or email..."
-            className="w-full bg-[#04091a]/60 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-xs text-white outline-none focus:border-primary transition-all"
+            className="w-full bg-dash-bg border border-dash-border rounded-xl pl-10 pr-4 py-2 text-xs text-dash-text outline-none focus:border-dash-accent transition-all"
           />
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold text-white/30 uppercase tracking-wider font-mono">Risk Filter:</span>
-          <div className="flex bg-[#04091a]/60 border border-white/5 rounded-xl p-1 gap-1">
+          <span className="text-[10px] font-bold text-dash-textMuted uppercase tracking-wider font-mono">Risk Filter:</span>
+          <div className="flex bg-dash-bg border border-dash-border rounded-xl p-1 gap-1">
             {(['all', 'red', 'orange', 'amber'] as const).map((risk) => (
               <button
                 key={risk}
                 onClick={() => setFilterRisk(risk)}
                 className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
-                  filterRisk === risk ? 'bg-primary text-white' : 'text-white/40 hover:text-white/60'
+                  filterRisk === risk ? 'bg-dash-accent text-white' : 'text-dash-textMuted hover:text-dash-text'
                 }`}
               >
                 {risk}
@@ -108,12 +108,12 @@ export default function StrugglingStudentsClient({ initialScores, workspaceId }:
 
       {/* Main Panel layout */}
       {filteredScores.length === 0 ? (
-        <div className="py-20 bg-[#080f28] border border-white/5 rounded-3xl text-center space-y-4">
-          <ShieldAlert className="w-10 h-10 text-white/20 mx-auto animate-pulse" />
-          <h3 className="text-base font-space-grotesk font-black text-white/50 uppercase tracking-widest">
+        <div className="py-20 bg-dash-surface border border-dash-border rounded-3xl text-center space-y-4">
+          <ShieldAlert className="w-10 h-10 text-dash-textMuted mx-auto animate-pulse" />
+          <h3 className="text-base font-space-grotesk font-black text-dash-textMuted uppercase tracking-widest">
             No Struggling Profiles Detected
           </h3>
-          <p className="text-[10px] text-white/30 uppercase max-w-sm mx-auto leading-relaxed">
+          <p className="text-[10px] text-dash-textMuted uppercase max-w-sm mx-auto leading-relaxed">
             All students are currently progressing cleanly within standard course telemetry parameters.
           </p>
         </div>
@@ -131,16 +131,16 @@ export default function StrugglingStudentsClient({ initialScores, workspaceId }:
                   onClick={() => setSelectedScore(s)}
                   className={`p-4 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between gap-3 select-none ${
                     isSelected
-                      ? 'bg-primary/5 border-primary shadow-xl shadow-primary/5'
-                      : 'bg-[#080f28]/60 border-white/5 hover:bg-[#080f28]/80 hover:border-white/10'
+                      ? 'bg-dash-accent/5 border-dash-accent shadow-md'
+                      : 'bg-dash-surface border-dash-border hover:border-dash-accent/30'
                   }`}
                 >
                   <div className="flex justify-between items-start gap-3">
-                    <div>
-                      <h4 className="text-sm font-bold text-white truncate max-w-[180px]">
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-bold text-dash-text truncate max-w-[180px]">
                         {s.contact?.first_name || 'Student'} {s.contact?.last_name || ''}
                       </h4>
-                      <span className="text-[10px] text-white/40 font-mono block truncate max-w-[180px] mt-0.5">
+                      <span className="text-[10px] text-dash-textMuted font-mono block truncate max-w-[180px] mt-0.5">
                         {s.contact?.email}
                       </span>
                     </div>
@@ -149,11 +149,11 @@ export default function StrugglingStudentsClient({ initialScores, workspaceId }:
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-white/5 pt-2 mt-1">
-                    <span className="text-[9px] text-white/30 uppercase font-bold tracking-wider truncate max-w-[160px]">
+                  <div className="flex items-center justify-between border-t border-dash-border pt-2 mt-1">
+                    <span className="text-[9px] text-dash-textMuted uppercase font-bold tracking-wider truncate max-w-[160px]">
                       {s.course?.title}
                     </span>
-                    <ChevronRight size={13} className="text-white/30" />
+                    <ChevronRight size={13} className="text-dash-textMuted" />
                   </div>
                 </div>
               );
@@ -161,23 +161,23 @@ export default function StrugglingStudentsClient({ initialScores, workspaceId }:
           </div>
 
           {/* Detailed Telemetry Report View */}
-          <div className="lg:col-span-2 bg-[#080f28]/60 border border-white/5 rounded-3xl p-6 relative overflow-hidden flex flex-col justify-between min-h-[500px]">
+          <div className="lg:col-span-2 bg-dash-surface border border-dash-border rounded-3xl p-6 relative overflow-hidden flex flex-col justify-between min-h-[500px]">
             {selectedScore ? (
               <div className="space-y-6">
                 {/* Header Profile */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-5">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-dash-border pb-5">
                   <div>
-                    <h3 className="text-xl font-extrabold text-white">
+                    <h3 className="text-xl font-extrabold text-dash-text">
                       {selectedScore.contact?.first_name || 'Student'} {selectedScore.contact?.last_name || ''}
                     </h3>
-                    <span className="text-xs text-white/50 block font-mono mt-0.5">{selectedScore.contact?.email}</span>
+                    <span className="text-xs text-dash-textMuted block font-mono mt-0.5">{selectedScore.contact?.email}</span>
                   </div>
 
                   <div className="flex items-center gap-3 shrink-0">
                     <Button
                       onClick={() => handleRecalculate(selectedScore.contact?.id, selectedScore.course?.id)}
                       disabled={recalculating}
-                      className="bg-white/5 border border-white/5 hover:bg-white/10 text-white rounded-xl text-[10px] font-black uppercase tracking-wider h-10 px-4 flex items-center gap-1.5 active:scale-95 transition-all"
+                      className="bg-dash-bg border border-dash-border hover:bg-dash-border/40 text-dash-text rounded-xl text-[10px] font-black uppercase tracking-wider h-10 px-4 flex items-center gap-1.5 active:scale-95 transition-all"
                     >
                       <RotateCw size={12} className={recalculating ? 'animate-spin' : ''} />
                       Recalculate
@@ -187,60 +187,60 @@ export default function StrugglingStudentsClient({ initialScores, workspaceId }:
 
                 {/* Score breakdown metrics grids */}
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                  <div className="bg-[#04091a]/40 border border-white/5 p-3 rounded-xl text-center space-y-1">
-                    <AlertTriangle className="text-red-400 mx-auto" size={14} />
-                    <span className="text-[9px] text-white/40 uppercase block tracking-wider font-bold">Quiz Failure</span>
-                    <span className="text-sm font-black text-white font-mono">{selectedScore.quiz_failure_rate_points}/30</span>
+                  <div className="bg-dash-bg border border-dash-border p-3 rounded-xl text-center space-y-1">
+                    <AlertTriangle className="text-rose-500 mx-auto" size={14} />
+                    <span className="text-[9px] text-dash-textMuted uppercase block tracking-wider font-bold">Quiz Failure</span>
+                    <span className="text-sm font-black text-dash-text font-mono">{selectedScore.quiz_failure_rate_points}/30</span>
                   </div>
-                  <div className="bg-[#04091a]/40 border border-white/5 p-3 rounded-xl text-center space-y-1">
-                    <TrendingDown className="text-orange-400 mx-auto" size={14} />
-                    <span className="text-[9px] text-white/40 uppercase block tracking-wider font-bold">Score Vector</span>
-                    <span className="text-sm font-black text-white font-mono">{selectedScore.score_vector_points}/25</span>
+                  <div className="bg-dash-bg border border-dash-border p-3 rounded-xl text-center space-y-1">
+                    <TrendingDown className="text-orange-500 mx-auto" size={14} />
+                    <span className="text-[9px] text-dash-textMuted uppercase block tracking-wider font-bold">Score Vector</span>
+                    <span className="text-sm font-black text-dash-text font-mono">{selectedScore.score_vector_points}/25</span>
                   </div>
-                  <div className="bg-[#04091a]/40 border border-white/5 p-3 rounded-xl text-center space-y-1">
-                    <ShieldAlert className="text-amber-400 mx-auto" size={14} />
-                    <span className="text-[9px] text-white/40 uppercase block tracking-wider font-bold">Delta Margin</span>
-                    <span className="text-sm font-black text-white font-mono">{selectedScore.passing_delta_points}/20</span>
+                  <div className="bg-dash-bg border border-dash-border p-3 rounded-xl text-center space-y-1">
+                    <ShieldAlert className="text-amber-500 mx-auto" size={14} />
+                    <span className="text-[9px] text-dash-textMuted uppercase block tracking-wider font-bold">Delta Margin</span>
+                    <span className="text-sm font-black text-dash-text font-mono">{selectedScore.passing_delta_points}/20</span>
                   </div>
-                  <div className="bg-[#04091a]/40 border border-white/5 p-3 rounded-xl text-center space-y-1">
-                    <Timer className="text-blue-400 mx-auto" size={14} />
-                    <span className="text-[9px] text-white/40 uppercase block tracking-wider font-bold">Time Multiplier</span>
-                    <span className="text-sm font-black text-white font-mono">{selectedScore.time_multiplier_points}/15</span>
+                  <div className="bg-dash-bg border border-dash-border p-3 rounded-xl text-center space-y-1">
+                    <Timer className="text-blue-500 mx-auto" size={14} />
+                    <span className="text-[9px] text-dash-textMuted uppercase block tracking-wider font-bold">Time Multiplier</span>
+                    <span className="text-sm font-black text-dash-text font-mono">{selectedScore.time_multiplier_points}/15</span>
                   </div>
-                  <div className="bg-[#04091a]/40 border border-white/5 p-3 rounded-xl text-center space-y-1 col-span-2 md:col-span-1">
-                    <Activity className="text-purple-400 mx-auto" size={14} />
-                    <span className="text-[9px] text-white/40 uppercase block tracking-wider font-bold">Dropout/Idle</span>
-                    <span className="text-sm font-black text-white font-mono">{selectedScore.dropout_trends_points}/10</span>
+                  <div className="bg-dash-bg border border-dash-border p-3 rounded-xl text-center space-y-1 col-span-2 md:col-span-1">
+                    <Activity className="text-purple-500 mx-auto" size={14} />
+                    <span className="text-[9px] text-dash-textMuted uppercase block tracking-wider font-bold">Dropout/Idle</span>
+                    <span className="text-sm font-black text-dash-text font-mono">{selectedScore.dropout_trends_points}/10</span>
                   </div>
                 </div>
 
                 {/* Reasons logs context */}
                 <div className="space-y-3">
-                  <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest font-mono">Performance drop-off reasons:</span>
-                  <div className="space-y-2 bg-[#04091a]/20 border border-white/5 rounded-2xl p-4 max-h-[200px] overflow-y-auto">
+                  <span className="text-[10px] font-bold text-dash-textMuted uppercase tracking-widest font-mono">Performance drop-off reasons:</span>
+                  <div className="space-y-2 bg-dash-bg border border-dash-border rounded-2xl p-4 max-h-[200px] overflow-y-auto">
                     {selectedScore.reasons && selectedScore.reasons.length > 0 ? (
                       selectedScore.reasons.map((reason: string, rIdx: number) => (
-                        <div key={rIdx} className="flex gap-2.5 items-start text-xs text-white/80 leading-relaxed font-body">
-                          <span className="text-primary mt-1">•</span>
+                        <div key={rIdx} className="flex gap-2.5 items-start text-xs text-dash-text leading-relaxed font-body">
+                          <span className="text-dash-accent mt-1">•</span>
                           <span>{reason}</span>
                         </div>
                       ))
                     ) : (
-                      <span className="text-xs text-white/30 italic block py-4">No warning metrics are currently flagged.</span>
+                      <span className="text-xs text-dash-textMuted italic block py-4">No warning metrics are currently flagged.</span>
                     )}
                   </div>
                 </div>
 
-                <div className="text-[10px] font-mono text-white/30 uppercase flex justify-between pt-4">
+                <div className="text-[10px] font-mono text-dash-textMuted uppercase flex justify-between pt-4">
                   <span>Course: {selectedScore.course?.title}</span>
                   <span>Evaluated: {new Date(selectedScore.updated_at).toLocaleString()}</span>
                 </div>
               </div>
             ) : (
               <div className="flex-1 flex flex-col justify-center items-center text-center p-12 space-y-3">
-                <Clock size={32} className="text-white/20" />
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider">Select Student Profile</h3>
-                <p className="text-[10px] text-white/40 max-w-xs leading-relaxed">
+                <Clock size={32} className="text-dash-textMuted" />
+                <h3 className="text-xs font-bold text-dash-text uppercase tracking-wider">Select Student Profile</h3>
+                <p className="text-[10px] text-dash-textMuted max-w-xs leading-relaxed">
                   Choose a student risk card from the left panel index to read the aggregated detailed struggle diagnostic report.
                 </p>
               </div>

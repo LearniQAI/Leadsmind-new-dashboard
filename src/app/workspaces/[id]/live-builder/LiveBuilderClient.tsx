@@ -117,26 +117,26 @@ export default function LiveBuilderClient({ workspaceId, experts, courses }: Liv
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center border-b border-white/5 pb-4">
+      <div className="flex justify-between items-center border-b border-dash-border pb-4 flex-wrap gap-4">
         <div>
-          <span className="text-[10px] font-black uppercase tracking-[0.25em] text-primary">Live Experience Designer</span>
-          <h1 className="text-3xl font-space-grotesk font-black uppercase tracking-tighter text-white mt-1.5">
-            Scheduling <span className="text-[#3b82f6]">Page Builder</span>
+          <span className="text-[10px] font-black uppercase tracking-[0.25em] text-dash-accent">Live Experience Designer</span>
+          <h1 className="text-3xl font-space-grotesk font-black uppercase tracking-tighter text-dash-text mt-1.5">
+            Scheduling <span className="text-blue-500">Page Builder</span>
           </h1>
         </div>
 
         <div className="flex items-center gap-3">
-          <select 
+          <select
             value={selectedCourseId}
             onChange={e => setSelectedCourseId(e.target.value)}
-            className="bg-[#080f28] border border-white/5 rounded-xl px-3.5 py-2 text-xs text-white outline-none"
+            className="bg-dash-surface border border-dash-border rounded-xl px-3.5 py-2 text-xs text-dash-text outline-none"
           >
             {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
           </select>
 
-          <button 
+          <button
             onClick={handleSavePage}
-            className="bg-primary hover:bg-primary/90 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 px-5 flex items-center gap-1.5 shadow-lg shadow-primary/20"
+            className="bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 px-5 flex items-center gap-1.5 shadow-lg shadow-dash-accent/20"
           >
             <Save size={13} /> Save Layout Template
           </button>
@@ -148,27 +148,27 @@ export default function LiveBuilderClient({ workspaceId, experts, courses }: Liv
         {/* Left Side: Blocks Manager & Content Editors */}
         <div className="lg:col-span-5 space-y-6">
           {/* Blocks List */}
-          <div className="bg-[#080f28]/60 border border-white/5 rounded-3xl p-5 space-y-3.5">
-            <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest border-b border-white/5 pb-2">Layout Blocks</h3>
+          <div className="bg-dash-surface border border-dash-border rounded-3xl p-5 space-y-3.5">
+            <h3 className="text-[10px] font-bold text-dash-textMuted uppercase tracking-widest border-b border-dash-border pb-2">Layout Blocks</h3>
             <div className="space-y-2">
               {blocks.map((b, idx) => (
-                <div 
+                <div
                   key={b.id}
                   onClick={() => setSelectedBlockId(b.id)}
                   className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                    selectedBlockId === b.id 
-                      ? 'bg-primary/5 border-primary' 
-                      : 'bg-[#04091a]/40 border-white/5 hover:bg-[#04091a]/80'
+                    selectedBlockId === b.id
+                      ? 'bg-dash-accent/5 border-dash-accent'
+                      : 'bg-dash-bg border-dash-border hover:border-dash-accent/30'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-white/35 font-mono">#{idx+1}</span>
-                    <span className="text-xs font-bold text-white truncate max-w-[180px]">{b.title}</span>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-xs text-dash-textMuted font-mono">#{idx+1}</span>
+                    <span className="text-xs font-bold text-dash-text truncate max-w-[180px]">{b.title}</span>
                   </div>
-                  <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-                    <button onClick={() => moveBlock(idx, 'up')} disabled={idx === 0} className="p-1 text-white/30 hover:text-white disabled:opacity-20"><ArrowUp size={12} /></button>
-                    <button onClick={() => moveBlock(idx, 'down')} disabled={idx === blocks.length - 1} className="p-1 text-white/30 hover:text-white disabled:opacity-20"><ArrowDown size={12} /></button>
-                    <button onClick={() => deleteBlock(b.id)} className="p-1 text-red-400/50 hover:text-red-400"><Trash2 size={12} /></button>
+                  <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
+                    <button onClick={() => moveBlock(idx, 'up')} disabled={idx === 0} className="p-1 text-dash-textMuted hover:text-dash-text disabled:opacity-20"><ArrowUp size={12} /></button>
+                    <button onClick={() => moveBlock(idx, 'down')} disabled={idx === blocks.length - 1} className="p-1 text-dash-textMuted hover:text-dash-text disabled:opacity-20"><ArrowDown size={12} /></button>
+                    <button onClick={() => deleteBlock(b.id)} className="p-1 text-rose-400 hover:text-rose-600"><Trash2 size={12} /></button>
                   </div>
                 </div>
               ))}
@@ -177,36 +177,36 @@ export default function LiveBuilderClient({ workspaceId, experts, courses }: Liv
 
           {/* Block Data Editor Panel */}
           {activeBlock && (
-            <div className="bg-[#080f28]/60 border border-white/5 rounded-3xl p-6 space-y-5">
-              <div className="flex items-center gap-2 border-b border-white/5 pb-3">
-                <Settings size={14} className="text-primary" />
-                <h4 className="text-xs font-black text-white uppercase tracking-wider">Configure Active Block Data</h4>
+            <div className="bg-dash-surface border border-dash-border rounded-3xl p-6 space-y-5">
+              <div className="flex items-center gap-2 border-b border-dash-border pb-3">
+                <Settings size={14} className="text-dash-accent" />
+                <h4 className="text-xs font-black text-dash-text uppercase tracking-wider">Configure Active Block Data</h4>
               </div>
 
               {activeBlock.type === 'hero' && (
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Headline Text</label>
-                    <input type="text" value={activeBlock.data.headline} onChange={e => updateBlockData('headline', e.target.value)} className="w-full bg-[#04091a]/60 border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:border-primary" />
+                    <label className="text-[9px] font-bold text-dash-textMuted uppercase tracking-widest">Headline Text</label>
+                    <input type="text" value={activeBlock.data.headline} onChange={e => updateBlockData('headline', e.target.value)} className="w-full bg-dash-bg border border-dash-border rounded-xl px-4 py-2.5 text-xs text-dash-text outline-none focus:border-dash-accent" />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Subheadline Copy</label>
-                    <textarea rows={3} value={activeBlock.data.subheadline} onChange={e => updateBlockData('subheadline', e.target.value)} className="w-full bg-[#04091a]/60 border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:border-primary leading-relaxed" />
+                    <label className="text-[9px] font-bold text-dash-textMuted uppercase tracking-widest">Subheadline Copy</label>
+                    <textarea rows={3} value={activeBlock.data.subheadline} onChange={e => updateBlockData('subheadline', e.target.value)} className="w-full bg-dash-bg border border-dash-border rounded-xl px-4 py-2.5 text-xs text-dash-text outline-none focus:border-dash-accent leading-relaxed" />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest">CTA Action Button label</label>
-                    <input type="text" value={activeBlock.data.cta} onChange={e => updateBlockData('cta', e.target.value)} className="w-full bg-[#04091a]/60 border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:border-primary" />
+                    <label className="text-[9px] font-bold text-dash-textMuted uppercase tracking-widest">CTA Action Button label</label>
+                    <input type="text" value={activeBlock.data.cta} onChange={e => updateBlockData('cta', e.target.value)} className="w-full bg-dash-bg border border-dash-border rounded-xl px-4 py-2.5 text-xs text-dash-text outline-none focus:border-dash-accent" />
                   </div>
                 </div>
               )}
 
               {activeBlock.type === 'variants' && (
                 <div className="space-y-4">
-                  <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest block border-b border-white/5 pb-1">Toggle Allowed Session Channels</label>
+                  <label className="text-[9px] font-bold text-dash-textMuted uppercase tracking-widest block border-b border-dash-border pb-1">Toggle Allowed Session Channels</label>
                   {(['private', 'group', 'cohort', 'drop_in'] as const).map((variant) => (
-                    <label key={variant} className="flex items-center justify-between p-3 rounded-xl bg-[#04091a]/40 border border-white/5 select-none cursor-pointer">
-                      <span className="text-xs font-black text-white capitalize">{variant.replace('_', ' ')} sessions</span>
-                      <input type="checkbox" checked={activeBlock.data[variant]} onChange={e => updateBlockData(variant, e.target.checked)} className="accent-primary h-4 w-4" />
+                    <label key={variant} className="flex items-center justify-between p-3 rounded-xl bg-dash-bg border border-dash-border select-none cursor-pointer">
+                      <span className="text-xs font-black text-dash-text capitalize">{variant.replace('_', ' ')} sessions</span>
+                      <input type="checkbox" checked={activeBlock.data[variant]} onChange={e => updateBlockData(variant, e.target.checked)} className="accent-dash-accent h-4 w-4" />
                     </label>
                   ))}
                 </div>
@@ -215,12 +215,12 @@ export default function LiveBuilderClient({ workspaceId, experts, courses }: Liv
               {activeBlock.type === 'experts' && (
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Row Section Title</label>
-                    <input type="text" value={activeBlock.data.title} onChange={e => updateBlockData('title', e.target.value)} className="w-full bg-[#04091a]/60 border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white outline-none" />
+                    <label className="text-[9px] font-bold text-dash-textMuted uppercase tracking-widest">Row Section Title</label>
+                    <input type="text" value={activeBlock.data.title} onChange={e => updateBlockData('title', e.target.value)} className="w-full bg-dash-bg border border-dash-border rounded-xl px-4 py-2.5 text-xs text-dash-text outline-none" />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Show Limit Count</label>
-                    <input type="number" value={activeBlock.data.limit} onChange={e => updateBlockData('limit', parseInt(e.target.value) || 3)} className="w-full bg-[#04091a]/60 border border-white/5 rounded-xl px-4 py-2 text-xs text-white outline-none" />
+                    <label className="text-[9px] font-bold text-dash-textMuted uppercase tracking-widest">Show Limit Count</label>
+                    <input type="number" value={activeBlock.data.limit} onChange={e => updateBlockData('limit', parseInt(e.target.value) || 3)} className="w-full bg-dash-bg border border-dash-border rounded-xl px-4 py-2 text-xs text-dash-text outline-none" />
                   </div>
                 </div>
               )}
@@ -228,27 +228,27 @@ export default function LiveBuilderClient({ workspaceId, experts, courses }: Liv
               {activeBlock.type === 'reviews' && (
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Student Reference Text</label>
-                    <textarea rows={3} value={activeBlock.data.reviewText} onChange={e => updateBlockData('reviewText', e.target.value)} className="w-full bg-[#04091a]/60 border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white outline-none" />
+                    <label className="text-[9px] font-bold text-dash-textMuted uppercase tracking-widest">Student Reference Text</label>
+                    <textarea rows={3} value={activeBlock.data.reviewText} onChange={e => updateBlockData('reviewText', e.target.value)} className="w-full bg-dash-bg border border-dash-border rounded-xl px-4 py-2.5 text-xs text-dash-text outline-none" />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Review Author</label>
-                    <input type="text" value={activeBlock.data.author} onChange={e => updateBlockData('author', e.target.value)} className="w-full bg-[#04091a]/60 border border-white/5 rounded-xl px-4 py-2 text-xs text-white outline-none" />
+                    <label className="text-[9px] font-bold text-dash-textMuted uppercase tracking-widest">Review Author</label>
+                    <input type="text" value={activeBlock.data.author} onChange={e => updateBlockData('author', e.target.value)} className="w-full bg-dash-bg border border-dash-border rounded-xl px-4 py-2 text-xs text-dash-text outline-none" />
                   </div>
                 </div>
               )}
 
               {activeBlock.type === 'faqs' && (
                 <div className="space-y-4">
-                  <div className="space-y-3 p-3.5 rounded-2xl bg-[#04091a]/40 border border-white/5 space-y-2">
-                    <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest block">Troubleshooting FAQ 1</label>
-                    <input type="text" value={activeBlock.data.q1} onChange={e => updateBlockData('q1', e.target.value)} className="w-full bg-[#080f28] border border-white/5 rounded-xl px-3 py-2 text-xs text-white outline-none" />
-                    <input type="text" value={activeBlock.data.a1} onChange={e => updateBlockData('a1', e.target.value)} className="w-full bg-[#080f28] border border-white/5 rounded-xl px-3 py-2 text-xs text-white/70 outline-none" />
+                  <div className="space-y-3 p-3.5 rounded-2xl bg-dash-bg border border-dash-border space-y-2">
+                    <label className="text-[9px] font-bold text-dash-textMuted uppercase tracking-widest block">Troubleshooting FAQ 1</label>
+                    <input type="text" value={activeBlock.data.q1} onChange={e => updateBlockData('q1', e.target.value)} className="w-full bg-dash-surface border border-dash-border rounded-xl px-3 py-2 text-xs text-dash-text outline-none" />
+                    <input type="text" value={activeBlock.data.a1} onChange={e => updateBlockData('a1', e.target.value)} className="w-full bg-dash-surface border border-dash-border rounded-xl px-3 py-2 text-xs text-dash-textMuted outline-none" />
                   </div>
-                  <div className="space-y-3 p-3.5 rounded-2xl bg-[#04091a]/40 border border-white/5 space-y-2">
-                    <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest block">Troubleshooting FAQ 2</label>
-                    <input type="text" value={activeBlock.data.q2} onChange={e => updateBlockData('q2', e.target.value)} className="w-full bg-[#080f28] border border-white/5 rounded-xl px-3 py-2 text-xs text-white outline-none" />
-                    <input type="text" value={activeBlock.data.a2} onChange={e => updateBlockData('a2', e.target.value)} className="w-full bg-[#080f28] border border-white/5 rounded-xl px-3 py-2 text-xs text-white/70 outline-none" />
+                  <div className="space-y-3 p-3.5 rounded-2xl bg-dash-bg border border-dash-border space-y-2">
+                    <label className="text-[9px] font-bold text-dash-textMuted uppercase tracking-widest block">Troubleshooting FAQ 2</label>
+                    <input type="text" value={activeBlock.data.q2} onChange={e => updateBlockData('q2', e.target.value)} className="w-full bg-dash-surface border border-dash-border rounded-xl px-3 py-2 text-xs text-dash-text outline-none" />
+                    <input type="text" value={activeBlock.data.a2} onChange={e => updateBlockData('a2', e.target.value)} className="w-full bg-dash-surface border border-dash-border rounded-xl px-3 py-2 text-xs text-dash-textMuted outline-none" />
                   </div>
                 </div>
               )}
@@ -257,32 +257,32 @@ export default function LiveBuilderClient({ workspaceId, experts, courses }: Liv
         </div>
 
         {/* Right Side: Live Page Canvas Preview */}
-        <div className="lg:col-span-7 bg-[#080f28]/60 border border-white/5 rounded-3xl p-6 relative overflow-hidden flex flex-col min-h-[500px]">
-          <div className="flex items-center gap-2 border-b border-white/5 pb-3 mb-6 shrink-0">
-            <Eye size={14} className="text-emerald-400" />
-            <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">LMS Live Scheduler Screen Preview</span>
+        <div className="lg:col-span-7 bg-dash-surface border border-dash-border rounded-3xl p-6 relative overflow-hidden flex flex-col min-h-[500px]">
+          <div className="flex items-center gap-2 border-b border-dash-border pb-3 mb-6 shrink-0">
+            <Eye size={14} className="text-emerald-600" />
+            <span className="text-[10px] font-bold text-dash-textMuted uppercase tracking-widest">LMS Live Scheduler Screen Preview</span>
           </div>
 
-          <div className="flex-1 bg-[#04091a] border border-white/5 rounded-2xl overflow-y-auto max-h-[60vh] p-6 space-y-8 font-sans">
+          <div className="flex-1 bg-dash-bg border border-dash-border rounded-2xl overflow-y-auto max-h-[60vh] p-6 space-y-8 font-sans">
             {blocks.map((block) => {
               if (block.type === 'hero') {
                 return (
-                  <div key={block.id} className="text-center space-y-4 py-8 border-b border-white/5">
-                    <h2 className="text-2xl font-space-grotesk font-black uppercase tracking-tight text-white">{block.data.headline}</h2>
-                    <p className="text-xs text-white/60 leading-relaxed max-w-lg mx-auto">{block.data.subheadline}</p>
-                    <button className="bg-primary text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 px-8 shadow-lg shadow-primary/20">{block.data.cta}</button>
+                  <div key={block.id} className="text-center space-y-4 py-8 border-b border-dash-border">
+                    <h2 className="text-2xl font-space-grotesk font-black uppercase tracking-tight text-dash-text">{block.data.headline}</h2>
+                    <p className="text-xs text-dash-textMuted leading-relaxed max-w-lg mx-auto">{block.data.subheadline}</p>
+                    <button className="bg-dash-accent text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 px-8 shadow-lg shadow-dash-accent/20">{block.data.cta}</button>
                   </div>
                 );
               }
 
               if (block.type === 'variants') {
                 return (
-                  <div key={block.id} className="grid grid-cols-2 md:grid-cols-4 gap-3 py-4 border-b border-white/5">
+                  <div key={block.id} className="grid grid-cols-2 md:grid-cols-4 gap-3 py-4 border-b border-dash-border">
                     {(['private', 'group', 'cohort', 'drop_in'] as const).map((v) => (
                       block.data[v] && (
-                        <div key={v} className="bg-[#080f28] border border-white/5 rounded-xl p-3 text-center space-y-1">
-                          <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest block">{v.replace('_', ' ')}</span>
-                          <span className="text-emerald-400 text-[9px] font-black uppercase">Active ✓</span>
+                        <div key={v} className="bg-dash-surface border border-dash-border rounded-xl p-3 text-center space-y-1">
+                          <span className="text-[9px] font-bold text-dash-textMuted uppercase tracking-widest block">{v.replace('_', ' ')}</span>
+                          <span className="text-emerald-600 text-[9px] font-black uppercase">Active ✓</span>
                         </div>
                       )
                     ))}
@@ -292,13 +292,13 @@ export default function LiveBuilderClient({ workspaceId, experts, courses }: Liv
 
               if (block.type === 'experts') {
                 return (
-                  <div key={block.id} className="space-y-4 py-4 border-b border-white/5">
-                    <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest">{block.data.title}</h3>
+                  <div key={block.id} className="space-y-4 py-4 border-b border-dash-border">
+                    <h3 className="text-xs font-bold text-dash-textMuted uppercase tracking-widest">{block.data.title}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       {experts.slice(0, block.data.limit).map((exp, idx) => (
-                        <div key={idx} className="bg-[#080f28] border border-white/5 p-4 rounded-xl space-y-2">
-                          <h4 className="text-xs font-black text-white">{exp.name}</h4>
-                          <span className="text-[9px] text-primary font-mono block">Advisory Specialist</span>
+                        <div key={idx} className="bg-dash-surface border border-dash-border p-4 rounded-xl space-y-2">
+                          <h4 className="text-xs font-black text-dash-text">{exp.name}</h4>
+                          <span className="text-[9px] text-dash-accent font-mono block">Advisory Specialist</span>
                         </div>
                       ))}
                     </div>
@@ -308,9 +308,9 @@ export default function LiveBuilderClient({ workspaceId, experts, courses }: Liv
 
               if (block.type === 'reviews') {
                 return (
-                  <div key={block.id} className="text-center py-6 border-b border-white/5 space-y-2 bg-[#080f28]/20 border border-white/5 rounded-2xl p-4">
-                    <p className="text-xs text-white/70 italic leading-relaxed">{block.data.reviewText}</p>
-                    <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest block">— {block.data.author}</span>
+                  <div key={block.id} className="text-center py-6 border-b border-dash-border space-y-2 bg-dash-surface rounded-2xl p-4">
+                    <p className="text-xs text-dash-textMuted italic leading-relaxed">{block.data.reviewText}</p>
+                    <span className="text-[9px] font-bold text-dash-textMuted uppercase tracking-widest block">— {block.data.author}</span>
                   </div>
                 );
               }
@@ -318,15 +318,15 @@ export default function LiveBuilderClient({ workspaceId, experts, courses }: Liv
               if (block.type === 'faqs') {
                 return (
                   <div key={block.id} className="space-y-3 py-4">
-                    <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest">Frequently Asked Explanations</h3>
+                    <h3 className="text-xs font-bold text-dash-textMuted uppercase tracking-widest">Frequently Asked Explanations</h3>
                     <div className="space-y-3">
                       <div className="space-y-1">
-                        <h4 className="text-xs font-bold text-white">Q. {block.data.q1}</h4>
-                        <p className="text-[11px] text-white/50 leading-relaxed">{block.data.a1}</p>
+                        <h4 className="text-xs font-bold text-dash-text">Q. {block.data.q1}</h4>
+                        <p className="text-[11px] text-dash-textMuted leading-relaxed">{block.data.a1}</p>
                       </div>
                       <div className="space-y-1">
-                        <h4 className="text-xs font-bold text-white">Q. {block.data.q2}</h4>
-                        <p className="text-[11px] text-white/50 leading-relaxed">{block.data.a2}</p>
+                        <h4 className="text-xs font-bold text-dash-text">Q. {block.data.q2}</h4>
+                        <p className="text-[11px] text-dash-textMuted leading-relaxed">{block.data.a2}</p>
                       </div>
                     </div>
                   </div>

@@ -80,12 +80,12 @@ export function SupportWidget({
       
       {/* WIDGET PANEL */}
       <div className={cn(
-        "pointer-events-auto w-[360px] sm:w-[400px] bg-[#04091a] border border-white/10 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] overflow-hidden transition-all duration-300 transform origin-bottom-right",
+        "pointer-events-auto w-[360px] sm:w-[400px] bg-dash-surface border border-dash-border rounded-2xl shadow-[0_10px_40px_rgba(15,23,42,0.15)] overflow-hidden transition-all duration-300 transform origin-bottom-right",
         isOpen ? "scale-100 opacity-100 translate-y-0" : "scale-95 opacity-0 translate-y-8 pointer-events-none absolute bottom-20"
       )}>
         {/* Header */}
-        <div 
-          className="px-6 py-5 flex items-center justify-between border-b border-white/5 relative overflow-hidden"
+        <div
+          className="px-6 py-5 flex items-center justify-between border-b border-dash-border relative overflow-hidden"
           style={{ backgroundColor: brandColor }}
         >
           <div className="absolute inset-0 bg-gradient-to-r from-black/20 to-transparent pointer-events-none" />
@@ -102,7 +102,7 @@ export function SupportWidget({
               <p className="text-white/70 text-xs mt-0.5">We typically reply within 2 hours</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={() => setIsOpen(false)}
             className="text-white/70 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-colors relative z-10"
           >
@@ -114,16 +114,16 @@ export function SupportWidget({
         <div className="p-6 max-h-[500px] overflow-y-auto custom-scrollbar">
           {submitted ? (
             <div className="flex flex-col items-center justify-center text-center py-8">
-              <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-4">
-                <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+              <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center mb-4">
+                <CheckCircle2 className="w-8 h-8 text-emerald-600" />
               </div>
-              <h4 className="text-white font-bold text-lg mb-2">Request Received!</h4>
-              <p className="text-[#94a3c8] text-sm mb-6">
+              <h4 className="text-dash-text font-bold text-lg mb-2">Request Received!</h4>
+              <p className="text-dash-textMuted text-sm mb-6">
                 Your ticket has been logged in our system. A support agent will be in touch with you shortly via email.
               </p>
-              <button 
+              <button
                 onClick={resetForm}
-                className="text-sm font-semibold text-white/60 hover:text-white"
+                className="text-sm font-semibold text-dash-textMuted hover:text-dash-text"
               >
                 Submit another request
               </button>
@@ -132,57 +132,57 @@ export function SupportWidget({
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-[#4a5a82] uppercase tracking-wider">Name</label>
+                  <label className="text-[11px] font-bold text-dash-textMuted uppercase tracking-wider">Name</label>
                   <input
                     required
                     type="text"
                     value={formData.name}
                     onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-white/20 transition-colors"
+                    className="w-full bg-dash-bg border border-dash-border rounded-xl px-4 py-2.5 text-sm text-dash-text focus:outline-none focus:border-dash-accent transition-colors"
                     placeholder="Jane Doe"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-[#4a5a82] uppercase tracking-wider">Email Address *</label>
+                  <label className="text-[11px] font-bold text-dash-textMuted uppercase tracking-wider">Email Address *</label>
                   <input
                     required
                     type="email"
                     value={formData.email}
                     onChange={e => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-white/20 transition-colors"
+                    className="w-full bg-dash-bg border border-dash-border rounded-xl px-4 py-2.5 text-sm text-dash-text focus:outline-none focus:border-dash-accent transition-colors"
                     placeholder="jane@example.com"
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-[#4a5a82] uppercase tracking-wider">Subject *</label>
+                <label className="text-[11px] font-bold text-dash-textMuted uppercase tracking-wider">Subject *</label>
                 <input
                   required
                   type="text"
                   value={formData.subject}
                   onChange={e => setFormData(prev => ({ ...prev, subject: e.target.value }))}
-                  className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-white/20 transition-colors"
+                  className="w-full bg-dash-bg border border-dash-border rounded-xl px-4 py-2.5 text-sm text-dash-text focus:outline-none focus:border-dash-accent transition-colors"
                   placeholder="How can we help?"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-[#4a5a82] uppercase tracking-wider">Description *</label>
+                <label className="text-[11px] font-bold text-dash-textMuted uppercase tracking-wider">Description *</label>
                 <textarea
                   required
                   value={formData.description}
                   onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   rows={4}
-                  className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/20 transition-colors resize-none"
+                  className="w-full bg-dash-bg border border-dash-border rounded-xl px-4 py-3 text-sm text-dash-text focus:outline-none focus:border-dash-accent transition-colors resize-none"
                   placeholder="Please provide details about your issue..."
                 />
               </div>
 
               <div className="flex items-center justify-between pt-2">
-                <button 
+                <button
                   type="button"
-                  className="text-[#4a5a82] hover:text-white transition-colors flex items-center gap-1.5 text-xs font-semibold"
+                  className="text-dash-textMuted hover:text-dash-text transition-colors flex items-center gap-1.5 text-xs font-semibold"
                 >
                   <Paperclip className="w-4 h-4" />
                   Attach file

@@ -78,7 +78,7 @@ export default function Hero() {
             <DashButton
               variant="primary"
               size="lg"
-              className="lm-shimmer group bg-[#FF8D00] bg-none hover:bg-[#FF8D00]/90 shadow-xl hover:shadow-xl shadow-[#4F46E5]/30 hover:shadow-[#4F46E5]/30"
+              className="lm-shimmer group bg-[#FF9900] bg-none hover:bg-[#FF9900] shadow-xl hover:shadow-xl shadow-[#FF9900]/30 hover:shadow-[#FF9900]/45"
             >
               Start Free Trial <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </DashButton>

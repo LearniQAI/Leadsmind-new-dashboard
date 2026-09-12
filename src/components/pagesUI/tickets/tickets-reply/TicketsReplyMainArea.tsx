@@ -302,12 +302,12 @@ export function TicketsReplyMainArea({ initialTickets }: TicketsReplyMainAreaPro
   return (
     <div className="app__slide-wrapper">
       {/* Top Banner Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-6 md:py-8 border-b border-white/5 bg-[#080f28]/40 mb-6 rounded-t-3xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-6 md:py-8 border-b border-dash-border bg-dash-surface mb-6 rounded-t-3xl">
         <div className="flex flex-col">
-          <h1 className="text-[20px] md:text-[24px] font-space font-black text-t1 tracking-tighter leading-tight uppercase flex items-center gap-2">
-            Ticket Workspace <span className="text-accent2">Reply</span> 💬
+          <h1 className="text-[20px] md:text-[24px] font-space font-black text-dash-text tracking-tighter leading-tight uppercase flex items-center gap-2">
+            Ticket Workspace <span className="text-dash-accent">Reply</span> 💬
           </h1>
-          <p className="text-[10px] md:text-[11px] text-t3 font-black uppercase tracking-[0.2em] mt-1">
+          <p className="text-[10px] md:text-[11px] text-dash-textMuted font-black uppercase tracking-[0.2em] mt-1">
             RESOLVE CLIENT INCIDENTS WITH TEXT OR VOICE NOTES
           </p>
         </div>
@@ -323,23 +323,23 @@ export function TicketsReplyMainArea({ initialTickets }: TicketsReplyMainAreaPro
           {/* 1. Left Sidebar: Active Support Tickets Selector */}
           <div className="chatbox__inbox-wrapper">
             <div className="chatbox__inbox-search">
-              <span className="text-[9px] font-black uppercase tracking-widest text-t3 block px-3 mb-2">Active Tickets ({tickets.length})</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-dash-textMuted block px-3 mb-2">Active Tickets ({tickets.length})</span>
             </div>
             <div className="chatbox__inbox-inner custom-scrollbar" style={{ maxHeight: '420px', overflowY: 'auto' }}>
               {tickets.length === 0 ? (
-                <div className="p-6 text-center text-t3 flex flex-col items-center gap-2">
+                <div className="p-6 text-center text-dash-textMuted flex flex-col items-center gap-2">
                   <LifeBuoy className="w-8 h-8 opacity-25" />
                   <span className="text-xs font-semibold">No active tickets</span>
                 </div>
               ) : (
                 tickets.map((t) => {
                   const isSelected = t.id === activeTicketId;
-                  const tInitials = t.contact 
+                  const tInitials = t.contact
                     ? `${t.contact.first_name?.[0] || 'L'}${t.contact.last_name?.[0] || 'M'}`.toUpperCase()
                     : 'LM';
                   return (
-                    <div 
-                      key={t.id} 
+                    <div
+                      key={t.id}
                       className={`chatbox__author-item cursor-pointer transition-all duration-200 ${isSelected ? 'is-active' : ''}`}
                       onClick={() => setActiveTicketId(t.id)}
                     >
@@ -347,14 +347,14 @@ export function TicketsReplyMainArea({ initialTickets }: TicketsReplyMainAreaPro
                         <div className="chatbox__author-thumb">
                           <AvatarImage
                             initials={tInitials}
-                            bgColor={isSelected ? 'var(--accent2)' : 'var(--t4)'}
+                            bgColor={isSelected ? '#1359FF' : '#94A3B8'}
                             size={36}
                             shape="circle"
                           />
                         </div>
                         <div className="chatbox__author-info min-w-0 flex-1">
-                          <h5 className="truncate text-xs font-bold text-white leading-tight">{t.title}</h5>
-                          <p className="truncate text-[10px] text-t3 uppercase font-bold mt-1">
+                          <h5 className="truncate text-xs font-bold text-dash-text leading-tight">{t.title}</h5>
+                          <p className="truncate text-[10px] text-dash-textMuted uppercase font-bold mt-1">
                             {t.priority} • {t.status}
                           </p>
                         </div>
@@ -383,9 +383,9 @@ export function TicketsReplyMainArea({ initialTickets }: TicketsReplyMainAreaPro
                         />
                       </div>
                       <div className="chatting__user-content min-w-0">
-                        <h5 className="chatting__user-info truncate font-space font-bold text-white text-[15px]">{activeTicket.title}</h5>
-                        <p className="text-[10px] text-t3 font-bold uppercase tracking-wider mt-0.5">
-                          Owner: {clientName} • Priority: <span className="text-amber">{activeTicket.priority}</span>
+                        <h5 className="chatting__user-info truncate font-space font-bold text-dash-text text-[15px]">{activeTicket.title}</h5>
+                        <p className="text-[10px] text-dash-textMuted font-bold uppercase tracking-wider mt-0.5">
+                          Owner: {clientName} • Priority: <span className="text-amber-600">{activeTicket.priority}</span>
                         </p>
                       </div>
                     </div>
@@ -409,9 +409,9 @@ export function TicketsReplyMainArea({ initialTickets }: TicketsReplyMainAreaPro
                         />
                       </div>
                       <div className="chat__message-title max-w-[80%]">
-                        <p className="text-[11px] font-bold text-cyan-400 mb-1 uppercase tracking-wider">Original Inquiry</p>
-                        <p className="text-white leading-relaxed text-sm">{activeTicket.description || 'No description provided.'}</p>
-                        <span className="text-[9px] text-t3 font-bold uppercase block mt-2">
+                        <p className="text-[11px] font-bold text-cyan-600 mb-1 uppercase tracking-wider">Original Inquiry</p>
+                        <p className="text-dash-text leading-relaxed text-sm">{activeTicket.description || 'No description provided.'}</p>
+                        <span className="text-[9px] text-dash-textMuted font-bold uppercase block mt-2">
                           {new Date(activeTicket.created_at).toLocaleString()}
                         </span>
                       </div>
@@ -437,13 +437,13 @@ export function TicketsReplyMainArea({ initialTickets }: TicketsReplyMainAreaPro
                                 audioDuration={reply.duration}
                                 caption={reply.content}
                                 transcript={reply.transcript}
-                                theme="dark"
+                                theme="light"
                               />
                             </div>
                           </div>
                         );
                       }
-                      
+
                       return (
                         <div key={reply.id} className="chat__message-item is-right mt-5 animate-in fade-in duration-300">
                           <div className="chat__message-thumb">
@@ -455,8 +455,8 @@ export function TicketsReplyMainArea({ initialTickets }: TicketsReplyMainAreaPro
                             />
                           </div>
                           <div className="chat__message-title max-w-[80%]">
-                            <p className="text-white text-sm">{reply.content}</p>
-                            <span className="text-[9px] text-t3 font-bold uppercase block mt-1.5">
+                            <p className="text-dash-text text-sm">{reply.content}</p>
+                            <span className="text-[9px] text-dash-textMuted font-bold uppercase block mt-1.5">
                               {new Date(reply.created_at).toLocaleTimeString()}
                             </span>
                           </div>
@@ -467,22 +467,22 @@ export function TicketsReplyMainArea({ initialTickets }: TicketsReplyMainAreaPro
                 </div>
 
                 {/* Footer Controls (Text Input & Voice Recording Engine) */}
-                <div className="chatbox__chatting-footer bg-[#080f28] border-t border-white/5 p-4 rounded-b-3xl">
+                <div className="chatbox__chatting-footer bg-dash-surface border-t border-dash-border p-4 rounded-b-3xl">
                   {isRecording ? (
                     /* Live Audio Recorder Workspace */
-                    <div className="flex items-center justify-between gap-4 w-full bg-red/5 border border-red/20 rounded-2xl p-3 animate-in slide-in-from-bottom-2">
+                    <div className="flex items-center justify-between gap-4 w-full bg-red-50 border border-red-200 rounded-2xl p-3 animate-in slide-in-from-bottom-2">
                       <div className="flex items-center gap-3">
                         <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping" />
-                        <span className="font-mono text-sm font-bold text-white tracking-widest">{formatTime(recordingSeconds)}</span>
+                        <span className="font-mono text-sm font-bold text-dash-text tracking-widest">{formatTime(recordingSeconds)}</span>
                       </div>
 
                       {/* Speech telemetry visualizer */}
-                      <div className="flex-1 flex items-center justify-center gap-1 h-8 max-w-[180px] bg-black/30 border border-white/5 rounded-xl px-3">
+                      <div className="flex-1 flex items-center justify-center gap-1 h-8 max-w-[180px] bg-dash-bg border border-dash-border rounded-xl px-3">
                         {audioLevels.map((lvl, index) => (
                           <div
                             key={index}
-                            className="w-0.5 bg-gradient-to-t from-red to-orange-400 rounded-full transition-all duration-75"
-                            style={{ 
+                            className="w-0.5 bg-gradient-to-t from-red-500 to-orange-400 rounded-full transition-all duration-75"
+                            style={{
                               height: `${lvl}%`,
                               minHeight: '4px',
                             }}
@@ -494,7 +494,7 @@ export function TicketsReplyMainArea({ initialTickets }: TicketsReplyMainAreaPro
                         <button
                           type="button"
                           onClick={cancelRecording}
-                          className="w-9 h-9 rounded-xl bg-white/5 hover:bg-red/10 border border-white/10 text-t2 hover:text-red flex items-center justify-center transition-all cursor-pointer"
+                          className="w-9 h-9 rounded-xl bg-dash-bg hover:bg-red-50 border border-dash-border text-dash-textMuted hover:text-red-600 flex items-center justify-center transition-all cursor-pointer"
                           title="Discard Recording"
                         >
                           <Trash2 size={16} />
@@ -502,7 +502,7 @@ export function TicketsReplyMainArea({ initialTickets }: TicketsReplyMainAreaPro
                         <button
                           type="button"
                           onClick={stopAndSaveRecording}
-                          className="w-9 h-9 rounded-xl bg-green hover:bg-green/90 text-white flex items-center justify-center shadow-lg shadow-green/20 transition-all cursor-pointer"
+                          className="w-9 h-9 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
                           title="Save & Transcribe Reply"
                         >
                           <Check size={16} />
@@ -515,7 +515,7 @@ export function TicketsReplyMainArea({ initialTickets }: TicketsReplyMainAreaPro
                       <button
                         type="button"
                         onClick={startRecording}
-                        className="w-11 h-11 shrink-0 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-t2 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+                        className="w-11 h-11 shrink-0 rounded-xl bg-dash-bg hover:bg-dash-border/40 border border-dash-border text-dash-textMuted hover:text-dash-text flex items-center justify-center transition-all cursor-pointer"
                         title="Record Voice Note"
                       >
                         <Mic size={18} />
@@ -525,12 +525,12 @@ export function TicketsReplyMainArea({ initialTickets }: TicketsReplyMainAreaPro
                         value={inputText}
                         onChange={(e) => setInputText(e.target.value)}
                         placeholder="Write something to reply..."
-                        className="flex-1 bg-white/5 border border-white/10 rounded-xl h-11 px-4 text-white text-sm font-medium placeholder:text-white/20 focus:border-primary/50 outline-none"
+                        className="flex-1 bg-dash-bg border border-dash-border rounded-xl h-11 px-4 text-dash-text text-sm font-medium placeholder:text-dash-textMuted focus:border-dash-accent outline-none"
                       />
                       <button
                         type="submit"
                         disabled={!inputText.trim()}
-                        className="w-11 h-11 shrink-0 rounded-xl bg-primary hover:bg-primary/90 text-white flex items-center justify-center shadow-lg shadow-primary/20 disabled:opacity-40 disabled:shadow-none transition-all cursor-pointer"
+                        className="w-11 h-11 shrink-0 rounded-xl bg-dash-accent hover:bg-dash-accent/90 text-white flex items-center justify-center shadow-lg shadow-dash-accent/20 disabled:opacity-40 disabled:shadow-none transition-all cursor-pointer"
                         title="Send Reply"
                       >
                         <Send size={16} />
@@ -540,12 +540,12 @@ export function TicketsReplyMainArea({ initialTickets }: TicketsReplyMainAreaPro
                 </div>
               </>
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center text-center p-12 bg-[#04091a] h-[400px] rounded-3xl">
-                <div className="w-16 h-16 bg-[#2563eb]/10 rounded-[1.5rem] flex items-center justify-center mb-6 border border-[#2563eb]/20 shadow-lg animate-bounce">
-                  <LifeBuoy className="w-8 h-8 text-[#2563eb]" />
+              <div className="flex-1 flex flex-col items-center justify-center text-center p-12 bg-dash-bg h-[400px] rounded-3xl">
+                <div className="w-16 h-16 bg-dash-accent/10 rounded-[1.5rem] flex items-center justify-center mb-6 border border-dash-accent/20 shadow-lg animate-bounce">
+                  <LifeBuoy className="w-8 h-8 text-dash-accent" />
                 </div>
-                <h4 className="text-lg font-space font-bold text-[#eef2ff] mb-2">No Ticket Selected</h4>
-                <p className="text-xs text-t3 max-w-xs leading-relaxed">
+                <h4 className="text-lg font-space font-bold text-dash-text mb-2">No Ticket Selected</h4>
+                <p className="text-xs text-dash-textMuted max-w-xs leading-relaxed">
                   Select a support ticket from the active listing panel on the left to start responding.
                 </p>
               </div>

@@ -123,21 +123,21 @@ export const BuilderCommandPalette = () => {
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999]" />
-        <Dialog.Content 
-          className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-xl bg-white rounded-2xl shadow-2xl overflow-hidden z-[10000] border border-slate-200 focus:outline-none"
+        <Dialog.Content
+          className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-xl bg-dash-bg rounded-2xl shadow-2xl overflow-hidden z-[10000] border border-dash-border focus:outline-none"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          <div className="flex items-center px-4 h-14 border-b border-slate-100">
-            <Search className="w-5 h-5 text-slate-400 mr-3" />
+          <div className="flex items-center px-4 h-14 border-b border-dash-border">
+            <Search className="w-5 h-5 text-dash-textMuted mr-3" />
             <input
               ref={inputRef}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Search elements... (e.g. Section, Image)"
-              className="flex-1 bg-transparent border-none outline-none text-[14px] text-slate-800 placeholder:text-slate-400 font-medium"
+              className="flex-1 bg-transparent border-none outline-none text-[14px] text-dash-text placeholder:text-dash-textMuted font-medium"
             />
-            <div className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-md ml-2">ESC</div>
+            <div className="text-[10px] font-bold text-dash-textMuted bg-dash-surface px-2 py-1 rounded-md ml-2">ESC</div>
           </div>
 
           <div className="max-h-[360px] overflow-y-auto p-2" ref={listRef}>
@@ -148,30 +148,30 @@ export const BuilderCommandPalette = () => {
                   onClick={() => handleSelect(cmd)}
                   onMouseEnter={() => setSelectedIndex(idx)}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors ${
-                    idx === selectedIndex ? 'bg-primary/5 text-primary' : 'text-slate-700 hover:bg-slate-50'
+                    idx === selectedIndex ? 'bg-dash-accent/5 text-dash-accent' : 'text-dash-text hover:bg-dash-surface'
                   }`}
                 >
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${idx === selectedIndex ? 'bg-primary/10' : 'bg-slate-100 border border-slate-200'}`}>
-                    <cmd.icon className={`w-4 h-4 ${idx === selectedIndex ? 'text-primary' : 'text-slate-500'}`} />
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${idx === selectedIndex ? 'bg-dash-accent/10' : 'bg-dash-surface border border-dash-border'}`}>
+                    <cmd.icon className={`w-4 h-4 ${idx === selectedIndex ? 'text-dash-accent' : 'text-dash-textMuted'}`} />
                   </div>
                   <div className="flex flex-col flex-1">
                     <span className="text-[13px] font-semibold">{cmd.name}</span>
-                    <span className="text-[11px] text-slate-500">{cmd.category}</span>
+                    <span className="text-[11px] text-dash-textMuted">{cmd.category}</span>
                   </div>
-                  <div className="text-slate-400">
+                  <div className="text-dash-textMuted">
                     <Plus className="w-4 h-4" />
                   </div>
                 </div>
               ))
             ) : (
-              <div className="py-12 text-center text-slate-500 text-[13px] font-medium">
+              <div className="py-12 text-center text-dash-textMuted text-[13px] font-medium">
                 No elements found for "{search}"
               </div>
             )}
           </div>
-          
-          <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1.5">
+
+          <div className="px-4 py-3 bg-dash-surface border-t border-dash-border flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-dash-textMuted flex items-center gap-1.5">
               Select an element or container first, then insert.
             </span>
           </div>

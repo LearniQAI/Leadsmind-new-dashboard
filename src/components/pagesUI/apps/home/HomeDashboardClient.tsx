@@ -337,7 +337,7 @@ const HomeDashboardClient = ({
               key={i}
               href={action.link}
               className={`flex flex-col items-center justify-center p-3 rounded-[16px] w-[88px] h-[88px] transition-transform active:scale-95 shadow-[0_4px_12px_rgba(15,23,42,0.04)] border ${
-                action.primary ? 'bg-[#FF8D00] text-white border-[#FF8D00] shadow-[#FF8D00]/20' : 'bg-white text-slate-700 border-[#E5E7EB]'
+                action.primary ? 'bg-[#FF9900] text-white border-[#FF9900] shadow-[#FF9900]/20' : 'bg-white text-slate-700 border-[#E5E7EB]'
               }`}
             >
               <div className={`mb-2 p-2 rounded-full ${action.primary ? 'bg-white/20' : 'bg-slate-50'}`}>
@@ -411,7 +411,14 @@ const HomeDashboardClient = ({
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
           {quickActions.map((action) =>
             action.primary ? (
-              <DashButton key={action.label} asChild variant="primary" size="sm" className="bg-none bg-[#FF8D00] hover:bg-[#FF8D00]/90 shadow-sm shrink-0">
+              <DashButton
+                key={action.label}
+                asChild
+                variant="primary"
+                size="sm"
+                className="bg-none bg-[#FF9900] shadow-[0_4px_14px_rgba(255,153,0,0.35)] hover:bg-[#FF9900] hover:shadow-[0_10px_26px_rgba(255,153,0,0.5)] shrink-0"
+              >
+
                 <Link href={action.link}>
                   {action.icon} {action.label}
                 </Link>

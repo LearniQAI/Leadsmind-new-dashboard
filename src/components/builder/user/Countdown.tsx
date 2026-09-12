@@ -25,7 +25,7 @@ export const Countdown = ({ endDate, title, dragRef, ...props }: any) => {
  }, [endDate]);
 
  const TimeBlock = ({ value, label }: { value: number, label: string }) => (
-  <div className="flex flex-col items-center p-3 bg-white/5 rounded-lg border border-white/10 min-w-[70px]">
+  <div className="flex flex-col items-center p-3 bg-dash-surface rounded-lg border border-dash-border min-w-[70px]">
     <span className="text-2xl font-black text-primary leading-tight">{value.toString().padStart(2, '0')}</span>
     <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{label}</span>
   </div>

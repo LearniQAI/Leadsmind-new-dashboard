@@ -83,13 +83,13 @@ export async function generateAISectionLayout(prompt: string) {
         ROOT: {
           type: { resolvedName: 'Container' },
           isCanvas: true,
-          props: { className: 'py-16 bg-slate-900 border border-white/5 rounded-3xl', padding: 24 },
+          props: { className: 'py-16 bg-dash-surface border border-dash-border rounded-3xl', padding: 24 },
           nodes: ['heading', 'pricingTable']
         },
         heading: {
           type: { resolvedName: 'Heading' },
           isCanvas: false,
-          props: { text: 'Flexible Plans for Any Scale', level: 'h2', textAlign: 'center', color: '#ffffff', fontSize: 36, fontWeight: 'black' },
+          props: { text: 'Flexible Plans for Any Scale', level: 'h2', textAlign: 'center', color: '#0F172A', fontSize: 36, fontWeight: 'black' },
           parent: 'ROOT'
         },
         pricingTable: {
@@ -110,19 +110,19 @@ export async function generateAISectionLayout(prompt: string) {
         ROOT: {
           type: { resolvedName: 'Container' },
           isCanvas: true,
-          props: { className: 'py-24 px-8 bg-slate-950 border border-white/5 rounded-3xl flex flex-col items-center text-center gap-6', padding: 48 },
+          props: { className: 'py-24 px-8 bg-dash-surface border border-dash-border rounded-3xl flex flex-col items-center text-center gap-6', padding: 48 },
           nodes: ['heroHeading', 'heroPara', 'heroCta']
         },
         heroHeading: {
           type: { resolvedName: 'Heading' },
           isCanvas: false,
-          props: { text: 'Automate Lead Ingestion Instantly', level: 'h1', textAlign: 'center', color: '#ffffff', fontSize: 48, fontWeight: 'black' },
+          props: { text: 'Automate Lead Ingestion Instantly', level: 'h1', textAlign: 'center', color: '#0F172A', fontSize: 48, fontWeight: 'black' },
           parent: 'ROOT'
         },
         heroPara: {
           type: { resolvedName: 'Paragraph' },
           isCanvas: false,
-          props: { text: 'Design stunning landing layouts, deploy them to edge nodes, configure custom domains, and forward lead submission payloads to Zapier webhooks.', fontSize: 18, color: '#94a3b8', textAlign: 'center' },
+          props: { text: 'Design stunning landing layouts, deploy them to edge nodes, configure custom domains, and forward lead submission payloads to Zapier webhooks.', fontSize: 18, color: '#475569', textAlign: 'center' },
           parent: 'ROOT'
         },
         heroCta: {
@@ -138,13 +138,13 @@ export async function generateAISectionLayout(prompt: string) {
         ROOT: {
           type: { resolvedName: 'Container' },
           isCanvas: true,
-          props: { className: 'py-16 bg-slate-900 border border-white/5 rounded-3xl', padding: 32 },
+          props: { className: 'py-16 bg-dash-surface border border-dash-border rounded-3xl', padding: 32 },
           nodes: ['featHeader', 'featGrid']
         },
         featHeader: {
           type: { resolvedName: 'Heading' },
           isCanvas: false,
-          props: { text: 'Everything You Need to Convert', level: 'h2', textAlign: 'center', color: '#ffffff', fontSize: 32, fontWeight: 'black' },
+          props: { text: 'Everything You Need to Convert', level: 'h2', textAlign: 'center', color: '#0F172A', fontSize: 32, fontWeight: 'black' },
           parent: 'ROOT'
         },
         featGrid: {
@@ -157,58 +157,58 @@ export async function generateAISectionLayout(prompt: string) {
         col1: {
           type: { resolvedName: 'Container' },
           isCanvas: true,
-          props: { className: 'bg-slate-950/40 p-6 rounded-2xl border border-white/5' },
+          props: { className: 'bg-dash-bg p-6 rounded-2xl border border-dash-border' },
           nodes: ['col1Head', 'col1Para'],
           parent: 'featGrid'
         },
         col1Head: {
           type: { resolvedName: 'Heading' },
           isCanvas: false,
-          props: { text: 'SSL Custom Domains', level: 'h4', color: '#ffffff', fontSize: 18 },
+          props: { text: 'SSL Custom Domains', level: 'h4', color: '#0F172A', fontSize: 18 },
           parent: 'col1'
         },
         col1Para: {
           type: { resolvedName: 'Paragraph' },
           isCanvas: false,
-          props: { text: 'Automated SSL proxy configuration and verification hooks.', fontSize: 14, color: '#94a3b8' },
+          props: { text: 'Automated SSL proxy configuration and verification hooks.', fontSize: 14, color: '#475569' },
           parent: 'col1'
         },
         col2: {
           type: { resolvedName: 'Container' },
           isCanvas: true,
-          props: { className: 'bg-slate-950/40 p-6 rounded-2xl border border-white/5' },
+          props: { className: 'bg-dash-bg p-6 rounded-2xl border border-dash-border' },
           nodes: ['col2Head', 'col2Para'],
           parent: 'featGrid'
         },
         col2Head: {
           type: { resolvedName: 'Heading' },
           isCanvas: false,
-          props: { text: 'Webhooks Integration', level: 'h4', color: '#ffffff', fontSize: 18 },
+          props: { text: 'Webhooks Integration', level: 'h4', color: '#0F172A', fontSize: 18 },
           parent: 'col2'
         },
         col2Para: {
           type: { resolvedName: 'Paragraph' },
           isCanvas: false,
-          props: { text: 'Instantly push lead data over to Mailchimp or Zapier lists.', fontSize: 14, color: '#94a3b8' },
+          props: { text: 'Instantly push lead data over to Mailchimp or Zapier lists.', fontSize: 14, color: '#475569' },
           parent: 'col2'
         },
         col3: {
           type: { resolvedName: 'Container' },
           isCanvas: true,
-          props: { className: 'bg-slate-950/40 p-6 rounded-2xl border border-white/5' },
+          props: { className: 'bg-dash-bg p-6 rounded-2xl border border-dash-border' },
           nodes: ['col3Head', 'col3Para'],
           parent: 'featGrid'
         },
         col3Head: {
           type: { resolvedName: 'Heading' },
           isCanvas: false,
-          props: { text: 'Revision Snapshots', level: 'h4', color: '#ffffff', fontSize: 18 },
+          props: { text: 'Revision Snapshots', level: 'h4', color: '#0F172A', fontSize: 18 },
           parent: 'col3'
         },
         col3Para: {
           type: { resolvedName: 'Paragraph' },
           isCanvas: false,
-          props: { text: 'Roll back structural layouts instantly in one simple click.', fontSize: 14, color: '#94a3b8' },
+          props: { text: 'Roll back structural layouts instantly in one simple click.', fontSize: 14, color: '#475569' },
           parent: 'col3'
         }
       };
@@ -218,19 +218,19 @@ export async function generateAISectionLayout(prompt: string) {
         ROOT: {
           type: { resolvedName: 'Container' },
           isCanvas: true,
-          props: { className: 'py-16 bg-slate-900 border border-white/5 rounded-3xl flex flex-col gap-4', padding: 24 },
+          props: { className: 'py-16 bg-dash-surface border border-dash-border rounded-3xl flex flex-col gap-4', padding: 24 },
           nodes: ['headingNode', 'paraNode']
         },
         headingNode: {
           type: { resolvedName: 'Heading' },
           isCanvas: false,
-          props: { text: prompt || 'AI Generated Block', level: 'h2', color: '#ffffff', fontSize: 28, fontWeight: 'bold' },
+          props: { text: prompt || 'AI Generated Block', level: 'h2', color: '#0F172A', fontSize: 28, fontWeight: 'bold' },
           parent: 'ROOT'
         },
         paraNode: {
           type: { resolvedName: 'Paragraph' },
           isCanvas: false,
-          props: { text: 'This layout was dynamically constructed using visual block ingestion algorithms.', fontSize: 16, color: '#94a3b8' },
+          props: { text: 'This layout was dynamically constructed using visual block ingestion algorithms.', fontSize: 16, color: '#475569' },
           parent: 'ROOT'
         }
       };

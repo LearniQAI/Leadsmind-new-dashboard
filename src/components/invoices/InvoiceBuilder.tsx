@@ -200,66 +200,66 @@ export function InvoiceBuilder({
       <div className="xl:col-span-2 space-y-8">
 
         {/* Header Card */}
-        <div className="card__wrapper !p-8 !mb-0 shadow-2xl relative overflow-hidden group">
-         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 blur-3xl rounded-full pointer-events-none" />
+        <div className="card__wrapper !p-8 !mb-0 shadow-sm relative overflow-hidden group">
+         <div className="absolute top-0 right-0 w-64 h-64 bg-dash-accent/5 blur-3xl rounded-full pointer-events-none" />
 
          <div className="flex flex-col md:flex-row gap-8 relative z-10">
            <div className="flex-1 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-               <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 flex items-center gap-2">
-                 <User className="h-3 w-3 text-primary" /> Recipient / Client
+               <label className="text-[10px] font-black uppercase tracking-[0.2em] text-dash-textMuted flex items-center gap-2">
+                 <User className="h-3 w-3 text-dash-accent" /> Recipient / Client
                </label>
                <Select
                  onValueChange={(val) => setValue('contact_id', val)}
                  defaultValue={watch('contact_id')}
                >
-                 <SelectTrigger className="h-12 bg-white/[0.02] border-white/5 rounded-xl text-sm font-bold text-white focus:ring-primary/20">
+                 <SelectTrigger className="h-12 bg-dash-bg border-dash-border rounded-xl text-sm font-bold text-dash-text focus:ring-dash-accent/20">
                   <SelectValue placeholder="Select a contact" />
                  </SelectTrigger>
-                 <SelectContent className="bg-[#0b0b14] border-white/10 text-white">
+                 <SelectContent className="bg-dash-surface border-dash-border text-dash-text">
                   {contacts.map(contact => (
-                    <SelectItem key={contact.id} value={contact.id} className="focus:bg-primary/20 focus:text-white">
+                    <SelectItem key={contact.id} value={contact.id} className="focus:bg-dash-accent/10 focus:text-dash-text">
                      {contact.first_name} {contact.last_name}
                     </SelectItem>
                   ))}
                  </SelectContent>
                </Select>
-               {errors.contact_id && <p className="text-[10px] text-rose-500 font-bold uppercase">{errors.contact_id.message}</p>}
+               {errors.contact_id && <p className="text-[10px] text-rose-600 font-bold uppercase">{errors.contact_id.message}</p>}
               </div>
 
               <div className="space-y-2">
-               <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 flex items-center gap-2">
-                 <Hash className="h-3 w-3 text-primary" /> Invoice Number
+               <label className="text-[10px] font-black uppercase tracking-[0.2em] text-dash-textMuted flex items-center gap-2">
+                 <Hash className="h-3 w-3 text-dash-accent" /> Invoice Number
                </label>
                <Input
                  {...register('invoice_number')}
                  placeholder="INV-0001"
-                 className="h-12 bg-white/[0.02] border-white/5 rounded-xl text-sm font-bold text-white focus:ring-primary/20"
+                 className="h-12 bg-dash-bg border-dash-border rounded-xl text-sm font-bold text-dash-text focus:ring-dash-accent/20"
                />
-               {errors.invoice_number && <p className="text-[10px] text-rose-500 font-bold uppercase">{errors.invoice_number.message}</p>}
+               {errors.invoice_number && <p className="text-[10px] text-rose-600 font-bold uppercase">{errors.invoice_number.message}</p>}
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-               <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 flex items-center gap-2">
-                 <Calendar className="h-3 w-3 text-primary" /> Issue Date
+               <label className="text-[10px] font-black uppercase tracking-[0.2em] text-dash-textMuted flex items-center gap-2">
+                 <Calendar className="h-3 w-3 text-dash-accent" /> Issue Date
                </label>
                <Input
                  type="date"
                  {...register('created_at')}
-                 className="h-12 bg-white/[0.02] border-white/5 rounded-xl text-sm font-bold text-white focus:ring-primary/20 [color-scheme:dark]"
+                 className="h-12 bg-dash-bg border-dash-border rounded-xl text-sm font-bold text-dash-text focus:ring-dash-accent/20"
                />
               </div>
               <div className="space-y-2">
-               <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 flex items-center gap-2">
-                 <Clock className="h-3 w-3 text-primary" /> Due Date
+               <label className="text-[10px] font-black uppercase tracking-[0.2em] text-dash-textMuted flex items-center gap-2">
+                 <Clock className="h-3 w-3 text-dash-accent" /> Due Date
                </label>
                <Input
                  type="date"
                  {...register('due_date')}
-                 className="h-12 bg-white/[0.02] border-white/5 rounded-xl text-sm font-bold text-white focus:ring-primary/20 [color-scheme:dark]"
+                 className="h-12 bg-dash-bg border-dash-border rounded-xl text-sm font-bold text-dash-text focus:ring-dash-accent/20"
                />
               </div>
             </div>
@@ -268,10 +268,10 @@ export function InvoiceBuilder({
         </div>
 
         {/* Items Card */}
-        <div className="card__wrapper !p-0 !mb-0 shadow-2xl overflow-hidden group">
-         <div className="p-8 border-b border-white/5 flex justify-between items-center bg-white/[0.01]">
-           <h3 className="text-sm font-black uppercase tracking-[0.3em] text-white flex items-center gap-3">
-            <Package className="h-4 w-4 text-primary" /> Service Items
+        <div className="card__wrapper !p-0 !mb-0 shadow-sm overflow-hidden group">
+         <div className="p-8 border-b border-dash-border flex justify-between items-center bg-dash-bg">
+           <h3 className="text-sm font-black uppercase tracking-[0.3em] text-dash-text flex items-center gap-3">
+            <Package className="h-4 w-4 text-dash-accent" /> Service Items
            </h3>
            <Button
             type="button"
@@ -287,13 +287,13 @@ export function InvoiceBuilder({
            {fields.map((field, index) => (
             <div key={field.id} className="grid grid-cols-12 gap-4 items-end animate-in slide-in-from-left-2 duration-300">
               <div className="col-span-12 lg:col-span-5 space-y-2">
-               <label className="text-[8px] font-black uppercase tracking-widest text-white/20">Description</label>
+               <label className="text-[8px] font-black uppercase tracking-widest text-dash-textMuted">Description</label>
                <div className="flex gap-2">
                  <Select onValueChange={(val) => handleProductSelect(index, val)}>
-                  <SelectTrigger className="w-10 h-11 bg-white/[0.02] border-white/5 rounded-xl flex items-center justify-center p-0">
-                    <Search className="h-3 w-3 text-white/40" />
+                  <SelectTrigger className="w-10 h-11 bg-dash-bg border-dash-border rounded-xl flex items-center justify-center p-0">
+                    <Search className="h-3 w-3 text-dash-textMuted" />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#0b0b14] border-white/10 text-white">
+                  <SelectContent className="bg-dash-surface border-dash-border text-dash-text">
                     {products.map(p => (
                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                     ))}
@@ -302,43 +302,43 @@ export function InvoiceBuilder({
                  <Input
                   {...register(`items.${index}.description` as const)}
                   placeholder="Enter item description..."
-                  className="h-11 bg-white/[0.02] border-white/5 rounded-xl text-xs font-bold text-white"
+                  className="h-11 bg-dash-bg border-dash-border rounded-xl text-xs font-bold text-dash-text"
                  />
                </div>
               </div>
               <div className="col-span-4 lg:col-span-2 space-y-2">
-               <label className="text-[8px] font-black uppercase tracking-widest text-white/20">Qty</label>
+               <label className="text-[8px] font-black uppercase tracking-widest text-dash-textMuted">Qty</label>
                <Input
                  type="number"
                  {...register(`items.${index}.quantity` as const, { valueAsNumber: true })}
-                 className="h-11 bg-white/[0.02] border-white/5 rounded-xl text-xs font-bold text-white"
+                 className="h-11 bg-dash-bg border-dash-border rounded-xl text-xs font-bold text-dash-text"
                />
               </div>
               <div className="col-span-5 lg:col-span-3 space-y-2">
-               <label className="text-[8px] font-black uppercase tracking-widest text-white/20">Unit Price</label>
+               <label className="text-[8px] font-black uppercase tracking-widest text-dash-textMuted">Unit Price</label>
                <Input
                  type="number"
                  step="0.01"
                  {...register(`items.${index}.unit_amount` as const, { valueAsNumber: true })}
-                 className="h-11 bg-white/[0.02] border-white/5 rounded-xl text-xs font-bold text-white"
+                 className="h-11 bg-dash-bg border-dash-border rounded-xl text-xs font-bold text-dash-text"
                />
               </div>
               <div className="col-span-3 lg:col-span-2 flex justify-end gap-2">
-               <div className="h-11 flex items-center px-4 bg-white/[0.02] border border-white/5 rounded-xl text-xs font-black text-white/40">
+               <div className="h-11 flex items-center px-4 bg-dash-bg border border-dash-border rounded-xl text-xs font-black text-dash-textMuted">
                  {formatCurrency(watchItems[index]?.quantity * watchItems[index]?.unit_amount || 0, watchCurrency)}
                </div>
                <Button
                  type="button"
                  variant="ghost"
                  onClick={() => remove(index)}
-                 className="h-11 w-11 rounded-xl text-rose-500/40 hover:text-rose-500 hover:bg-rose-500/10"
+                 className="h-11 w-11 rounded-xl text-rose-400 hover:text-rose-600 hover:bg-rose-50"
                >
                  <Trash2 className="h-4 w-4" />
                </Button>
               </div>
             </div>
            ))}
-           {errors.items && <p className="text-[10px] text-rose-500 font-bold uppercase">{errors.items.message}</p>}
+           {errors.items && <p className="text-[10px] text-rose-600 font-bold uppercase">{errors.items.message}</p>}
          </div>
         </div>
       </div>
@@ -347,25 +347,25 @@ export function InvoiceBuilder({
       <div className="space-y-8">
 
         {/* Summary Card */}
-        <div className="card__wrapper !p-8 !mb-0 shadow-2xl bg-primary/5 border-primary/10 relative overflow-hidden">
-         <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-primary/20 blur-3xl rounded-full" />
+        <div className="card__wrapper !p-8 !mb-0 shadow-sm bg-dash-accent/5 border-dash-accent/10 relative overflow-hidden">
+         <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-dash-accent/10 blur-3xl rounded-full" />
 
-         <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary mb-8 flex items-center gap-2">
+         <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-dash-accent mb-8 flex items-center gap-2">
            <Calculator className="h-3 w-3" /> Billing Summary
          </h3>
 
          <div className="space-y-4 relative z-10">
-           <div className="flex justify-between items-center text-white/40">
+           <div className="flex justify-between items-center text-dash-textMuted">
             <span className="text-[10px] font-black uppercase tracking-widest">Gross Amount</span>
-            <span className="text-sm font-black">{formatCurrency(subtotal, watchCurrency)}</span>
+            <span className="text-sm font-black text-dash-text">{formatCurrency(subtotal, watchCurrency)}</span>
            </div>
-           <div className="flex justify-between items-center text-white/40 pb-6 border-b border-white/5">
+           <div className="flex justify-between items-center text-dash-textMuted pb-6 border-b border-dash-border">
             <span className="text-[10px] font-black uppercase tracking-widest">Tax ({vatRate}%)</span>
-            <span className="text-sm font-black">{formatCurrency(taxTotal, watchCurrency)}</span>
+            <span className="text-sm font-black text-dash-text">{formatCurrency(taxTotal, watchCurrency)}</span>
            </div>
            <div className="pt-4 space-y-1">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary block">Total Balance Due</span>
-            <div className="text-5xl font-black tracking-tighter text-white">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-dash-accent block">Total Balance Due</span>
+            <div className="text-5xl font-black tracking-tighter text-dash-text">
               {formatCurrency(total, watchCurrency)}
             </div>
            </div>
@@ -375,7 +375,7 @@ export function InvoiceBuilder({
            <Button
             type="submit"
             disabled={isSubmitting}
-            className="w-full btn-primary h-14 rounded-2xl text-xs uppercase font-black tracking-widest shadow-xl shadow-primary/20"
+            className="w-full btn-primary h-14 rounded-2xl text-xs uppercase font-black tracking-widest shadow-lg shadow-dash-accent/20"
            >
             {isSubmitting ? 'Processing...' : (initialData?.id ? 'Update Record' : 'Commit Invoice')}
            </Button>
@@ -392,25 +392,25 @@ export function InvoiceBuilder({
         </div>
 
         {/* Notes Card */}
-        <div className="card__wrapper !p-8 !mb-0 shadow-xl space-y-6">
+        <div className="card__wrapper !p-8 !mb-0 shadow-sm space-y-6">
          <div className="space-y-2">
-           <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 flex items-center gap-2">
-            <FileText className="h-3 w-3 text-primary" /> Internal Notes
+           <label className="text-[10px] font-black uppercase tracking-[0.2em] text-dash-textMuted flex items-center gap-2">
+            <FileText className="h-3 w-3 text-dash-accent" /> Internal Notes
            </label>
            <Textarea
             {...register('notes')}
             placeholder="Private notes for team..."
-            className="min-h-[100px] bg-white/[0.02] border-white/5 rounded-xl text-xs font-medium text-white focus:ring-primary/20"
+            className="min-h-[100px] bg-dash-bg border-dash-border rounded-xl text-xs font-medium text-dash-text focus:ring-dash-accent/20"
            />
          </div>
          <div className="space-y-2">
-           <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 flex items-center gap-2">
-            <ShieldCheck className="h-3 w-3 text-primary" /> Legal Terms
+           <label className="text-[10px] font-black uppercase tracking-[0.2em] text-dash-textMuted flex items-center gap-2">
+            <ShieldCheck className="h-3 w-3 text-dash-accent" /> Legal Terms
            </label>
            <Textarea
             {...register('terms')}
             placeholder="Default terms and conditions..."
-            className="min-h-[100px] bg-white/[0.02] border-white/5 rounded-xl text-xs font-medium text-white focus:ring-primary/20"
+            className="min-h-[100px] bg-dash-bg border-dash-border rounded-xl text-xs font-medium text-dash-text focus:ring-dash-accent/20"
            />
          </div>
         </div>

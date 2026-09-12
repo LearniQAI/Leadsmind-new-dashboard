@@ -91,10 +91,10 @@ export function BookingIntelligenceDashboard({ analytics }: BookingIntelligenceD
 
  if (!stats) {
   return (
-   <div className="card__wrapper py-16 text-center border border-dashed border-border dark:border-border-dark">
-    <TrendingUp className="h-12 w-12 text-placeholder dark:text-placeholder-dark mx-auto mb-6 opacity-30" />
+   <div className="card__wrapper py-16 text-center border border-dashed border-dash-border">
+    <TrendingUp className="h-12 w-12 text-dash-textMuted mx-auto mb-6 opacity-30" />
     <h5 className="card__heading-title uppercase mb-2">Insufficient Data Stream</h5>
-    <p className="text-placeholder dark:text-placeholder-dark text-xs max-w-xs mx-auto">Initialize booking nodes and collect session data to enable neural intelligence tracking.</p>
+    <p className="text-dash-textMuted text-xs max-w-xs mx-auto">Initialize booking nodes and collect session data to enable neural intelligence tracking.</p>
    </div>
   );
  }
@@ -143,8 +143,8 @@ export function BookingIntelligenceDashboard({ analytics }: BookingIntelligenceD
      <h6 className="card__sub-title mb-[10px] uppercase text-[10px] font-black tracking-widest opacity-60">Entropy Risk Factor</h6>
      <div className="space-y-2 mt-4">
        {stats.riskSlots.map((slot, i) => (
-        <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-bgBody dark:bg-bgBody-dark border border-border dark:border-border-dark group/slot hover:bg-rose-500/5 transition-all">
-          <span className="text-[9px] font-black text-body dark:text-body-dark opacity-60 uppercase tracking-tight group-hover/slot:opacity-100 transition-opacity">{slot.day} {slot.hour}</span>
+        <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-dash-bg border border-dash-border group/slot hover:bg-rose-500/5 transition-all">
+          <span className="text-[9px] font-black text-dash-text opacity-60 uppercase tracking-tight group-hover/slot:opacity-100 transition-opacity">{slot.day} {slot.hour}</span>
           <div className="flex items-center gap-2">
            <AlertTriangle className="h-3 w-3 text-rose-500" />
            <span className="text-[10px] font-black text-rose-500">{slot.rate}%</span>

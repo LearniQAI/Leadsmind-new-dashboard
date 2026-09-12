@@ -138,9 +138,10 @@ export function VoiceNotePlayer({ audioUrl, duration: initialDuration, theme = '
   const displayDuration = (duration && isFinite(duration)) ? duration : 30;
   const progressRatio = currentTime / displayDuration;
 
-  // Determine dynamic container style classes
+  // Determine dynamic container style classes.
+  // "dark" renders as an accent-tinted featured variant (the app is light-only).
   const containerClass = isDark
-    ? "bg-white/[0.02] border border-white/5 shadow-inner"
+    ? "bg-dash-accent/[0.04] border border-dash-accent/20 shadow-sm"
     : "bg-[#f1f5f9] border border-slate-200/60 shadow-inner";
 
   return (
@@ -197,9 +198,9 @@ export function VoiceNotePlayer({ audioUrl, duration: initialDuration, theme = '
                   height: `${barHeight}%`,
                   backgroundColor: isActive
                     ? '#0F6E56' // completed audio color
-                    : isHovered 
+                    : isHovered
                     ? '#3b82f6' // hovered audio seek color
-                    : isDark ? 'rgba(255, 255, 255, 0.1)' : '#cbd5e1', // inactive color
+                    : isDark ? 'rgba(19, 89, 255, 0.15)' : '#cbd5e1', // inactive color
                 }}
               />
             );
@@ -209,21 +210,21 @@ export function VoiceNotePlayer({ audioUrl, duration: initialDuration, theme = '
         {/* Time Tracking & Volume Controls */}
         <div className={cn(
           "flex items-center justify-between text-[11px] font-medium font-dm-sans px-0.5",
-          isDark ? "text-t3" : "text-slate-500"
+          isDark ? "text-dash-textMuted" : "text-slate-500"
         )}>
           <div className="flex items-center gap-1.5">
-            <span className={cn("font-semibold", isDark ? "text-t1" : "text-[#1A1A1A]")}>
+            <span className={cn("font-semibold", isDark ? "text-dash-text" : "text-[#1A1A1A]")}>
               {formatTime(currentTime)}
             </span>
-            <span className={isDark ? "text-white/20" : "text-slate-400"}>/</span>
+            <span className={isDark ? "text-dash-border" : "text-slate-400"}>/</span>
             <span>{formatTime(displayDuration)}</span>
           </div>
 
-          <button 
+          <button
             onClick={toggleMute}
             className={cn(
               "transition-colors p-0.5",
-              isMuted ? "text-rose-500" : isDark ? "text-t3 hover:text-t1" : "text-slate-400 hover:text-slate-600"
+              isMuted ? "text-rose-500" : isDark ? "text-dash-textMuted hover:text-dash-text" : "text-slate-400 hover:text-slate-600"
             )}
             aria-label={isMuted ? "Unmute" : "Mute"}
           >

@@ -171,24 +171,24 @@ export function ConnectPlatformsModal({
     if (isLoading) {
       return (
         <div className="flex flex-col gap-2.5">
-          <div className="h-4 bg-white/4 rounded w-1/3 animate-pulse"></div>
-          <div className="h-10 bg-white/4 rounded-lg animate-pulse"></div>
-          <div className="h-3 bg-white/4 rounded w-2/3 animate-pulse"></div>
+          <div className="h-4 bg-dash-border/60 rounded w-1/3 animate-pulse"></div>
+          <div className="h-10 bg-dash-border/60 rounded-lg animate-pulse"></div>
+          <div className="h-3 bg-dash-border/60 rounded w-2/3 animate-pulse"></div>
         </div>
       );
     }
 
     if (errorMsg) {
       return (
-        <div className="bg-[rgba(245,158,11,0.08)] border-l-2 border-[#f59e0b] px-4 py-3 rounded-r-lg flex items-start gap-3">
+        <div className="bg-amber-50 border-l-2 border-amber-500 px-4 py-3 rounded-r-lg flex items-start gap-3">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0">
             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
             <line x1="12" y1="9" x2="12" y2="13"/>
             <line x1="12" y1="17" x2="12.01" y2="17"/>
           </svg>
           <div className="flex flex-col gap-1">
-            <span className="text-[12px] text-[#94a3c8] font-medium leading-tight">{errorMsg}</span>
-            <button onClick={() => setCurrentStep(currentStep)} className="text-[#3b82f6] text-[11px] hover:underline font-semibold self-start mt-1">Try again</button>
+            <span className="text-[12px] text-dash-textMuted font-medium leading-tight">{errorMsg}</span>
+            <button onClick={() => setCurrentStep(currentStep)} className="text-dash-accent text-[11px] hover:underline font-semibold self-start mt-1">Try again</button>
           </div>
         </div>
       );
@@ -215,21 +215,21 @@ export function ConnectPlatformsModal({
   };
 
   return (
-    <div className={`${spaceGrotesk.variable} ${dmSans.variable} font-dm-sans min-h-[500px] w-full flex items-center justify-center bg-[#04091a]/75 backdrop-blur-sm p-4`}>
-      <div className="w-[520px] max-h-[80vh] overflow-y-auto bg-[#080f28] border border-white/13 rounded-[16px] p-[28px] text-[#eef2ff] shadow-2xl relative flex flex-col justify-between">
-        
+    <div className={`${spaceGrotesk.variable} ${dmSans.variable} font-dm-sans min-h-[500px] w-full flex items-center justify-center bg-[#000000c1] backdrop-blur-sm p-4`}>
+      <div className="w-[520px] max-h-[80vh] overflow-y-auto bg-dash-surface border border-dash-border rounded-[16px] p-[28px] text-dash-text shadow-2xl relative flex flex-col justify-between">
+
         {/* Header */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               {getHeaderIcon()}
-              <h3 className="text-[17px] font-semibold font-space-grotesk text-[#eef2ff]">
+              <h3 className="text-[17px] font-semibold font-space-grotesk text-dash-text">
                 {getPlatformLabel()} Setup
               </h3>
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/5 border border-white/7 hover:bg-white/10 hover:border-white/13 flex items-center justify-center text-[#94a3c8] hover:text-[#eef2ff] transition-all cursor-pointer"
+              className="w-8 h-8 rounded-full bg-dash-bg border border-dash-border hover:bg-dash-border/40 flex items-center justify-center text-dash-textMuted hover:text-dash-text transition-all cursor-pointer"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18" />
@@ -237,7 +237,7 @@ export function ConnectPlatformsModal({
               </svg>
             </button>
           </div>
-          <p className="text-[12px] text-[#4a5a82] leading-normal font-medium">
+          <p className="text-[12px] text-dash-textMuted leading-normal font-medium">
             Connect your account to start receiving messages in the Unified Inbox.
           </p>
         </div>
@@ -245,9 +245,9 @@ export function ConnectPlatformsModal({
         {/* Step Progress Bar */}
         <div className="my-6 relative">
           {/* Progress Connecting Line */}
-          <div className="absolute top-[14px] left-[14px] right-[14px] h-[1px] bg-white/7 z-0" />
-          <div 
-            className="absolute top-[14px] left-[14px] h-[1px] bg-[#2563eb] transition-all duration-300 z-0" 
+          <div className="absolute top-[14px] left-[14px] right-[14px] h-[1px] bg-dash-border z-0" />
+          <div
+            className="absolute top-[14px] left-[14px] h-[1px] bg-dash-accent transition-all duration-300 z-0"
             style={{ width: `${((currentStep - 1) / (totalSteps - 1 || 1)) * 100}%` }}
           />
 
@@ -262,9 +262,9 @@ export function ConnectPlatformsModal({
                   {/* Circle */}
                   <div
                     className={`w-7 h-7 rounded-full text-[11px] font-bold font-space-grotesk transition-all duration-300 ${
-                      isCompleted ? 'bg-[#2563eb] text-white flex items-center justify-center' :
-                      isActive ? 'bg-[#2563eb] text-white ring-4 ring-[#2563eb]/25 flex items-center justify-center' :
-                      'bg-[#080f28] border border-white/13 text-[#4a5a82] flex items-center justify-center'
+                      isCompleted ? 'bg-dash-accent text-white flex items-center justify-center' :
+                      isActive ? 'bg-dash-accent text-white ring-4 ring-dash-accent/25 flex items-center justify-center' :
+                      'bg-dash-bg border border-dash-border text-dash-textMuted flex items-center justify-center'
                     }`}
                   >
                     {isCompleted ? (
@@ -279,7 +279,7 @@ export function ConnectPlatformsModal({
                   {/* Label */}
                   <span
                     className={`text-[10px] font-medium uppercase tracking-wider font-dm-sans transition-colors duration-300 ${
-                      isActive ? 'text-[#94a3c8]' : 'text-[#4a5a82]'
+                      isActive ? 'text-dash-text' : 'text-dash-textMuted'
                     }`}
                   >
                     {stepLabel}
@@ -295,7 +295,7 @@ export function ConnectPlatformsModal({
           {currentStep > 1 && !isLoading && !errorMsg && (
             <button
               onClick={handleBack}
-              className="text-[#94a3c8] hover:text-[#eef2ff] text-[11px] font-semibold flex items-center gap-1 mb-3 transition-colors outline-none cursor-pointer"
+              className="text-dash-textMuted hover:text-dash-text text-[11px] font-semibold flex items-center gap-1 mb-3 transition-colors outline-none cursor-pointer"
             >
               ← Back
             </button>
@@ -304,17 +304,17 @@ export function ConnectPlatformsModal({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-white/7 pt-5 mt-6 flex items-center justify-between gap-4">
+        <div className="border-t border-dash-border pt-5 mt-6 flex items-center justify-between gap-4">
           <button
             onClick={onClose}
-            className="px-4 h-10 rounded-[8px] bg-white/6 hover:bg-white/10 border border-white/7 text-[13px] font-semibold text-[#94a3c8] hover:text-[#eef2ff] transition-all cursor-pointer"
+            className="px-4 h-10 rounded-[8px] bg-dash-bg hover:bg-dash-border/40 border border-dash-border text-[13px] font-semibold text-dash-textMuted hover:text-dash-text transition-all cursor-pointer"
           >
             Cancel Setup
           </button>
           <button
             onClick={handleContinue}
             disabled={isNextDisabled()}
-            className="px-4 h-10 rounded-[8px] bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-50 disabled:hover:bg-[#2563eb] disabled:cursor-not-allowed text-[13px] font-semibold text-white transition-all cursor-pointer flex items-center gap-1.5"
+            className="px-4 h-10 rounded-[8px] bg-dash-accent hover:bg-dash-accent/90 disabled:opacity-50 disabled:hover:bg-dash-accent disabled:cursor-not-allowed text-[13px] font-semibold text-white transition-all cursor-pointer flex items-center gap-1.5"
           >
             {currentStep === totalSteps ? 'Finish Setup ✓' : 'Continue →'}
           </button>

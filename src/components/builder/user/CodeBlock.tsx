@@ -58,7 +58,7 @@ export const CodeBlock = (allProps: CodeBlockProps & any) => {
 
    {/* Label for empty state */}
    {!customCode && (
-    <div className="p-8 bg-slate-900/5 border border-dashed border-slate-900/10 rounded-xl flex items-center justify-center text-slate-400 text-xs font-bold uppercase tracking-widest">
+    <div className="p-8 bg-dash-surface border border-dashed border-dash-border rounded-xl flex items-center justify-center text-dash-textMuted text-xs font-bold uppercase tracking-widest">
      Embed Code Block
     </div>
    )}
