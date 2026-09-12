@@ -24,7 +24,7 @@ export default async function WorkspaceAutomationsPage({ params }: PageProps) {
   if (!course) {
     return (
       <Wrapper>
-        <div className="p-12 text-center text-white font-mono text-xs uppercase tracking-widest bg-[#080f28] rounded-3xl border border-white/5">
+        <div className="p-12 text-center text-dash-textMuted font-mono text-xs uppercase tracking-widest bg-dash-surface rounded-3xl border border-dash-border">
           No course context exists for this active workspace. Setup a course node first.
         </div>
       </Wrapper>
@@ -33,7 +33,7 @@ export default async function WorkspaceAutomationsPage({ params }: PageProps) {
 
   return (
     <Wrapper>
-      <div className="p-6 max-w-7xl mx-auto font-body min-h-[calc(100vh-80px)] text-white">
+      <div className="p-6 max-w-7xl mx-auto font-body min-h-[calc(100vh-80px)] text-dash-text">
         <AutomationsClient course={course} />
       </div>
     </Wrapper>

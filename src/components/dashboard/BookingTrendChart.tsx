@@ -20,7 +20,7 @@ export function BookingTrendChart() {
       <div 
        className={cn(
         "w-full rounded-t-lg transition-all duration-700 relative",
-        i === data.length - 1 ? "bg-linear-to-t from-[#6c47ff] to-[#8b5cf6] shadow-[0_0_20px_rgba(108,71,255,0.4)]" : "bg-white/5 group-hover:bg-white/10"
+        i === data.length - 1 ? "bg-linear-to-t from-[#6c47ff] to-[#8b5cf6] shadow-[0_0_20px_rgba(108,71,255,0.4)]" : "bg-dash-border group-hover:bg-dash-border/70"
        )}
        style={{ height: `${val}%` }}
       >
@@ -34,7 +34,7 @@ export function BookingTrendChart() {
    
    {/* Labels */}
    <div className="flex justify-between mt-4 px-2">
-     <span className="text-[9px] font-black text-white/10 uppercase tracking-[0.2em]">90 Days Ago</span>
+     <span className="text-[9px] font-black text-dash-textMuted uppercase tracking-[0.2em]">90 Days Ago</span>
      <span className="text-[9px] font-black text-[#6c47ff] uppercase tracking-[0.2em]">Current Peak</span>
    </div>
   </div>

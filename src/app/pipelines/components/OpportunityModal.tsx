@@ -160,7 +160,7 @@ export function OpportunityModal({
                   "h-10 w-10 rounded-[10px] flex items-center justify-center border shadow-lg",
                   opportunity 
                     ? "bg-dash-accent/10 border-dash-accent/20 text-dash-accent" 
-                    : "bg-amber-500/10 border-amber-500/20 text-amber-600"
+                    : "bg-amber/10 border-amber/20 !text-amber"
                 )}>
                   {opportunity ? <PenSquare size={20} /> : <Rocket size={20} />}
                 </div>
@@ -212,7 +212,7 @@ export function OpportunityModal({
                     value={formData.value}
                     onChange={(e) => setFormData(prev => ({ ...prev, value: e.target.value }))}
                     placeholder="0.00"
-                    className="w-full h-11 bg-dash-surface border border-dash-border rounded-[10px] pl-9 pr-3 text-[15px] text-amber-600 font-display font-bold focus:outline-none focus:border-amber-500/50 transition-all shadow-inner"
+                    className="w-full h-11 bg-dash-surface border border-dash-border rounded-[10px] pl-9 pr-3 text-[15px] !text-amber font-display font-bold focus:outline-none focus:border-amber/50 transition-all shadow-inner"
                   />
                 </div>
               </div>

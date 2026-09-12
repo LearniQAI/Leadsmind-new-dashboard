@@ -161,15 +161,15 @@ export function SupportWidgetIframeClient({ settings, isInline }: SupportWidgetI
 
   return (
     <div className={cn(
-      "min-h-screen bg-[#04091a] text-white flex flex-col font-sans selection:bg-primary/30",
+      "min-h-screen bg-dash-bg text-dash-text flex flex-col font-sans selection:bg-dash-accent/30",
       isInline ? "p-0 bg-transparent border-0" : "p-0"
     )}>
-      <Toaster theme="dark" closeButton />
+      <Toaster theme="light" closeButton />
 
       {/* HEADER CARD */}
       {!isInline && (
-        <div 
-          className="px-6 py-5 flex items-center justify-between relative overflow-hidden border-b border-white/5 select-none shrink-0"
+        <div
+          className="px-6 py-5 flex items-center justify-between relative overflow-hidden border-b border-dash-border select-none shrink-0"
           style={{ backgroundColor: brandColor }}
         >
           <div className="absolute inset-0 bg-gradient-to-r from-black/25 to-transparent pointer-events-none" />
@@ -196,11 +196,11 @@ export function SupportWidgetIframeClient({ settings, isInline }: SupportWidgetI
       )}>
         {submitted ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center py-10 animate-in fade-in zoom-in duration-300">
-            <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-5">
-              <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+            <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center mb-5">
+              <CheckCircle2 className="w-8 h-8 text-emerald-600" />
             </div>
-            <h4 className="text-white font-extrabold text-lg uppercase tracking-tight mb-2">Request Logged!</h4>
-            <p className="text-[#94a3c8] text-xs leading-normal max-w-[280px] mb-6">
+            <h4 className="text-dash-text font-extrabold text-lg uppercase tracking-tight mb-2">Request Logged!</h4>
+            <p className="text-dash-textMuted text-xs leading-normal max-w-[280px] mb-6">
               Your support ticket has been registered. An auto-reply reference email was sent to your mailbox.
             </p>
             {ticketId && (
@@ -208,48 +208,48 @@ export function SupportWidgetIframeClient({ settings, isInline }: SupportWidgetI
                 href={`/support/public-thread?id=${ticketId}`}
                 target="_blank"
                 rel="noreferrer"
-                className="text-xs font-bold uppercase tracking-wider px-5 py-2.5 rounded-xl border border-white/10 hover:border-white/20 hover:bg-white/5 transition-colors mb-4"
+                className="text-xs font-bold uppercase tracking-wider px-5 py-2.5 rounded-xl border border-dash-border hover:border-dash-accent/40 hover:bg-dash-surface transition-colors mb-4 text-dash-text"
               >
                 View Ticket Thread Online
               </a>
             )}
-            <button 
+            <button
               onClick={resetForm}
-              className="text-[10px] uppercase font-black tracking-widest text-[#4a5a82] hover:text-white transition-colors"
+              className="text-[10px] uppercase font-black tracking-widest text-dash-textMuted hover:text-dash-text transition-colors"
             >
               Submit another request
             </button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            
+
             {/* Message header */}
             {!isInline && (
-              <div className="text-[#94a3c8] text-[11.5px] leading-normal mb-1 bg-white/[0.02] border border-white/5 rounded-xl p-3.5">
+              <div className="text-dash-textMuted text-[11.5px] leading-normal mb-1 bg-dash-surface border border-dash-border rounded-xl p-3.5">
                 👋 {settings.welcome_message}
               </div>
             )}
 
             <div className="grid grid-cols-2 gap-3.5">
               <div className="space-y-1.5">
-                <label className="text-[9px] font-black uppercase text-[#4a5a82] tracking-widest block">Full Name</label>
+                <label className="text-[9px] font-black uppercase text-dash-textMuted tracking-widest block">Full Name</label>
                 <input
                   required
                   type="text"
                   value={formData.name}
                   onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full bg-white/[0.04] border border-white/5 hover:border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-primary/50 focus:bg-white/[0.06] transition"
+                  className="w-full bg-dash-surface border border-dash-border hover:border-dash-accent/40 rounded-xl px-4 py-2.5 text-xs text-dash-text focus:outline-none focus:border-dash-accent transition"
                   placeholder="Jane Doe"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[9px] font-black uppercase text-[#4a5a82] tracking-widest block">Email Address *</label>
+                <label className="text-[9px] font-black uppercase text-dash-textMuted tracking-widest block">Email Address *</label>
                 <input
                   required
                   type="email"
                   value={formData.email}
                   onChange={e => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  className="w-full bg-white/[0.04] border border-white/5 hover:border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-primary/50 focus:bg-white/[0.06] transition"
+                  className="w-full bg-dash-surface border border-dash-border hover:border-dash-accent/40 rounded-xl px-4 py-2.5 text-xs text-dash-text focus:outline-none focus:border-dash-accent transition"
                   placeholder="jane@example.com"
                 />
               </div>
@@ -257,11 +257,11 @@ export function SupportWidgetIframeClient({ settings, isInline }: SupportWidgetI
 
             <div className="grid grid-cols-2 gap-3.5">
               <div className="space-y-1.5">
-                <label className="text-[9px] font-black uppercase text-[#4a5a82] tracking-widest block">Inquiry Category</label>
+                <label className="text-[9px] font-black uppercase text-dash-textMuted tracking-widest block">Inquiry Category</label>
                 <select
                   value={formData.category}
                   onChange={e => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                  className="w-full bg-[#080f28] border border-white/5 hover:border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-primary/50 focus:bg-white/[0.06] transition cursor-pointer"
+                  className="w-full bg-dash-surface border border-dash-border hover:border-dash-accent/40 rounded-xl px-3.5 py-2.5 text-xs text-dash-text focus:outline-none focus:border-dash-accent transition cursor-pointer"
                 >
                   {(settings.categories || []).map(cat => (
                     <option key={cat.id} value={cat.name}>{cat.name}</option>
@@ -272,11 +272,11 @@ export function SupportWidgetIframeClient({ settings, isInline }: SupportWidgetI
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-[9px] font-black uppercase text-[#4a5a82] tracking-widest block">Priority</label>
+                <label className="text-[9px] font-black uppercase text-dash-textMuted tracking-widest block">Priority</label>
                 <select
                   value={formData.priority}
                   onChange={e => setFormData(prev => ({ ...prev, priority: e.target.value }))}
-                  className="w-full bg-[#080f28] border border-white/5 hover:border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-primary/50 focus:bg-white/[0.06] transition cursor-pointer"
+                  className="w-full bg-dash-surface border border-dash-border hover:border-dash-accent/40 rounded-xl px-3.5 py-2.5 text-xs text-dash-text focus:outline-none focus:border-dash-accent transition cursor-pointer"
                 >
                   <option value="low">Low</option>
                   <option value="normal">Normal</option>
@@ -287,41 +287,41 @@ export function SupportWidgetIframeClient({ settings, isInline }: SupportWidgetI
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[9px] font-black uppercase text-[#4a5a82] tracking-widest block">Subject *</label>
+              <label className="text-[9px] font-black uppercase text-dash-textMuted tracking-widest block">Subject *</label>
               <input
                 required
                 type="text"
                 value={formData.subject}
                 onChange={e => setFormData(prev => ({ ...prev, subject: e.target.value }))}
-                className="w-full bg-white/[0.04] border border-white/5 hover:border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-primary/50 focus:bg-white/[0.06] transition"
+                className="w-full bg-dash-surface border border-dash-border hover:border-dash-accent/40 rounded-xl px-4 py-2.5 text-xs text-dash-text focus:outline-none focus:border-dash-accent transition"
                 placeholder="Brief summary of your request"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[9px] font-black uppercase text-[#4a5a82] tracking-widest block">Detailed Message *</label>
+              <label className="text-[9px] font-black uppercase text-dash-textMuted tracking-widest block">Detailed Message *</label>
               <textarea
                 required
                 rows={isInline ? 5 : 4}
                 value={formData.description}
                 onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                className="w-full bg-white/[0.04] border border-white/5 hover:border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-primary/50 focus:bg-white/[0.06] transition resize-none leading-relaxed"
+                className="w-full bg-dash-surface border border-dash-border hover:border-dash-accent/40 rounded-xl px-4 py-3 text-xs text-dash-text focus:outline-none focus:border-dash-accent transition resize-none leading-relaxed"
                 placeholder="Explain what you need assistance with..."
               />
             </div>
 
             {/* Uploaded File Pill */}
             {uploadedFile && (
-              <div className="flex items-center justify-between p-2.5 bg-emerald-500/5 border border-emerald-500/10 rounded-xl text-emerald-400 text-xs animate-in slide-in-from-bottom-2 duration-200">
+              <div className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 text-xs animate-in slide-in-from-bottom-2 duration-200">
                 <div className="flex items-center gap-2 truncate">
                   <Paperclip className="w-3.5 h-3.5 shrink-0" />
                   <span className="truncate font-bold">{uploadedFile.name}</span>
-                  <span className="text-[9px] text-[#4a5a82] font-mono">({Math.round(uploadedFile.size / 1024)} KB)</span>
+                  <span className="text-[9px] text-dash-textMuted font-mono">({Math.round(uploadedFile.size / 1024)} KB)</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setUploadedFile(null)}
-                  className="text-[9.5px] uppercase font-black tracking-wider hover:text-emerald-300 ml-2"
+                  className="text-[9.5px] uppercase font-black tracking-wider hover:text-emerald-900 ml-2"
                 >
                   Remove
                 </button>
@@ -330,14 +330,14 @@ export function SupportWidgetIframeClient({ settings, isInline }: SupportWidgetI
 
             {/* Action Bar */}
             <div className="flex items-center justify-between pt-2">
-              <label className="text-[#4a5a82] hover:text-white transition-colors flex items-center gap-1.5 text-xs font-semibold cursor-pointer select-none">
+              <label className="text-dash-textMuted hover:text-dash-text transition-colors flex items-center gap-1.5 text-xs font-semibold cursor-pointer select-none">
                 {isUploading ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  <Loader2 className="w-4 h-4 animate-spin text-dash-accent" />
                 ) : (
                   <Paperclip className="w-4 h-4" />
                 )}
                 <span>{isUploading ? 'Uploading file...' : 'Attach document'}</span>
-                <input 
+                <input
                   type="file"
                   onChange={handleFileUpload}
                   className="hidden"

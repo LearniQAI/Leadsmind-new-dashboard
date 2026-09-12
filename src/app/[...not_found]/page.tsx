@@ -13,7 +13,7 @@ export default function NotFoundPage() {
 
     return (
         <div className="min-h-[70vh] flex items-center justify-center px-6 py-12">
-            <div className="max-w-3xl w-full bg-white dark:bg-card-dark rounded-2xl shadow-lg border border-dash-border p-8 lg:p-12 text-center">
+            <div className="max-w-3xl w-full bg-white rounded-2xl shadow-lg border border-dash-border p-8 lg:p-12 text-center">
                 <div className="flex items-center justify-center mb-6">
                     <Image
                         src="/assets/images/brand/LeadsMind_Logo.png.png"

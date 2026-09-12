@@ -92,14 +92,16 @@ export function VoiceNoteCard({
     );
   };
 
-  // Determine styles dynamically based on light/dark theme
-  const cardBgClass = isDark 
-    ? "bg-[#080f28]/60 border border-white/5 backdrop-blur-xl shadow-inner text-white" 
+  // Determine styles dynamically based on theme variant.
+  // "dark" is now rendered as an accent-tinted featured card (the app is light-only),
+  // while "light" is the plain neutral card.
+  const cardBgClass = isDark
+    ? "bg-dash-accent/[0.04] border border-dash-accent/20 shadow-sm text-dash-text"
     : "bg-white border border-slate-200/80 shadow-sm text-[#1A1A1A]";
 
   // Strict color requirements from the PRD
   const nameColor = isDark
-    ? (isInternal ? '#a78bfa' : '#ffffff') // Light Purple vs White
+    ? (isInternal ? '#5C4AC7' : '#0F172A') // Brand Purple vs Dark heading
     : (isInternal ? '#5C4AC7' : '#1A1A1A'); // Brand Purple vs Dark
 
   return (
@@ -151,7 +153,7 @@ export function VoiceNoteCard({
                   fontFamily: 'Arial, sans-serif',
                   fontWeight: 400,
                   fontSize: '12px',
-                  color: isDark ? 'var(--t3)' : '#888888',
+                  color: isDark ? '#64748B' : '#888888',
                 }}
               >
                 {sender.job_title}
@@ -159,13 +161,13 @@ export function VoiceNoteCard({
             ) : null}
 
             {/* Time Indicator */}
-            <span 
+            <span
               className="truncate mt-0.5"
               style={{
                 fontFamily: 'Arial, sans-serif',
                 fontWeight: 400,
                 fontSize: '11px',
-                color: isDark ? 'var(--t3)' : '#AAAAAA',
+                color: isDark ? '#64748B' : '#AAAAAA',
               }}
             >
               {relativeTime}
@@ -187,7 +189,7 @@ export function VoiceNoteCard({
             style={{
               fontFamily: 'Arial, sans-serif',
               fontSize: '13px',
-              color: isDark ? 'var(--t2)' : '#555555',
+              color: isDark ? '#475569' : '#555555',
               fontStyle: 'italic',
             }}
           >
@@ -200,13 +202,13 @@ export function VoiceNoteCard({
       {transcript && (
         <div className={cn(
           "ml-[52px] border-t pt-2 flex flex-col gap-2",
-          isDark ? "border-white/5" : "border-slate-100"
+          isDark ? "border-dash-accent/20" : "border-slate-100"
         )}>
           {/* Toggle Controls */}
           <button
             onClick={() => setShowTranscript(!showTranscript)}
             className="flex items-center gap-1.5 text-[11.5px] font-bold transition-colors self-start cursor-pointer focus:outline-none"
-            style={{ color: isDark ? 'var(--accent2)' : '#5C4AC7' }}
+            style={{ color: '#5C4AC7' }}
           >
             <Sparkles className="w-3.5 h-3.5 fill-blue-50/50" />
             <span>{showTranscript ? 'Hide AI Transcript' : 'Show AI Transcript'}</span>
@@ -217,8 +219,8 @@ export function VoiceNoteCard({
           {showTranscript && (
             <div className={cn(
               "border rounded-xl p-3 animate-in fade-in slide-in-from-top-1 duration-200",
-              isDark 
-                ? "bg-white/[0.01] border-white/5 text-t2" 
+              isDark
+                ? "bg-white/60 border-dash-accent/20 text-dash-textMuted"
                 : "bg-[#f8fafc] border-slate-100 text-[#666666]"
             )}>
               <div className="flex items-center gap-1.5 mb-1.5 text-[10px] font-bold uppercase tracking-widest text-[#0F6E56]">
@@ -242,7 +244,7 @@ export function VoiceNoteCard({
       {/* Reactions & Reply Action Blocks (Addendum Requirements) */}
       <div className={cn(
         "ml-[52px] flex items-center justify-between border-t pt-2 mt-1",
-        isDark ? "border-white/5" : "border-slate-100"
+        isDark ? "border-dash-accent/20" : "border-slate-100"
       )}>
         {/* Social Interactions: 24px emoji trigger controls laid out horizontally separated by 6px margins */}
         <div className="flex items-center">
@@ -251,7 +253,7 @@ export function VoiceNoteCard({
               key={index}
               className={cn(
                 "w-6 h-6 flex items-center justify-center rounded transition-colors text-[14px]",
-                isDark ? "hover:bg-white/5 text-t2" : "hover:bg-slate-100 text-[#1A1A1A]"
+                isDark ? "hover:bg-dash-accent/10 text-dash-textMuted" : "hover:bg-slate-100 text-[#1A1A1A]"
               )}
               style={{ marginRight: index < 3 ? '6px' : '0px' }}
               aria-label={`React with ${emoji}`}
@@ -263,23 +265,23 @@ export function VoiceNoteCard({
 
         {/* Reply Links: 12px interactive action triggers supporting instant contextual text or audio responses */}
         <div className="flex items-center gap-3">
-          <button 
+          <button
             className="font-bold hover:underline bg-transparent border-none cursor-pointer"
             style={{
               fontFamily: 'Arial, sans-serif',
               fontSize: '12px',
-              color: isDark ? 'var(--accent2)' : '#5C4AC7',
+              color: '#5C4AC7',
             }}
           >
             Reply with Text
           </button>
-          <span className={isDark ? "text-white/20 text-[12px]" : "text-slate-300 text-[12px]"}>•</span>
-          <button 
+          <span className={isDark ? "text-dash-border text-[12px]" : "text-slate-300 text-[12px]"}>•</span>
+          <button
             className="font-bold hover:underline bg-transparent border-none cursor-pointer"
             style={{
               fontFamily: 'Arial, sans-serif',
               fontSize: '12px',
-              color: isDark ? 'var(--accent2)' : '#5C4AC7',
+              color: '#5C4AC7',
             }}
           >
             Reply with Audio

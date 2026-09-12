@@ -69,8 +69,8 @@ export const Columns = ({
    }}
   >
     {React.Children.count(children) === 0 && enabled ? (
-      <div className="col-span-full w-full min-h-[80px] bg-slate-900/5 border border-dashed border-slate-900/10 flex items-center justify-center rounded-xl p-4">
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pointer-events-none">Empty Columns Grid</span>
+      <div className="col-span-full w-full min-h-[80px] bg-dash-surface border border-dashed border-dash-border flex items-center justify-center rounded-xl p-4">
+        <span className="text-[10px] font-bold text-dash-textMuted uppercase tracking-widest pointer-events-none">Empty Columns Grid</span>
       </div>
     ) : children}
   </div>

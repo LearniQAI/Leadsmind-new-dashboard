@@ -71,12 +71,12 @@ export function TasksSection({ contactId, tasks }: TasksSectionProps) {
      value={title}
      onChange={(e) => setTitle(e.target.value)}
      onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
-     className="bg-[#0b0b10] border-white/5 text-white h-12 rounded-xl focus:border-[#6c47ff]/50 transition-all px-4"
+     className="bg-dash-bg border-dash-border text-dash-text h-12 rounded-xl focus:border-dash-accent/50 transition-all px-4"
     />
-    <Button 
-     onClick={handleAddTask} 
+    <Button
+     onClick={handleAddTask}
      disabled={isPending || !title.trim()}
-     className="bg-[#6c47ff] hover:bg-[#5b3ce0] text-white h-12 px-6 rounded-xl font-bold shrink-0 shadow-lg shadow-[#6c47ff]/20"
+     className="bg-dash-accent hover:bg-dash-accent/90 text-white h-12 px-6 rounded-xl font-bold shrink-0 shadow-lg shadow-dash-accent/20"
     >
      <Plus className="h-5 w-5" />
     </Button>
@@ -85,7 +85,7 @@ export function TasksSection({ contactId, tasks }: TasksSectionProps) {
    <div className="space-y-3">
     {tasks.map((task) => (
      <div key={task.id} className={cn(
-      "flex items-center gap-4 bg-[#0b0b10] border border-white/5 rounded-2xl p-4 transition-all hover:bg-white/4 group",
+      "flex items-center gap-4 bg-dash-bg border border-dash-border rounded-2xl p-4 transition-all hover:bg-dash-border/30 group",
       task.status === 'completed' && "opacity-50"
      )}>
       <Button
@@ -95,21 +95,21 @@ export function TasksSection({ contactId, tasks }: TasksSectionProps) {
        onClick={() => handleToggle(task.id, task.status)}
       >
         {task.status === 'completed' ? (
-         <CheckCircle2 className="h-6 w-6 text-green-400 fill-green-400/20" />
+         <CheckCircle2 className="h-6 w-6 text-emerald-600 fill-emerald-500/20" />
         ) : (
-         <Circle className="h-6 w-6 text-white/10 hover:text-[#6c47ff]" />
+         <Circle className="h-6 w-6 text-dash-textMuted hover:text-dash-accent" />
         )}
       </Button>
-      
+
       <div className="flex-1 flex flex-col gap-0.5 min-w-0">
         <span className={cn(
-         "text-sm font-bold text-white transition-all",
-         task.status === 'completed' && "line-through text-white/20"
+         "text-sm font-bold text-dash-text transition-all",
+         task.status === 'completed' && "line-through text-dash-textMuted"
         )}>
          {task.title}
         </span>
         <div className="flex items-center gap-2">
-         <div className="flex items-center gap-1.5 text-white/20">
+         <div className="flex items-center gap-1.5 text-dash-textMuted">
           <Calendar className="h-3 w-3" />
           <span className="text-[10px] font-bold uppercase tracking-widest">
            {format(new Date(task.created_at), 'MMM d')}
@@ -118,10 +118,10 @@ export function TasksSection({ contactId, tasks }: TasksSectionProps) {
         </div>
       </div>
 
-      <Button 
-       variant="ghost" 
-       size="icon" 
-       className="h-8 w-8 text-white/10 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded-lg shrink-0"
+      <Button
+       variant="ghost"
+       size="icon"
+       className="h-8 w-8 text-dash-textMuted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all rounded-lg shrink-0"
        onClick={() => handleDelete(task.id)}
       >
        <Trash2 className="h-4 w-4" />
@@ -129,7 +129,7 @@ export function TasksSection({ contactId, tasks }: TasksSectionProps) {
      </div>
     ))}
     {tasks.length === 0 && (
-     <div className="flex flex-col items-center justify-center py-10 text-white/10 border border-dashed border-white/5 rounded-3xl">
+     <div className="flex flex-col items-center justify-center py-10 text-dash-textMuted border border-dashed border-dash-border rounded-3xl">
        <CheckSquare className="h-8 w-8 mb-2" />
        <p className="text-xs font-semibold">No tasks assigned</p>
      </div>

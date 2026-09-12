@@ -57,8 +57,8 @@ export const PopupForm = (allProps: PopupFormProps & any) => {
       className="relative"
     >
       {React.Children.count(children) === 0 ? (
-        <div className="w-full min-h-[80px] bg-slate-900/5 border border-dashed border-slate-900/10 flex items-center justify-center rounded-xl p-4">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pointer-events-none">Drop a Form widget here</span>
+        <div className="w-full min-h-[80px] bg-dash-surface border border-dashed border-dash-border flex items-center justify-center rounded-xl p-4">
+          <span className="text-[10px] font-bold text-dash-textMuted uppercase tracking-widest pointer-events-none">Drop a Form widget here</span>
         </div>
       ) : children}
     </div>

@@ -30,22 +30,22 @@ const RetainerSelector: React.FC<RetainerSelectorProps> = ({
   if (balance <= 0 && !loading) return null;
 
   return (
-    <div className="p-4 bg-[var(--accentg)] border border-[var(--accent)]/20 rounded-[var(--r12)] animate-in fade-in slide-in-from-right-4">
+    <div className="p-4 bg-dash-accent/5 border border-dash-accent/20 rounded-xl animate-in fade-in slide-in-from-right-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Wallet className="h-4 w-4 text-[var(--accent2)]" />
-          <span className="text-[10px] font-bold text-[var(--t1)] uppercase tracking-widest">Retainer Credit</span>
+          <Wallet className="h-4 w-4 text-dash-accent" />
+          <span className="text-[10px] font-bold text-dash-text uppercase tracking-widest">Retainer Credit</span>
         </div>
-        <span className="text-sm font-bold text-[var(--accent2)] font-space">{formatCurrency(balance)}</span>
+        <span className="text-sm font-bold text-dash-accent font-space">{formatCurrency(balance)}</span>
       </div>
-      
-      <p className="text-[10px] text-[var(--t3)] leading-relaxed mb-4">
+
+      <p className="text-[10px] text-dash-textMuted leading-relaxed mb-4">
         Advance payment available. Applying this will reduce the balance due on this document.
       </p>
 
-      <button 
+      <button
         onClick={() => onApply(balance)}
-        className="w-full h-10 bg-[var(--accent)] hover:bg-blue-600 text-white rounded-[var(--r8)] text-[10px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+        className="w-full h-10 bg-dash-accent hover:bg-dash-accent/90 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2"
       >
         Apply Credit <Check size={14} />
       </button>
