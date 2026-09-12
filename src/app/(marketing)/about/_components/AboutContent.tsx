@@ -17,7 +17,7 @@ import {
   Minus,
   MapPin,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { DashButton } from '@/components/dashboard-ui';
 import '../../landing/landing.css';
 import Navbar from '../../landing/Navbar';
 import Footer from '../../landing/Footer';
@@ -271,19 +271,15 @@ export default function AboutContent({ user }: { user?: any }) {
 
           <motion.div variants={item} className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/auth/signup-basic">
-              <Button
-                className="lm-shimmer h-14 px-8 text-base text-white rounded-[14px] font-bold shadow-lg transition-all duration-200 hover:-translate-y-0.5 group"
-                style={{ backgroundColor: ORANGE, boxShadow: `0 12px 32px -8px ${ORANGE}66` }}
-              >
+              <DashButton variant="primary" size="lg" className="group">
                 Start free — no card needed
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Button>
+              </DashButton>
             </Link>
-            <Link
-              href="#origin"
-              className="h-14 px-8 rounded-[14px] border border-[#0F172A]/15 text-[#0F172A] inline-flex items-center justify-center gap-2.5 font-semibold hover:bg-[#0F172A]/5 transition-colors"
-            >
-              Our story →
+            <Link href="#origin">
+              <DashButton variant="ghost" size="lg">
+                Our story →
+              </DashButton>
             </Link>
           </motion.div>
         </motion.div>

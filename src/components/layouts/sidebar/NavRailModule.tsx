@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { NavModule } from "@/interface";
 import NavItemsList from "./NavItemsList";
 import HoverInfoTrigger from "./hover-info/HoverInfoTrigger";
@@ -15,6 +15,11 @@ interface NavRailModuleProps {
   onSelectModule: (moduleId: string) => void;
   onHoverModule: (moduleId: string | null) => void;
   onNavigate?: () => void;
+  // Collapsed-rail flyout open state now lives one level up (NavRail), so only
+  // one module's flyout can be open at a time — see NavRail's openModuleId.
+  isFlyoutOpen: boolean;
+  onToggleFlyout: (moduleId: string) => void;
+  onCloseFlyout: () => void;
 }
 
 // Fixed-position, viewport-clamped flyout for the collapsed icon rail. The
@@ -33,17 +38,20 @@ const NavRailModule: React.FC<NavRailModuleProps> = ({
   onSelectModule,
   onHoverModule,
   onNavigate,
+  isFlyoutOpen,
+  onToggleFlyout,
+  onCloseFlyout,
 }) => {
   const isDirectLink = Boolean(module.link) && !module.items;
+  const hasFlyout = isCollapse && Boolean(module.items);
   const triggerRef = useRef<HTMLDivElement>(null);
   const flyoutRef = useRef<HTMLDivElement>(null);
-  const [isOpen, setIsOpen] = useState(false);
   // Always fixed + off-screen by default so the (still-mounted, for measuring
   // and instant-open) panel never participates in the rail's own layout flow.
   const [style, setStyle] = useState<React.CSSProperties>({ position: "fixed", top: -9999, left: -9999 });
 
   useLayoutEffect(() => {
-    if (!isOpen || !triggerRef.current || !flyoutRef.current) return;
+    if (!isFlyoutOpen || !triggerRef.current || !flyoutRef.current) return;
 
     const triggerRect = triggerRef.current.getBoundingClientRect();
     const flyoutHeight = flyoutRef.current.offsetHeight;
@@ -57,33 +65,66 @@ const NavRailModule: React.FC<NavRailModuleProps> = ({
       left: triggerRect.right + 8,
       maxHeight: `calc(100vh - ${FLYOUT_MARGIN * 2}px)`,
     });
-  }, [isOpen]);
+  }, [isFlyoutOpen]);
+
+  // Click-outside-to-close: only armed while this module's flyout is open.
+  // Checks real DOM containment against both the trigger and the flyout
+  // (which is visually elsewhere on screen via position:fixed, but still a
+  // DOM descendant of triggerRef) so a click on either never closes it.
+  useEffect(() => {
+    if (!isFlyoutOpen) return;
+    const handleOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (triggerRef.current?.contains(target)) return;
+      onCloseFlyout();
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [isFlyoutOpen, onCloseFlyout]);
 
   const handleEnter = () => {
     onHoverModule(module.id);
-    if (isCollapse && module.items) setIsOpen(true);
   };
 
   const handleLeave = () => {
-    setIsOpen(false);
+    onHoverModule(null);
   };
 
-  // Keyboard nav: only close when focus actually leaves this module (button
-  // + its flyout links), not when it merely moves from the button to a link
+  const handleClick = () => {
+    if (isDirectLink) return;
+    onSelectModule(module.id);
+    if (hasFlyout) onToggleFlyout(module.id);
+  };
+
+  // Escape closes the open flyout and keeps focus on the trigger button
+  // rather than dropping it, so keyboard users aren't left with focus
+  // lost to the (now-hidden) content that used to be under it.
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Escape" && isFlyoutOpen) {
+      e.stopPropagation();
+      onCloseFlyout();
+      (e.currentTarget.querySelector("button") as HTMLButtonElement | null)?.focus();
+    }
+  };
+
+  // Only close on blur if focus actually leaves this module (button + its
+  // flyout links), not when it merely moves from the button to a link
   // inside the same flyout — those live in the same DOM subtree but render
   // fixed-positioned elsewhere on screen, so a plain blur would fire on every
   // Tab press between them.
   const handleBlur = (e: React.FocusEvent<HTMLDivElement>) => {
     if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-      setIsOpen(false);
+      onCloseFlyout();
     }
   };
 
   const button = isCollapse ? (
     <button
       type="button"
-      onClick={() => !isDirectLink && onSelectModule(module.id)}
+      onClick={handleClick}
       aria-current={isActive ? "true" : undefined}
+      aria-expanded={hasFlyout ? isFlyoutOpen : undefined}
+      aria-haspopup={hasFlyout ? "true" : undefined}
       className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-dash-accent focus-visible:outline-offset-2 ${
         isActive
           ? "bg-dash-accent/10 text-dash-accent"
@@ -118,6 +159,7 @@ const NavRailModule: React.FC<NavRailModuleProps> = ({
       onMouseLeave={handleLeave}
       onFocus={handleEnter}
       onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
     >
       {isDirectLink ? (
         <Link href={module.link!} className="w-full">
@@ -147,11 +189,11 @@ const NavRailModule: React.FC<NavRailModuleProps> = ({
         </div>
       )}
 
-      {isCollapse && module.items && (
+      {hasFlyout && (
         <div
           ref={flyoutRef}
           style={style}
-          className={`${isOpen ? "visible opacity-100 pointer-events-auto" : "invisible opacity-0 pointer-events-none"}
+          className={`${isFlyoutOpen ? "visible opacity-100 pointer-events-auto" : "invisible opacity-0 pointer-events-none"}
             transition-opacity duration-150 motion-reduce:transition-none z-[1100]
             w-[220px] bg-dash-surface border border-dash-border rounded-xl shadow-xl p-3 overflow-y-auto`}
         >

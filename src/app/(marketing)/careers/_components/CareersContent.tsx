@@ -24,14 +24,13 @@ import {
   Zap,
   Layers,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { DashButton } from '@/components/dashboard-ui';
 import '../../landing/landing.css';
 import Navbar from '../../landing/Navbar';
 import Footer from '../../landing/Footer';
 import FinalCTA from '../../landing/FinalCTA';
 
 const ROYAL = '#1359FF';
-const ORANGE = '#FF8A00';
 
 const TALENT_COMMUNITY_HREF = 'mailto:careers@leadsmind.io';
 const OPEN_POSITIONS_HREF = '#departments';
@@ -357,19 +356,15 @@ export default function CareersContent({ user }: { user?: any }) {
           </motion.p>
           <motion.div variants={heroItem} className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href={OPEN_POSITIONS_HREF}>
-              <Button
-                className="lm-shimmer h-14 px-8 text-base text-white rounded-[14px] font-bold shadow-lg transition-all duration-200 hover:-translate-y-0.5 group"
-                style={{ backgroundColor: ORANGE, boxShadow: `0 12px 32px -8px ${ORANGE}66` }}
-              >
+              <DashButton variant="primary" size="lg" className="group">
                 View Open Positions
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Button>
+              </DashButton>
             </Link>
-            <Link
-              href={TALENT_COMMUNITY_HREF}
-              className="h-14 px-8 rounded-[14px] border border-[#0F172A]/15 text-[#0F172A] inline-flex items-center justify-center gap-2.5 font-semibold hover:bg-[#0F172A]/5 transition-colors"
-            >
-              Join Our Talent Community
+            <Link href={TALENT_COMMUNITY_HREF}>
+              <DashButton variant="ghost" size="lg">
+                Join Our Talent Community
+              </DashButton>
             </Link>
           </motion.div>
         </motion.div>
@@ -646,13 +641,10 @@ export default function CareersContent({ user }: { user?: any }) {
               becomes available.
             </p>
             <Link href={TALENT_COMMUNITY_HREF}>
-              <Button
-                className="lm-shimmer h-14 px-8 text-base text-white rounded-[14px] font-bold shadow-lg transition-all duration-200 hover:-translate-y-0.5 group"
-                style={{ backgroundColor: ORANGE, boxShadow: `0 12px 32px -8px ${ORANGE}66` }}
-              >
+              <DashButton variant="primary" size="lg" className="group">
                 Join Our Talent Community
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Button>
+              </DashButton>
             </Link>
           </motion.div>
         </div>

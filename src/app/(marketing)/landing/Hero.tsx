@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Play, Sparkles } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { DashButton } from '@/components/dashboard-ui';
 import { SectionReveal } from './motion';
 import DashboardMarquee from '@/components/landing/DashboardMarquee';
 
@@ -75,16 +75,17 @@ export default function Hero() {
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
           <Link href="/auth/signup-basic">
-            <Button className="lm-shimmer h-14 px-8 text-base bg-[#FF8D00] hover:bg-[#FF8D00]/90 border-none rounded-full font-semibold shadow-xl shadow-[#4F46E5]/30 group">
+            <DashButton variant="primary" size="lg" className="group">
               Start Free Trial <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Button>
+            </DashButton>
           </Link>
-          <button
+          <DashButton
+            variant="ghost"
+            size="lg"
             onClick={() => document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth' })}
-            className="h-14 px-8 rounded-full border border-[#0F172A]/15 text-[#0F172A] flex items-center gap-2.5 font-semibold hover:bg-[#0F172A]/5 transition-colors"
           >
             <Play className="w-4 h-4 fill-current" /> Watch Demo
-          </button>
+          </DashButton>
         </div>
 
         

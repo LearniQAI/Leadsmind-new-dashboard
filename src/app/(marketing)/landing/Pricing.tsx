@@ -3,7 +3,7 @@
 import React, { useRef, useState } from 'react';
 import Link from 'next/link';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { Button } from '@/components/ui/button';
+import { DashButton } from '@/components/dashboard-ui';
 import { pricingTiers } from './data';
 import { SectionReveal } from './motion';
 
@@ -215,22 +215,19 @@ export default function Pricing({ onSelectTier }: { onSelectTier: (tierId: strin
 
                   {isEnterprise ? (
                     <Link href="/contact">
-                      <Button className="w-full h-[50px] rounded-xl font-bold text-[15px] bg-[#0F172A] hover:bg-[#1E293B] !text-white transition-colors">
+                      <DashButton variant="secondary" size="lg" className="w-full">
                         {tier.cta}
-                      </Button>
+                      </DashButton>
                     </Link>
                   ) : (
-                    <Button
+                    <DashButton
+                      variant={isPro ? 'primary' : 'secondary'}
+                      size="lg"
+                      className="w-full"
                       onClick={() => onSelectTier(tier.id, isAnnual ? 'year' : 'month')}
-                      className={`w-full h-[50px] rounded-xl font-bold text-[15px] transition-all ${
-                        isPro
-                          ? 'lm-shimmer !text-white shadow-[0_4px_16px_rgba(79,70,229,0.4)] hover:shadow-[0_8px_24px_rgba(79,70,229,0.5)] hover:-translate-y-px'
-                          : 'bg-[#F1F5F9] hover:bg-[#E2E8F0] !text-[#0F172A]'
-                      }`}
-                      style={isPro ? { background: 'linear-gradient(135deg, #4F46E5, #6366F1)' } : undefined}
                     >
                       {tier.cta}
-                    </Button>
+                    </DashButton>
                   )}
                 </div>
               </motion.div>
