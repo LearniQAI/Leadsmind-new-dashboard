@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Menu, X, ChevronDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { DashButton } from '@/components/dashboard-ui';
 import { useScrolled } from './hooks';
 import { navLinks } from './data';
 import { ArrowRight } from 'lucide-react';
@@ -52,9 +52,9 @@ export default function Navbar({ user }: { user?: any }) {
         <div className="hidden md:flex items-center gap-3">
           {user ? (
             <Link href="/dashboard">
-              <Button className="bg-[#4F46E5] hover:bg-[#4F46E5]/90 text-white rounded-full px-6 h-10 text-sm font-semibold shadow-lg shadow-[#4F46E5]/25">
+              <DashButton variant="primary" size="default">
                 Dashboard
-              </Button>
+              </DashButton>
             </Link>
           ) : (
             <>
@@ -65,9 +65,9 @@ export default function Navbar({ user }: { user?: any }) {
                 Sign in
               </Link>
               <Link href="/auth/signup-basic">
-                <Button className="lm-shimmer bg-[#4F46E5] hover:bg-[#4F46E5]/90 text-white rounded-full px-6 h-10 text-sm font-semibold shadow-lg shadow-[#4F46E5]/25">
+                <DashButton variant="primary" size="default" className="group">
                    Dashboard <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </Button>
+                </DashButton>
               </Link>
             </>
           )}
@@ -157,12 +157,12 @@ export default function Navbar({ user }: { user?: any }) {
               ))}
               <div className="flex flex-col gap-3 pt-4 border-t border-slate-200/80">
                 {user ? (
-                  <Link href="/dashboard">
-                    <Button className="w-full bg-[#4F46E5] text-white rounded-full h-11">Dashboard</Button>
+                  <Link href="/dashboard" className="w-full">
+                    <DashButton variant="primary" size="default" className="w-full">Dashboard</DashButton>
                   </Link>
                 ) : (
-                  <Link href="/auth/signup-basic">
-                    <Button className="w-full bg-[#4F46E5] text-white rounded-full h-11">Start Free Trial</Button>
+                  <Link href="/auth/signup-basic" className="w-full">
+                    <DashButton variant="primary" size="default" className="w-full">Start Free Trial</DashButton>
                   </Link>
                 )}
               </div>

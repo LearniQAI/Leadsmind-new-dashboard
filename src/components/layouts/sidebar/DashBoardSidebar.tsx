@@ -90,28 +90,38 @@ const DashBoardSidebar = () => {
           lg:translate-x-0 ${isCollapse ? "lg:w-[72px]" : hasSubNav ? "lg:w-[428px]" : "lg:w-[208px]"}`}
       >
         {/* Logo — widths must stay in sync with src/lib/nav/sidebarWidth.ts.
-            Desktop-collapsed shows the dedicated square icon mark (icon0.svg);
-            everywhere else shows the full LeadsMind lockup. */}
+            Desktop-collapsed shows the dedicated square icon mark (icon0.svg)
+            as the expand toggle (clicking it calls the same handleToggleCollapse
+            as the rail's "Collapse" button); everywhere else it's a Link to the
+            full LeadsMind lockup. The mobile drawer is always full-width
+            regardless of the desktop isCollapse preference stored in
+            localStorage, so it keeps the lockup+Link behavior unconditionally. */}
         <div className="h-[70px] flex items-center justify-between px-5 border-b border-dash-border flex-shrink-0">
-          <Link href="/dashboard" className="flex items-center min-w-0">
-            {/* Icon-only mark: desktop rail collapsed ONLY. The mobile drawer is
-                always full-width regardless of the desktop isCollapse preference
-                stored in localStorage, so this must never show below lg. */}
-            <img
-              src="/icon0.svg"
-              alt="LeadsMind"
-              width={36}
-              height={36}
-              className={`w-9 h-9 flex-shrink-0 object-contain ${
-                isCollapse ? "hidden lg:block" : "hidden"
-              }`}
-            />
+          {/* Mobile: always the lockup, always a Link — desktop isCollapse never applies below lg */}
+          <Link href="/dashboard" className={`items-center min-w-0 flex ${isCollapse ? "lg:hidden" : ""}`}>
             <img
               src="/assets/images/brand/LeadsMind_Logo.png.png"
               alt="LeadsMind"
-              className={`h-8 w-auto object-contain ${isCollapse ? "lg:hidden" : ""}`}
+              className="h-8 w-auto object-contain"
             />
           </Link>
+          {isCollapse && (
+            <button
+              type="button"
+              onClick={handleToggleCollapse}
+              aria-label="Expand navigation"
+              title="Expand navigation"
+              className="hidden lg:flex items-center justify-center w-9 h-9 flex-shrink-0 rounded-lg cursor-pointer hover:bg-dash-surface transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-dash-accent focus-visible:outline-offset-2"
+            >
+              <img
+                src="/icon0.svg"
+                alt="LeadsMind"
+                width={36}
+                height={36}
+                className="w-9 h-9 object-contain pointer-events-none"
+              />
+            </button>
+          )}
           <button
             onClick={() => setSideMenuOpen(false)}
             className="lg:hidden w-8 h-8 flex items-center justify-center bg-dash-surface rounded-lg text-dash-textMuted hover:text-dash-text transition-colors"

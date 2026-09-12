@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowRight, Check, Play } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { DashButton } from '@/components/dashboard-ui';
 import { getModule, type ModuleContentLegacy } from '@/data/modules';
 import '../../landing/landing.css';
 import Navbar from '../../landing/Navbar';
@@ -53,7 +53,6 @@ const connectiveFade = {
 /** Fixed brand palette — every module page shares these, regardless of that
  *  module's own dropdown-tile accent, so the 9 pages read as one product. */
 const ROYAL = '#1359FF';
-const ORANGE = '#FF8A00';
 
 export default function ModulePageTemplate({ slug, user }: { slug: string; user?: any }) {
   const mod = getModule(slug);
@@ -113,19 +112,15 @@ export default function ModulePageTemplate({ slug, user }: { slug: string; user?
             </motion.div>
             <motion.div variants={heroTextItem} className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <Link href="/auth/signup-basic">
-                <Button
-                  className="lm-shimmer h-14 px-8 text-base text-white rounded-[14px] font-bold shadow-lg transition-all duration-200 hover:-translate-y-0.5 group"
-                  style={{ backgroundColor: ORANGE, boxShadow: `0 12px 32px -8px ${ORANGE}66` }}
-                >
+                <DashButton variant="primary" size="lg" className="group">
                   {mod.hero.ctaLabel}
                   <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </Button>
+                </DashButton>
               </Link>
-              <Link
-                href="/#demo"
-                className="h-14 px-8 rounded-[14px] border border-[#0F172A]/15 text-[#0F172A] inline-flex items-center justify-center gap-2.5 font-semibold hover:bg-[#0F172A]/5 transition-colors"
-              >
-                <Play className="w-4 h-4 fill-current" /> See it in action
+              <Link href="/#demo">
+                <DashButton variant="ghost" size="lg">
+                  <Play className="w-4 h-4 fill-current" /> See it in action
+                </DashButton>
               </Link>
             </motion.div>
             <motion.p variants={heroTextItem} className="text-[13px] !text-[#94A3B8] mt-4">

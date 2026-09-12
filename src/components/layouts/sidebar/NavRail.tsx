@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { NavModule } from "@/interface";
 import NavRailModule from "./NavRailModule";
 
@@ -26,6 +26,22 @@ const NavRail: React.FC<NavRailProps> = ({
   onHoverModule,
   onNavigate,
 }) => {
+  // Which collapsed-rail module's flyout is open — lifted up here (rather than
+  // local state per NavRailModule) so opening one module's flyout can close
+  // whichever other one was already open, instead of allowing several to
+  // stack at once.
+  const [openModuleId, setOpenModuleId] = useState<string | null>(null);
+  const handleToggleFlyout = (moduleId: string) => {
+    setOpenModuleId((prev) => (prev === moduleId ? null : moduleId));
+  };
+  const handleCloseFlyout = () => setOpenModuleId(null);
+
+  // Expanding the rail retires the collapsed-only flyout entirely — don't
+  // leave a stale open flyout id around for when the rail collapses again.
+  useEffect(() => {
+    if (!isCollapse) setOpenModuleId(null);
+  }, [isCollapse]);
+
   // Widths must stay in literal-string sync with src/lib/nav/sidebarWidth.ts
   // (RAIL_COLLAPSED_WIDTH=72, RAIL_EXPANDED_WIDTH=208) — Tailwind can't pick up
   // dynamically-interpolated arbitrary-value classes, only literal ones.
@@ -44,6 +60,9 @@ const NavRail: React.FC<NavRailProps> = ({
           onSelectModule={onSelectModule}
           onHoverModule={onHoverModule}
           onNavigate={onNavigate}
+          isFlyoutOpen={openModuleId === module.id}
+          onToggleFlyout={handleToggleFlyout}
+          onCloseFlyout={handleCloseFlyout}
         />
       ))}
 

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { DashButton } from '@/components/dashboard-ui';
 
 /** Sticky bottom CTA bar shared across all Solutions module pages. */
 export default function StickyFooterCtaBand() {
@@ -14,19 +14,14 @@ export default function StickyFooterCtaBand() {
         </span>
         <div className="flex items-center gap-3 shrink-0">
           <Link href="/auth/signup-basic">
-            <Button
-              size="sm"
-              className="h-10 px-5 text-sm text-white rounded-[10px] font-bold"
-              style={{ backgroundColor: '#FF8A00' }}
-            >
+            <DashButton variant="primary" size="sm">
               Start Free
-            </Button>
+            </DashButton>
           </Link>
-          <Link
-            href="/#demo"
-            className="h-10 px-5 rounded-[10px] border border-[#0F172A]/15 !text-[#0F172A] inline-flex items-center justify-center font-semibold text-sm hover:bg-[#0F172A]/5 transition-colors"
-          >
-            Book a Demo
+          <Link href="/#demo">
+            <DashButton variant="ghost" size="sm">
+              Book a Demo
+            </DashButton>
           </Link>
         </div>
       </div>
