@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import Wrapper from '@/components/layouts/DefaultWrapper';
 import InstantMeetClient from '@/components/calendar/InstantMeetClient';
 import { Video } from 'lucide-react';
+import MetaData from '@/hooks/useMetaData';
 
 export default async function InstantMeetPage() {
   await requireAuth();
@@ -12,15 +13,7 @@ export default async function InstantMeetPage() {
 
   const supabase = await createServerClient();
 
-  // 1. Fetch active calendars for testing link previews
-  const { data: calendars } = await supabase
-    .from('booking_calendars')
-    .select('id, name, slug')
-    .eq('workspace_id', workspaceId)
-    .order('created_at', { ascending: false })
-    .limit(5);
-
-  // 2. Fetch recent appointments to display in the diagnostics cockpit
+  // Recent instant-meeting rooms for the active rooms lobby
   const { data: appointments } = await supabase
     .from('appointments')
     .select('id, title, start_time, end_time, status, meeting_link')
@@ -29,32 +22,43 @@ export default async function InstantMeetPage() {
     .limit(5);
 
   return (
-    <Wrapper>
-      <main className="min-h-screen bg-dash-surface !text-dash-text py-12 px-6">
-        <div className="max-w-6xl mx-auto">
+    <MetaData pageTitle="Instant Meet">
+      <Wrapper>
+        <div className="bg-dash-surface min-h-screen p-6">
+          <div className="grid grid-cols-12 gap-x-5">
 
-          {/* Header */}
-          <div className="mb-10 text-center sm:text-left">
-            <h1 className="text-3xl font-bold tracking-tight !text-dash-text mb-2 flex items-center justify-center sm:justify-start gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20">
-                <Video className="w-5 h-5 text-white" />
+            {/* Hero header */}
+            <div className="col-span-12 mb-[20px]">
+              <div className="bg-white rounded-2xl p-6 border border-dash-border relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 blur-[120px] -mr-32 -mt-32 rounded-full pointer-events-none" />
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="h-6 w-6 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
+                      <Video className="h-3.5 w-3.5 text-primary" />
+                    </div>
+                    <span className="text-[10px] font-bold text-primary">Live meeting infrastructure</span>
+                  </div>
+                  <h1 className="text-4xl font-bold tracking-tight !text-dash-text leading-tight mb-4">
+                    Instant <span className="text-primary">meet</span> hub
+                  </h1>
+                  <p className="!text-dash-textMuted text-sm font-medium mt-4 max-w-2xl leading-relaxed">
+                    Spin up a private video room in seconds and share the link instantly — no scheduling required.
+                  </p>
+                </div>
               </div>
-              Instant meet hub
-            </h1>
-            <p className="!text-dash-textMuted text-sm font-medium">
-              Start ad-hoc meetings instantly, test WebRTC video lobbies, inspect calendar bookings, and view diagnostics.
-            </p>
+            </div>
+
+            {/* Interactive Client Panel */}
+            <div className="col-span-12">
+              <InstantMeetClient
+                workspaceId={workspaceId}
+                initialAppointments={appointments || []}
+              />
+            </div>
+
           </div>
-
-          {/* Interactive Client Panel */}
-          <InstantMeetClient 
-            workspaceId={workspaceId}
-            initialCalendars={calendars || []}
-            initialAppointments={appointments || []}
-          />
-
         </div>
-      </main>
-    </Wrapper>
+      </Wrapper>
+    </MetaData>
   );
 }

@@ -2,13 +2,12 @@ import React from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Metadata } from 'next';
-import { ArrowLeft, Calendar, Clock, CheckCircle2, ChevronRight, BookOpen } from 'lucide-react';
+import { Calendar, Clock, CheckCircle2, ChevronRight, BookOpen } from 'lucide-react';
 import { createServerClient } from '@/lib/supabase/server';
 import { getHelpArticle } from '@/app/actions/help';
 import HelpFeedback from '@/components/help/HelpFeedback';
 import HelpFaq from '@/components/help/HelpFaq';
 import HelpVideoPlayer from '@/components/help/HelpVideoPlayer';
-import Wrapper from "@/components/layouts/DefaultWrapper";
 
 export const dynamic = 'force-dynamic';
 
@@ -113,7 +112,7 @@ export default async function HelpArticlePage({ params }: PageProps) {
   } : null;
 
   return (
-    <Wrapper>
+    <>
       {/* Injecting Structured LD-JSON Semantics */}
       <script
         type="application/ld+json"
@@ -154,22 +153,16 @@ export default async function HelpArticlePage({ params }: PageProps) {
         }
       `}</style>
 
-      <div className="min-h-screen bg-dash-surface font-dm-sans py-16 px-4 md:px-8 relative overflow-hidden help-article-content">
+      <div className="min-h-full bg-dash-surface font-dm-sans py-10 px-4 md:px-8 relative overflow-hidden help-article-content">
         {/* Background radial highlight */}
         <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-dash-accent/5 rounded-full blur-3xl -z-10" />
 
         <div className="max-w-4xl mx-auto space-y-8">
 
-          {/* Back Link & Navigation Breadcrumb */}
+          {/* Breadcrumb (the persistent left nav in articles/layout.tsx now
+              covers "back to documentation" navigation, so this only needs to
+              show where the article sits, not repeat a back-link). */}
           <div className="space-y-4">
-            <Link
-              href="/articles"
-              className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider !text-dash-textMuted hover:!text-dash-text transition duration-200"
-            >
-              <ArrowLeft className="w-4 h-4" /> Back to Documentation
-            </Link>
-
-            {/* breadcrumb path */}
             <div className="flex items-center gap-1.5 text-xs !text-dash-textMuted font-medium">
               <Link href="/articles" className="hover:!text-dash-text transition">Documentation</Link>
               <ChevronRight className="w-3 h-3" />
@@ -291,7 +284,7 @@ export default async function HelpArticlePage({ params }: PageProps) {
 
         </div>
       </div>
-    </Wrapper>
+    </>
   );
 }
 

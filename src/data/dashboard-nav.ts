@@ -179,28 +179,10 @@ const dashboardNav: NavModule[] = [
       { id: 22, label: "Support", icon: "fa-light fa-life-ring", link: "/support", permission: "business" },
     ],
   },
-  // Promoted out of Settings to a direct-link top-level item (same "deserves
-  // one click" treatment already given to HR & Payroll / Finance & Accounting /
-  // Calendar & Meetings) -- the searchable documentation/articles page, not
-  // the same thing as "Support" above (that's contact-support/tickets; this
-  // is self-serve search). Kept as "Help Center" rather than a shorter
-  // alternative ("Help", "Resources", "Support Center") -- "Help" alone reads
-  // as a near-synonym of "Support" right above it in the rail, "Resources" is
-  // already a real, different feature name in this app (Calendar's
-  // rooms/desks/equipment booking), and "Support Center" collides outright
-  // with "Support". "Help Center" keeps the two visibly distinct: "Support"
-  // implies contacting someone, "Help Center" implies browsing on your own.
-  // No `items` array -- a direct link like Dashboard, so it's a real
-  // one-click nav entry rather than an expand-then-click flyout for a single
-  // destination. Route is unchanged (/articles); icon reused from its old
-  // nested entry.
-  {
-    id: "help-center",
-    label: "Help Center",
-    icon: "fa-light fa-circle-question",
-    link: "/articles",
-    permission: "business",
-  },
+  // Help Center was here as a promoted top-level item; it now lives in the
+  // top bar next to the workspace switcher instead (still routes to the
+  // unchanged /articles page) -- removed from this array rather than kept
+  // as a dead duplicate entry.
 ];
 
 export default dashboardNav;

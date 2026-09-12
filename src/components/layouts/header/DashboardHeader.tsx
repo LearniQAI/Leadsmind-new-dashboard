@@ -4,12 +4,14 @@ import { useRouter } from "next/navigation";
 import HeaderAction from "./components/HeaderAction";
 import useGlobalContext from "@/hooks/use-context";
 import { useDashboardContext } from "../DashboardProvider";
-import { Menu, Search, ChevronDown, Check, Layers } from "lucide-react";
+import { Menu, Search, ChevronDown, Check, Layers, HelpCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { setActiveWorkspace } from "@/app/actions/auth";
 import { toast } from "sonner";
 import { motion, useScroll, useMotionValueEvent } from "framer-motion";
 import UserAvatar from "@/components/ui/UserAvatar";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 interface WorkspaceItem {
     id: string;
@@ -22,6 +24,8 @@ const DashboardHeader = () => {
     const { setSideMenuOpen, setSearchOpen } = useGlobalContext();
     const { enrichedWorkspace, user } = useDashboardContext();
     const router = useRouter();
+    const pathname = usePathname();
+    const isHelpCenterActive = pathname?.startsWith("/articles") ?? false;
     const [workspaces, setWorkspaces] = useState<WorkspaceItem[]>([]);
     const [isWorkspaceDropdownOpen, setIsWorkspaceDropdownOpen] = useState(false);
     const dropdownRef = React.useRef<HTMLDivElement>(null);
@@ -124,25 +128,43 @@ const DashboardHeader = () => {
                         className="h-7 w-auto object-contain max-w-[100px]"
                     />
 
-                    {/* Right: User Avatar Only */}
-                    <motion.button 
-                        whileTap={{ scale: 0.95 }}
-                        className="flex-shrink-0 p-0.5 rounded-full border border-transparent hover:border-slate-200 transition-colors"
-                        onClick={() => {
-                            // Can trigger mobile user dropdown or dispatch event
-                            const headerAvatarBtn = document.querySelector('.nav-item button[aria-haspopup="menu"]') as HTMLButtonElement;
-                            if (headerAvatarBtn) headerAvatarBtn.click();
-                        }}
-                    >
-                        <UserAvatar 
-                            avatarUrl={user?.avatarUrl}
-                            oauthImage={user?.oauthImage}
-                            firstName={user?.firstName}
-                            lastName={user?.lastName}
-                            size="md"
-                            showOnlineIndicator={true}
-                        />
-                    </motion.button>
+                    {/* Right: Help Center + User Avatar */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        {/* Mobile has no workspace-switcher row to sit next to, and the mobile
+                            drawer's nav list no longer carries Help Center (moved out of
+                            dashboard-nav.ts) -- without this, mobile users would have no way
+                            to reach it at all, so it gets its own icon here instead. */}
+                        <Link
+                            href="/articles"
+                            title="Help Center"
+                            aria-current={isHelpCenterActive ? "page" : undefined}
+                            className={`w-9 h-9 flex items-center justify-center rounded-xl border transition-all active:scale-95 ${
+                                isHelpCenterActive
+                                    ? "bg-warning/10 border-warning/30 text-warning"
+                                    : "border-[#E5E7EB] bg-slate-50 hover:bg-warning/10 hover:border-warning/30 text-warning"
+                            }`}
+                        >
+                            <HelpCircle size={18} />
+                        </Link>
+                        <motion.button
+                            whileTap={{ scale: 0.95 }}
+                            className="flex-shrink-0 p-0.5 rounded-full border border-transparent hover:border-slate-200 transition-colors"
+                            onClick={() => {
+                                // Can trigger mobile user dropdown or dispatch event
+                                const headerAvatarBtn = document.querySelector('.nav-item button[aria-haspopup="menu"]') as HTMLButtonElement;
+                                if (headerAvatarBtn) headerAvatarBtn.click();
+                            }}
+                        >
+                            <UserAvatar
+                                avatarUrl={user?.avatarUrl}
+                                oauthImage={user?.oauthImage}
+                                firstName={user?.firstName}
+                                lastName={user?.lastName}
+                                size="md"
+                                showOnlineIndicator={true}
+                            />
+                        </motion.button>
+                    </div>
                 </div>
 
                 {/* Second Row: Search Trigger (Collapsible) */}
@@ -205,18 +227,18 @@ const DashboardHeader = () => {
 
                     {/* Right Side: Switcher, Notifications, Help Center, Profile */}
                     <div className="flex items-center gap-3 flex-shrink-0" ref={dropdownRef}>
-                        {/* Workspace Switcher */}
+                        {/* Workspace Switcher (condensed to make room for Help Center next to it) */}
                         {workspaces.length > 1 && (
                             <div className="relative">
                                 <button
                                     onClick={() => setIsWorkspaceDropdownOpen(!isWorkspaceDropdownOpen)}
-                                    className="h-9 px-3 rounded-xl border border-[#E5E7EB] bg-white hover:bg-slate-50 text-[12px] font-semibold !text-[#0F172A] flex items-center gap-1.5 transition-all shadow-[0_1px_2px_rgba(15,23,42,0.02)] active:scale-98"
+                                    className="h-8 px-2.5 rounded-lg border border-[#E5E7EB] bg-white hover:bg-slate-50 text-[11px] font-semibold !text-[#0F172A] flex items-center gap-1 transition-all shadow-[0_1px_2px_rgba(15,23,42,0.02)] active:scale-98"
                                 >
-                                    <Layers size={13} className="text-primary" />
-                                    <span className="truncate max-w-[100px]">
+                                    <Layers size={11} className="text-primary" />
+                                    <span className="truncate max-w-[72px]">
                                         {enrichedWorkspace?.name || 'Switch'}
                                     </span>
-                                    <ChevronDown size={12} className="text-slate-400" />
+                                    <ChevronDown size={11} className="text-slate-400" />
                                 </button>
 
                                 {isWorkspaceDropdownOpen && (
@@ -244,6 +266,22 @@ const DashboardHeader = () => {
                                 )}
                             </div>
                         )}
+
+                        {/* Help Center -- moved here from the sidebar's top-level nav (still routes
+                            to the unchanged /articles page). Brand orange sampled from the logo's
+                            accent dot, reusing the existing `warning` token rather than a one-off color. */}
+                        <Link
+                            href="/articles"
+                            title="Help Center"
+                            aria-current={isHelpCenterActive ? "page" : undefined}
+                            className={`h-8 w-8 rounded-lg border flex items-center justify-center transition-all active:scale-95 ${
+                                isHelpCenterActive
+                                    ? "bg-warning/10 border-warning/30 text-warning"
+                                    : "border-[#E5E7EB] bg-white hover:bg-warning/10 hover:border-warning/30 text-warning"
+                            }`}
+                        >
+                            <HelpCircle size={16} />
+                        </Link>
 
                         {/* Notifications & Profile dropdown dropdowns */}
                         <HeaderAction />

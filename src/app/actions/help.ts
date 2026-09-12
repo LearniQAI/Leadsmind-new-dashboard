@@ -32,6 +32,19 @@ async function generateEmbedding(text: string): Promise<number[] | null> {
   }
 }
 
+// Postgres JSONB does not preserve object key insertion order, so a plain
+// JSON.stringify comparison against a freshly round-tripped row spuriously
+// reports "changed" for every article on every request (e.g. a seed literal
+// `{ q, a }` comes back as `{ a, q }`), forcing a full re-embed loop each
+// time. Sorting keys before stringifying makes the comparison order-blind.
+function stableStringify(value: any): string {
+  return JSON.stringify(value, (_key, val) =>
+    val && typeof val === 'object' && !Array.isArray(val)
+      ? Object.keys(val).sort().reduce((sorted: any, k) => { sorted[k] = val[k]; return sorted; }, {})
+      : val
+  );
+}
+
 function getEditDistance(a: string, b: string): number {
   if (a.length === 0) return b.length;
   if (b.length === 0) return a.length;
@@ -1728,7 +1741,7 @@ export async function seedHelpArticles() {
         existing &&
         existing.title === article.title &&
         existing.body_plain === article.body_plain &&
-        JSON.stringify(existing.faq_json) === JSON.stringify(article.faq_json)
+        stableStringify(existing.faq_json) === stableStringify(article.faq_json)
       ) {
         continue;
       }
