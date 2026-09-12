@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { passwordSchema, type PasswordFormValues } from '@/lib/validations/account.schema'
 import { updatePassword } from '@/app/actions/account'
 import InputField from '@/components/elements/SharedInputs/InputField'
+import { DashButton } from '@/components/dashboard-ui'
 
 export function PasswordForm() {
  const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm<PasswordFormValues>({
@@ -70,9 +71,9 @@ export function PasswordForm() {
      </div>
      
      <div className="col-span-12 text-center mt-[10px]">
-      <button className="btn btn-primary" type="submit" disabled={isSubmitting}>
+      <DashButton type="submit" variant="primary" disabled={isSubmitting}>
        {isSubmitting ? 'Updating...' : 'Update Password'}
-      </button>
+      </DashButton>
      </div>
     </div>
    </form>

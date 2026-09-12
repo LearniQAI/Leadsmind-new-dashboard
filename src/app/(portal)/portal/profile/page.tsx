@@ -20,9 +20,9 @@ export default async function PortalProfilePage() {
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold uppercase tracking-tight font-space">
-            Profile <span className="text-[var(--accent2)]">Settings</span>
+            Profile <span className="text-dash-accent">Settings</span>
           </h1>
-          <p className="text-[11.5px] text-[var(--t3)] uppercase tracking-[0.2em] mt-2 font-medium">
+          <p className="text-[11.5px] text-dash-textMuted uppercase tracking-[0.2em] mt-2 font-medium">
             Manage your personal profile details, notification preferences, and POPIA privacy rights
           </p>
         </div>

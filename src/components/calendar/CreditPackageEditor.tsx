@@ -60,21 +60,21 @@ export function CreditPackageEditor({ calendarId }: CreditPackageEditorProps) {
 
    <div className="space-y-4">
     {packages.map((pkg) => (
-     <div key={pkg.id} className="p-6 rounded-xl bg-bgBody dark:bg-bgBody-dark border border-border dark:border-border-dark group hover:border-primary/30 transition-all relative overflow-hidden">
+     <div key={pkg.id} className="p-6 rounded-xl bg-dash-surface border border-dash-border group hover:border-primary/30 transition-all relative overflow-hidden">
        <div className="flex items-center justify-between mb-6">
         <div>
-         <h6 className="text-base font-black text-heading dark:text-heading-dark uppercase tracking-tighter">{pkg.name}</h6>
+         <h6 className="text-base font-black text-dash-text uppercase tracking-tighter">{pkg.name}</h6>
          <p className="text-[10px] font-black text-primary uppercase tracking-widest mt-1">
           {pkg.credits_total} Intelligence Credits
          </p>
         </div>
         <div className="text-right">
-         <span className="text-xl font-black text-heading dark:text-heading-dark tracking-tighter">${pkg.price}</span>
-         <p className="text-[9px] font-bold text-body dark:text-body-dark opacity-30 uppercase tracking-[0.2em] mt-1">One-time yield</p>
+         <span className="text-xl font-black text-dash-text tracking-tighter">${pkg.price}</span>
+         <p className="text-[9px] font-bold text-dash-textMuted uppercase tracking-[0.2em] mt-1">One-time yield</p>
         </div>
        </div>
 
-       <div className="flex items-center gap-3 pt-4 border-t border-border dark:border-border-dark opacity-40 group-hover:opacity-100 transition-opacity">
+       <div className="flex items-center gap-3 pt-4 border-t border-dash-border opacity-40 group-hover:opacity-100 transition-opacity">
         <Badge variant="outline" className="bg-primary/5 border-primary/10 text-[8px] font-black text-primary/60 px-3 py-1 rounded-full uppercase">AUTO-SYNC</Badge>
         <Badge variant="outline" className="bg-primary/5 border-primary/10 text-[8px] font-black text-primary/60 px-3 py-1 rounded-full uppercase">SECURE-PAY</Badge>
        </div>
@@ -86,9 +86,9 @@ export function CreditPackageEditor({ calendarId }: CreditPackageEditorProps) {
     ))}
 
     {!packages.length && (
-      <div className="p-16 border border-dashed border-border dark:border-border-dark rounded-xl text-center bg-bgBody/50 dark:bg-bgBody-dark/50">
-       <Zap className="h-8 w-8 text-placeholder dark:text-placeholder-dark mx-auto mb-4 opacity-40" />
-       <p className="text-[10px] font-black text-placeholder dark:text-placeholder-dark uppercase tracking-[0.4em]">No active packages</p>
+      <div className="p-16 border border-dashed border-dash-border rounded-xl text-center bg-dash-surface/50">
+       <Zap className="h-8 w-8 text-dash-textMuted mx-auto mb-4 opacity-40" />
+       <p className="text-[10px] font-black text-dash-textMuted uppercase tracking-[0.4em]">No active packages</p>
       </div>
     )}
    </div>

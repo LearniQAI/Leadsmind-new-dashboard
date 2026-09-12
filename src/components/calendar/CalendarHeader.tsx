@@ -2,14 +2,29 @@
 
 import React from 'react';
 import { Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { DashButton } from '@/components/dashboard-ui';
+import { toast } from 'sonner';
 
 interface CalendarHeaderProps {
   workspaceName?: string;
   onNewAppointment?: () => void;
+  calendars?: { slug: string }[];
+  onViewPublicPages?: () => void;
 }
 
-export default function CalendarHeader({ workspaceName, onNewAppointment }: CalendarHeaderProps) {
+export default function CalendarHeader({ workspaceName, onNewAppointment, calendars = [], onViewPublicPages }: CalendarHeaderProps) {
+  const handleViewPublicPages = () => {
+    if (calendars.length === 0) {
+      toast.error('No public booking pages yet — create a booking engine first');
+      return;
+    }
+    if (calendars.length === 1) {
+      window.open(`${window.location.origin}/book/${calendars[0].slug}`, '_blank');
+      return;
+    }
+    onViewPublicPages?.();
+  };
+
   return (
     <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
       <div className="space-y-1">
@@ -22,18 +37,12 @@ export default function CalendarHeader({ workspaceName, onNewAppointment }: Cale
       </div>
 
       <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          className="bg-dash-surface border border-dash-border !text-dash-textMuted hover:!text-dash-text hover:bg-dash-border/40 px-[18px] py-2 h-auto text-[13px] font-semibold transition-colors motion-reduce:transition-none"
-        >
+        <DashButton variant="secondary" size="default" onClick={handleViewPublicPages}>
           View public pages
-        </Button>
-        <Button
-          onClick={onNewAppointment}
-          className="bg-dash-accent hover:bg-dash-accent/90 text-white border-none px-[18px] py-2 h-auto text-[13px] font-semibold shadow-lg shadow-dash-accent/10"
-        >
-          <Plus className="w-4 h-4 mr-2" /> New appointment
-        </Button>
+        </DashButton>
+        <DashButton variant="primary" size="default" onClick={onNewAppointment}>
+          <Plus className="w-4 h-4" /> New appointment
+        </DashButton>
       </div>
     </div>
   );

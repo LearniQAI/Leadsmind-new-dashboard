@@ -25,9 +25,9 @@ export default async function PortalLayout({ children }: { children: React.React
   }
 
   const branding = session.branding || {};
-  const primaryColor = branding.primary_color || '#04091a';
+  const primaryColor = branding.primary_color || '#F8F9FC';
   const btnColor = branding.button_color || '#2563eb';
-  const txtColor = branding.text_color || '#eef2ff';
+  const txtColor = branding.text_color || '#0F172A';
   const fontFamily = branding.typography || 'Inter';
 
   const style = {

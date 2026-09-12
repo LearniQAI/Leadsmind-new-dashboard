@@ -195,9 +195,9 @@ export default function SupportClient({ initialTickets, workspaceId, contactId }
 
   const getPriorityBadgeColor = (priority: string) => {
     switch (priority) {
-      case 'urgent': return 'bg-red-500/10 text-red-400 border-red-500/20';
-      case 'high': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-      default: return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+      case 'urgent': return 'bg-rose-50 text-rose-700 border-rose-200';
+      case 'high': return 'bg-amber-50 text-amber-700 border-amber-200';
+      default: return 'bg-dash-accent/10 text-dash-accent border-dash-accent/20';
     }
   };
 
@@ -205,11 +205,11 @@ export default function SupportClient({ initialTickets, workspaceId, contactId }
     switch (status) {
       case 'resolved':
       case 'closed':
-        return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       case 'in_progress':
-        return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+        return 'bg-dash-accent/10 text-dash-accent border-dash-accent/20';
       default:
-        return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+        return 'bg-amber-50 text-amber-700 border-amber-200';
     }
   };
 
@@ -218,21 +218,21 @@ export default function SupportClient({ initialTickets, workspaceId, contactId }
       {/* ── LEFT SECTION: TICKET LIST OR WIZARD CREATION ── */}
       <div className={cn("space-y-6 lg:block", selectedTicket ? "hidden" : "block")}>
         <div className="flex justify-between items-center">
-          <h3 className="text-xs font-bold text-[#4a5a82] uppercase tracking-[1.5px]">
+          <h3 className="text-xs font-bold text-dash-textMuted uppercase tracking-[1.5px]">
             My Support Tickets
           </h3>
           <button
             onClick={() => setSelectedTicket(null)}
-            className="lg:hidden text-xs text-blue-400 font-bold uppercase tracking-wider flex items-center gap-1"
+            className="lg:hidden text-xs text-dash-accent font-bold uppercase tracking-wider flex items-center gap-1"
           >
             <Plus size={14} /> New Ticket
           </button>
         </div>
 
         {tickets.length === 0 ? (
-          <div className="bg-[var(--n800)] border border-[var(--bdr)] p-12 rounded-3xl text-center space-y-3 shadow-lg">
-            <Headphones size={32} className="text-[#4a5a82] opacity-40 mx-auto" />
-            <p className="text-xs text-[var(--t3)] font-sans">No support tickets opened yet.</p>
+          <div className="bg-white border border-dash-border p-12 rounded-3xl text-center space-y-3 shadow-lg">
+            <Headphones size={32} className="text-dash-textMuted opacity-40 mx-auto" />
+            <p className="text-xs text-dash-textMuted font-sans">No support tickets opened yet.</p>
           </div>
         ) : (
           <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
@@ -244,21 +244,21 @@ export default function SupportClient({ initialTickets, workspaceId, contactId }
                   key={idx}
                   onClick={() => setSelectedTicket(t)}
                   className={cn(
-                    "p-5 rounded-2xl border cursor-pointer transition-all bg-[var(--n800)] text-left relative overflow-hidden group shadow-md",
+                    "p-5 rounded-2xl border cursor-pointer transition-all bg-white text-left relative overflow-hidden group shadow-md",
                     isSelected
-                      ? "border-[#8b5cf6] shadow-[#8b5cf6]/5"
-                      : "border-white/5 hover:border-white/10"
+                      ? "border-purple-400 shadow-purple-400/10"
+                      : "border-dash-border hover:border-dash-accent/30"
                   )}
                 >
                   <div className="flex justify-between items-start gap-4">
                     <div>
-                      <span className="text-[9.5px] font-mono text-[#4a5a82] uppercase font-bold">
+                      <span className="text-[9.5px] font-mono text-dash-textMuted uppercase font-bold">
                         Category: {t.category || 'General'}
                       </span>
-                      <h4 className="text-xs font-bold text-[#eef2ff] uppercase tracking-wide font-space mt-1 group-hover:text-white line-clamp-1">
+                      <h4 className="text-xs font-bold text-dash-text uppercase tracking-wide font-space mt-1 group-hover:text-dash-accent line-clamp-1">
                         {t.title}
                       </h4>
-                      <p className="text-[11px] text-[var(--t3)] font-sans line-clamp-1 mt-1">
+                      <p className="text-[11px] text-dash-textMuted font-sans line-clamp-1 mt-1">
                         {t.description}
                       </p>
                     </div>
@@ -273,7 +273,7 @@ export default function SupportClient({ initialTickets, workspaceId, contactId }
                     </div>
                   </div>
 
-                  <div className="pt-3 border-t border-white/5 mt-4 flex justify-between items-center text-[9px] text-[#4a5a82] font-mono uppercase">
+                  <div className="pt-3 border-t border-dash-border mt-4 flex justify-between items-center text-[9px] text-dash-textMuted font-mono uppercase">
                     <span>ID: #{t.id.substring(0, 8)}</span>
                     <span>{new Date(t.created_at).toLocaleDateString('en-ZA')}</span>
                   </div>
@@ -288,22 +288,22 @@ export default function SupportClient({ initialTickets, workspaceId, contactId }
       <div className="lg:col-span-2">
         {selectedTicket ? (
           /* THREAD CHAT ROOM */
-          <div className="bg-[var(--n800)] border border-[var(--bdr)] rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[75vh]">
+          <div className="bg-white border border-dash-border rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[75vh]">
             
             {/* Thread Header */}
-            <div className="p-5 border-b border-white/5 bg-[#0b1329]/50 flex justify-between items-center gap-4 shrink-0">
+            <div className="p-5 border-b border-dash-border bg-dash-surface flex justify-between items-center gap-4 shrink-0">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setSelectedTicket(null)}
-                  className="p-1.5 rounded-lg bg-white/5 text-[var(--t3)] hover:text-white hover:bg-white/10 transition-all active:scale-95"
+                  className="p-1.5 rounded-lg bg-white border border-dash-border text-dash-textMuted hover:text-dash-accent hover:border-dash-accent/30 transition-all active:scale-95"
                 >
                   <ArrowLeft size={16} />
                 </button>
                 <div>
-                  <span className="text-[9.5px] font-mono text-blue-400 uppercase font-black">
+                  <span className="text-[9.5px] font-mono text-dash-accent uppercase font-black">
                     #{selectedTicket.id.substring(0, 8).toUpperCase()} • {selectedTicket.category || 'General'}
                   </span>
-                  <h4 className="text-sm font-bold text-white font-space uppercase mt-0.5 line-clamp-1">
+                  <h4 className="text-sm font-bold text-dash-text font-space uppercase mt-0.5 line-clamp-1">
                     {selectedTicket.title}
                   </h4>
                 </div>
@@ -317,18 +317,18 @@ export default function SupportClient({ initialTickets, workspaceId, contactId }
             </div>
 
             {/* Thread Chat Dialogue Messages Area */}
-            <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-[#04091a]/10">
+            <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-dash-bg">
               {loadingMessages ? (
-                <div className="flex flex-col items-center justify-center py-20 text-[#4a5a82]">
-                  <div className="w-8 h-8 rounded-full border-2 border-t-blue-500 border-blue-500/10 animate-spin mb-3" />
+                <div className="flex flex-col items-center justify-center py-20 text-dash-textMuted">
+                  <div className="w-8 h-8 rounded-full border-2 border-t-dash-accent border-dash-accent/10 animate-spin mb-3" />
                   <p className="text-[9.5px] font-black uppercase tracking-wider font-mono">Retrieving ticket thread...</p>
                 </div>
               ) : (
                 <>
                   {/* Initial Description Node */}
-                  <div className="p-4 bg-white/[0.01] border border-white/5 rounded-2xl space-y-1 text-left">
-                    <span className="text-[9px] font-mono text-[#4a5a82] uppercase font-bold">Opened Issue Brief</span>
-                    <p className="text-xs text-[#eef2ff] leading-relaxed whitespace-pre-wrap">{selectedTicket.description}</p>
+                  <div className="p-4 bg-dash-surface border border-dash-border rounded-2xl space-y-1 text-left">
+                    <span className="text-[9px] font-mono text-dash-textMuted uppercase font-bold">Opened Issue Brief</span>
+                    <p className="text-xs text-dash-text leading-relaxed whitespace-pre-wrap">{selectedTicket.description}</p>
                   </div>
 
                   {/* Messages list */}
@@ -338,7 +338,7 @@ export default function SupportClient({ initialTickets, workspaceId, contactId }
 
                     if (isSys) {
                       return (
-                        <div key={mIdx} className="flex justify-center text-[10px] text-[#4a5a82] italic font-mono uppercase tracking-wide">
+                        <div key={mIdx} className="flex justify-center text-[10px] text-dash-textMuted italic font-mono uppercase tracking-wide">
                           — {m.message} —
                         </div>
                       );
@@ -352,30 +352,33 @@ export default function SupportClient({ initialTickets, workspaceId, contactId }
                           isClient ? "ml-auto items-end" : "mr-auto items-start"
                         )}
                       >
-                        <span className="text-[9px] font-mono text-[#4a5a82] uppercase">
+                        <span className="text-[9px] font-mono text-dash-textMuted uppercase">
                           {isClient ? 'You' : 'Assigned Support Personnel'} • {new Date(m.created_at).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
                         </span>
                         
                         <div
                           className={cn(
-                            "p-3.5 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap shadow-md",
+                            "p-3.5 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap shadow-sm",
                             isClient
-                              ? "bg-[#2563eb] text-white rounded-tr-none"
-                              : "bg-[#0b1329] border border-white/5 text-[#eef2ff] rounded-tl-none"
+                              ? "bg-dash-accent text-white rounded-tr-none"
+                              : "bg-white border border-dash-border text-dash-text rounded-tl-none"
                           )}
                         >
                           {m.message}
 
                           {/* Message attachments */}
                           {m.attachments && m.attachments.length > 0 && (
-                            <div className="mt-3 pt-2.5 border-t border-white/10 space-y-1.5">
+                            <div className={cn("mt-3 pt-2.5 border-t space-y-1.5", isClient ? "border-white/20" : "border-dash-border")}>
                               {m.attachments.map((file: any, fIdx: number) => (
                                 <a
                                   key={fIdx}
                                   href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/support-ticket-files/${file.storage_path}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="flex items-center gap-1.5 text-[9.5px] font-black uppercase text-blue-300 hover:text-white bg-black/15 p-2 rounded-lg transition-colors"
+                                  className={cn(
+                                    "flex items-center gap-1.5 text-[9.5px] font-black uppercase p-2 rounded-lg transition-colors",
+                                    isClient ? "text-white/90 hover:text-white bg-black/10" : "text-dash-accent hover:text-dash-accent/80 bg-dash-accent/5"
+                                  )}
                                 >
                                   <FileText size={12} /> {file.file_name}
                                 </a>
@@ -389,23 +392,23 @@ export default function SupportClient({ initialTickets, workspaceId, contactId }
                   
                   {/* CSAT Prompt Overlay inside message log */}
                   {(selectedTicket.status === 'resolved' || selectedTicket.status === 'closed') && (
-                    <div className="bg-[#111d47]/20 border border-white/5 p-6 rounded-[24px] space-y-4 text-center mt-6">
-                      <div className="w-10 h-10 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 rounded-full flex items-center justify-center mx-auto">
+                    <div className="bg-white border border-dash-border p-6 rounded-[24px] space-y-4 text-center mt-6 shadow-sm">
+                      <div className="w-10 h-10 bg-amber-50 border border-amber-200 text-amber-500 rounded-full flex items-center justify-center mx-auto">
                         <Star size={20} className="fill-current" />
                       </div>
-                      
+
                       {selectedTicket.csat_rating || csatSubmitted ? (
                         <div className="space-y-1">
-                          <h4 className="text-xs font-bold text-white uppercase tracking-wider">Satisfaction Feedback Received</h4>
-                          <p className="text-[11px] text-[var(--t3)] leading-relaxed">
+                          <h4 className="text-xs font-bold text-dash-text uppercase tracking-wider">Satisfaction Feedback Received</h4>
+                          <p className="text-[11px] text-dash-textMuted leading-relaxed">
                             Thank you! Your rating of <strong>{selectedTicket.csat_rating || csatRating}/5 Stars</strong> has been logged to our CRM ledger.
                           </p>
                         </div>
                       ) : (
                         <div className="space-y-3 max-w-sm mx-auto">
                           <div>
-                            <h4 className="text-xs font-bold text-white uppercase tracking-wider">How was your service?</h4>
-                            <p className="text-[10px] text-[var(--t3)]">Please rate your support resolution quality</p>
+                            <h4 className="text-xs font-bold text-dash-text uppercase tracking-wider">How was your service?</h4>
+                            <p className="text-[10px] text-dash-textMuted">Please rate your support resolution quality</p>
                           </div>
 
                           {/* Star picker */}
@@ -415,11 +418,11 @@ export default function SupportClient({ initialTickets, workspaceId, contactId }
                                 key={star}
                                 type="button"
                                 onClick={() => setCsatRating(star)}
-                                className="text-yellow-400 hover:scale-110 transition-transform"
+                                className="text-amber-500 hover:scale-110 transition-transform"
                               >
-                                <Star 
-                                  size={24} 
-                                  className={cn(star <= csatRating ? "fill-current" : "opacity-35")} 
+                                <Star
+                                  size={24}
+                                  className={cn(star <= csatRating ? "fill-current" : "opacity-35")}
                                 />
                               </button>
                             ))}
@@ -429,12 +432,12 @@ export default function SupportClient({ initialTickets, workspaceId, contactId }
                             placeholder="Provide any comments or review regarding the support resolution (Optional)"
                             value={csatComment}
                             onChange={(e) => setCsatComment(e.target.value)}
-                            className="w-full bg-[#080f28] border border-white/5 rounded-xl px-3 py-2 text-white focus:border-blue-500 outline-none text-[11px] h-14 resize-none font-sans"
+                            className="w-full bg-dash-surface border border-dash-border rounded-xl px-3 py-2 text-dash-text focus:border-dash-accent outline-none text-[11px] h-14 resize-none font-sans"
                           />
 
                           <button
                             onClick={handleCSATSubmit}
-                            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl uppercase tracking-wider text-[9px] font-black h-9 transition-colors active:scale-95"
+                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl uppercase tracking-wider text-[9px] font-black h-9 transition-colors active:scale-95"
                           >
                             Submit CSAT Review
                           </button>
@@ -450,18 +453,18 @@ export default function SupportClient({ initialTickets, workspaceId, contactId }
 
             {/* Chat Reply Actions Form (Only available if ticket is not closed/resolved) */}
             {selectedTicket.status !== 'resolved' && selectedTicket.status !== 'closed' && (
-              <form onSubmit={handleSendReply} className="p-4 border-t border-white/5 bg-[#0b1329]/50 space-y-3 shrink-0">
-                
+              <form onSubmit={handleSendReply} className="p-4 border-t border-dash-border bg-dash-surface space-y-3 shrink-0">
+
                 {/* Attached file tags */}
                 {attachedFiles.length > 0 && (
                   <div className="flex flex-wrap gap-2 pb-1.5">
                     {attachedFiles.map((file, idx) => (
-                      <span key={idx} className="inline-flex items-center gap-1.5 bg-black/30 border border-white/5 px-2.5 py-1 rounded-lg text-[9.5px] text-[#94a3c8] font-mono">
-                        <FileText size={11} /> {file.name} 
+                      <span key={idx} className="inline-flex items-center gap-1.5 bg-white border border-dash-border px-2.5 py-1 rounded-lg text-[9.5px] text-dash-textMuted font-mono">
+                        <FileText size={11} /> {file.name}
                         <button
                           type="button"
                           onClick={() => setAttachedFiles(attachedFiles.filter((_, i) => i !== idx))}
-                          className="text-red-400 hover:text-red-300 font-bold ml-1"
+                          className="text-rose-500 hover:text-rose-600 font-bold ml-1"
                         >
                           ✕
                         </button>
@@ -476,12 +479,12 @@ export default function SupportClient({ initialTickets, workspaceId, contactId }
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploadingFile}
-                    className="p-3 rounded-xl bg-white/5 text-[var(--t3)] hover:text-white hover:bg-white/10 transition-colors shrink-0 disabled:opacity-50 relative"
+                    className="p-3 rounded-xl bg-white border border-dash-border text-dash-textMuted hover:text-dash-accent hover:border-dash-accent/30 transition-colors shrink-0 disabled:opacity-50 relative"
                     title="Attach file (Max 10MB)"
                   >
                     <Paperclip size={16} />
                   </button>
-                  <input 
+                  <input
                     ref={fileInputRef}
                     type="file"
                     className="hidden"
@@ -494,14 +497,14 @@ export default function SupportClient({ initialTickets, workspaceId, contactId }
                     placeholder="Type your message reply..."
                     value={replyMessage}
                     onChange={(e) => setReplyMessage(e.target.value)}
-                    className="flex-grow bg-[#080f28] border border-white/5 rounded-xl px-4 h-11 text-xs outline-none focus:border-blue-500 text-white font-sans"
+                    className="flex-grow bg-white border border-dash-border rounded-xl px-4 h-11 text-xs outline-none focus:border-dash-accent text-dash-text font-sans"
                   />
 
                   {/* Send button */}
                   <button
                     type="submit"
                     disabled={!replyMessage.trim() && attachedFiles.length === 0}
-                    className="p-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:bg-[#0b1329] disabled:text-[#4a5a82] text-white transition-colors shrink-0"
+                    className="p-3 rounded-xl bg-dash-accent hover:bg-dash-accent/90 disabled:bg-dash-border disabled:text-dash-textMuted text-white transition-colors shrink-0"
                   >
                     <Send size={16} />
                   </button>
@@ -511,10 +514,10 @@ export default function SupportClient({ initialTickets, workspaceId, contactId }
           </div>
         ) : (
           /* NEW TICKET CREATION WIZARD FORM */
-          <div className="bg-[var(--n800)] border border-[var(--bdr)] rounded-3xl p-6 shadow-xl text-left space-y-6">
+          <div className="bg-white border border-dash-border rounded-3xl p-6 shadow-xl text-left space-y-6">
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--t1)]">Submit Help Request</h3>
-              <p className="text-[10px] text-[var(--t3)] uppercase tracking-wider mt-1">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-dash-text">Submit Help Request</h3>
+              <p className="text-[10px] text-dash-textMuted uppercase tracking-wider mt-1">
                 Open a tech or billing support desk ticket
               </p>
             </div>
@@ -523,13 +526,13 @@ export default function SupportClient({ initialTickets, workspaceId, contactId }
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Category Selection */}
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-[#4a5a82] font-mono">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-dash-textMuted font-mono">
                     Category
                   </label>
                   <select
                     name="category"
                     defaultValue="General"
-                    className="w-full bg-[#111d47]/50 border border-white/5 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 text-[#eef2ff]"
+                    className="w-full bg-dash-surface border border-dash-border rounded-xl px-4 py-2.5 text-xs outline-none focus:border-dash-accent text-dash-text"
                   >
                     <option value="General">General</option>
                     <option value="Billing">Billing (Invoicing/Fees)</option>
@@ -540,13 +543,13 @@ export default function SupportClient({ initialTickets, workspaceId, contactId }
 
                 {/* Priority Selection */}
                 <div className="space-y-2 col-span-1 md:col-span-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-[#4a5a82] font-mono">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-dash-textMuted font-mono">
                     Priority Tier
                   </label>
                   <select
                     name="priority"
                     defaultValue="normal"
-                    className="w-full bg-[#111d47]/50 border border-white/5 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 text-[#eef2ff]"
+                    className="w-full bg-dash-surface border border-dash-border rounded-xl px-4 py-2.5 text-xs outline-none focus:border-dash-accent text-dash-text"
                   >
                     <option value="low">Low (Inquiry)</option>
                     <option value="normal">Normal (Standard help)</option>
@@ -558,7 +561,7 @@ export default function SupportClient({ initialTickets, workspaceId, contactId }
 
               {/* Subject Input */}
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-[#4a5a82] font-mono">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-dash-textMuted font-mono">
                   Subject / Summary
                 </label>
                 <input
@@ -566,13 +569,13 @@ export default function SupportClient({ initialTickets, workspaceId, contactId }
                   name="title"
                   placeholder="Summarize the issue (e.g. Cannot download Sprint 3 course certificate)"
                   required
-                  className="w-full bg-[#111d47]/50 border border-white/5 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 text-white placeholder-[#4a5a82]"
+                  className="w-full bg-dash-surface border border-dash-border rounded-xl px-4 py-2.5 text-xs outline-none focus:border-dash-accent text-dash-text placeholder-dash-textMuted"
                 />
               </div>
 
               {/* Description Input */}
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-[#4a5a82] font-mono">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-dash-textMuted font-mono">
                   Detailed Description
                 </label>
                 <textarea
@@ -580,12 +583,12 @@ export default function SupportClient({ initialTickets, workspaceId, contactId }
                   rows={6}
                   placeholder="Provide complete details regarding your issue, including course names, invoice numbers, or scheduling details so our support team can verify the context..."
                   required
-                  className="w-full bg-[#111d47]/50 border border-white/5 rounded-xl px-4 py-3 text-xs outline-none focus:border-blue-500 text-white placeholder-[#4a5a82] resize-none leading-relaxed font-sans"
+                  className="w-full bg-dash-surface border border-dash-border rounded-xl px-4 py-3 text-xs outline-none focus:border-dash-accent text-dash-text placeholder-dash-textMuted resize-none leading-relaxed font-sans"
                 />
               </div>
 
-              <div className="bg-[#111d47]/20 border border-white/5 p-4 rounded-xl flex gap-3 text-[10.5px] text-[#4a5a82] leading-relaxed">
-                <AlertCircle size={14} className="shrink-0 text-blue-400 mt-0.5" />
+              <div className="bg-dash-surface border border-dash-border p-4 rounded-xl flex gap-3 text-[10.5px] text-dash-textMuted leading-relaxed">
+                <AlertCircle size={14} className="shrink-0 text-dash-accent mt-0.5" />
                 <span>
                   Support tickets are routed to LeadsMind operator queues. General/Billing queries are answered within 24 hours. Tech issues receive priority queue status.
                 </span>
@@ -594,7 +597,7 @@ export default function SupportClient({ initialTickets, workspaceId, contactId }
               <button
                 type="submit"
                 disabled={isPending}
-                className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 shadow-lg shadow-blue-500/10 flex items-center justify-center gap-1.5 transition-colors"
+                className="w-full bg-dash-accent hover:bg-dash-accent/90 disabled:opacity-50 text-white rounded-xl uppercase tracking-wider text-[10px] font-black h-11 shadow-md flex items-center justify-center gap-1.5 transition-colors"
               >
                 {isPending ? "Filing Ticket..." : <><Send size={12} /> File Support Ticket</>}
               </button>

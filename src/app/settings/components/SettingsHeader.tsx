@@ -1,5 +1,6 @@
 "use client";
 import React from 'react';
+import { DashButton } from '@/components/dashboard-ui';
 
 interface SettingsHeaderProps {
   title: string;
@@ -20,9 +21,9 @@ export default function SettingsHeader({ title, description }: SettingsHeaderPro
         </p>
       </div>
       <div className="flex items-center gap-2">
-        <button className="px-4 py-2 bg-dash-surface hover:bg-dash-border/60 !text-dash-textMuted hover:!text-dash-text rounded-xl text-[11px] font-bold transition-all motion-reduce:transition-none border border-dash-border">
+        <DashButton variant="secondary" size="sm">
           Need help?
-        </button>
+        </DashButton>
       </div>
     </div>
   );

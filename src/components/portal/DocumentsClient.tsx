@@ -289,14 +289,14 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Navigation Tabs */}
-      <div className="flex border-b border-white/5 gap-2">
+      <div className="flex border-b border-dash-border gap-2">
         <button
           onClick={() => setActiveTab('vault')}
           className={cn(
             "pb-4 px-2 text-xs font-black uppercase tracking-wider border-b-2 transition-all",
-            activeTab === 'vault' 
-              ? "border-[#8b5cf6] text-[#8b5cf6]" 
-              : "border-transparent text-[#4a5a82] hover:text-[var(--t2)]"
+            activeTab === 'vault'
+              ? "border-purple-500 text-purple-600"
+              : "border-transparent text-dash-textMuted hover:text-dash-text"
           )}
         >
           Secured Vault Locker
@@ -305,9 +305,9 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
           onClick={() => setActiveTab('esign')}
           className={cn(
             "pb-4 px-2 text-xs font-black uppercase tracking-wider border-b-2 transition-all relative",
-            activeTab === 'esign' 
-              ? "border-[#8b5cf6] text-[#8b5cf6]" 
-              : "border-transparent text-[#4a5a82] hover:text-[var(--t2)]"
+            activeTab === 'esign'
+              ? "border-purple-500 text-purple-600"
+              : "border-transparent text-dash-textMuted hover:text-dash-text"
           )}
         >
           E-Signature Pending Tray
@@ -323,48 +323,48 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Files List Directory */}
           <div className="lg:col-span-2 space-y-4">
-            <h3 className="text-xs font-bold text-[#4a5a82] uppercase tracking-[1.5px] mb-2 flex items-center gap-1.5">
-              <FileText size={14} className="text-[#8b5cf6]" /> Document Locker
+            <h3 className="text-xs font-bold text-dash-textMuted uppercase tracking-[1.5px] mb-2 flex items-center gap-1.5">
+              <FileText size={14} className="text-purple-500" /> Document Locker
             </h3>
 
             {docs.length === 0 ? (
-              <div className="bg-[var(--n800)] border border-[var(--bdr)] p-12 rounded-3xl text-center space-y-3">
-                <FileText size={32} className="text-[#4a5a82] opacity-40 mx-auto" />
-                <p className="text-xs text-[var(--t3)]">No documents linked to your contact profile yet.</p>
+              <div className="bg-white border border-dash-border p-12 rounded-3xl text-center space-y-3">
+                <FileText size={32} className="text-dash-textMuted opacity-40 mx-auto" />
+                <p className="text-xs text-dash-textMuted">No documents linked to your contact profile yet.</p>
               </div>
             ) : (
-              <div className="bg-[var(--n800)] border border-[var(--bdr)] rounded-2xl overflow-hidden shadow-xl">
+              <div className="bg-white border border-dash-border rounded-2xl overflow-hidden shadow-xl">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
                     <thead>
-                      <tr className="border-b border-[var(--bdr)] bg-white/[0.01] text-[9.5px] font-black uppercase tracking-widest text-[#4a5a82]">
+                      <tr className="border-b border-dash-border bg-dash-surface text-[9.5px] font-black uppercase tracking-widest text-dash-textMuted">
                         <th className="px-6 py-4">File Name</th>
                         <th className="px-6 py-4">Shared Date</th>
                         <th className="px-6 py-4 text-right">Size</th>
                         <th className="px-6 py-4 text-center">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[var(--bdr)]">
+                    <tbody className="divide-y divide-dash-border">
                       {docs.map((doc, i) => {
                         const file = doc.file;
                         if (!file) return null;
 
                         return (
-                          <tr key={i} className="hover:bg-white/[0.01] transition-all group">
-                            <td className="px-6 py-4.5 text-xs font-bold text-[#eef2ff] flex items-center gap-2">
-                              <FileText size={14} className="text-blue-400 shrink-0" />
+                          <tr key={i} className="hover:bg-dash-surface transition-all group">
+                            <td className="px-6 py-4.5 text-xs font-bold text-dash-text flex items-center gap-2">
+                              <FileText size={14} className="text-dash-accent shrink-0" />
                               <span className="truncate max-w-[200px]" title={file.name}>{file.name}</span>
                             </td>
-                            <td className="px-6 py-4.5 text-xs text-[var(--t3)] font-mono">
+                            <td className="px-6 py-4.5 text-xs text-dash-textMuted font-mono">
                               {formatDate(doc.created_at)}
                             </td>
-                            <td className="px-6 py-4.5 text-xs text-[var(--t3)] font-mono text-right">
+                            <td className="px-6 py-4.5 text-xs text-dash-textMuted font-mono text-right">
                               {formatBytes(file.size || 0)}
                             </td>
                             <td className="px-6 py-4.5 text-center">
                               <button
                                 onClick={() => handleDownload(file.id, file.name)}
-                                className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase text-blue-400 hover:text-white bg-blue-500/5 hover:bg-blue-500/15 px-3 py-1.5 rounded-lg border border-blue-500/10 hover:border-blue-500/20 transition-all active:scale-95"
+                                className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase text-dash-accent hover:text-dash-accent/80 bg-dash-accent/5 hover:bg-dash-accent/10 px-3 py-1.5 rounded-lg border border-dash-accent/10 hover:border-dash-accent/20 transition-all active:scale-95"
                               >
                                 Download <Download size={11} />
                               </button>
@@ -381,8 +381,8 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
 
           {/* Secure Document Upload Dropzone */}
           <div className="space-y-4">
-            <h3 className="text-xs font-bold text-[#4a5a82] uppercase tracking-[1.5px] mb-2 flex items-center gap-1.5">
-              <UploadCloud size={14} className="text-[#8b5cf6]" /> Document Upload Vault
+            <h3 className="text-xs font-bold text-dash-textMuted uppercase tracking-[1.5px] mb-2 flex items-center gap-1.5">
+              <UploadCloud size={14} className="text-purple-500" /> Document Upload Vault
             </h3>
 
             <div 
@@ -392,10 +392,10 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
               className={cn(
-                "border-2 border-dashed rounded-3xl p-8 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-[220px] bg-[var(--n800)] relative overflow-hidden group",
+                "border-2 border-dashed rounded-3xl p-8 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-[220px] bg-white relative overflow-hidden group",
                 dragActive 
-                  ? "border-[#8b5cf6] bg-[#8b5cf6]/5" 
-                  : "border-white/10 hover:border-white/20"
+                  ? "border-purple-500 bg-purple-500/5" 
+                  : "border-dash-border hover:border-purple-300"
               )}
             >
               <input 
@@ -415,43 +415,43 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center text-[#4a5a82] mx-auto group-hover:scale-105 transition-transform duration-300">
+                  <div className="w-12 h-12 rounded-2xl bg-dash-surface border border-dash-border flex items-center justify-center text-dash-textMuted mx-auto group-hover:scale-105 transition-transform duration-300">
                     <UploadCloud size={20} />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs font-bold text-[#eef2ff]">Secure Document Drop</p>
-                    <p className="text-[10px] text-[var(--t3)] leading-relaxed">
+                    <p className="text-xs font-bold text-dash-text">Secure Document Drop</p>
+                    <p className="text-[10px] text-dash-textMuted leading-relaxed">
                       Drag & drop KYC onboarding docs, ID copies, or proofs of address here
                     </p>
                   </div>
-                  <span className="inline-block px-3 py-1 rounded bg-[#080f28] border border-white/5 text-[9px] font-bold text-[#4a5a82] uppercase tracking-wider">
+                  <span className="inline-block px-3 py-1 rounded bg-white border border-dash-border text-[9px] font-bold text-dash-textMuted uppercase tracking-wider">
                     Browse Files
                   </span>
                 </div>
               )}
             </div>
 
-            <div className="bg-[#111d47]/20 border border-white/5 p-4 rounded-2xl flex gap-3 text-[10.5px] text-[#4a5a82] leading-relaxed">
-              <AlertCircle size={14} className="shrink-0 text-blue-400 mt-0.5" />
+            <div className="bg-dash-surface/20 border border-dash-border p-4 rounded-2xl flex gap-3 text-[10.5px] text-dash-textMuted leading-relaxed">
+              <AlertCircle size={14} className="shrink-0 text-dash-accent mt-0.5" />
               <span>
                 <strong>Privacy Policy:</strong> Vaulted uploads are encrypted in transit and saved directly to contact CRM storage, isolated from public directory indices. Max size: 15MB.
               </span>
             </div>
 
             {/* Secure FICA KYC Vault Uploader */}
-            <div className="space-y-4 pt-6 border-t border-white/5">
-              <h3 className="text-xs font-bold text-[#4a5a82] uppercase tracking-[1.5px] mb-2 flex items-center gap-1.5">
-                <Shield size={14} className="text-[#8b5cf6]" /> FICA & KYC Compliance Vault
+            <div className="space-y-4 pt-6 border-t border-dash-border">
+              <h3 className="text-xs font-bold text-dash-textMuted uppercase tracking-[1.5px] mb-2 flex items-center gap-1.5">
+                <Shield size={14} className="text-purple-500" /> FICA & KYC Compliance Vault
               </h3>
               
-              <div className="bg-[var(--n800)] border border-[var(--bdr)] rounded-3xl p-6 space-y-4">
+              <div className="bg-white border border-dash-border rounded-3xl p-6 space-y-4">
                 <div className="space-y-3 text-left">
                   <div>
-                    <label className="text-[10px] text-[#4a5a82] uppercase font-bold tracking-wider block mb-1">Document Type</label>
+                    <label className="text-[10px] text-dash-textMuted uppercase font-bold tracking-wider block mb-1">Document Type</label>
                     <select
                       value={selectedFicaType}
                       onChange={e => setSelectedFicaType(e.target.value)}
-                      className="w-full h-9 bg-[var(--n900)] border border-white/5 text-xs px-3 rounded-xl text-white outline-none focus:border-[#8b5cf6]/40 font-dm-sans"
+                      className="w-full h-9 bg-dash-bg border border-dash-border text-xs px-3 rounded-xl text-dash-text outline-none focus:border-purple-400 font-dm-sans"
                     >
                       <option value="green_id">Green Barcoded ID Book</option>
                       <option value="smart_id">Smart ID Card</option>
@@ -561,13 +561,13 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
                 </div>
 
                 {/* FICA Documents List */}
-                <div className="space-y-2 border-t border-white/5 pt-4 text-left">
-                  <span className="text-[10px] text-[#4a5a82] uppercase font-bold tracking-wider block">Vaulted Compliance Files</span>
+                <div className="space-y-2 border-t border-dash-border pt-4 text-left">
+                  <span className="text-[10px] text-dash-textMuted uppercase font-bold tracking-wider block">Vaulted Compliance Files</span>
                   
                   {loadingFica ? (
-                    <span className="text-xs text-[#4a5a82]">Loading vault...</span>
+                    <span className="text-xs text-dash-textMuted">Loading vault...</span>
                   ) : ficaDocs.length === 0 ? (
-                    <p className="text-[11px] text-[#4a5a82] italic leading-normal">
+                    <p className="text-[11px] text-dash-textMuted italic leading-normal">
                       No compliance records found. Please upload required ID and Proof of Address.
                     </p>
                   ) : (
@@ -582,12 +582,12 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
                         const isDocExpired = docExpiry ? docExpiry.getTime() < Date.now() : false;
 
                         return (
-                          <div key={doc.id} className="flex items-center justify-between p-2.5 bg-[var(--n900)] border border-white/5 rounded-xl text-xs">
+                          <div key={doc.id} className="flex items-center justify-between p-2.5 bg-dash-bg border border-dash-border rounded-xl text-xs">
                             <div className="flex items-center gap-2">
-                              <FileText size={14} className="text-blue-400 shrink-0" />
+                              <FileText size={14} className="text-dash-accent shrink-0" />
                               <div className="text-left leading-tight">
-                                <span className="font-bold text-[#eef2ff] block">{docTypeLabel}</span>
-                                <span className="text-[9.5px] text-[#4a5a82] block mt-0.5">
+                                <span className="font-bold text-dash-text block">{docTypeLabel}</span>
+                                <span className="text-[9.5px] text-dash-textMuted block mt-0.5">
                                   Uploaded: {new Date(doc.created_at).toLocaleDateString()}
                                 </span>
                               </div>
@@ -603,7 +603,7 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
                               )}
                               <a
                                 href={`/api/kyc/documents/download?id=${doc.id}`}
-                                className="text-[#4a5a82] hover:text-[#eef2ff] transition-colors"
+                                className="text-dash-textMuted hover:text-dash-text transition-colors"
                                 title="Decrypt & Download"
                               >
                                 <Download size={14} />
@@ -623,18 +623,18 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
 
       {activeTab === 'esign' && (
         <div className="space-y-6">
-          <h3 className="text-xs font-bold text-[#4a5a82] uppercase tracking-[1.5px] mb-2 flex items-center gap-1.5">
-            <PenTool size={14} className="text-[#8b5cf6]" /> Signature Requirements
+          <h3 className="text-xs font-bold text-dash-textMuted uppercase tracking-[1.5px] mb-2 flex items-center gap-1.5">
+            <PenTool size={14} className="text-purple-500" /> Signature Requirements
           </h3>
 
           {proposals.length === 0 ? (
-            <div className="bg-[var(--n800)] border border-[var(--bdr)] p-16 rounded-3xl flex flex-col items-center justify-center text-center space-y-4 shadow-xl">
-              <div className="w-14 h-14 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-center text-emerald-400 opacity-55">
+            <div className="bg-white border border-dash-border p-16 rounded-3xl flex flex-col items-center justify-center text-center space-y-4 shadow-xl">
+              <div className="w-14 h-14 bg-dash-surface border border-dash-border rounded-2xl flex items-center justify-center text-emerald-400 opacity-55">
                 <ShieldCheck size={28} />
               </div>
               <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--t2)]">All Contracts Sealed</h3>
-                <p className="text-xs text-[var(--t3)] mt-1.5 max-w-xs leading-relaxed">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-dash-text">All Contracts Sealed</h3>
+                <p className="text-xs text-dash-textMuted mt-1.5 max-w-xs leading-relaxed">
                   There are no pending proposal agreements, SLAs, or NDAs requiring your electronic signature. Excellent!
                 </p>
               </div>
@@ -644,9 +644,9 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
               {proposals.map((p, idx) => (
                 <div 
                   key={idx} 
-                  className="bg-[var(--n800)] border border-[var(--bdr)] rounded-[24px] p-6 shadow-xl flex flex-col justify-between hover:border-white/10 hover:translate-y-[-1px] transition-all relative overflow-hidden group"
+                  className="bg-white border border-dash-border rounded-[24px] p-6 shadow-xl flex flex-col justify-between hover:border-dash-accent/30 hover:translate-y-[-1px] transition-all relative overflow-hidden group"
                 >
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-[#8b5cf6]/5 rounded-full blur-2xl pointer-events-none" />
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl pointer-events-none" />
 
                   <div className="space-y-4">
                     <div className="flex justify-between items-start">
@@ -657,10 +657,10 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
                     </div>
 
                     <div>
-                      <h4 className="text-sm font-bold text-[#eef2ff] line-clamp-1 font-space uppercase">
+                      <h4 className="text-sm font-bold text-dash-text line-clamp-1 font-space uppercase">
                         {p.title}
                       </h4>
-                      <div className="flex flex-wrap items-center gap-4 mt-2.5 text-[9.5px] text-[#4a5a82] font-mono uppercase">
+                      <div className="flex flex-wrap items-center gap-4 mt-2.5 text-[9.5px] text-dash-textMuted font-mono uppercase">
                         {p.total_value && (
                           <span>Contract Value: ${Number(p.total_value).toLocaleString()}</span>
                         )}
@@ -669,7 +669,7 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
                     </div>
                   </div>
 
-                  <div className="pt-6 border-t border-white/5 mt-6 flex justify-end">
+                  <div className="pt-6 border-t border-dash-border mt-6 flex justify-end">
                     <button
                       onClick={() => setSelectedProposal(p)}
                       className="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black uppercase tracking-wider transition-all shadow-lg shadow-amber-500/10 hover:shadow-amber-500/20 active:scale-95"
@@ -686,32 +686,32 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
 
       {/* Embedded Native E-Signature Modal Overlay */}
       {selectedProposal && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
-          <div className="bg-[#080f28] border border-white/10 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col h-[90vh] md:h-auto max-h-[85vh] animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 bg-[#000000c1] backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
+          <div className="bg-white border border-dash-border rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col h-[90vh] md:h-auto max-h-[85vh] animate-in zoom-in-95 duration-300">
             {/* Header */}
-            <div className="p-6 border-b border-white/5 flex justify-between items-center bg-[#0b1329]/50">
+            <div className="p-6 border-b border-dash-border flex justify-between items-center bg-dash-surface">
               <div>
-                <span className="text-[9px] font-black uppercase tracking-widest text-[#4a5a82]">LeadsMind E-Sign Core</span>
-                <h4 className="text-base font-bold text-white font-space uppercase mt-0.5">Execute Agreement</h4>
+                <span className="text-[9px] font-black uppercase tracking-widest text-dash-textMuted">LeadsMind E-Sign Core</span>
+                <h4 className="text-base font-bold text-dash-text font-space uppercase mt-0.5">Execute Agreement</h4>
               </div>
               <button 
                 onClick={() => setSelectedProposal(null)}
-                className="text-[#4a5a82] hover:text-white text-xs font-black uppercase tracking-wider bg-white/5 w-8 h-8 rounded-full flex items-center justify-center"
+                className="text-dash-textMuted hover:text-dash-text text-xs font-black uppercase tracking-wider bg-white border border-dash-border w-8 h-8 rounded-full flex items-center justify-center"
               >
                 ✕
               </button>
             </div>
 
             {/* Doc Preview Area */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1 text-sm text-white/70 leading-relaxed font-sans border-b border-white/5 bg-[#04091a]/30">
+            <div className="p-6 overflow-y-auto space-y-6 flex-1 text-sm text-dash-textMuted leading-relaxed font-sans border-b border-dash-border bg-dash-bg">
               <div className="space-y-4">
-                <h5 className="text-md font-bold text-white font-space uppercase border-b border-white/5 pb-2">
+                <h5 className="text-md font-bold text-dash-text font-space uppercase border-b border-dash-border pb-2">
                   {selectedProposal.title}
                 </h5>
                 
                 {/* Simulated contract terms */}
-                <div className="bg-[#0b1329] p-5 rounded-2xl border border-white/5 space-y-4 text-xs select-none max-h-60 overflow-y-auto font-sans text-white/60">
-                  <p className="font-bold text-white uppercase text-[10px] tracking-wider mb-2">Terms and Conditions</p>
+                <div className="bg-dash-surface p-5 rounded-2xl border border-dash-border space-y-4 text-xs select-none max-h-60 overflow-y-auto font-sans text-dash-textMuted">
+                  <p className="font-bold text-dash-text uppercase text-[10px] tracking-wider mb-2">Terms and Conditions</p>
                   <p>1. <strong>Scope of Service:</strong> LeadsMind agrees to deliver professional agency consultation and implementation services specified in the proposal briefing.</p>
                   <p>2. <strong>Term & Value:</strong> This contract value totals ${Number(selectedProposal.total_value || 0).toLocaleString()} and remains binding until all milestones are completed.</p>
                   <p>3. <strong>POs & Payments:</strong> All invoices issued in connection with this agreement are subject to LeadsMind local payment processor protocols.</p>
@@ -722,13 +722,13 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
               {/* Signature Capture Area */}
               <div className="space-y-4 pt-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-bold text-white uppercase tracking-wider">Electronic Signature</span>
-                  <div className="flex rounded-lg bg-[#0b1329] p-1 border border-white/5">
+                  <span className="text-[10px] font-bold text-dash-text uppercase tracking-wider">Electronic Signature</span>
+                  <div className="flex rounded-lg bg-dash-surface p-1 border border-dash-border">
                     <button
                       onClick={() => setSignatureType('draw')}
                       className={cn(
                         "px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-md transition-all",
-                        signatureType === 'draw' ? 'bg-blue-600 text-white' : 'text-[#4a5a82]'
+                        signatureType === 'draw' ? 'bg-dash-accent text-white' : 'text-dash-textMuted'
                       )}
                     >
                       Draw
@@ -737,7 +737,7 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
                       onClick={() => setSignatureType('type')}
                       className={cn(
                         "px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-md transition-all",
-                        signatureType === 'type' ? 'bg-blue-600 text-white' : 'text-[#4a5a82]'
+                        signatureType === 'type' ? 'bg-dash-accent text-white' : 'text-dash-textMuted'
                       )}
                     >
                       Type to Sign
@@ -747,7 +747,7 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
 
                 {signatureType === 'draw' ? (
                   <div className="space-y-2">
-                    <div className="bg-white rounded-2xl border border-white/10 overflow-hidden relative">
+                    <div className="bg-white rounded-2xl border border-dash-border overflow-hidden relative">
                       <canvas
                         ref={canvasRef}
                         width={500}
@@ -768,7 +768,7 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
                         Clear
                       </button>
                     </div>
-                    <p className="text-[10px] text-[#4a5a82] italic">Use your mouse or touch screen inside the box to draw your signature.</p>
+                    <p className="text-[10px] text-dash-textMuted italic">Use your mouse or touch screen inside the box to draw your signature.</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -777,12 +777,12 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
                       placeholder="Type your full legal name here"
                       value={typedName}
                       onChange={(e) => setTypedName(e.target.value)}
-                      className="w-full bg-[#0b1329] border border-white/5 rounded-xl px-4 py-3 text-white focus:border-blue-500/50 outline-none text-sm font-sans"
+                      className="w-full bg-dash-surface border border-dash-border rounded-xl px-4 py-3 text-dash-text focus:border-dash-accent outline-none text-sm font-sans"
                     />
                     {typedName.trim() && (
-                      <div className="p-4 bg-white/5 rounded-xl border border-white/5">
-                        <p className="text-[9px] text-[#4a5a82] uppercase tracking-wider mb-1">Rendered signature</p>
-                        <p className="font-space text-3xl font-bold text-blue-400 italic tracking-wider select-none px-2 py-1 select-none">
+                      <div className="p-4 bg-dash-surface rounded-xl border border-dash-border">
+                        <p className="text-[9px] text-dash-textMuted uppercase tracking-wider mb-1">Rendered signature</p>
+                        <p className="font-space text-3xl font-bold text-dash-accent italic tracking-wider select-none px-2 py-1 select-none">
                           {typedName}
                         </p>
                       </div>
@@ -793,10 +793,10 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
             </div>
 
             {/* Footer */}
-            <div className="p-6 bg-[#0b1329]/50 border-t border-white/5 flex justify-end gap-3">
+            <div className="p-6 bg-dash-surface border-t border-dash-border flex justify-end gap-3">
               <button 
                 onClick={() => setSelectedProposal(null)}
-                className="h-11 px-6 rounded-xl bg-white/5 hover:bg-white/10 text-white text-[10px] font-black uppercase tracking-wider transition-colors"
+                className="h-11 px-6 rounded-xl bg-white border border-dash-border hover:bg-dash-border/40 text-dash-text text-[10px] font-black uppercase tracking-wider transition-colors"
               >
                 Cancel
               </button>
@@ -814,17 +814,17 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
 
       {/* Experian TrueID Biometric Selfie Liveness Modal */}
       {showLivenessModal && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-[60] animate-in fade-in duration-300">
-          <div className="bg-[#080f28] border border-white/10 rounded-[32px] w-full max-w-sm overflow-hidden shadow-2xl flex flex-col p-6 text-center space-y-6 animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 bg-[#000000c1] backdrop-blur-md flex items-center justify-center p-4 z-[60] animate-in fade-in duration-300">
+          <div className="bg-white border border-dash-border rounded-[32px] w-full max-w-sm overflow-hidden shadow-2xl flex flex-col p-6 text-center space-y-6 animate-in zoom-in-95 duration-300">
             {/* Phone/Device Simulator Header */}
-            <div className="flex justify-between items-center pb-2 border-b border-white/5">
-              <span className="text-[10px] text-blue-400 font-black uppercase tracking-wider">Experian TrueID Biometric SDK</span>
+            <div className="flex justify-between items-center pb-2 border-b border-dash-border">
+              <span className="text-[10px] text-dash-accent font-black uppercase tracking-wider">Experian TrueID Biometric SDK</span>
               <button 
                 onClick={() => {
                   setShowLivenessModal(false);
                   setLivenessResult(null);
                 }} 
-                className="text-[#4a5a82] hover:text-white"
+                className="text-dash-textMuted hover:text-dash-text"
               >
                 ✕
               </button>
@@ -832,25 +832,25 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
 
             {livenessStep === 0 && (
               <div className="space-y-4 py-4">
-                <div className="w-16 h-16 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mx-auto">
+                <div className="w-16 h-16 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-dash-accent mx-auto">
                   <Camera size={28} />
                 </div>
                 <div className="space-y-2">
-                  <h4 className="text-sm font-bold text-[#eef2ff] uppercase tracking-wide">DHA Biometric Check</h4>
-                  <p className="text-[11px] text-[#4a5a82] leading-relaxed">
+                  <h4 className="text-sm font-bold text-dash-text uppercase tracking-wide">DHA Biometric Check</h4>
+                  <p className="text-[11px] text-dash-textMuted leading-relaxed">
                     Experian TrueID will perform a liveness selfie verify scan against your official Home Affairs registration photo.
                   </p>
                 </div>
                 
-                <div className="space-y-1.5 text-left bg-white/[0.02] border border-white/5 p-3.5 rounded-xl">
-                  <label className="text-[9px] text-[#4a5a82] uppercase font-bold tracking-wider block">Verify ID Number</label>
+                <div className="space-y-1.5 text-left bg-dash-surface border border-dash-border p-3.5 rounded-xl">
+                  <label className="text-[9px] text-dash-textMuted uppercase font-bold tracking-wider block">Verify ID Number</label>
                   <input
                     type="text"
                     maxLength={13}
                     placeholder="Enter South African ID number"
                     value={inputLivenessIdNumber}
                     onChange={e => setInputLivenessIdNumber(e.target.value)}
-                    className="w-full h-9 bg-[#0b1329] border border-white/5 rounded-lg px-3 text-xs text-white outline-none focus:border-blue-500/50 font-mono"
+                    className="w-full h-9 bg-dash-surface border border-dash-border rounded-lg px-3 text-xs text-dash-text outline-none focus:border-dash-accent font-mono"
                   />
                 </div>
 
@@ -897,7 +897,7 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
                       }, 1200);
                     }, 1500);
                   }}
-                  className="w-full h-10 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all disabled:opacity-40"
+                  className="w-full h-10 rounded-xl bg-dash-accent hover:bg-dash-accent/90 text-white text-xs font-bold transition-all disabled:opacity-40"
                 >
                   Authorize & Initialize Camera
                 </button>
@@ -910,25 +910,25 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
                 <div className="relative w-48 h-48 rounded-full border-4 border-dashed border-blue-500/60 flex items-center justify-center p-2 animate-pulse bg-black/40 shadow-[0_0_20px_rgba(59,130,246,0.2)]">
                   <div className="absolute inset-2 rounded-full border border-blue-500/20" />
                   {/* Face outline graphic overlay */}
-                  <svg className="w-28 h-28 text-blue-400/30" fill="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-28 h-28 text-dash-accent/30" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
                   </svg>
                   {/* Dynamic sweeping overlay */}
                   <div className="absolute left-0 right-0 h-0.5 bg-blue-500 top-1/2 shadow-[0_0_10px_#3b82f6] animate-bounce" />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-black uppercase tracking-wider text-blue-400 animate-pulse">{livenessInstruction}</p>
-                  <p className="text-[10px] text-[#4a5a82]">Ensure high lighting and no sunglasses.</p>
+                  <p className="text-xs font-black uppercase tracking-wider text-dash-accent animate-pulse">{livenessInstruction}</p>
+                  <p className="text-[10px] text-dash-textMuted">Ensure high lighting and no sunglasses.</p>
                 </div>
               </div>
             )}
 
             {livenessStep === 2 && (
               <div className="space-y-4 py-8">
-                <Loader2 className="w-10 h-10 animate-spin text-blue-400 mx-auto" />
+                <Loader2 className="w-10 h-10 animate-spin text-dash-accent mx-auto" />
                 <div className="space-y-1.5">
-                  <p className="text-xs font-bold text-white uppercase tracking-wider">Matching Biometric Matrix...</p>
-                  <p className="text-[10px] text-[#4a5a82]">Querying Experian TrueID & DHA registry databases.</p>
+                  <p className="text-xs font-bold text-dash-text uppercase tracking-wider">Matching Biometric Matrix...</p>
+                  <p className="text-[10px] text-dash-textMuted">Querying Experian TrueID & DHA registry databases.</p>
                 </div>
               </div>
             )}
@@ -941,7 +941,7 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
                       <div className="w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mx-auto shadow-[0_0_15px_rgba(16,185,129,0.1)]">
                         <CheckCircle2 size={24} />
                       </div>
-                      <h4 className="text-sm font-bold text-white uppercase tracking-wide">Verification Passed</h4>
+                      <h4 className="text-sm font-bold text-dash-text uppercase tracking-wide">Verification Passed</h4>
                       <p className="text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 py-1.5 px-3 rounded-xl inline-block font-mono uppercase font-bold">
                         {livenessResult.result}
                       </p>
@@ -951,13 +951,13 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
                       <div className="w-14 h-14 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 mx-auto shadow-[0_0_15px_rgba(239,68,68,0.1)]">
                         <ShieldAlert size={24} />
                       </div>
-                      <h4 className="text-sm font-bold text-white uppercase tracking-wide">Verification Failed</h4>
+                      <h4 className="text-sm font-bold text-dash-text uppercase tracking-wide">Verification Failed</h4>
                       <p className="text-[11px] text-red-400 bg-red-500/10 border border-red-500/20 py-1.5 px-3 rounded-xl inline-block font-mono uppercase font-bold">
                         {livenessResult.result}
                       </p>
                     </>
                   )}
-                  <p className="text-[10px] text-[#4a5a82] leading-normal px-2">
+                  <p className="text-[10px] text-dash-textMuted leading-normal px-2">
                     Logs registered securely in the compliance audit timeline. You can close this screen now.
                   </p>
                 </div>
@@ -968,7 +968,7 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
                     setShowLivenessModal(false);
                     setLivenessResult(null);
                   }}
-                  className="w-full h-10 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-bold transition-all border border-white/5"
+                  className="w-full h-10 rounded-xl bg-white hover:bg-dash-border/40 text-dash-text text-xs font-bold transition-all border border-dash-border"
                 >
                   Close Screen
                 </button>
@@ -980,15 +980,15 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
 
       {/* OCR Laser Scanning & Text Apply Overlay */}
       {ocrScanningDoc && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-[60] animate-in fade-in duration-300">
-          <div className="bg-[#080f28] border border-white/10 rounded-[32px] w-full max-w-md overflow-hidden shadow-2xl flex flex-col p-6 text-center space-y-6 animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 bg-[#000000c1] backdrop-blur-md flex items-center justify-center p-4 z-[60] animate-in fade-in duration-300">
+          <div className="bg-white border border-dash-border rounded-[32px] w-full max-w-md overflow-hidden shadow-2xl flex flex-col p-6 text-center space-y-6 animate-in zoom-in-95 duration-300">
             <style>{`
               @keyframes scan {
                 0%, 100% { top: 0%; }
                 50% { top: 100%; }
               }
             `}</style>
-            <div className="flex justify-between items-center pb-2 border-b border-white/5">
+            <div className="flex justify-between items-center pb-2 border-b border-dash-border">
               <span className="text-[10px] text-purple-400 font-black uppercase tracking-wider">Experian TrueID OCR Pipeline</span>
               {!ocrExtracted && (
                 <Loader2 size={14} className="text-purple-400 animate-spin" />
@@ -1005,7 +1005,7 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs font-black uppercase tracking-wider text-purple-400 animate-pulse">Running OCR Parsing...</p>
-                  <p className="text-[10px] text-[#4a5a82]">Extracting identification records & text strings</p>
+                  <p className="text-[10px] text-dash-textMuted">Extracting identification records & text strings</p>
                 </div>
               </div>
             ) : (
@@ -1014,52 +1014,52 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
                   <CheckCircle2 size={22} />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white uppercase tracking-wide">OCR Extraction Complete</h4>
-                  <p className="text-[10px] text-[#4a5a82] mt-0.5">Please verify the parsed records before applying to profile:</p>
+                  <h4 className="text-sm font-bold text-dash-text uppercase tracking-wide">OCR Extraction Complete</h4>
+                  <p className="text-[10px] text-dash-textMuted mt-0.5">Please verify the parsed records before applying to profile:</p>
                 </div>
 
                 {/* Extracted Fields */}
-                <div className="bg-white/[0.01] border border-white/5 rounded-2xl p-4 text-left space-y-2.5 text-xs text-white max-h-60 overflow-y-auto">
+                <div className="bg-dash-surface border border-dash-border rounded-2xl p-4 text-left space-y-2.5 text-xs text-dash-text max-h-60 overflow-y-auto">
                   {ocrExtracted.idNumber && (
-                    <div className="flex justify-between border-b border-white/[0.03] pb-1.5">
-                      <span className="text-[#4a5a82]">ID Number</span>
+                    <div className="flex justify-between border-b border-dash-border pb-1.5">
+                      <span className="text-dash-textMuted">ID Number</span>
                       <span className="font-mono font-bold">{ocrExtracted.idNumber}</span>
                     </div>
                   )}
                   {ocrExtracted.firstName && (
-                    <div className="flex justify-between border-b border-white/[0.03] pb-1.5">
-                      <span className="text-[#4a5a82]">First Name</span>
+                    <div className="flex justify-between border-b border-dash-border pb-1.5">
+                      <span className="text-dash-textMuted">First Name</span>
                       <span className="font-semibold">{ocrExtracted.firstName}</span>
                     </div>
                   )}
                   {ocrExtracted.lastName && (
-                    <div className="flex justify-between border-b border-white/[0.03] pb-1.5">
-                      <span className="text-[#4a5a82]">Last Name</span>
+                    <div className="flex justify-between border-b border-dash-border pb-1.5">
+                      <span className="text-dash-textMuted">Last Name</span>
                       <span className="font-semibold">{ocrExtracted.lastName}</span>
                     </div>
                   )}
                   {ocrExtracted.dateOfBirth && (
-                    <div className="flex justify-between border-b border-white/[0.03] pb-1.5">
-                      <span className="text-[#4a5a82]">Date of Birth</span>
+                    <div className="flex justify-between border-b border-dash-border pb-1.5">
+                      <span className="text-dash-textMuted">Date of Birth</span>
                       <span className="font-mono">{ocrExtracted.dateOfBirth}</span>
                     </div>
                   )}
                   {ocrExtracted.creditorName && (
-                    <div className="flex justify-between border-b border-white/[0.03] pb-1.5">
-                      <span className="text-[#4a5a82]">Creditor Name</span>
+                    <div className="flex justify-between border-b border-dash-border pb-1.5">
+                      <span className="text-dash-textMuted">Creditor Name</span>
                       <span className="font-semibold">{ocrExtracted.creditorName}</span>
                     </div>
                   )}
                   {ocrExtracted.accountNumber && (
-                    <div className="flex justify-between border-b border-white/[0.03] pb-1.5">
-                      <span className="text-[#4a5a82]">Account Number</span>
+                    <div className="flex justify-between border-b border-dash-border pb-1.5">
+                      <span className="text-dash-textMuted">Account Number</span>
                       <span className="font-mono">{ocrExtracted.accountNumber}</span>
                     </div>
                   )}
                   {ocrExtracted.billingAddress && (
                     <div className="space-y-1">
-                      <span className="text-[#4a5a82] block">Extracted Address</span>
-                      <span className="text-[11px] text-[#94a3c8] block leading-relaxed">{ocrExtracted.billingAddress}</span>
+                      <span className="text-dash-textMuted block">Extracted Address</span>
+                      <span className="text-[11px] text-dash-textMuted block leading-relaxed">{ocrExtracted.billingAddress}</span>
                     </div>
                   )}
                 </div>
@@ -1071,7 +1071,7 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
                       setOcrScanningDoc(null);
                       setOcrExtracted(null);
                     }}
-                    className="flex-1 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-white text-xs font-bold transition-all"
+                    className="flex-1 h-10 rounded-xl bg-white hover:bg-dash-border/40 border border-dash-border text-dash-text text-xs font-bold transition-all"
                   >
                     Rescan
                   </button>

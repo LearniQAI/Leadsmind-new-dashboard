@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { DashButton } from '@/components/dashboard-ui';
 import {
   Video, Copy, Check, ExternalLink, Calendar, Loader2,
   Play, Radio, Sparkles
@@ -128,21 +128,17 @@ export default function InstantMeetClient({
               </div>
             </div>
 
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full sm:w-auto h-14 px-10 bg-primary hover:bg-primary/90 text-white font-bold text-xs border-none shadow-lg shadow-primary/20 transition-all motion-reduce:transition-none rounded-xl"
-            >
+            <DashButton type="submit" variant="primary" size="lg" disabled={loading} className="w-full sm:w-auto">
               {loading ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin motion-reduce:animate-none" /> Provisioning video room...
+                  <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" /> Provisioning video room...
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4 mr-2" /> Generate instant meeting
+                  <Sparkles className="w-4 h-4" /> Generate instant meeting
                 </>
               )}
-            </Button>
+            </DashButton>
           </form>
         </PremiumSection>
 
@@ -175,21 +171,15 @@ export default function InstantMeetClient({
                     value={meeting.meeting_link || ''}
                     className="flex-1 h-12 bg-dash-surface border border-dash-border rounded-xl px-4 !text-dash-text text-xs font-semibold focus:outline-none truncate select-all"
                   />
-                  <Button
-                    onClick={handleCopy}
-                    className="h-12 w-12 bg-dash-surface border border-dash-border hover:bg-dash-border/60 !text-dash-text transition-all motion-reduce:transition-none rounded-xl p-0 flex items-center justify-center flex-shrink-0"
-                  >
+                  <DashButton variant="secondary" size="icon" onClick={handleCopy} className="flex-shrink-0">
                     {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
-                  </Button>
+                  </DashButton>
                 </div>
               </div>
 
-              <Button
-                onClick={() => window.open(meeting.meeting_link, '_blank')}
-                className="w-full sm:w-auto h-12 px-8 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white font-bold text-xs border-none shadow-lg shadow-primary/20 transition-all motion-reduce:transition-none rounded-xl"
-              >
-                Join meeting now <ExternalLink className="w-4 h-4 ml-2" />
-              </Button>
+              <DashButton variant="primary" size="default" onClick={() => window.open(meeting.meeting_link, '_blank')} className="w-full sm:w-auto px-8">
+                Join meeting now <ExternalLink className="w-4 h-4" />
+              </DashButton>
             </div>
           </GlassContainer>
         )}

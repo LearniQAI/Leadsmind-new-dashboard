@@ -3,7 +3,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { getWaitlistEntries } from '@/app/actions/calendar';
 import { WaitlistManager } from '@/components/calendar/WaitlistManager';
 import { Users, LayoutTemplate, Rocket, Badge } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { DashButton } from '@/components/dashboard-ui';
 import Link from 'next/link';
 import Wrapper from "@/components/layouts/DefaultWrapper";
 import { PremiumSection } from '@/components/calendar/BookingPrimitives';
@@ -38,9 +38,9 @@ export default async function WaitlistPage() {
         <p className="!text-dash-textMuted font-medium text-sm leading-relaxed mb-10 px-10">
          You haven't configured any group sessions with waitlisting enabled. Dynamic attendee promotion is disabled.
         </p>
-        <Button asChild className="bg-dash-accent hover:bg-dash-accent/90 text-white rounded-xl font-bold h-14 px-10 shadow-lg shadow-dash-accent/20">
+        <DashButton asChild variant="primary" size="lg" className="px-10">
          <Link href="/calendar">Configure nodes</Link>
-        </Button>
+        </DashButton>
        </div>
       </div>
      </div>

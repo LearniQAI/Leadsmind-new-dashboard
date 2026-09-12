@@ -9,7 +9,7 @@ import {
   DialogFooter,
   DialogDescription
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { DashButton } from '@/components/dashboard-ui';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 
 interface ConfirmationModalProps {
@@ -55,18 +55,18 @@ export default function ConfirmationModal({
         </DialogHeader>
 
         <DialogFooter className="mt-6 gap-3">
-          <Button variant="ghost" size="sm" onClick={onClose}>
+          <DashButton variant="ghost" size="sm" onClick={onClose}>
             {cancelText}
-          </Button>
-          <Button
-            variant={isDestructive ? "destructive" : "default"}
+          </DashButton>
+          <DashButton
+            variant={isDestructive ? "destructive" : "primary"}
             size="sm"
             onClick={onConfirm}
             disabled={isLoading}
             className="min-w-[120px]"
           >
             {isLoading ? <Loader2 className="animate-spin motion-reduce:animate-none" size={14} /> : confirmText}
-          </Button>
+          </DashButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -24,10 +24,18 @@ export default async function ArticlesLayout({ children }: { children: React.Rea
 
   const categories = groupArticlesByCategory(articles || []);
 
+  // ArticlesNav is a Client Component, so only plain, serializable data can
+  // cross into it -- `icon` on each category is a live LucideIcon component
+  // reference (a function), which Next's RSC boundary rejects with "Functions
+  // cannot be passed directly to Client Components", surfacing as the generic
+  // "Something went wrong" error boundary. ArticlesNav looks icons up locally
+  // by category name instead (see ICON_BY_CATEGORY there).
+  const navCategories = categories.map(({ icon: _icon, ...rest }) => rest);
+
   return (
     <Wrapper>
       <div className="flex min-h-[calc(100vh-70px)] bg-dash-surface font-dm-sans">
-        <ArticlesNav categories={categories} />
+        <ArticlesNav categories={navCategories} />
         <div className="flex-1 min-w-0">{children}</div>
       </div>
     </Wrapper>

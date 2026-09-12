@@ -72,9 +72,9 @@ export default async function PortalBookingsPage() {
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold uppercase tracking-tight font-space">
-            Meeting <span className="text-[var(--accent2)]">Bookings</span>
+            Meeting <span className="text-dash-accent">Bookings</span>
           </h1>
-          <p className="text-[11.5px] text-[var(--t3)] uppercase tracking-[0.2em] mt-2 font-medium">
+          <p className="text-[11.5px] text-dash-textMuted uppercase tracking-[0.2em] mt-2 font-medium">
             Manage your scheduled consulting sessions and book new appointments
           </p>
         </div>

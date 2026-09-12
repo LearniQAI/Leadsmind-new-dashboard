@@ -5,6 +5,7 @@ import { Users, Zap, CreditCard, Loader2, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { pricingTiers } from '@/app/(marketing)/landing/data';
 import { createPaystackSubscription, cancelPaystackSubscription } from '@/app/actions/finance';
+import { DashButton } from '@/components/dashboard-ui';
 
 interface BillingInfo {
   planTier: string;
@@ -101,29 +102,18 @@ export default function BillingTab({ memberCount, billing }: BillingTabProps) {
                 <span className="text-[11px] font-bold !text-dash-textMuted mr-1">
                   Cancels immediately — you'll drop to Spark right away.
                 </span>
-                <button
-                  onClick={handleCancel}
-                  disabled={cancelling}
-                  className="bg-red-600 text-white hover:bg-red-700 disabled:opacity-60 font-bold text-[11px] h-11 px-6 rounded-2xl shadow-sm transition-colors flex items-center gap-2"
-                >
+                <DashButton onClick={handleCancel} disabled={cancelling} variant="destructive" size="sm">
                   {cancelling && <Loader2 size={14} className="animate-spin" />}
                   Yes, cancel now
-                </button>
-                <button
-                  onClick={() => setConfirmingCancel(false)}
-                  disabled={cancelling}
-                  className="bg-white text-dash-text font-bold text-[11px] h-11 px-6 rounded-2xl shadow-sm border border-dash-border transition-colors"
-                >
+                </DashButton>
+                <DashButton onClick={() => setConfirmingCancel(false)} disabled={cancelling} variant="secondary" size="sm">
                   Keep my plan
-                </button>
+                </DashButton>
               </div>
             ) : (
-              <button
-                onClick={() => setConfirmingCancel(true)}
-                className="bg-white text-red-600 hover:scale-105 active:scale-95 motion-reduce:hover:scale-100 font-bold text-[11px] h-14 px-10 rounded-2xl shadow-sm border border-dash-border transition-all motion-reduce:transition-none flex items-center gap-2"
-              >
+              <DashButton onClick={() => setConfirmingCancel(true)} variant="ghost" size="lg" className="!text-danger">
                 Cancel subscription
-              </button>
+              </DashButton>
             )
           ) : (
             <span className="bg-white text-dash-accent font-bold text-[11px] h-14 px-10 rounded-2xl shadow-sm border border-dash-border flex items-center">
@@ -170,14 +160,10 @@ export default function BillingTab({ memberCount, billing }: BillingTabProps) {
                 <p className="text-[20px] font-bold !text-dash-text">
                   {tier.monthlyPrice > 0 ? <>${tier.monthlyPrice}<span className="text-[11px] font-normal">/mo</span></> : 'Free'}
                 </p>
-                <button
-                  onClick={() => handleSelectTier(tier.id)}
-                  disabled={loadingTier === tier.id}
-                  className="w-full bg-dash-accent text-white hover:scale-[1.02] active:scale-95 motion-reduce:hover:scale-100 disabled:opacity-60 disabled:hover:scale-100 font-bold text-[11px] h-11 rounded-xl transition-all motion-reduce:transition-none flex items-center justify-center gap-2"
-                >
+                <DashButton onClick={() => handleSelectTier(tier.id)} disabled={loadingTier === tier.id} variant="primary" size="sm" className="w-full">
                   {loadingTier === tier.id && <Loader2 size={14} className="animate-spin" />}
                   {actionLabel}
-                </button>
+                </DashButton>
               </div>
             );
           })}
@@ -189,12 +175,9 @@ export default function BillingTab({ memberCount, billing }: BillingTabProps) {
                 <p className="text-[12px] !text-dash-textMuted">{dynastyTier.description}</p>
               </div>
               <p className="text-[20px] font-bold !text-dash-text">Custom</p>
-              <Link
-                href="/contact"
-                className="w-full bg-[#0F172A] text-white hover:scale-[1.02] active:scale-95 motion-reduce:hover:scale-100 font-bold text-[11px] h-11 rounded-xl transition-all motion-reduce:transition-none flex items-center justify-center gap-2"
-              >
-                {dynastyTier.cta}
-              </Link>
+              <DashButton asChild variant="secondary" size="sm" className="w-full">
+                <Link href="/contact">{dynastyTier.cta}</Link>
+              </DashButton>
             </div>
           )}
         </div>

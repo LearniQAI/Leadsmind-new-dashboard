@@ -25,15 +25,15 @@ const PublicQuotePortal: React.FC<PublicQuotePortalProps> = ({ quote }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#04091a] text-[var(--t1)] selection:bg-[var(--accent)] selection:text-white">
-      <nav className="border-b border-[var(--bdr)] bg-[rgba(11,17,33,0.8)] backdrop-blur-md sticky top-0 z-50">
+    <div className="min-h-screen bg-dash-bg text-dash-text selection:bg-[var(--accent)] selection:text-white">
+      <nav className="border-b border-dash-border bg-white/95 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="text-xl font-black tracking-tighter text-[var(--accent2)]">
+            <div className="text-xl font-black tracking-tighter text-dash-accent">
               {quote.workspace?.name || 'LEADSMIND'}
             </div>
-            <span className="h-4 w-px bg-[var(--bdr)] mx-2" />
-            <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--t3)]">Proposal Portal</span>
+            <span className="h-4 w-px bg-dash-border mx-2" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-dash-textMuted">Proposal Portal</span>
           </div>
           <div className="flex items-center gap-3">
              <button className="btn-ghost !h-10 !px-4 text-xs gap-2">
@@ -44,7 +44,7 @@ const PublicQuotePortal: React.FC<PublicQuotePortalProps> = ({ quote }) => {
       </nav>
 
       <div className="max-w-5xl mx-auto px-6 py-12">
-        <div className="bg-white text-[#04091a] p-12 md:p-20 rounded-[var(--r24)] shadow-2xl relative overflow-hidden">
+        <div className="bg-white text-dash-bg p-12 md:p-20 rounded-[var(--r24)] shadow-2xl relative overflow-hidden">
           {accepted && (
             <div className="absolute top-10 right-10 rotate-12 border-4 border-emerald-500 text-emerald-500 px-6 py-2 font-black uppercase text-4xl opacity-40 select-none">
               Accepted

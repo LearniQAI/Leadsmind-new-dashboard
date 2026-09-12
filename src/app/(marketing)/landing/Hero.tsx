@@ -75,7 +75,11 @@ export default function Hero() {
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
           <Link href="/auth/signup-basic">
-            <DashButton variant="primary" size="lg" className="group">
+            <DashButton
+              variant="primary"
+              size="lg"
+              className="lm-shimmer group bg-[#FF8D00] bg-none hover:bg-[#FF8D00]/90 shadow-xl hover:shadow-xl shadow-[#4F46E5]/30 hover:shadow-[#4F46E5]/30"
+            >
               Start Free Trial <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </DashButton>
           </Link>

@@ -99,22 +99,22 @@ export default async function PortalProjectsPage() {
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold uppercase tracking-tight font-space">
-            Project <span className="text-[var(--accent2)]">Boards</span>
+            Project <span className="text-dash-accent">Boards</span>
           </h1>
-          <p className="text-[11.5px] text-[var(--t3)] uppercase tracking-[0.2em] mt-2 font-medium">
+          <p className="text-[11.5px] text-dash-textMuted uppercase tracking-[0.2em] mt-2 font-medium">
             Track active project progress, timeline roadmaps, and approve milestones
           </p>
         </div>
 
         {/* Content list */}
         {projects.length === 0 ? (
-          <div className="bg-[var(--n800)] border border-[var(--bdr)] p-16 rounded-3xl flex flex-col items-center justify-center text-center space-y-4 shadow-xl">
-            <div className="w-14 h-14 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-center text-[#4a5a82] opacity-55">
+          <div className="bg-white border border-dash-border p-16 rounded-3xl flex flex-col items-center justify-center text-center space-y-4 shadow-xl">
+            <div className="w-14 h-14 bg-dash-surface border border-dash-border rounded-2xl flex items-center justify-center text-dash-textMuted opacity-55">
               <FolderOpen size={28} />
             </div>
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--t2)]">No Active Projects</h3>
-              <p className="text-xs text-[var(--t3)] mt-1.5 max-w-xs leading-relaxed">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-dash-text">No Active Projects</h3>
+              <p className="text-xs text-dash-textMuted mt-1.5 max-w-xs leading-relaxed">
                 There are no active project collaboration boards linked to your client profile. Contact our delivery team to set up a workspace project.
               </p>
             </div>

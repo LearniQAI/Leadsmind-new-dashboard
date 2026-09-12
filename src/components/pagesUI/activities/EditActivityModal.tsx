@@ -12,6 +12,7 @@ import DatePicker from "react-datepicker";
 import { toast } from "sonner";
 import { activityStatePropsType } from "@/interface/common.interface";
 import { activityData } from "@/data/activity-data";
+import { DashButton } from "@/components/dashboard-ui";
 
 const EditActivityModal = ({
  open,
@@ -158,9 +159,9 @@ const EditActivityModal = ({
        </div>
       </div>
       <div className="submit__btn text-center">
-       <button className="btn btn-primary" type="submit">
+       <DashButton variant="primary" type="submit">
         Submit
-       </button>
+       </DashButton>
       </div>
      </form>
     </DialogContent>

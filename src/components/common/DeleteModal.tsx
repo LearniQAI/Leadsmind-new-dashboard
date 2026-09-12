@@ -2,6 +2,7 @@
 import React from "react";
 import { Dialog, DialogContent } from "@mui/material";
 import ModalWarningSvg from "@/svg/ModalWarningSvg";
+import { DashButton } from "@/components/dashboard-ui";
 
 interface statePropsType {
  open: boolean;
@@ -50,12 +51,12 @@ const DeleteModal = ({
      </p>
     </div>
     <div className="mt-6 flex flex-wrap justify-center gap-4">
-     <button onClick={handleCancel} className="btn bg-gray-200">
+     <DashButton onClick={handleCancel} variant="secondary">
       Cancel
-     </button>
-     <button onClick={handleDelete} className="btn btn-primary !m-0">
+     </DashButton>
+     <DashButton onClick={handleDelete} variant="destructive">
       Yes, delete it!
-     </button>
+     </DashButton>
     </div>
    </DialogContent>
   </Dialog>

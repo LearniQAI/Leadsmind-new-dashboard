@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { Pencil, Check, X, Trash2 } from 'lucide-react'
 import InputField from '@/components/elements/SharedInputs/InputField'
 import { DeleteWorkspaceDialog } from './DeleteWorkspaceDialog'
+import { DashButton } from '@/components/dashboard-ui'
 
 interface WorkspaceListProps {
  workspaces: any[]
@@ -190,9 +191,9 @@ export function WorkspaceList({ workspaces, activeWorkspaceId }: WorkspaceListPr
        />
       </div>
      </div>
-     <button className="btn btn-primary h-[48px]" type="submit" disabled={isCreating}>
+     <DashButton type="submit" variant="primary" className="h-12" disabled={isCreating}>
       {isCreating ? 'Creating...' : 'Create Workspace'}
-     </button>
+     </DashButton>
     </form>
    </div>
   </div>

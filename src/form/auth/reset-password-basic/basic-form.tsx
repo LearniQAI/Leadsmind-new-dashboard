@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { resetPassword } from '@/app/actions/auth';
 import { useRouter } from 'next/navigation';
+import { DashButton } from '@/components/dashboard-ui';
 
 const ResetPasswordBasicForm = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -93,9 +94,9 @@ const ResetPasswordBasicForm = () => {
       </div>
 
       <div className="mb-4">
-        <button className="btn btn-primary w-full" type="submit" disabled={isLoading}>
+        <DashButton variant="primary" className="w-full" type="submit" disabled={isLoading}>
           {isLoading ? "Setting..." : "Set new password"}
-        </button>
+        </DashButton>
       </div>
       <div className="text-center">
         <Link href="/auth/signin-basic">Back to login</Link>

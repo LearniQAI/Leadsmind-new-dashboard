@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
+import { DashButton } from '@/components/dashboard-ui';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { updateAppointmentStatus } from '@/app/actions/calendar';
@@ -92,22 +92,22 @@ export function AppointmentsList({ initialAppointments }: AppointmentsListProps)
        <TableCell className="text-right px-6 py-6">
          {apt.status === 'scheduled' && (
           <div className="flex items-center justify-end gap-2">
-           <Button
+           <DashButton
             size="icon"
             variant="ghost"
-            className="h-10 w-10 rounded-xl bg-green/5 hover:bg-green/20 text-green/60 hover:text-green border border-green/10 transition-colors motion-reduce:transition-none"
+            className="bg-green/5 hover:bg-green/20 !text-green/60 hover:!text-green border-green/10"
             onClick={() => handleStatusUpdate(apt.id, 'showed_up')}
            >
              <CheckCircle2 className="h-4 w-4" />
-           </Button>
-           <Button
+           </DashButton>
+           <DashButton
             size="icon"
             variant="ghost"
-            className="h-10 w-10 rounded-xl bg-red/5 hover:bg-red/20 text-red/60 hover:text-red border border-red/10 transition-colors motion-reduce:transition-none"
+            className="bg-danger/5 hover:bg-danger/20 !text-danger/60 hover:!text-danger border-danger/10"
             onClick={() => handleStatusUpdate(apt.id, 'no_show')}
            >
              <XCircle className="h-4 w-4" />
-           </Button>
+           </DashButton>
           </div>
          )}
        </TableCell>

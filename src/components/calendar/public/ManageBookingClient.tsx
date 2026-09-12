@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Calendar, Clock, Video, Loader2, CheckCircle2, XCircle, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DashButton } from '@/components/dashboard-ui';
 import {
   getManageAvailableSlots,
   cancelAppointmentByToken,
@@ -48,9 +49,6 @@ function Terminal({ tone, title, line }: { tone: 'success' | 'danger'; title: st
     </div>
   );
 }
-
-const primaryBtn =
-  'w-full h-12 rounded-xl bg-gradient-to-b from-dash-accent to-[#0F47CC] text-white text-[14px] font-bold shadow-[0_4px_16px_rgba(19,89,255,0.3)] hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 transition-all duration-200 motion-reduce:transition-none disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2';
 
 export default function ManageBookingClient({ token, appointment }: ManageBookingClientProps) {
   const [view, setView] = useState<View>('details');
@@ -158,9 +156,9 @@ export default function ManageBookingClient({ token, appointment }: ManageBookin
 
         {error && <p className="text-red text-[13px] mb-4">{error}</p>}
 
-        <button onClick={handleReschedule} disabled={!newTime || isSubmitting} className={primaryBtn}>
+        <DashButton onClick={handleReschedule} disabled={!newTime || isSubmitting} variant="primary" size="lg" className="w-full">
           {isSubmitting ? <Loader2 className="animate-spin motion-reduce:hidden" size={16} /> : 'Confirm new time'}
-        </button>
+        </DashButton>
       </div>
     );
   }
@@ -175,12 +173,12 @@ export default function ManageBookingClient({ token, appointment }: ManageBookin
         <p className="text-[14px] text-dash-textMuted mb-5">This can't be undone. The slot will be released.</p>
         {error && <p className="text-red text-[13px] mb-4">{error}</p>}
         <div className="flex flex-col sm:flex-row gap-3">
-          <button onClick={() => setView('details')} className="flex-1 h-11 rounded-xl border border-dash-border bg-white text-dash-text font-semibold text-[13px] hover:bg-dash-surface transition-colors motion-reduce:transition-none">
+          <DashButton onClick={() => setView('details')} variant="secondary" className="flex-1">
             Keep booking
-          </button>
-          <button onClick={handleCancel} disabled={isSubmitting} className="flex-1 h-11 rounded-xl bg-red text-white font-semibold text-[13px] hover:bg-red/90 flex items-center justify-center gap-2 disabled:opacity-50 transition-colors motion-reduce:transition-none">
+          </DashButton>
+          <DashButton onClick={handleCancel} disabled={isSubmitting} variant="destructive" className="flex-1">
             {isSubmitting ? <Loader2 className="animate-spin motion-reduce:hidden" size={16} /> : 'Yes, cancel'}
-          </button>
+          </DashButton>
         </div>
       </div>
     );
@@ -225,12 +223,12 @@ export default function ManageBookingClient({ token, appointment }: ManageBookin
         </div>
       ) : (
         <div className="flex flex-col sm:flex-row gap-3">
-          <button onClick={() => setView('reschedule')} className="flex-1 h-11 rounded-xl border border-dash-border bg-white text-dash-text font-semibold text-[13px] hover:border-dash-accent/40 transition-colors motion-reduce:transition-none">
+          <DashButton onClick={() => setView('reschedule')} variant="secondary" className="flex-1">
             Reschedule
-          </button>
-          <button onClick={() => setView('confirm-cancel')} className="flex-1 h-11 rounded-xl border border-red/30 text-red font-semibold text-[13px] hover:bg-red/5 transition-colors motion-reduce:transition-none">
+          </DashButton>
+          <DashButton onClick={() => setView('confirm-cancel')} variant="destructive" className="flex-1">
             Cancel
-          </button>
+          </DashButton>
         </div>
       )}
     </div>

@@ -4,11 +4,19 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ChevronDown, Menu, X } from 'lucide-react';
-import { CategoryWithArticles, ACCENT_CLASSES } from '@/lib/help/categoryConfig';
+import { CATEGORY_CONFIG, CategoryWithArticles, ACCENT_CLASSES } from '@/lib/help/categoryConfig';
 import HelpSearch from './HelpSearch';
 
+// The `categories` prop crossing the Server -> Client boundary from
+// articles/layout.tsx has its `icon` field stripped (a LucideIcon component
+// reference isn't serializable across that boundary), so icons are looked up
+// locally here instead, by category name, from the same shared config.
+type NavCategory = Omit<CategoryWithArticles, 'icon'>;
+
+const ICON_BY_CATEGORY = new Map(CATEGORY_CONFIG.map((c) => [c.name, c.icon]));
+
 interface ArticlesNavProps {
-  categories: CategoryWithArticles[];
+  categories: NavCategory[];
 }
 
 function activeSlugFromPathname(pathname: string | null): string | null {
@@ -22,7 +30,7 @@ function NavTree({
   activeSlug,
   onNavigate,
 }: {
-  categories: CategoryWithArticles[];
+  categories: NavCategory[];
   activeSlug: string | null;
   onNavigate?: () => void;
 }) {
@@ -60,7 +68,8 @@ function NavTree({
       {categories.map((category) => {
         const accent = ACCENT_CLASSES[category.accent];
         const isExpanded = expanded.has(category.name);
-        const Icon = category.icon;
+        const Icon = ICON_BY_CATEGORY.get(category.name);
+        if (!Icon) return null;
         return (
           <div key={category.name}>
             <button

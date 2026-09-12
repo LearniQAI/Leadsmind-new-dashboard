@@ -27,8 +27,8 @@ export default async function StudentClassroomPage({ params }: PageProps) {
   const progressList = progressRes.data || [];
 
   return (
-    <div className="min-h-screen bg-n900 text-t1 overflow-x-hidden p-6 md:p-10 font-body">
-      <div className="max-w-7xl mx-auto text-white">
+    <div className="min-h-screen bg-dash-bg text-dash-text overflow-x-hidden p-6 md:p-10 font-body">
+      <div className="max-w-7xl mx-auto">
         <CoursePlayerClient
           course={course}
           modules={modules}

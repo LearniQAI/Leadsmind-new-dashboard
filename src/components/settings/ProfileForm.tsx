@@ -8,6 +8,7 @@ import { profileSchema, type ProfileFormValues } from '@/lib/validations/account
 import { updateProfile } from '@/app/actions/account'
 import { createClient } from '@/lib/supabase/client'
 import InputField from '@/components/elements/SharedInputs/InputField'
+import { DashButton } from '@/components/dashboard-ui'
 
 interface ProfileFormProps {
  user: {
@@ -166,9 +167,9 @@ export function ProfileForm({ user }: ProfileFormProps) {
      </div>
      
      <div className="col-span-12 text-center mt-[10px]">
-      <button className="btn btn-primary" type="submit" disabled={isSubmitting || isUploading}>
+      <DashButton type="submit" variant="primary" disabled={isSubmitting || isUploading}>
        {isSubmitting ? 'Saving...' : 'Save Profile'}
-      </button>
+      </DashButton>
      </div>
     </div>
    </form>

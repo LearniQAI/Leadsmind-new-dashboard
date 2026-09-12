@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Sparkles, X, Plus, AlertCircle, Play, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
+import { DashButton } from '@/components/dashboard-ui';
 
 interface AiTabProps {
   workspaceId: string;
@@ -426,13 +427,9 @@ export default function AiTab({ workspaceId }: AiTabProps) {
           </div>
 
           <div className="pt-6 flex justify-end">
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-[11px] h-11 px-8 rounded-xl shadow-lg shadow-dash-accent/20 transition-all motion-reduce:transition-none disabled:opacity-50"
-            >
+            <DashButton onClick={handleSave} disabled={saving} variant="primary">
               {saving ? 'Saving...' : 'Sync voice config'}
-            </button>
+            </DashButton>
           </div>
         </div>
       </div>
@@ -460,11 +457,7 @@ export default function AiTab({ workspaceId }: AiTabProps) {
             />
           </div>
 
-          <button
-            onClick={handleRunSandbox}
-            disabled={testing}
-            className="w-full bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-[10px] h-10 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-dash-accent/15 transition-all motion-reduce:transition-none disabled:opacity-50"
-          >
+          <DashButton onClick={handleRunSandbox} disabled={testing} variant="primary" size="sm" className="w-full">
             {testing ? (
               <>
                 <i className="fa-solid fa-spinner animate-spin motion-reduce:animate-none text-[10px]"></i>
@@ -476,7 +469,7 @@ export default function AiTab({ workspaceId }: AiTabProps) {
                 Run engine generation
               </>
             )}
-          </button>
+          </DashButton>
 
           {previewPrompt && (
             <div className="space-y-2">

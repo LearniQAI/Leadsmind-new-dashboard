@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Plus, CheckCircle2, AlertTriangle, RefreshCw, Trash2, Copy, Check, Info } from 'lucide-react';
 import { getSenderDomains, registerSenderDomain, deleteSenderDomain, verifySenderDomain } from '@/app/actions/domains';
 import { toast } from 'sonner';
+import { DashButton } from '@/components/dashboard-ui';
 
 export default function DomainsTab() {
   const [domains, setDomains] = useState<any[]>([]);
@@ -156,14 +157,10 @@ export default function DomainsTab() {
                     disabled={isRegistering}
                     className="flex-1 min-w-0 bg-white border border-dash-border rounded-xl px-4 py-2.5 !text-dash-text font-bold focus:border-dash-accent/50 transition-all motion-reduce:transition-none outline-none text-sm placeholder:!text-dash-textMuted placeholder:font-normal"
                   />
-                  <button
-                    type="submit"
-                    disabled={isRegistering}
-                    className="px-4 py-2.5 bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-sm rounded-xl transition-all motion-reduce:transition-none flex items-center justify-center gap-1.5 shadow-lg shadow-dash-accent/20 shrink-0"
-                  >
+                  <DashButton type="submit" disabled={isRegistering} variant="primary" size="sm" className="shrink-0">
                     <Plus size={16} />
                     <span>Add</span>
-                  </button>
+                  </DashButton>
                 </div>
               </div>
             </form>
@@ -236,14 +233,10 @@ export default function DomainsTab() {
                       <CheckCircle2 size={14} /> Verified {new Date(selectedDomain.verified_at).toLocaleDateString()}
                     </div>
                   )}
-                  <button
-                    onClick={() => handleVerify(selectedDomain.id)}
-                    disabled={isVerifying}
-                    className="flex items-center gap-2 bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-xs h-10 px-6 rounded-xl transition-all motion-reduce:transition-none shadow-lg shadow-dash-accent/20 disabled:opacity-50"
-                  >
+                  <DashButton onClick={() => handleVerify(selectedDomain.id)} disabled={isVerifying} variant="primary" size="sm">
                     <RefreshCw size={12} className={isVerifying ? 'animate-spin motion-reduce:animate-none' : ''} />
                     {isVerifying ? 'Verifying...' : 'Verify records'}
-                  </button>
+                  </DashButton>
                 </div>
               </div>
 

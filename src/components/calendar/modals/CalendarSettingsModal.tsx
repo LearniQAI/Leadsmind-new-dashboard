@@ -28,7 +28,7 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { DashButton } from '@/components/dashboard-ui';
 import { Textarea } from '@/components/ui/textarea';
 import { Video, Globe, Users, Loader2, Check, Settings2, Link as LinkIcon, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
@@ -316,17 +316,18 @@ export default function CalendarSettingsModal({
         </Form>
 
         <DialogFooter className="border-t border-dash-border pt-4 mt-2">
-          <Button variant="ghost" onClick={onClose} className="!text-dash-textMuted hover:!text-dash-text font-bold text-[11px]">
+          <DashButton variant="ghost" onClick={onClose}>
             Cancel
-          </Button>
-          <Button
+          </DashButton>
+          <DashButton
+            variant="primary"
             onClick={form.handleSubmit(handleSubmit)}
             disabled={isSubmitting}
-            className="bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-[11px] px-8 h-11 rounded-lg transition-all motion-reduce:transition-none"
+            className="px-8"
           >
-            {isSubmitting ? <Loader2 className="animate-spin motion-reduce:animate-none mr-2" size={16} /> : <Check className="mr-2" size={16} />}
+            {isSubmitting ? <Loader2 className="animate-spin motion-reduce:animate-none" size={16} /> : <Check size={16} />}
             {calendar ? 'Update Engine' : 'Create Engine'}
-          </Button>
+          </DashButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

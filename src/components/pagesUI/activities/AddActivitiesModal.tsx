@@ -8,6 +8,7 @@ import InputField from "@/components/elements/SharedInputs/InputField";
 import SelectBox from "@/components/elements/SharedInputs/SelectBox";
 import { ITrainer } from "@/interface";
 import SelectWithImage from "@/components/elements/SharedInputs/SelectWithImage";
+import { DashButton } from "@/components/dashboard-ui";
 import FormLabel from "@/components/elements/SharedInputs/FormLabel";
 import DatePicker from "react-datepicker";
 import { toast } from "sonner";
@@ -151,9 +152,9 @@ const AddActivitiesModal = ({ open, setOpen }: statePropsType) => {
        </div>
       </div>
       <div className="submit__btn text-center">
-       <button className="btn btn-primary" type="submit">
+       <DashButton variant="primary" type="submit">
         Submit
-       </button>
+       </DashButton>
       </div>
      </form>
     </DialogContent>

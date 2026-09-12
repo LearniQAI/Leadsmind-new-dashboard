@@ -60,18 +60,18 @@ export function OutcomeManager({ calendarId, initialOutcomes }: OutcomeManagerPr
 
    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
     {outcomes.map((outcome) => (
-     <div key={outcome.id} className="group p-6 rounded-xl bg-bgBody dark:bg-bgBody-dark border border-border dark:border-border-dark hover:border-primary/40 transition-all duration-500 relative overflow-hidden">
+     <div key={outcome.id} className="group p-6 rounded-xl bg-dash-surface border border-dash-border hover:border-primary/40 transition-all duration-500 relative overflow-hidden">
        <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
         <Workflow className="h-10 w-10 text-primary" />
        </div>
-       
+
        <div className="flex items-center justify-between mb-6 relative z-10">
-        <span className="text-base font-black text-heading dark:text-heading-dark group-hover:text-primary transition-colors uppercase">{outcome.label}</span>
+        <span className="text-base font-black text-dash-text group-hover:text-primary transition-colors uppercase">{outcome.label}</span>
         <Badge variant="outline" className="bg-primary/5 border-primary/10 text-[9px] font-black text-primary/60 px-3 py-1">{outcome.duration_minutes} MIN</Badge>
        </div>
-       
+
        <div className="flex flex-wrap gap-2 relative z-10">
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-bgBody border border-border/10 text-[9px] font-bold text-body">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-dash-surface border border-dash-border text-[9px] font-bold text-dash-textMuted">
           <Users className="h-3 w-3" /> Round Robin
         </div>
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-[9px] font-black text-primary uppercase tracking-[0.2em]">
@@ -89,7 +89,7 @@ export function OutcomeManager({ calendarId, initialOutcomes }: OutcomeManagerPr
           <Input 
            autoFocus
            placeholder="e.g. Qualified Sales Lead" 
-           className="bg-card dark:bg-card-dark border-border dark:border-border-dark text-heading dark:text-heading-dark h-11 rounded-lg text-sm"
+           className="bg-white border-dash-border text-dash-text h-11 rounded-lg text-sm"
            value={newLabel}
            onChange={(e) => setNewLabel(e.target.value)}
           />
@@ -99,7 +99,7 @@ export function OutcomeManager({ calendarId, initialOutcomes }: OutcomeManagerPr
            <Save className="h-3.5 w-3.5 mr-2" />
            Save Target
           </Button>
-          <Button onClick={() => setIsAdding(false)} variant="ghost" className="text-body dark:text-body-dark opacity-30 hover:opacity-100 px-4 font-bold uppercase text-[10px]">
+          <Button onClick={() => setIsAdding(false)} variant="ghost" className="text-dash-textMuted opacity-70 hover:opacity-100 px-4 font-bold uppercase text-[10px]">
            <X className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -109,9 +109,9 @@ export function OutcomeManager({ calendarId, initialOutcomes }: OutcomeManagerPr
    </div>
 
    {!outcomes.length && !isAdding && (
-    <div className="p-16 border border-dashed border-border dark:border-border-dark rounded-xl text-center bg-bgBody/50 dark:bg-bgBody-dark/50">
-      <Zap className="h-10 w-10 text-placeholder dark:text-placeholder-dark mx-auto mb-4" />
-      <p className="text-[10px] font-black text-placeholder dark:text-placeholder-dark uppercase tracking-[0.4em]">Initialize outcome logic</p>
+    <div className="p-16 border border-dashed border-dash-border rounded-xl text-center bg-dash-surface/50">
+      <Zap className="h-10 w-10 text-dash-textMuted mx-auto mb-4" />
+      <p className="text-[10px] font-black text-dash-textMuted uppercase tracking-[0.4em]">Initialize outcome logic</p>
     </div>
    )}
   </div>

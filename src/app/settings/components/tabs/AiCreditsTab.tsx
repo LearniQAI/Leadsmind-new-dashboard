@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { ENFORCE_PLAN_LIMITS } from '@/lib/config/flags';
 import { createAiCreditsTopupTransaction } from '@/app/actions/finance';
+import { DashButton } from '@/components/dashboard-ui';
 
 interface AiCreditsTabProps {
   workspaceId: string;
@@ -164,13 +165,9 @@ export default function AiCreditsTab({ workspaceId, onUpgradeTier }: AiCreditsTa
             </div>
           </div>
 
-          <button
-            onClick={handlePurchaseAddon}
-            disabled={purchasing}
-            className="w-full h-10 rounded-xl bg-dash-accent text-white hover:opacity-90 disabled:opacity-60 font-bold text-xs flex items-center justify-center gap-1.5 transition-opacity motion-reduce:transition-none"
-          >
+          <DashButton onClick={handlePurchaseAddon} disabled={purchasing} variant="primary" size="sm" className="w-full">
             {purchasing ? 'Starting checkout…' : 'Purchase add-on credits'}
-          </button>
+          </DashButton>
         </div>
 
         {/* Card 2: Upgrade tier */}
@@ -186,13 +183,10 @@ export default function AiCreditsTab({ workspaceId, onUpgradeTier }: AiCreditsTa
             </div>
           </div>
 
-          <button
-            onClick={onUpgradeTier}
-            className="w-full h-10 rounded-xl bg-dash-surface border border-dash-border !text-dash-text hover:bg-dash-border/60 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors motion-reduce:transition-none"
-          >
+          <DashButton onClick={onUpgradeTier} variant="secondary" size="sm" className="w-full">
             View plans
             <ArrowUpRight size={14} />
-          </button>
+          </DashButton>
         </div>
 
       </div>

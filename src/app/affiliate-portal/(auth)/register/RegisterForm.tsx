@@ -76,7 +76,7 @@ export default function RegisterForm({ programmes }: Props) {
         <div className="mt-6">
           <a
             href="/affiliate-portal/login"
-            className="inline-block rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 transition-all"
+            className="inline-block rounded-xl bg-dash-accent px-6 py-3 text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-all"
           >
             Go to Sign In
           </a>
@@ -88,7 +88,7 @@ export default function RegisterForm({ programmes }: Props) {
   return (
     <div className="max-w-lg mx-auto mt-10 mb-16">
       {/* Branded header */}
-      <div className="rounded-t-2xl bg-slate-900 text-white p-7 text-center">
+      <div className="rounded-t-2xl bg-dash-text text-white p-7 text-center">
         {rs.logo_url
           ? <img src={rs.logo_url} alt="" className="h-10 mx-auto mb-3 object-contain" />
           : null}
@@ -143,7 +143,7 @@ export default function RegisterForm({ programmes }: Props) {
 
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button type="submit" disabled={loading}
-          className="w-full py-2.5 rounded-lg bg-slate-900 text-white font-semibold hover:bg-slate-800 disabled:opacity-50">
+          className="w-full py-2.5 rounded-lg bg-dash-accent text-white font-semibold hover:opacity-90 disabled:opacity-50">
           {loading ? 'Submitting…' : 'Apply to join'}
         </button>
       </form>

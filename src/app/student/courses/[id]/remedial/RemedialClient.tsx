@@ -79,20 +79,20 @@ export default function RemedialClient({ course, lesson, assignment }: RemedialC
             <Sparkles size={11} /> AI remedial session
           </span>
         </div>
-        <h1 className="text-3xl font-space-grotesk font-black uppercase tracking-tighter text-white mt-1.5">
+        <h1 className="text-3xl font-space-grotesk font-black uppercase tracking-tighter text-dash-text mt-1.5">
           Remedial Path: <span className="text-primary">{lesson.title}</span>
         </h1>
-        <p className="text-[11px] text-white/40 uppercase tracking-widest mt-2 leading-relaxed">
+        <p className="text-[11px] text-dash-textMuted uppercase tracking-widest mt-2 leading-relaxed">
           Custom training models constructed in real-time from past attempt failures and CRM industry profiling parameters.
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-white/5 bg-[#080f28]/60 p-1.5 rounded-2xl gap-1">
+      <div className="flex border-b border-dash-border bg-dash-surface p-1.5 rounded-2xl gap-1">
         <button
           onClick={() => setActiveTab('a')}
           className={`flex-1 py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
-            activeTab === 'a' ? 'bg-primary text-white' : 'text-white/40 hover:text-white/60'
+            activeTab === 'a' ? 'bg-primary text-white' : 'text-dash-textMuted hover:text-dash-text'
           }`}
         >
           Instructional Directives
@@ -100,7 +100,7 @@ export default function RemedialClient({ course, lesson, assignment }: RemedialC
         <button
           onClick={() => setActiveTab('b')}
           className={`flex-1 py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
-            activeTab === 'b' ? 'bg-primary text-white' : 'text-white/40 hover:text-white/60'
+            activeTab === 'b' ? 'bg-primary text-white' : 'text-dash-textMuted hover:text-dash-text'
           }`}
         >
           CRM Case Study
@@ -108,7 +108,7 @@ export default function RemedialClient({ course, lesson, assignment }: RemedialC
         <button
           onClick={() => setActiveTab('c')}
           className={`flex-1 py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
-            activeTab === 'c' ? 'bg-primary text-white' : 'text-white/40 hover:text-white/60'
+            activeTab === 'c' ? 'bg-primary text-white' : 'text-dash-textMuted hover:text-dash-text'
           }`}
         >
           Visualmetaphor comparison
@@ -116,7 +116,7 @@ export default function RemedialClient({ course, lesson, assignment }: RemedialC
         <button
           onClick={() => setActiveTab('quiz')}
           className={`flex-1 py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
-            activeTab === 'quiz' ? 'bg-primary text-white' : 'text-white/40 hover:text-white/60'
+            activeTab === 'quiz' ? 'bg-primary text-white' : 'text-dash-textMuted hover:text-dash-text'
           }`}
         >
           Validation quiz
@@ -124,17 +124,17 @@ export default function RemedialClient({ course, lesson, assignment }: RemedialC
       </div>
 
       {/* Content panes */}
-      <div className="bg-[#080f28]/40 border border-white/5 p-8 rounded-3xl min-h-[300px]">
+      <div className="bg-dash-surface border border-dash-border p-8 rounded-3xl min-h-[300px]">
         {activeTab === 'a' && (
           <div className="space-y-4">
-            <h3 className="text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            <h3 className="text-base font-bold text-dash-text uppercase tracking-wider flex items-center gap-2">
               <BookOpen size={16} className="text-primary" /> Direct plain-text instructions
             </h3>
-            <div className="text-sm text-white/70 leading-relaxed whitespace-pre-wrap font-body font-normal">
+            <div className="text-sm text-dash-textMuted leading-relaxed whitespace-pre-wrap font-body font-normal">
               {assignment.methodology_a_text}
             </div>
-            <div className="pt-6 border-t border-white/5 flex justify-end">
-              <Button onClick={() => setActiveTab('b')} className="bg-white/5 text-white hover:bg-white/10 text-[10px] uppercase font-black tracking-wider">
+            <div className="pt-6 border-t border-dash-border flex justify-end">
+              <Button onClick={() => setActiveTab('b')} className="bg-dash-bg text-dash-text hover:bg-dash-border/40 border border-dash-border text-[10px] uppercase font-black tracking-wider">
                 Next: Case Study <ArrowRight size={12} className="ml-1.5" />
               </Button>
             </div>
@@ -143,17 +143,17 @@ export default function RemedialClient({ course, lesson, assignment }: RemedialC
 
         {activeTab === 'b' && (
           <div className="space-y-4">
-            <h3 className="text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            <h3 className="text-base font-bold text-dash-text uppercase tracking-wider flex items-center gap-2">
               <CheckSquare size={16} className="text-primary" /> Industry Sector CRM Case Study
             </h3>
-            <div className="text-sm text-white/70 leading-relaxed whitespace-pre-wrap font-body font-normal">
+            <div className="text-sm text-dash-textMuted leading-relaxed whitespace-pre-wrap font-body font-normal">
               {assignment.methodology_b_case_study}
             </div>
-            <div className="pt-6 border-t border-white/5 flex justify-end gap-2">
-              <Button onClick={() => setActiveTab('a')} className="bg-white/5 text-white hover:bg-white/10 text-[10px] uppercase font-black tracking-wider">
+            <div className="pt-6 border-t border-dash-border flex justify-end gap-2">
+              <Button onClick={() => setActiveTab('a')} className="bg-dash-bg text-dash-text hover:bg-dash-border/40 border border-dash-border text-[10px] uppercase font-black tracking-wider">
                 Back
               </Button>
-              <Button onClick={() => setActiveTab('c')} className="bg-white/5 text-white hover:bg-white/10 text-[10px] uppercase font-black tracking-wider">
+              <Button onClick={() => setActiveTab('c')} className="bg-dash-bg text-dash-text hover:bg-dash-border/40 border border-dash-border text-[10px] uppercase font-black tracking-wider">
                 Next: Metaphor <ArrowRight size={12} className="ml-1.5" />
               </Button>
             </div>
@@ -162,14 +162,14 @@ export default function RemedialClient({ course, lesson, assignment }: RemedialC
 
         {activeTab === 'c' && (
           <div className="space-y-4">
-            <h3 className="text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            <h3 className="text-base font-bold text-dash-text uppercase tracking-wider flex items-center gap-2">
               <Sparkles size={16} className="text-primary" /> Concept comparison Metaphors & visual analogies
             </h3>
-            <div className="text-sm text-white/70 leading-relaxed whitespace-pre-wrap font-body font-normal">
+            <div className="text-sm text-dash-textMuted leading-relaxed whitespace-pre-wrap font-body font-normal">
               {assignment.methodology_c_analogy}
             </div>
-            <div className="pt-6 border-t border-white/5 flex justify-end gap-2">
-              <Button onClick={() => setActiveTab('b')} className="bg-white/5 text-white hover:bg-white/10 text-[10px] uppercase font-black tracking-wider">
+            <div className="pt-6 border-t border-dash-border flex justify-end gap-2">
+              <Button onClick={() => setActiveTab('b')} className="bg-dash-bg text-dash-text hover:bg-dash-border/40 border border-dash-border text-[10px] uppercase font-black tracking-wider">
                 Back
               </Button>
               <Button onClick={() => setActiveTab('quiz')} className="bg-primary text-white hover:bg-primary/90 text-[10px] uppercase font-black tracking-wider shadow-lg shadow-primary/10">
@@ -183,24 +183,24 @@ export default function RemedialClient({ course, lesson, assignment }: RemedialC
           <div className="space-y-6">
             {!isSubmitted ? (
               <div className="space-y-6">
-                <div className="border-b border-white/5 pb-3">
-                  <h3 className="text-base font-bold text-white uppercase tracking-wider">AI validation check</h3>
-                  <span className="text-[10px] text-white/40 block mt-0.5">Answer the 5 generated validation questions correctly to restore state.</span>
+                <div className="border-b border-dash-border pb-3">
+                  <h3 className="text-base font-bold text-dash-text uppercase tracking-wider">AI validation check</h3>
+                  <span className="text-[10px] text-dash-textMuted block mt-0.5">Answer the 5 generated validation questions correctly to restore state.</span>
                 </div>
 
                 {questions.map((q: any, qIdx: number) => (
-                  <div key={qIdx} className="space-y-3 p-5 rounded-2xl bg-white/[0.01] border border-white/5">
+                  <div key={qIdx} className="space-y-3 p-5 rounded-2xl bg-dash-bg border border-dash-border">
                     <span className="text-[9px] font-bold text-primary uppercase font-mono">Question {qIdx + 1}</span>
-                    <p className="text-xs font-bold text-white">{q.questionText}</p>
-                    
+                    <p className="text-xs font-bold text-dash-text">{q.questionText}</p>
+
                     <div className="space-y-2 pt-2">
                       {q.options.map((opt: string, oIdx: number) => (
                         <label
                           key={oIdx}
                           className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer select-none transition-all ${
                             answers[qIdx] === oIdx
-                              ? 'bg-primary/10 border-primary text-white font-bold'
-                              : 'bg-[#111d47]/20 border-white/5 text-white/60 hover:text-white'
+                              ? 'bg-primary/10 border-primary text-dash-text font-bold'
+                              : 'bg-dash-surface border-dash-border text-dash-textMuted hover:text-dash-text'
                           }`}
                         >
                           <input
@@ -217,7 +217,7 @@ export default function RemedialClient({ course, lesson, assignment }: RemedialC
                   </div>
                 ))}
 
-                <div className="flex justify-end pt-4 border-t border-white/5">
+                <div className="flex justify-end pt-4 border-t border-dash-border">
                   <Button
                     onClick={handleSubmitQuiz}
                     disabled={isPending}
@@ -236,25 +236,25 @@ export default function RemedialClient({ course, lesson, assignment }: RemedialC
                     {passed ? <CheckCircle2 size={30} /> : <XCircle size={30} />}
                   </div>
                   <div className="space-y-1">
-                    <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest block">Validation Outcome</span>
-                    <h2 className="text-2xl font-space-grotesk font-black uppercase text-white">
+                    <span className="text-[9px] font-bold text-dash-textMuted uppercase tracking-widest block">Validation Outcome</span>
+                    <h2 className="text-2xl font-space-grotesk font-black uppercase text-dash-text">
                       {passed ? 'Validation Passed!' : 'Validation Failed'}
                     </h2>
-                    <p className="text-xs text-white/40 mt-1">
+                    <p className="text-xs text-dash-textMuted mt-1">
                       {passed ? 'You have successfully passed validation.' : 'Threshold not met. Please review the methodologies again.'}
                     </p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 bg-[#04091a]/40 border border-white/5 p-6 rounded-2xl text-center">
+                <div className="grid grid-cols-2 gap-4 bg-dash-bg border border-dash-border p-6 rounded-2xl text-center">
                   <div>
-                    <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest block">Correct Answers</span>
-                    <span className={`text-3xl font-space-grotesk font-black block mt-1 ${passed ? 'text-emerald-400' : 'text-red'}`}>
+                    <span className="text-[9px] font-bold text-dash-textMuted uppercase tracking-widest block">Correct Answers</span>
+                    <span className={`text-3xl font-space-grotesk font-black block mt-1 ${passed ? 'text-emerald-500' : 'text-red'}`}>
                       {correctCount} / 5
                     </span>
                   </div>
                   <div>
-                    <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest block">Score</span>
+                    <span className="text-[9px] font-bold text-dash-textMuted uppercase tracking-widest block">Score</span>
                     <span className={`text-3xl font-space-grotesk font-black block mt-1 ${passed ? 'text-emerald-400' : 'text-red'}`}>
                       {score}%
                     </span>

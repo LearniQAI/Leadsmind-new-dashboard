@@ -161,7 +161,11 @@ export default function CalendarClient({
   return (
     <div className="max-w-[1600px] mx-auto px-6 py-6">
       {/* 1. Header Section */}
-      <CalendarHeader onNewAppointment={() => setIsBookingModalOpen(true)} />
+      <CalendarHeader
+        onNewAppointment={() => setIsBookingModalOpen(true)}
+        calendars={initialCalendars}
+        onViewPublicPages={() => setActiveView('pages')}
+      />
 
       {/* 2. Stats Section (Only if calendars exist) */}
       {hasCalendars && <CalendarStats appointments={initialAppointments} />}

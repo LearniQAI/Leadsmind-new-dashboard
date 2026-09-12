@@ -258,26 +258,26 @@ export default function VideoPlayer({
       </div>
 
       {!directVideo && !isAlreadyCompleted && trackingMode === 'real' && (
-        <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3.5 space-y-2">
-          <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-white/40">
+        <div className="bg-dash-surface border border-dash-border rounded-xl p-3.5 space-y-2">
+          <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-dash-textMuted">
             <span>Watch Progress</span>
-            <span className="text-[#3b82f6]">{watchedPercent}%</span>
+            <span className="text-dash-accent">{watchedPercent}%</span>
           </div>
-          <div className="w-full bg-white/5 rounded-full h-1 overflow-hidden">
+          <div className="w-full bg-dash-border rounded-full h-1 overflow-hidden">
             <div
               className="bg-gradient-to-r from-blue-500 to-indigo-500 h-1 rounded-full transition-all duration-300"
               style={{ width: `${watchedPercent}%` }}
             />
           </div>
-          <span className="text-[9px] text-white/30 block leading-tight">
+          <span className="text-[9px] text-dash-textMuted block leading-tight">
             Marks complete automatically at 90% watched.
           </span>
         </div>
       )}
 
       {!directVideo && !isAlreadyCompleted && trackingMode === 'untracked' && (
-        <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3.5">
-          <span className="text-[9px] text-white/30 block leading-tight">
+        <div className="bg-dash-surface border border-dash-border rounded-xl p-3.5">
+          <span className="text-[9px] text-dash-textMuted block leading-tight">
             This provider doesn't support real watch-time tracking yet — marked as viewed.
           </span>
         </div>

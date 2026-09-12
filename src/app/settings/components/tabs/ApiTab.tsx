@@ -17,6 +17,7 @@ import {
   getTwilioStatus,
   saveTwilioCredentials
 } from '@/app/actions/settings';
+import { DashButton } from '@/components/dashboard-ui';
 
 interface ApiTabProps {
   apiKey: string | null;
@@ -362,13 +363,9 @@ export default function ApiTab({
               <h4 className="text-[15px] font-bold !text-dash-text">Test your integration</h4>
               <p className="text-[12px] !text-dash-textMuted">Send a simulated lead through your API pipeline to verify everything is connected correctly.</p>
             </div>
-            <button
-              disabled={sendingDemo || !apiKey || !isAdmin}
-              onClick={handleSendDemo}
-              className="px-8 py-3.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-[11px] rounded-xl shadow-lg shadow-green-600/20 whitespace-nowrap transition-all motion-reduce:transition-none"
-            >
+            <DashButton disabled={sendingDemo || !apiKey || !isAdmin} onClick={handleSendDemo} variant="primary">
               {sendingDemo ? 'Sending...' : 'Send test lead'}
-            </button>
+            </DashButton>
           </div>
 
           {/* Twilio Credentials Card */}
@@ -462,20 +459,17 @@ export default function ApiTab({
                     </div>
                   </div>
                   <div className="flex justify-end gap-3 pt-2">
-                    <button
+                    <DashButton
                       type="button"
                       onClick={() => { setShowTwilioForm(false); setTwilioSid(''); setTwilioToken(''); setTwilioPhone(''); }}
-                      className="px-5 py-2.5 border border-dash-border !text-dash-textMuted hover:!text-dash-text rounded-xl text-[11px] font-bold transition-all motion-reduce:transition-none"
+                      variant="secondary"
+                      size="sm"
                     >
                       Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={savingTwilio}
-                      className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-[11px] rounded-xl shadow-lg shadow-blue-600/20 transition-all motion-reduce:transition-none"
-                    >
+                    </DashButton>
+                    <DashButton type="submit" disabled={savingTwilio} variant="primary" size="sm">
                       {savingTwilio ? 'Saving...' : 'Save credentials'}
-                    </button>
+                    </DashButton>
                   </div>
                 </form>
               )}
@@ -541,12 +535,9 @@ export default function ApiTab({
                 </div>
               </div>
 
-              <button
-                onClick={() => setCreatedClient(null)}
-                className="px-4 py-2 bg-green-600 text-white font-bold text-[11px] rounded-lg"
-              >
+              <DashButton onClick={() => setCreatedClient(null)} variant="primary" size="sm">
                 I have saved the credentials
-              </button>
+              </DashButton>
             </div>
           )}
 
@@ -604,12 +595,9 @@ export default function ApiTab({
                 </div>
               </div>
 
-              <button
-                type="submit"
-                className="px-6 py-3 bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-[11px] rounded-xl transition-all motion-reduce:transition-none"
-              >
+              <DashButton type="submit" variant="primary">
                 Register app
-              </button>
+              </DashButton>
             </form>
           )}
 
@@ -721,16 +709,14 @@ export default function ApiTab({
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <button
+                      <DashButton
                         onClick={() => handleViewWebhookLogs(hook.id)}
-                        className={`px-3 py-1.5 rounded-lg border text-[11px] font-semibold transition-all motion-reduce:transition-none ${
-                          selectedWebhookForLogs === hook.id
-                            ? 'bg-dash-accent/10 border-dash-accent/20 text-dash-accent'
-                            : 'bg-dash-surface border-dash-border !text-dash-textMuted hover:!text-dash-text'
-                        }`}
+                        variant="secondary"
+                        size="sm"
+                        className={selectedWebhookForLogs === hook.id ? '!bg-dash-accent/10 !border-dash-accent/20 !text-dash-accent' : ''}
                       >
                         View logs
-                      </button>
+                      </DashButton>
 
                       {isAdmin && (
                         <button

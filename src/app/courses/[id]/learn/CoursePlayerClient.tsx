@@ -121,7 +121,7 @@ export default function CoursePlayerClient({
       <div>
         <button
           onClick={() => router.push("/courses")}
-          className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white uppercase tracking-wider font-bold bg-white/5 border border-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl transition-all"
+          className="flex items-center gap-1.5 text-xs text-dash-textMuted hover:text-dash-text uppercase tracking-wider font-bold bg-dash-surface border border-dash-border hover:bg-dash-border/50 px-3 py-1.5 rounded-xl transition-all"
         >
           <ArrowLeft size={13} /> Back to Academy
         </button>
@@ -130,10 +130,10 @@ export default function CoursePlayerClient({
       {/* Grid Player */}
       <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 items-start">
         {/* Left Navigation Sidebar */}
-        <div className="bg-[#080f28] border border-white/5 rounded-2xl p-5 space-y-6">
-          <div className="border-b border-white/5 pb-4">
-            <span className="text-[9px] font-black text-accent2 uppercase tracking-widest block mb-1">Academy Player</span>
-            <h3 className="text-sm font-space-grotesk font-black text-white uppercase tracking-tight truncate">{course.title}</h3>
+        <div className="bg-dash-surface border border-dash-border rounded-2xl p-5 space-y-6">
+          <div className="border-b border-dash-border pb-4">
+            <span className="text-[9px] font-black text-dash-accent uppercase tracking-widest block mb-1">Academy Player</span>
+            <h3 className="text-sm font-space-grotesk font-black text-dash-text uppercase tracking-tight truncate">{course.title}</h3>
           </div>
 
           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
@@ -144,10 +144,10 @@ export default function CoursePlayerClient({
               return (
                 <div key={mod.id} className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-white uppercase tracking-tight flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold text-dash-text uppercase tracking-tight flex items-center gap-1.5">
                       <span className="text-xs w-4 h-4 flex items-center justify-center shrink-0">
                         {mod.icon_emoji && mod.icon_emoji.startsWith("fa-") ? (
-                          <i className={`${mod.icon_emoji} text-accent2 text-[11px]`}></i>
+                          <i className={`${mod.icon_emoji} text-dash-accent text-[11px]`}></i>
                         ) : (
                           mod.icon_emoji || "📚"
                         )}
@@ -161,9 +161,9 @@ export default function CoursePlayerClient({
                     )}
                   </div>
 
-                  <div className="pl-3 border-l border-white/5 space-y-1.5">
+                  <div className="pl-3 border-l border-dash-border space-y-1.5">
                     {modLessons.length === 0 ? (
-                      <span className="text-[9.5px] text-white/20 italic block pl-2">No lessons</span>
+                      <span className="text-[9.5px] text-dash-textMuted/60 italic block pl-2">No lessons</span>
                     ) : (
                       modLessons.map((les: any) => {
                         const isCompleted = completedLessonIds.has(les.id);
@@ -181,11 +181,11 @@ export default function CoursePlayerClient({
                               setActiveLessonId(les.id);
                             }}
                             className={`flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-xs cursor-pointer select-none transition-all ${
-                              isSelected 
-                                ? "bg-accent/10 border border-accent/20 text-white" 
-                                : isLocked 
-                                  ? "opacity-40 cursor-not-allowed hover:bg-transparent text-white/40"
-                                  : "text-white/60 hover:bg-white/[0.02] hover:text-white"
+                              isSelected
+                                ? "bg-dash-accent/10 border border-dash-accent/20 text-dash-text"
+                                : isLocked
+                                  ? "opacity-40 cursor-not-allowed hover:bg-transparent text-dash-textMuted"
+                                  : "text-dash-textMuted hover:bg-dash-border/40 hover:text-dash-text"
                             }`}
                           >
                             <span className="truncate pr-1">{les.title}</span>
@@ -193,9 +193,9 @@ export default function CoursePlayerClient({
                               {isCompleted ? (
                                 <CheckCircle size={13} className="text-green shrink-0" />
                               ) : isLocked ? (
-                                <Lock size={12} className="text-white/30 shrink-0" />
+                                <Lock size={12} className="text-dash-textMuted/70 shrink-0" />
                               ) : (
-                                <Circle size={12} className="text-white/20 shrink-0" />
+                                <Circle size={12} className="text-dash-textMuted/50 shrink-0" />
                               )}
                             </div>
                           </div>
@@ -212,20 +212,20 @@ export default function CoursePlayerClient({
         {/* Right Active Player Panel */}
         <div className="min-h-[400px]">
           {!activeLesson ? (
-            <div className="bg-[#080f28] border border-white/5 rounded-2xl p-10 text-center flex flex-col items-center justify-center h-full">
-              <PlayCircle size={40} className="text-white/20 mb-3 animate-pulse" />
-              <h4 className="text-sm font-space-grotesk font-black uppercase text-t2 tracking-widest">Classroom Empty</h4>
-              <p className="text-t3 text-[10px] font-bold mt-1 uppercase tracking-wider">Please select a lesson in the curriculum sidebar tree.</p>
+            <div className="bg-dash-surface border border-dash-border rounded-2xl p-10 text-center flex flex-col items-center justify-center h-full">
+              <PlayCircle size={40} className="text-dash-textMuted/50 mb-3 animate-pulse" />
+              <h4 className="text-sm font-space-grotesk font-black uppercase text-dash-text tracking-widest">Classroom Empty</h4>
+              <p className="text-dash-textMuted text-[10px] font-bold mt-1 uppercase tracking-wider">Please select a lesson in the curriculum sidebar tree.</p>
             </div>
           ) : activeLesson.isLocked ? (
             activeLesson.lockReason === "coming_soon" ? (
               /* Coming Soon Locked view */
-              <div className="bg-[#080f28] border border-white/5 rounded-2xl p-10 text-center flex flex-col items-center justify-center min-h-[400px] space-y-4">
+              <div className="bg-dash-surface border border-dash-border rounded-2xl p-10 text-center flex flex-col items-center justify-center min-h-[400px] space-y-4">
                 <Clock size={40} className="text-amber animate-pulse" />
                 <h4 className="text-lg font-space-grotesk font-black uppercase text-amber tracking-widest">
                   Coming Soon Node
                 </h4>
-                <p className="text-xs text-white/50 max-w-sm mx-auto leading-relaxed font-body">
+                <p className="text-xs text-dash-textMuted max-w-sm mx-auto leading-relaxed font-body">
                   This curriculum module component is locked because the academy administrators have marked it as **"Coming Soon"**.
                 </p>
                 <Badge className="bg-amber/10 text-amber border border-amber/20 uppercase tracking-widest text-[9px] px-3 py-1 font-bold">
@@ -234,12 +234,12 @@ export default function CoursePlayerClient({
               </div>
             ) : (
               /* Dependency locked view */
-              <div className="bg-[#080f28] border border-white/5 rounded-2xl p-10 text-center flex flex-col items-center justify-center min-h-[400px] space-y-4">
+              <div className="bg-dash-surface border border-dash-border rounded-2xl p-10 text-center flex flex-col items-center justify-center min-h-[400px] space-y-4">
                 <Lock size={40} className="text-red animate-bounce" />
                 <h4 className="text-lg font-space-grotesk font-black uppercase text-red tracking-widest">
                   Dependency Locked
                 </h4>
-                <p className="text-xs text-white/50 max-w-sm mx-auto leading-relaxed font-body">
+                <p className="text-xs text-dash-textMuted max-w-sm mx-auto leading-relaxed font-body">
                   Access blocked. A preceding module has been designated as **"Required for Completion"** and is not finished yet.
                 </p>
                 <div className="p-3 bg-red-500/5 border border-red-500/10 rounded-xl text-[10px] font-mono text-red flex items-center gap-1.5 max-w-xs mx-auto">

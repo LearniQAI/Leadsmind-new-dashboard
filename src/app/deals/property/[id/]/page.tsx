@@ -33,7 +33,7 @@ export default async function PropertyDealPage({ params }: PropertyDealPageProps
   return (
     <MetaData pageTitle={`Real Estate Compliance | ${dealRes.deal.title}`}>
       <Wrapper>
-        <div className="flex flex-col h-screen bg-[#04091a] overflow-hidden">
+        <div className="flex flex-col h-screen bg-dash-bg overflow-hidden">
           <PropertyDealClient 
             initialDeal={dealRes.deal}
             initialBuyer={dealRes.buyer}

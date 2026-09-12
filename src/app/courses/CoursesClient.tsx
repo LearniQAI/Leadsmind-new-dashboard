@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { DashButton } from "@/components/dashboard-ui";
 import {
   Plus,
   BookOpen,
@@ -117,24 +117,21 @@ export default function CoursesClient({
             ))}
           </select>
 
-          <Button variant="outline">
+          <DashButton variant="secondary" size="sm">
             <FilterIcon size={13} /> Filter
-          </Button>
+          </DashButton>
 
-          <Button variant="outline" onClick={() => router.push("/courses/certificates")}>
+          <DashButton variant="secondary" size="sm" onClick={() => router.push("/courses/certificates")}>
             <Award size={13} /> Certificates
-          </Button>
+          </DashButton>
 
-          <Button variant="outline" onClick={() => router.push("/courses/needs-grading")}>
+          <DashButton variant="secondary" size="sm" onClick={() => router.push("/courses/needs-grading")}>
             <ClipboardCheck size={13} /> Needs grading
-          </Button>
+          </DashButton>
 
-          <Button
-            onClick={() => setIsModalOpen(true)}
-            className="bg-sky-500 text-white hover:bg-sky-600"
-          >
+          <DashButton variant="primary" size="sm" onClick={() => setIsModalOpen(true)}>
             <Plus size={14} /> Add a new course
-          </Button>
+          </DashButton>
         </div>
       </div>
 
@@ -152,9 +149,9 @@ export default function CoursesClient({
               {courses.length === 0 ? "Create your first course to get started" : "Try a different search or status filter"}
             </p>
             {courses.length === 0 && (
-              <Button onClick={() => setIsModalOpen(true)} className="mt-6 bg-sky-500 text-white hover:bg-sky-600">
+              <DashButton variant="primary" size="sm" onClick={() => setIsModalOpen(true)} className="mt-6">
                 <Plus size={14} /> Add a new course
-              </Button>
+              </DashButton>
             )}
           </div>
         ) : (

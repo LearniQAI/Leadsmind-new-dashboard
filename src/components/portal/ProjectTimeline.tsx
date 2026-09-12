@@ -54,21 +54,21 @@ export default function ProjectTimeline({ project, tasks, deliverables, settings
   };
 
   return (
-    <div className="bg-[var(--n800)] border border-[var(--bdr)] rounded-[24px] p-8 shadow-2xl relative overflow-hidden group space-y-8">
+    <div className="bg-white border border-dash-border rounded-[24px] p-8 shadow-2xl relative overflow-hidden group space-y-8">
       <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/5 rounded-full blur-3xl pointer-events-none" />
 
       {/* Project Header Info */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-6 border-b border-white/5">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-6 border-b border-dash-border">
         <div>
-          <h3 className="text-xl font-bold text-[#eef2ff] font-space uppercase tracking-wide">
+          <h3 className="text-xl font-bold text-dash-text font-space uppercase tracking-wide">
             {project.name}
           </h3>
           {project.description && (
-            <p className="text-xs text-[#94a3c8] mt-2 font-sans max-w-2xl leading-relaxed">{project.description}</p>
+            <p className="text-xs text-dash-textMuted mt-2 font-sans max-w-2xl leading-relaxed">{project.description}</p>
           )}
 
           {/* Start and Due Date Gantt Header */}
-          <div className="flex flex-wrap items-center gap-4 mt-4 text-[10px] font-mono text-[#4a5a82] uppercase tracking-wider">
+          <div className="flex flex-wrap items-center gap-4 mt-4 text-[10px] font-mono text-dash-textMuted uppercase tracking-wider">
             {project.start_date && (
               <span className="flex items-center gap-1">
                 <Calendar size={12} /> Start: {formatDate(project.start_date)}
@@ -86,10 +86,10 @@ export default function ProjectTimeline({ project, tasks, deliverables, settings
           <span className={cn(
             "text-[9px] font-black uppercase px-3 py-1 rounded-full border tracking-wider",
             project.status === 'completed'
-              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
               : project.status === 'active'
-              ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
-              : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+              ? "bg-dash-accent/10 text-dash-accent border-dash-accent/20"
+              : "bg-amber-50 text-amber-700 border-amber-200"
           )}>
             Status: {project.status || 'Planning'}
           </span>
@@ -98,28 +98,28 @@ export default function ProjectTimeline({ project, tasks, deliverables, settings
 
       {/* Financial Details (Only if enabled in Settings Guardrails) */}
       {settings.show_financials && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-[#111d47]/10 p-5 rounded-2xl border border-white/5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-dash-surface p-5 rounded-2xl border border-dash-border">
           <div className="space-y-1">
-            <span className="text-[9px] font-bold text-[#4a5a82] uppercase tracking-wider flex items-center gap-1">
+            <span className="text-[9px] font-bold text-dash-textMuted uppercase tracking-wider flex items-center gap-1">
               <DollarSign size={12} /> Budget
             </span>
-            <p className="text-base font-extrabold text-[#eef2ff]">
+            <p className="text-base font-extrabold text-dash-text">
               {project.budget ? `R ${Number(project.budget).toLocaleString('en-ZA')}` : 'Not Specified'}
             </p>
           </div>
           <div className="space-y-1">
-            <span className="text-[9px] font-bold text-[#4a5a82] uppercase tracking-wider flex items-center gap-1">
+            <span className="text-[9px] font-bold text-dash-textMuted uppercase tracking-wider flex items-center gap-1">
               <DollarSign size={12} /> Cost to Date
             </span>
-            <p className="text-base font-extrabold text-[#eef2ff]">
+            <p className="text-base font-extrabold text-dash-text">
               {project.cost ? `R ${Number(project.cost).toLocaleString('en-ZA')}` : 'Not Specified'}
             </p>
           </div>
           <div className="space-y-1">
-            <span className="text-[9px] font-bold text-[#4a5a82] uppercase tracking-wider flex items-center gap-1">
+            <span className="text-[9px] font-bold text-dash-textMuted uppercase tracking-wider flex items-center gap-1">
               <Clock size={12} /> Tracked Hours
             </span>
-            <p className="text-base font-extrabold text-[#eef2ff]">
+            <p className="text-base font-extrabold text-dash-text">
               {project.tracked_hours ? `${project.tracked_hours} Hours` : 'Not Specified'}
             </p>
           </div>
@@ -127,14 +127,14 @@ export default function ProjectTimeline({ project, tasks, deliverables, settings
       )}
 
       {/* Progress Bar */}
-      <div className="space-y-2 bg-[#111d47]/20 p-5 rounded-2xl border border-white/5">
-        <div className="flex justify-between text-[10px] font-black uppercase tracking-wider text-[#4a5a82]">
+      <div className="space-y-2 bg-dash-surface p-5 rounded-2xl border border-dash-border">
+        <div className="flex justify-between text-[10px] font-black uppercase tracking-wider text-dash-textMuted">
           <span>Delivery Progress Milestones</span>
           <span>{completedDisplay} / {totalDisplay} completed ({percent}%)</span>
         </div>
-        <div className="h-2 w-full bg-[#111d47] rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-blue-500 rounded-full transition-all duration-500" 
+        <div className="h-2 w-full bg-dash-border/60 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-dash-accent rounded-full transition-all duration-500"
             style={{ width: `${percent}%` }}
           />
         </div>
@@ -142,14 +142,14 @@ export default function ProjectTimeline({ project, tasks, deliverables, settings
 
       {/* CSS Vertical Roadmap / Gantt Timeline */}
       <div className="space-y-4">
-        <h4 className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[2px] flex items-center gap-1.5">
-          <CheckSquare size={13} className="text-blue-500" /> Delivery Roadmap & Timeline
+        <h4 className="text-[10px] font-bold text-dash-textMuted uppercase tracking-[2px] flex items-center gap-1.5">
+          <CheckSquare size={13} className="text-dash-accent" /> Delivery Roadmap & Timeline
         </h4>
 
         {displayTasks.length === 0 ? (
-          <p className="text-xs text-[#4a5a82] italic font-sans pl-1">No active milestones created yet.</p>
+          <p className="text-xs text-dash-textMuted italic font-sans pl-1">No active milestones created yet.</p>
         ) : (
-          <div className="relative pl-6 border-l-2 border-[#111d47] space-y-8 mt-4 ml-3">
+          <div className="relative pl-6 border-l-2 border-dash-border space-y-8 mt-4 ml-3">
             {displayTasks.map((t, tIdx) => {
               const isDone = t.status === 'done';
               const isApproved = !!t.client_approved_at;
@@ -164,32 +164,32 @@ export default function ProjectTimeline({ project, tasks, deliverables, settings
                 <div key={tIdx} className="relative">
                   {/* Timeline Node Dot */}
                   <span className={cn(
-                    "absolute -left-[31px] top-1.5 w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center bg-[#080f28]",
-                    isApproved 
-                      ? "border-emerald-500 text-emerald-400"
+                    "absolute -left-[31px] top-1.5 w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center bg-white",
+                    isApproved
+                      ? "border-emerald-500 text-emerald-600"
                       : isDone
-                      ? "border-blue-500 text-blue-400"
-                      : "border-[#111d47] text-[#4a5a82]"
+                      ? "border-dash-accent text-dash-accent"
+                      : "border-dash-border text-dash-textMuted"
                   )}>
                     <CircleDot size={10} className="fill-current" />
                   </span>
 
-                  <div className="p-5 rounded-2xl bg-[#111d47]/20 border border-white/5 hover:border-white/10 transition-colors flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div className="p-5 rounded-2xl bg-dash-surface border border-dash-border hover:border-dash-accent/30 transition-colors flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div className="space-y-1.5">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className={cn(
                           "text-[8px] font-black uppercase px-2 py-0.5 rounded border tracking-wider",
                           isApproved
-                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                             : isDone
-                            ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
-                            : "bg-[#0b1329] text-[#4a5a82] border-white/5"
+                            ? "bg-dash-accent/10 text-dash-accent border-dash-accent/20"
+                            : "bg-white text-dash-textMuted border-dash-border"
                         )}>
                           {isApproved ? 'Approved ✓' : isDone ? 'Pending Approval' : 'In Progress'}
                         </span>
 
                         {isMilestone && (
-                          <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 tracking-wider">
+                          <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 tracking-wider">
                             Key Milestone
                           </span>
                         )}
@@ -197,12 +197,12 @@ export default function ProjectTimeline({ project, tasks, deliverables, settings
 
                       <h5 className={cn(
                         "text-xs font-bold font-space uppercase tracking-wide",
-                        isApproved ? "text-[#4a5a82] line-through font-medium" : "text-[#eef2ff]"
+                        isApproved ? "text-dash-textMuted line-through font-medium" : "text-dash-text"
                       )}>
                         {t.title}
                       </h5>
 
-                      <div className="flex flex-wrap items-center gap-3 text-[9.5px] text-[#4a5a82] font-mono uppercase">
+                      <div className="flex flex-wrap items-center gap-3 text-[9.5px] text-dash-textMuted font-mono uppercase">
                         {t.due_date && (
                           <span>Target: {formatDate(t.due_date)}</span>
                         )}
@@ -211,7 +211,7 @@ export default function ProjectTimeline({ project, tasks, deliverables, settings
 
                       {/* Approved Timestamp Log */}
                       {isApproved && (
-                        <p className="text-[9px] text-emerald-400/80 font-sans italic flex items-center gap-1 mt-1">
+                        <p className="text-[9px] text-emerald-600 font-sans italic flex items-center gap-1 mt-1">
                           <ShieldCheck size={11} /> Approved on {formatDate(t.client_approved_at)}
                         </p>
                       )}
@@ -236,27 +236,27 @@ export default function ProjectTimeline({ project, tasks, deliverables, settings
       </div>
 
       {/* Deliverable Attachments (Only files marked as Client Deliverables) */}
-      <div className="space-y-4 pt-6 border-t border-white/5">
-        <h4 className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-[2px] flex items-center gap-1.5">
-          <FileText size={13} className="text-blue-500" /> Client-Facing Deliverables & Files
+      <div className="space-y-4 pt-6 border-t border-dash-border">
+        <h4 className="text-[10px] font-bold text-dash-textMuted uppercase tracking-[2px] flex items-center gap-1.5">
+          <FileText size={13} className="text-dash-accent" /> Client-Facing Deliverables & Files
         </h4>
 
         {deliverables.length === 0 ? (
-          <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/5 text-center">
-            <p className="text-xs text-[#4a5a82] italic font-sans">No deliverables have been marked for download yet.</p>
+          <div className="p-4 rounded-2xl bg-dash-surface border border-dash-border text-center">
+            <p className="text-xs text-dash-textMuted italic font-sans">No deliverables have been marked for download yet.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {deliverables.map((file, fIdx) => (
               <div 
                 key={fIdx} 
-                className="p-4 rounded-xl bg-[#111d47]/30 border border-white/5 flex items-center justify-between gap-4 hover:border-white/10 transition-colors"
+                className="p-4 rounded-xl bg-dash-surface border border-dash-border flex items-center justify-between gap-4 hover:border-dash-accent/30 transition-colors"
               >
                 <div className="truncate space-y-1">
-                  <p className="text-xs font-bold text-[#eef2ff] truncate uppercase font-space tracking-wide">
+                  <p className="text-xs font-bold text-dash-text truncate uppercase font-space tracking-wide">
                     {file.name}
                   </p>
-                  <p className="text-[9px] text-[#4a5a82] font-mono">
+                  <p className="text-[9px] text-dash-textMuted font-mono">
                     {file.size ? `${(Number(file.size) / (1024 * 1024)).toFixed(2)} MB` : 'Size Unknown'}
                   </p>
                 </div>
@@ -265,7 +265,7 @@ export default function ProjectTimeline({ project, tasks, deliverables, settings
                   href={`/api/media/download?id=${file.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-9 h-9 rounded-xl bg-white/5 border border-white/5 text-t3 hover:text-t1 hover:bg-white/10 transition-all flex items-center justify-center shrink-0"
+                  className="w-9 h-9 rounded-xl bg-white border border-dash-border text-dash-textMuted hover:text-dash-text hover:bg-dash-accent/10 transition-all flex items-center justify-center shrink-0"
                 >
                   <Download size={14} />
                 </a>

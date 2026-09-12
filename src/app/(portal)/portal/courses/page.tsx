@@ -86,22 +86,22 @@ export default async function PortalCoursesPage() {
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold uppercase tracking-tight font-space">
-            Learning <span className="text-[var(--accent2)]">Courses</span>
+            Learning <span className="text-dash-accent">Courses</span>
           </h1>
-          <p className="text-[11.5px] text-[var(--t3)] uppercase tracking-[0.2em] mt-2 font-medium">
+          <p className="text-[11.5px] text-dash-textMuted uppercase tracking-[0.2em] mt-2 font-medium">
             Access your enrolled courses, view progress, and join live classes
           </p>
         </div>
 
         {/* Content grid */}
         {enrollments.length === 0 ? (
-          <div className="bg-[var(--n800)] border border-[var(--bdr)] p-16 rounded-3xl flex flex-col items-center justify-center text-center space-y-4 shadow-xl">
-            <div className="w-14 h-14 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-center text-[#4a5a82] opacity-55">
+          <div className="bg-white border border-dash-border p-16 rounded-3xl flex flex-col items-center justify-center text-center space-y-4 shadow-xl">
+            <div className="w-14 h-14 bg-dash-surface border border-dash-border rounded-2xl flex items-center justify-center text-dash-textMuted opacity-55">
               <GraduationCap size={28} />
             </div>
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--t2)]">No Active Courses</h3>
-              <p className="text-xs text-[var(--t3)] mt-1.5 max-w-xs leading-relaxed">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-dash-text">No Active Courses</h3>
+              <p className="text-xs text-dash-textMuted mt-1.5 max-w-xs leading-relaxed">
                 You are not enrolled in any training courses in this workspace. Contact support to purchase or request enrollment.
               </p>
             </div>
@@ -149,13 +149,13 @@ export default async function PortalCoursesPage() {
               return (
                 <div 
                   key={idx} 
-                  className="bg-[var(--n800)] border border-[var(--bdr)] rounded-[24px] overflow-hidden shadow-2xl flex flex-col justify-between hover:border-white/10 hover:translate-y-[-2px] transition-all duration-300 group relative"
+                  className="bg-white border border-dash-border rounded-[24px] overflow-hidden shadow-2xl flex flex-col justify-between hover:border-dash-accent/30 hover:translate-y-[-2px] transition-all duration-300 group relative"
                 >
                   <div className="absolute top-0 right-0 w-32 h-32 bg-[#8b5cf6]/5 rounded-full blur-3xl pointer-events-none" />
 
                   <div>
                     {/* Course Art/Cover image or Gradient Placeholder */}
-                    <div className="h-48 w-full relative overflow-hidden bg-gradient-to-br from-[#0b1329] to-[#050914] border-b border-white/5 flex items-center justify-center">
+                    <div className="h-48 w-full relative overflow-hidden bg-gradient-to-br from-[#0b1329] to-[#050914] border-b border-dash-border flex items-center justify-center">
                       {course.thumbnail_url ? (
                         <img 
                           src={course.thumbnail_url} 
@@ -165,12 +165,12 @@ export default async function PortalCoursesPage() {
                       ) : (
                         <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-pink-500/10 flex flex-col items-center justify-center p-6 text-center">
                           <BookOpen size={48} className="text-purple-400/50 mb-2 group-hover:scale-110 transition-transform duration-300" />
-                          <span className="text-[10px] font-black uppercase tracking-widest text-[#4a5a82]">LeadsMind LMS Node</span>
+                          <span className="text-[10px] font-black uppercase tracking-widest text-dash-textMuted">LeadsMind LMS Node</span>
                         </div>
                       )}
                       
                       <div className="absolute top-4 left-4">
-                        <span className="text-[9px] font-black uppercase px-2.5 py-1 rounded bg-[#080f28]/80 text-[#8b5cf6] border border-[#8b5cf6]/30 backdrop-blur-md">
+                        <span className="text-[9px] font-black uppercase px-2.5 py-1 rounded bg-white/80 text-[#8b5cf6] border border-[#8b5cf6]/30 backdrop-blur-md">
                           {e.access_type || 'Full Access'}
                         </span>
                       </div>
@@ -187,7 +187,7 @@ export default async function PortalCoursesPage() {
                     <div className="p-6 space-y-5">
                       {/* Access Expiry Banner */}
                       {expiryCountdown && (
-                        <div className="bg-rose-500/10 text-rose-400 text-xs font-semibold px-3.5 py-2 rounded-xl border border-rose-500/20 flex items-center gap-2">
+                        <div className="bg-rose-50 text-rose-700 text-xs font-semibold px-3.5 py-2 rounded-xl border border-rose-200 flex items-center gap-2">
                           <Clock size={14} className="shrink-0" />
                           <span>{expiryCountdown}</span>
                         </div>
@@ -195,25 +195,25 @@ export default async function PortalCoursesPage() {
 
                       {/* Title & Description */}
                       <div>
-                        <h3 className="text-md font-bold text-[#eef2ff] line-clamp-1 font-space uppercase tracking-wide">
+                        <h3 className="text-md font-bold text-dash-text line-clamp-1 font-space uppercase tracking-wide">
                           {course.title}
                         </h3>
-                        <p className="text-xs text-[#94a3c8] line-clamp-2 mt-2 leading-relaxed font-sans">
+                        <p className="text-xs text-dash-textMuted line-clamp-2 mt-2 leading-relaxed font-sans">
                           {course.description || 'Access educational content, videos, assessments, and study materials.'}
                         </p>
                       </div>
 
                       {/* Instructor lookup bio details */}
                       {primaryExpert && (
-                        <div className="p-3.5 bg-white/[0.02] rounded-xl border border-white/5 flex gap-3 items-start">
-                          <div className="w-8 h-8 rounded-full bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0 mt-0.5">
+                        <div className="p-3.5 bg-dash-surface rounded-xl border border-dash-border flex gap-3 items-start">
+                          <div className="w-8 h-8 rounded-full bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600 shrink-0 mt-0.5">
                             <User size={14} />
                           </div>
                           <div className="space-y-0.5">
-                            <p className="text-[10px] font-bold text-[#4a5a82] uppercase tracking-wider">Instructor</p>
-                            <p className="text-xs font-bold text-[#eef2ff]">{primaryExpert.name}</p>
+                            <p className="text-[10px] font-bold text-dash-textMuted uppercase tracking-wider">Instructor</p>
+                            <p className="text-xs font-bold text-dash-text">{primaryExpert.name}</p>
                             {primaryExpert.bio && (
-                              <p className="text-[10px] text-[#94a3c8] line-clamp-1 italic">{primaryExpert.bio}</p>
+                              <p className="text-[10px] text-dash-textMuted line-clamp-1 italic">{primaryExpert.bio}</p>
                             )}
                           </div>
                         </div>
@@ -230,11 +230,11 @@ export default async function PortalCoursesPage() {
 
                       {/* Progress Metrics */}
                       <div className="space-y-2 pt-1">
-                        <div className="flex justify-between text-[10px] font-black uppercase tracking-wider text-[#4a5a82]">
+                        <div className="flex justify-between text-[10px] font-black uppercase tracking-wider text-dash-textMuted">
                           <span>Academic Progress</span>
                           <span className="text-[#8b5cf6]">{completedLessons} / {totalLessons} Lectures ({progress}%)</span>
                         </div>
-                        <div className="h-1.5 w-full bg-[#111d47] rounded-full overflow-hidden">
+                        <div className="h-1.5 w-full bg-dash-surface rounded-full overflow-hidden">
                           <div 
                             className="h-full bg-gradient-to-r from-purple-500 to-[#8b5cf6] rounded-full transition-all duration-500" 
                             style={{ width: `${progress}%` }}
@@ -245,13 +245,13 @@ export default async function PortalCoursesPage() {
                   </div>
 
                   {/* Actions footer */}
-                  <div className="p-6 border-t border-white/5 bg-[#080f28]/25 flex items-center justify-between gap-3">
+                  <div className="p-6 border-t border-dash-border bg-dash-surface flex items-center justify-between gap-3">
                     {isCompleted ? (
                       <a
                         href={`/api/student/courses/${course.id}/certificate`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-wider transition-all"
+                        className="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-wider transition-all"
                       >
                         <Award size={12} /> Get Certificate
                       </a>
@@ -274,12 +274,12 @@ export default async function PortalCoursesPage() {
 
         {/* Upsell Course Grid */}
         {upsellCourses.length > 0 && (
-          <div className="space-y-6 pt-8 border-t border-[var(--bdr)]">
+          <div className="space-y-6 pt-8 border-t border-dash-border">
             <div>
               <h2 className="text-xl font-bold uppercase tracking-tight font-space">
-                Available <span className="text-[var(--accent2)]">Courses</span>
+                Available <span className="text-dash-accent">Courses</span>
               </h2>
-              <p className="text-[11px] text-[var(--t3)] uppercase tracking-[0.2em] mt-1.5 font-medium">
+              <p className="text-[11px] text-dash-textMuted uppercase tracking-[0.2em] mt-1.5 font-medium">
                 Enhance your skillset with additional training courses
               </p>
             </div>
@@ -291,13 +291,13 @@ export default async function PortalCoursesPage() {
                 return (
                   <div 
                     key={idx} 
-                    className="bg-[var(--n800)] border border-[var(--bdr)] rounded-[24px] overflow-hidden shadow-2xl flex flex-col justify-between hover:border-white/10 hover:translate-y-[-2px] transition-all duration-300 group relative"
+                    className="bg-white border border-dash-border rounded-[24px] overflow-hidden shadow-2xl flex flex-col justify-between hover:border-dash-accent/30 hover:translate-y-[-2px] transition-all duration-300 group relative"
                   >
                     <div className="absolute top-0 right-0 w-32 h-32 bg-[#8b5cf6]/5 rounded-full blur-3xl pointer-events-none" />
 
                     <div>
                       {/* Course Art/Cover image or Gradient Placeholder */}
-                      <div className="h-48 w-full relative overflow-hidden bg-gradient-to-br from-[#0b1329] to-[#050914] border-b border-white/5 flex items-center justify-center">
+                      <div className="h-48 w-full relative overflow-hidden bg-gradient-to-br from-[#0b1329] to-[#050914] border-b border-dash-border flex items-center justify-center">
                         {course.thumbnail_url ? (
                           <img 
                             src={course.thumbnail_url} 
@@ -307,7 +307,7 @@ export default async function PortalCoursesPage() {
                         ) : (
                           <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-pink-500/10 flex flex-col items-center justify-center p-6 text-center">
                             <BookOpen size={48} className="text-purple-400/50 mb-2 group-hover:scale-110 transition-transform duration-300" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-[#4a5a82]">LeadsMind LMS Node</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-dash-textMuted">LeadsMind LMS Node</span>
                           </div>
                         )}
                         
@@ -321,24 +321,24 @@ export default async function PortalCoursesPage() {
                       <div className="p-6 space-y-4">
                         {/* Title & Description */}
                         <div>
-                          <h3 className="text-md font-bold text-[#eef2ff] line-clamp-1 font-space uppercase tracking-wide">
+                          <h3 className="text-md font-bold text-dash-text line-clamp-1 font-space uppercase tracking-wide">
                             {course.title}
                           </h3>
-                          <p className="text-xs text-[#94a3c8] line-clamp-2 mt-2 leading-relaxed font-sans">
+                          <p className="text-xs text-dash-textMuted line-clamp-2 mt-2 leading-relaxed font-sans">
                             {course.description || 'Access educational content, videos, assessments, and study materials.'}
                           </p>
                         </div>
 
-                        <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-[#4a5a82]">
+                        <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-dash-textMuted">
                           <span>Academic Lectures</span>
-                          <span className="text-purple-400">{totalLessons} Lectures available</span>
+                          <span className="text-purple-600">{totalLessons} Lectures available</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Actions footer */}
-                    <div className="p-6 border-t border-white/5 bg-[#080f28]/25 flex items-center justify-between gap-3">
-                      <div className="text-sm font-bold text-[#eef2ff] font-space">
+                    <div className="p-6 border-t border-dash-border bg-dash-surface flex items-center justify-between gap-3">
+                      <div className="text-sm font-bold text-dash-text font-space">
                         R {Number(course.price || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
                       </div>
                       <BuyCourseButton courseId={course.id} price={course.price || 0} />

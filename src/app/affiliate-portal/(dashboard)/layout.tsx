@@ -12,7 +12,7 @@ export default async function AffiliateDashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-[#04091a] text-white">
+    <div className="min-h-screen bg-dash-bg text-dash-text">
       {children}
     </div>
   );

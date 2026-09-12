@@ -12,7 +12,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { DashButton } from '@/components/dashboard-ui';
 import { Loader2 } from 'lucide-react';
 
 export type RecurrenceScope = 'this' | 'following' | 'all';
@@ -86,17 +86,19 @@ export default function RecurrenceScopeModal({
         </div>
 
         <DialogFooter className="border-t border-dash-border pt-4 gap-2 sm:gap-0">
-          <Button variant="ghost" onClick={onClose} className="!text-dash-textMuted text-[11px] font-bold">
+          <DashButton variant="ghost" size="sm" onClick={onClose}>
             Back
-          </Button>
-          <Button
+          </DashButton>
+          <DashButton
+            variant={action === 'cancel' ? 'destructive' : 'primary'}
+            size="sm"
             onClick={() => onConfirm(scope)}
             disabled={isLoading}
-            className="bg-dash-accent hover:bg-dash-accent/90 text-white text-[11px] font-bold px-6"
+            className="px-6"
           >
-            {isLoading ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
+            {isLoading ? <Loader2 size={16} className="animate-spin" /> : null}
             {action === 'cancel' ? 'Cancel meeting(s)' : 'Continue'}
-          </Button>
+          </DashButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

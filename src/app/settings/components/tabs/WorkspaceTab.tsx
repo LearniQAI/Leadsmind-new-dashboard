@@ -5,6 +5,7 @@ import { useDashboardContext } from '@/components/layouts/DashboardProvider';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { DashButton } from '@/components/dashboard-ui';
 
 interface WorkspaceTabProps {
   branding: any;
@@ -211,13 +212,9 @@ export default function WorkspaceTab({
 
           {isAdmin && (
             <div className="pt-4 flex justify-end">
-              <button
-                onClick={() => onSave(name)}
-                disabled={isSaving}
-                className="bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-[11px] h-11 px-8 rounded-xl shadow-lg shadow-dash-accent/20 transition-all motion-reduce:transition-none disabled:opacity-50"
-              >
+              <DashButton onClick={() => onSave(name)} disabled={isSaving} variant="primary">
                 {isSaving ? 'Processing...' : 'Save configuration'}
-              </button>
+              </DashButton>
             </div>
           )}
         </div>
@@ -376,13 +373,9 @@ export default function WorkspaceTab({
                 </div>
               </div>
 
-              <button
-                onClick={onSaveBranding}
-                disabled={isSaving}
-                className="w-full bg-dash-accent hover:bg-dash-accent/90 text-white font-bold text-[11px] h-11 rounded-xl transition-all motion-reduce:transition-none shadow-lg shadow-dash-accent/20"
-              >
+              <DashButton onClick={onSaveBranding} disabled={isSaving} variant="primary" className="w-full">
                 {isSaving ? 'Saving...' : 'Save branding'}
-              </button>
+              </DashButton>
             </div>
 
             {/* Remove Orphaned Custom-Domain Code pass — the old "Custom DNS domain" card that
@@ -448,13 +441,9 @@ export default function WorkspaceTab({
             </div>
 
             <div className="pt-4 flex justify-end">
-              <button
-                onClick={handleSaveKycSettings}
-                disabled={isKycSaving}
-                className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-[11px] h-11 px-8 rounded-xl shadow-lg shadow-purple-600/20 transition-all motion-reduce:transition-none disabled:opacity-50"
-              >
+              <DashButton onClick={handleSaveKycSettings} disabled={isKycSaving} variant="primary">
                 {isKycSaving ? 'Saving...' : 'Save KYC settings'}
-              </button>
+              </DashButton>
             </div>
           </div>
         )}
@@ -670,9 +659,9 @@ export default function WorkspaceTab({
                   Permanently remove this workspace and all its data. This action is irreversible.
                 </p>
               </div>
-              <button className="flex-shrink-0 px-4 py-2.5 bg-red/10 text-red hover:bg-red/20 border border-red/20 rounded-xl text-[11px] font-bold transition-all motion-reduce:transition-none">
+              <DashButton variant="destructive" size="sm" className="flex-shrink-0">
                 Delete workspace
-              </button>
+              </DashButton>
             </div>
           </div>
         )}

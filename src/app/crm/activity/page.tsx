@@ -13,14 +13,14 @@ export default async function GlobalActivityPage() {
   const activities = workspaceId ? await UnifiedActivityEngine.getGlobalActivity(workspaceId, 100) : [];
 
   const getIcon = (type: string, entityType: string) => {
-    if (type === 'note') return <FileText size={16} className="text-blue-400" />;
-    if (type === 'call') return <Phone size={16} className="text-emerald-400" />;
-    if (type === 'email') return <Mail size={16} className="text-amber-400" />;
-    if (type === 'stage_change') return <Target size={16} className="text-purple-400" />;
-    if (type === 'voice' || type === 'voice_note') return <Mic size={16} className="text-cyan-400" />;
-    if (entityType === 'lead' || type === 'imported') return <Building2 size={16} className="text-accent" />;
-    if (entityType === 'contact') return <User size={16} className="text-t4" />;
-    return <Clock size={16} className="text-t4" />;
+    if (type === 'note') return <FileText size={16} className="text-blue-500" />;
+    if (type === 'call') return <Phone size={16} className="text-emerald-500" />;
+    if (type === 'email') return <Mail size={16} className="text-amber-500" />;
+    if (type === 'stage_change') return <Target size={16} className="text-purple-500" />;
+    if (type === 'voice' || type === 'voice_note') return <Mic size={16} className="text-cyan-500" />;
+    if (entityType === 'lead' || type === 'imported') return <Building2 size={16} className="text-dash-accent" />;
+    if (entityType === 'contact') return <User size={16} className="text-dash-textMuted" />;
+    return <Clock size={16} className="text-dash-textMuted" />;
   };
 
   const nameColor = '#5C4AC7'; // Brand purple for internal activities
@@ -32,23 +32,23 @@ export default async function GlobalActivityPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <Link href="/crm" className="inline-flex items-center gap-2 text-sm font-bold text-t3 hover:text-white transition-colors mb-4">
+            <Link href="/crm" className="inline-flex items-center gap-2 text-sm font-bold text-dash-textMuted hover:text-dash-text transition-colors mb-4">
               <LayoutDashboard size={16} /> Back to CRM Workspace
             </Link>
-            <h1 className="text-3xl font-space font-black text-white mb-2 flex items-center gap-3">
-              <Activity className="text-accent" size={32} /> Global Activity Feed
+            <h1 className="text-3xl font-space font-black text-dash-text mb-2 flex items-center gap-3">
+              <Activity className="text-dash-accent" size={32} /> Global Activity Feed
             </h1>
-            <p className="text-t3">Chronological timeline of all events across LeadsMind modules.</p>
+            <p className="text-dash-textMuted">Chronological timeline of all events across LeadsMind modules.</p>
           </div>
         </div>
 
         {/* Full Feed */}
-        <div className="bg-n800 border border-white/10 rounded-3xl p-8">
+        <div className="bg-dash-surface border border-dash-border rounded-3xl p-8">
           <div className="space-y-8 relative">
-            <div className="absolute top-0 bottom-0 left-[23px] w-px bg-white/5" />
-            
+            <div className="absolute top-0 bottom-0 left-[23px] w-px bg-dash-border" />
+
             {activities.length === 0 ? (
-              <p className="text-t4 text-center">No activity recorded yet.</p>
+              <p className="text-dash-textMuted text-center">No activity recorded yet.</p>
             ) : (
               activities.map((item: any) => {
                 const hasUser = !!item.auth_user;
@@ -62,7 +62,7 @@ export default async function GlobalActivityPage() {
 
                 return (
                   <div key={item.id} className="relative flex gap-6 group font-dm-sans">
-                    <div className="w-12 h-12 rounded-full bg-n900 border border-white/10 flex items-center justify-center shrink-0 z-10 relative group-hover:border-accent/50 transition-colors shadow-lg">
+                    <div className="w-12 h-12 rounded-full bg-dash-bg border border-dash-border flex items-center justify-center shrink-0 z-10 relative group-hover:border-dash-accent/50 transition-colors shadow-sm">
                       {getIcon(item.activity_type, item.entity_type)}
                     </div>
                     <div className="pt-2 w-full min-w-0">
@@ -105,42 +105,42 @@ export default async function GlobalActivityPage() {
                                   </span>
                                 </>
                               ) : (
-                                <span className="text-t3">System Workflow</span>
+                                <span className="text-dash-textMuted">System Workflow</span>
                               )}
                             </span>
-                            <span className="text-xs text-t4 uppercase tracking-widest font-bold shrink-0">
+                            <span className="text-xs text-dash-textMuted uppercase tracking-widest font-bold shrink-0">
                               {new Date(item.created_at).toLocaleString()}
                             </span>
                           </div>
-                          
-                          <div className="bg-n900 border border-white/5 rounded-2xl p-5 group-hover:border-white/10 transition-colors">
-                            <p className="text-sm text-white leading-relaxed font-dm-sans">
+
+                          <div className="bg-dash-bg border border-dash-border rounded-2xl p-5 group-hover:border-dash-accent/30 transition-colors">
+                            <p className="text-sm text-dash-text leading-relaxed font-dm-sans">
                               {item.content}
                             </p>
-                            
-                            <div className="mt-4 pt-3 border-t border-white/5 flex items-center gap-3 flex-wrap">
+
+                            <div className="mt-4 pt-3 border-t border-dash-border flex items-center gap-3 flex-wrap">
                               {item.entity_type === 'contact' && item.entity_id ? (
                                 <Link
                                   href={`/contacts/${item.entity_id}`}
-                                  className="inline-flex items-center gap-1 bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest text-t4 hover:text-white transition-colors"
+                                  className="inline-flex items-center gap-1 bg-dash-border/60 hover:bg-dash-border px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest text-dash-textMuted hover:text-dash-text transition-colors"
                                 >
                                   <LinkIcon size={10} /> {item.entity_type} Record
                                 </Link>
                               ) : (
-                                <span className="inline-flex items-center gap-1 bg-white/5 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest text-t4">
+                                <span className="inline-flex items-center gap-1 bg-dash-border/60 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest text-dash-textMuted">
                                   <LinkIcon size={10} /> {item.entity_type} Record
                                 </span>
                               )}
-                              <span className="inline-flex items-center gap-1 bg-white/5 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest text-t4">
+                              <span className="inline-flex items-center gap-1 bg-dash-border/60 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest text-dash-textMuted">
                                 <Activity size={10} /> {item.activity_type.replace('_', ' ')}
                               </span>
                               {item.metadata?.channel === 'whatsapp' && (
-                                <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest">
+                                <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest">
                                   WhatsApp {item.metadata.destination ? `(${item.metadata.destination})` : ''}
                                 </span>
                               )}
                               {item.metadata?.channel === 'email' && (
-                                <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-400 border border-emerald-500/20 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest">
+                                <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-600 border border-amber-500/20 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest">
                                   Email {item.metadata.destination ? `(${item.metadata.destination})` : ''}
                                 </span>
                               )}

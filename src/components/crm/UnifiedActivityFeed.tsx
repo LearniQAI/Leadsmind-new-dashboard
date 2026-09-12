@@ -15,34 +15,34 @@ export function UnifiedActivityFeed({
   viewerContext?: 'internal' | 'client';
 }) {
   const getIcon = (type: string, entityType: string) => {
-    if (type === 'note') return <FileText size={14} className="text-blue-400" />;
-    if (type === 'call') return <Phone size={14} className="text-emerald-400" />;
-    if (type === 'email') return <Mail size={14} className="text-amber-400" />;
-    if (type === 'stage_change') return <Target size={14} className="text-purple-400" />;
-    if (type === 'voice' || type === 'voice_note') return <Mic size={14} className="text-cyan-400" />;
-    if (entityType === 'lead' || type === 'imported') return <Building2 size={14} className="text-accent" />;
-    if (entityType === 'contact') return <User size={14} className="text-t4" />;
-    return <Clock size={14} className="text-t4" />;
+    if (type === 'note') return <FileText size={14} className="text-blue-500" />;
+    if (type === 'call') return <Phone size={14} className="text-emerald-500" />;
+    if (type === 'email') return <Mail size={14} className="text-amber-500" />;
+    if (type === 'stage_change') return <Target size={14} className="text-purple-500" />;
+    if (type === 'voice' || type === 'voice_note') return <Mic size={14} className="text-cyan-500" />;
+    if (entityType === 'lead' || type === 'imported') return <Building2 size={14} className="text-dash-accent" />;
+    if (entityType === 'contact') return <User size={14} className="text-dash-textMuted" />;
+    return <Clock size={14} className="text-dash-textMuted" />;
   };
 
   const nameColor = viewerContext === 'internal' ? '#5C4AC7' : '#1A1A1A';
 
   return (
-    <div className="bg-n800 border border-white/10 rounded-3xl p-6 flex flex-col h-full">
+    <div className="bg-dash-surface border border-dash-border rounded-3xl p-6 flex flex-col h-full">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-space font-bold text-white flex items-center gap-2">
-          <Activity className="text-accent" /> Activity Timeline
+        <h3 className="text-lg font-space font-bold text-dash-text flex items-center gap-2">
+          <Activity className="text-dash-accent" /> Activity Timeline
         </h3>
-        <Link href="/crm/activity" className="text-xs font-bold text-t4 hover:text-white uppercase tracking-wider transition-colors flex items-center gap-1">
+        <Link href="/crm/activity" className="text-xs font-bold text-dash-textMuted hover:text-dash-text uppercase tracking-wider transition-colors flex items-center gap-1">
           View All <ArrowRight size={14} />
         </Link>
       </div>
 
       <div className="flex-1 overflow-y-auto pr-2 space-y-6 relative custom-scrollbar">
-        <div className="absolute top-0 bottom-0 left-[19px] w-px bg-white/5" />
-        
+        <div className="absolute top-0 bottom-0 left-[19px] w-px bg-dash-border" />
+
         {activities.length === 0 ? (
-          <p className="text-t4 text-sm text-center pt-8">No recent CRM activity.</p>
+          <p className="text-dash-textMuted text-sm text-center pt-8">No recent CRM activity.</p>
         ) : (
           activities.map((item) => {
             const hasUser = !!item.auth_user;
@@ -56,7 +56,7 @@ export function UnifiedActivityFeed({
 
             return (
               <div key={item.id} className="relative flex gap-4">
-                <div className="w-10 h-10 rounded-full bg-n900 border border-white/10 flex items-center justify-center shrink-0 z-10 relative">
+                <div className="w-10 h-10 rounded-full bg-dash-bg border border-dash-border flex items-center justify-center shrink-0 z-10 relative">
                   {getIcon(item.activity_type, item.entity_type)}
                 </div>
                 <div className="pt-1 w-full min-w-0">
@@ -99,37 +99,37 @@ export function UnifiedActivityFeed({
                               </span>
                             </>
                           ) : (
-                            <span className="text-t3">System Workflow</span>
+                            <span className="text-dash-textMuted">System Workflow</span>
                           )}
                         </span>
-                        <span className="text-[10px] text-t4 uppercase tracking-widest font-semibold shrink-0">
+                        <span className="text-[10px] text-dash-textMuted uppercase tracking-widest font-semibold shrink-0">
                           {new Date(item.created_at).toLocaleDateString()}
                         </span>
                       </div>
-                      <p className="text-sm text-white mt-1 font-dm-sans">
+                      <p className="text-sm text-dash-text mt-1 font-dm-sans">
                         {item.content}
                       </p>
-                      
+
                       <div className="mt-2 flex flex-wrap gap-2">
                         {item.entity_type === 'contact' && item.entity_id ? (
                           <Link
                             href={`/contacts/${item.entity_id}`}
-                            className="inline-flex items-center gap-1 bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest text-t4 hover:text-white transition-colors"
+                            className="inline-flex items-center gap-1 bg-dash-border/60 hover:bg-dash-border px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest text-dash-textMuted hover:text-dash-text transition-colors"
                           >
                             <LinkIcon size={10} /> {item.entity_type}
                           </Link>
                         ) : (
-                          <span className="inline-flex items-center gap-1 bg-white/5 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest text-t4">
+                          <span className="inline-flex items-center gap-1 bg-dash-border/60 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest text-dash-textMuted">
                             <LinkIcon size={10} /> {item.entity_type}
                           </span>
                         )}
                         {item.metadata?.channel === 'whatsapp' && (
-                          <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest">
+                          <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest">
                             WhatsApp {item.metadata.destination ? `(${item.metadata.destination})` : ''}
                           </span>
                         )}
                         {item.metadata?.channel === 'email' && (
-                          <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest">
+                          <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-600 border border-amber-500/20 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest">
                             Email {item.metadata.destination ? `(${item.metadata.destination})` : ''}
                           </span>
                         )}
