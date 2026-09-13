@@ -18,6 +18,8 @@ import {
 } from '@/app/actions/telephony';
 import { DashButton } from '@/components/dashboard-ui';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import IvrMenusSection from './IvrMenusSection';
+import CallLogsSection from './CallLogsSection';
 
 const TWILIO_SIGNUP_URL = 'https://www.twilio.com/try-twilio';
 
@@ -213,7 +215,13 @@ export default function PhoneTab() {
         </div>
       )}
 
-      {!loading && twilioConfigured && isAdmin && <NumbersSection />}
+      {!loading && twilioConfigured && isAdmin && (
+        <>
+          <NumbersSection />
+          <IvrMenusSection />
+          <CallLogsSection />
+        </>
+      )}
     </div>
   );
 }

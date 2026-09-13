@@ -42,7 +42,7 @@ export interface ImportableNumber {
   capabilities: { voice?: boolean; sms?: boolean; mms?: boolean };
 }
 
-type TwilioContext = {
+export type TwilioContext = {
   client: any;
   accountSid: string;
   workspaceId: string;
@@ -50,9 +50,10 @@ type TwilioContext = {
   adminClient: ReturnType<typeof createAdminClient>;
 };
 
-// Resolves the caller's workspace + Twilio client in one place. Every action below calls this
-// first — there is no second credential-fetch path anywhere in this file.
-async function getWorkspaceTwilioContext(): Promise<{ data?: TwilioContext; error?: string }> {
+// Resolves the caller's workspace + Twilio client in one place. Every action below — and every
+// Phase 3 IVR action in src/app/actions/ivr.ts — calls this first; there is no second
+// credential-fetch path anywhere in the telephony feature.
+export async function getWorkspaceTwilioContext(): Promise<{ data?: TwilioContext; error?: string }> {
   const { workspaceId, userId } = await requireWorkspaceRole(['admin', 'owner']);
   const adminClient = createAdminClient();
 
@@ -79,7 +80,7 @@ async function getWorkspaceTwilioContext(): Promise<{ data?: TwilioContext; erro
 
 // Maps common Twilio error codes to messages a non-technical admin can act on, instead of
 // surfacing raw Twilio exception text.
-function humanizeTwilioError(err: any): string {
+export function humanizeTwilioError(err: any): string {
   const code = err?.code;
   if (code === 20003 || err?.status === 401) return 'Twilio rejected these credentials. Reconnect your Twilio account in Settings → Phone & IVR.';
   if (code === 21422) return 'That number is no longer available to purchase — please search again.';
