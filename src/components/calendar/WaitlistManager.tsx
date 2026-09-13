@@ -91,7 +91,9 @@ export function WaitlistManager({ initialSession, initialWaitlist, allSessions }
             {s.title}
            </span>
            <span className="text-[10px] !text-dash-textMuted font-bold mt-1">
-            {format(new Date(s.start_time), 'MMM d, HH:mm')}
+            {s.start_time && !isNaN(new Date(s.start_time).getTime())
+              ? format(new Date(s.start_time), 'MMM d, HH:mm')
+              : '—'}
            </span>
          </div>
         </button>
@@ -198,7 +200,9 @@ export function WaitlistManager({ initialSession, initialWaitlist, allSessions }
                   <span className="text-[10px] font-bold text-amber-600">Offer sent</span>
                  </div>
                  <div className="text-[9px] font-bold !text-dash-textMuted tabular-nums font-mono">
-                  Expires: {format(new Date(entry.offer_expires_at), 'HH:mm')}
+                  Expires: {entry.offer_expires_at && !isNaN(new Date(entry.offer_expires_at).getTime())
+                    ? format(new Date(entry.offer_expires_at), 'HH:mm')
+                    : '—'}
                  </div>
                </div>
               ) : (

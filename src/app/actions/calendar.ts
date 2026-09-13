@@ -183,6 +183,7 @@ export async function getWaitlistEntries(appointmentId: string) {
     id,
     position,
     offered_at,
+    offer_expires_at,
     confirmed,
     contacts (id, first_name, last_name, email)
    `)
