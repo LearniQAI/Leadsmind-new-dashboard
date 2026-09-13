@@ -7,6 +7,7 @@ import { getEskomOutages, type OutagePeriod } from '@/lib/calendar/eskomsepush';
 import { getHolidaysInRange } from '@/lib/calendar/saHolidays';
 import { zonedTimeToUtc, isoDateDayOfWeek, formatInTimeZone } from '@/lib/calendar/timezone';
 import { getExternalBusySlots } from '@/lib/calendar/calendarSync';
+import { isGroupSessionType } from '@/lib/calendar/calendarTypes';
 import { logger } from '@/shared/logger';
 
 /**
@@ -408,11 +409,11 @@ export async function getAvailableSlots(calendarId: string, date: string) {
   const startOfDayStr = `${date}T00:00:00Z`;
   const endOfDayStr = `${date}T23:59:59Z`;
 
-  // Group-session (class_booking) calendars: a slot with an existing session is
-  // NOT blocked — it stays bookable until it's at capacity, then it's a
-  // "join waitlist" slot. Every other calendar type: an existing appointment
-  // blocks the slot (1:1).
-  const isClass = calendar.calendar_type === 'class_booking';
+  // Group-session calendars (Class, Webinar) — a slot with an existing
+  // session is NOT blocked — it stays bookable until it's at capacity, then
+  // it's a "join waitlist" slot. Every other calendar type: an existing
+  // appointment blocks the slot (1:1).
+  const isClass = isGroupSessionType(calendar.calendar_type);
 
   const { data: existing } = await supabase
     .from('appointments')

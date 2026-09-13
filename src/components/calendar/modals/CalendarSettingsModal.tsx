@@ -30,12 +30,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { DashButton } from '@/components/dashboard-ui';
 import { Textarea } from '@/components/ui/textarea';
-import { Video, Globe, Users, Loader2, Check, Settings2, Link as LinkIcon, Sparkles } from 'lucide-react';
+import { Video, Globe, Users, Loader2, Check, Settings2, Link as LinkIcon, Sparkles, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { isGroupSessionType, DEFAULT_GROUP_CAPACITY, getCapacityCeilingWarning, type CalendarType } from '@/lib/calendar/calendarTypes';
 
 const calendarSchema = z.object({
   name: z.string().min(3, 'Name must be at least 3 characters'),
-  calendar_type: z.enum(['personal', 'round_robin', 'collective', 'class_booking', 'service_menu', 'event']),
+  calendar_type: z.enum(['personal', 'round_robin', 'collective', 'class_booking', 'service_menu', 'event', 'webinar']),
   meeting_mode: z.enum(['google_meet', 'zoom', 'teams', 'phone', 'in_person', 'custom_link', 'client_choice', 'internal_meet']),
   location: z.string(),
   description: z.string(),
@@ -46,7 +47,7 @@ const calendarSchema = z.object({
 
 interface CalendarFormValues {
   name: string;
-  calendar_type: 'personal' | 'round_robin' | 'collective' | 'class_booking' | 'service_menu' | 'event';
+  calendar_type: CalendarType;
   meeting_mode: 'google_meet' | 'zoom' | 'teams' | 'phone' | 'in_person' | 'custom_link' | 'client_choice' | 'internal_meet';
   location: string;
   description: string;
@@ -125,6 +126,26 @@ export default function CalendarSettingsModal({
   };
 
   const meetingMode = form.watch('meeting_mode');
+  const calendarType = form.watch('calendar_type');
+  const capacity = form.watch('capacity');
+  const isGroupSession = isGroupSessionType(calendarType);
+
+  // Nudge capacity to a sensible default the moment someone switches INTO a
+  // group-session type — Class and Webinar have real, different framing
+  // (small/participatory vs. one host presenting to many) even though they
+  // share the same underlying capacity/waitlist model. Only applied on the
+  // actual transition, so it never fights a value someone already typed.
+  const prevCalendarType = React.useRef(calendarType);
+  useEffect(() => {
+    const prev = prevCalendarType.current;
+    if (prev !== calendarType && isGroupSessionType(calendarType) && !isGroupSessionType(prev)) {
+      const def = DEFAULT_GROUP_CAPACITY[calendarType as CalendarType];
+      if (def) form.setValue('capacity', def);
+    }
+    prevCalendarType.current = calendarType;
+  }, [calendarType, form]);
+
+  const capacityWarning = getCapacityCeilingWarning(calendarType, meetingMode, capacity);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -174,6 +195,7 @@ export default function CalendarSettingsModal({
                         <SelectItem value="round_robin">Round Robin (Team)</SelectItem>
                         <SelectItem value="collective">Collective Booking</SelectItem>
                         <SelectItem value="class_booking">Class/Group</SelectItem>
+                        <SelectItem value="webinar">Webinar</SelectItem>
                       </SelectContent>
                     </Select>
                   </FormItem>
@@ -270,24 +292,47 @@ export default function CalendarSettingsModal({
               )}
             />
 
-            {/* Group-session capacity + waitlist — only for Class/Group engines */}
-            {form.watch('calendar_type') === 'class_booking' && (
+            {/* Group-session capacity + waitlist — Class and Webinar share this
+                same real model (capacity cap, atomic booking-or-waitlist,
+                per-attendee records) — see docs/calendar-webinar-feature.md. */}
+            {isGroupSession && (
               <div className="rounded-xl border border-dash-border bg-dash-surface/50 p-4 space-y-4">
                 <FormField
                   control={form.control}
                   name="capacity"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-[11px] font-bold !text-dash-textMuted">Spots per session</FormLabel>
+                      <FormLabel className="text-[11px] font-bold !text-dash-textMuted">
+                        {calendarType === 'webinar' ? 'Attendees per webinar' : 'Spots per session'}
+                      </FormLabel>
                       <FormControl>
-                        <Input type="number" min={1} {...field} className="bg-white border-dash-border !text-dash-text h-11" placeholder="e.g. 12" />
+                        <Input
+                          type="number"
+                          min={1}
+                          {...field}
+                          className="bg-white border-dash-border !text-dash-text h-11"
+                          placeholder={calendarType === 'webinar' ? 'e.g. 100' : 'e.g. 12'}
+                        />
                       </FormControl>
                       <FormDescription className="text-[10px] !text-dash-textMuted">
-                        How many people can book each session before it&apos;s full.
+                        How many people can book each {calendarType === 'webinar' ? 'webinar' : 'session'} before it&apos;s full.
                       </FormDescription>
                     </FormItem>
                   )}
                 />
+
+                {/* Step 1.3 finding, surfaced honestly: our Google Meet/Zoom/Teams
+                    integrations create standard meeting links, not the providers'
+                    separate large-scale webinar/broadcast products — a high
+                    capacity with one of those modes selected may promise more
+                    seats than the real connected account can hold. */}
+                {capacityWarning && (
+                  <div className="flex items-start gap-2.5 rounded-lg border border-amber/30 bg-amber/5 p-3">
+                    <AlertTriangle size={15} className="text-amber shrink-0 mt-0.5" />
+                    <p className="text-[11px] leading-relaxed text-amber">{capacityWarning}</p>
+                  </div>
+                )}
+
                 <FormField
                   control={form.control}
                   name="waitlist_enabled"
@@ -304,7 +349,7 @@ export default function CalendarSettingsModal({
                       <div>
                         <FormLabel className="text-[11px] font-bold !text-dash-text cursor-pointer">Enable waitlist</FormLabel>
                         <FormDescription className="text-[10px] !text-dash-textMuted">
-                          When a session is full, visitors can join a waitlist and are offered a spot (first come, first served) if one opens.
+                          When a {calendarType === 'webinar' ? 'webinar' : 'session'} is full, visitors can join a waitlist and are offered a spot (first come, first served) if one opens.
                         </FormDescription>
                       </div>
                     </FormItem>

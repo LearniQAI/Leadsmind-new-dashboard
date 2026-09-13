@@ -4,8 +4,9 @@ import RoundRobinPoolModal from '../modals/RoundRobinPoolModal';
 import ResourceManagerModal from '../modals/ResourceManagerModal';
 import { createCalendar, updateCalendar } from '@/app/actions/calendar/calendars';
 import { toast } from 'sonner';
-import { Building2, Copy, Eye, LayoutGrid, MoreVertical, User, Users, Zap } from 'lucide-react';
+import { Building2, Copy, Eye, GraduationCap, LayoutGrid, MoreVertical, Presentation, User, Users, Zap } from 'lucide-react';
 import { DashButton } from '@/components/dashboard-ui';
+import { getCalendarTypeLabel } from '@/lib/calendar/calendarTypes';
 
 interface CalendarPagesViewProps {
   calendars: any[];
@@ -55,6 +56,8 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
       case 'personal': return <User size={18} />;
       case 'round_robin': return <Zap size={18} />;
       case 'collective': return <Users size={18} />;
+      case 'class_booking': return <GraduationCap size={18} />;
+      case 'webinar': return <Presentation size={18} />;
       default: return <LayoutGrid size={18} />;
     }
   };
@@ -82,8 +85,8 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <h3 className="text-[16px] font-bold !text-dash-text">{cal.name}</h3>
-                  <p className="text-[11px] font-bold !text-dash-textMuted mt-1 capitalize">
-                    {cal.calendar_type.replace('_', ' ')} engine
+                  <p className="text-[11px] font-bold !text-dash-textMuted mt-1">
+                    {getCalendarTypeLabel(cal.calendar_type)} engine
                   </p>
                 </div>
                 <button

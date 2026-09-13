@@ -7,6 +7,7 @@
 // only surfaces common deductible-expense KEYWORDS for the user/their accountant to review.
 import OpenAI from 'openai';
 import { runCreditGuard, consumeAICredit } from '@/lib/ai/creditGuard';
+import { logger } from '@/shared/logger';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -14,6 +15,20 @@ export interface ExtractedTransaction {
   date: string; // YYYY-MM-DD
   description: string;
   amount: number; // negative = debit/expense, positive = credit/income
+}
+
+/**
+ * Validates a model-reported currency as a real ISO 4217 alphabetic code (e.g. "PKR", "ZAR",
+ * "USD") — three uppercase letters, nothing else. The model is asked to read this literally
+ * off the statement (currency symbols like "Rs"/"₨"/"R", explicit codes, or the issuing
+ * bank/country), which is real signal a fixed assumption never had access to. Only when that
+ * signal is genuinely absent (null, garbled, or not a plausible code) do we fall back to ZAR —
+ * this app's documented default market (see supabase/migrations/20260818000000_fix_invoices_
+ * currency_default.sql) — as a last resort, never as the starting assumption.
+ */
+export function resolveDocumentCurrency(detected: string | null | undefined): string {
+  const code = (detected || '').trim().toUpperCase();
+  return /^[A-Z]{3}$/.test(code) ? code : 'ZAR';
 }
 
 /**
@@ -143,7 +158,7 @@ export function suggestTaxDeductionAccountCode(description: string): string | nu
 export async function structureTransactionsFromText(
   rawText: string,
   accounts: Array<{ code: string; name: string; type: string }>
-): Promise<{ transactions: (ExtractedTransaction & { suggestedAccountCode: string | null; dateNeedsReview?: boolean })[]; periodStart: string | null; periodEnd: string | null }> {
+): Promise<{ transactions: (ExtractedTransaction & { suggestedAccountCode: string | null; dateNeedsReview?: boolean })[]; periodStart: string | null; periodEnd: string | null; currency: string }> {
   const accountList = accounts.map(a => `${a.code} — ${a.name} (${a.type})`).join('\n');
 
   const completion = await openai.chat.completions.create({
@@ -154,8 +169,9 @@ export async function structureTransactionsFromText(
         role: 'system',
         content:
           'You convert raw, messily-extracted bank statement text into structured transaction rows. ' +
-          'Return JSON: {"periodStart": "YYYY-MM-DD" | null, "periodEnd": "YYYY-MM-DD" | null, "transactions": [{"date": "YYYY-MM-DD", "description": string, "amount": number (negative for money out/debit, positive for money in/credit), "suggestedAccountCode": string | null}]}. ' +
+          'Return JSON: {"periodStart": "YYYY-MM-DD" | null, "periodEnd": "YYYY-MM-DD" | null, "currency": "XXX" | null, "transactions": [{"date": "YYYY-MM-DD", "description": string, "amount": number (negative for money out/debit, positive for money in/credit), "suggestedAccountCode": string | null}]}. ' +
           'periodStart/periodEnd are the statement\'s own stated date range, read literally from the text. ' +
+          '"currency" is the REAL ISO 4217 3-letter code (e.g. ZAR, PKR, USD, GBP) for the currency this statement is actually denominated in — read it from any currency symbol, code, or explicit label in the text (e.g. "R", "Rs", "₨", "PKR", "$"), or infer it from the issuing bank/account details if named. A statement is a single currency throughout. Return null only if there is truly no signal at all — never guess or default to any particular currency. ' +
           'Only include real transaction line items — never opening/closing balance lines. ' +
           'For suggestedAccountCode, pick the single closest match from this exact list of the workspace\'s real accounts (use the code exactly as given, or null if nothing fits):\n' +
           accountList,
@@ -169,11 +185,12 @@ export async function structureTransactionsFromText(
   try {
     parsed = JSON.parse(raw);
   } catch {
-    return { transactions: [], periodStart: null, periodEnd: null };
+    return { transactions: [], periodStart: null, periodEnd: null, currency: resolveDocumentCurrency(null) };
   }
 
   const periodStart: string | null = parsed.periodStart || null;
   const periodEnd: string | null = parsed.periodEnd || null;
+  const currency = resolveDocumentCurrency(parsed.currency);
   const rawTransactions = Array.isArray(parsed.transactions) ? parsed.transactions : [];
 
   // Same deterministic year-correction safety net as the vision path — text-layer dates are
@@ -184,7 +201,7 @@ export async function structureTransactionsFromText(
     return { ...t, date: resolved.date, dateNeedsReview: resolved.needsReview };
   });
 
-  return { transactions, periodStart, periodEnd };
+  return { transactions, periodStart, periodEnd, currency };
 }
 
 /** Vision extraction for a scanned/photographed statement image — reused, productionized version of the Session A spike, now with per-row account suggestion from the workspace's real chart of accounts. */
@@ -192,7 +209,7 @@ export async function structureTransactionsFromImage(
   imageBase64: string,
   mimeType: string,
   accounts: Array<{ code: string; name: string; type: string }>
-): Promise<{ transactions: (ExtractedTransaction & { suggestedAccountCode: string | null; dateNeedsReview?: boolean })[]; periodStart: string | null; periodEnd: string | null }> {
+): Promise<{ transactions: (ExtractedTransaction & { suggestedAccountCode: string | null; dateNeedsReview?: boolean })[]; periodStart: string | null; periodEnd: string | null; currency: string }> {
   const accountList = accounts.map(a => `${a.code} — ${a.name} (${a.type})`).join('\n');
 
   const completion = await openai.chat.completions.create({
@@ -202,8 +219,9 @@ export async function structureTransactionsFromImage(
       {
         role: 'system',
         content:
-          'You extract bank statement transactions from an image. Return JSON: {"periodStart": "YYYY-MM-DD" | null, "periodEnd": "YYYY-MM-DD" | null, "transactions": [{"date": "YYYY-MM-DD", "description": string, "amount": number (negative for debit/money out, positive for credit/money in), "suggestedAccountCode": string | null}]}. ' +
+          'You extract bank statement transactions from an image. Return JSON: {"periodStart": "YYYY-MM-DD" | null, "periodEnd": "YYYY-MM-DD" | null, "currency": "XXX" | null, "transactions": [{"date": "YYYY-MM-DD", "description": string, "amount": number (negative for debit/money out, positive for credit/money in), "suggestedAccountCode": string | null}]}. ' +
           'periodStart/periodEnd are the statement\'s own stated date range from its header (read it literally, do not infer) — this is used to correct row dates that only show day/month, so get it right even if you are unsure about individual row years. ' +
+          '"currency" is the REAL ISO 4217 3-letter code (e.g. ZAR, PKR, USD, GBP) this statement is actually denominated in — read it from any currency symbol, code, or label visible in the image (e.g. "R", "Rs", "₨", "PKR", "$"), or infer it from the issuing bank/account details shown. A statement is a single currency throughout. Return null only if there is truly no visible signal — never guess or default to any particular currency. ' +
           'For each transaction date, use your best guess at the year if not explicit on that row. Only include real transaction rows, never opening/closing balance lines. ' +
           'For suggestedAccountCode, pick the closest match from this exact list of the workspace\'s real accounts (use the code exactly as given, or null if nothing fits):\n' +
           accountList,
@@ -211,7 +229,7 @@ export async function structureTransactionsFromImage(
       {
         role: 'user',
         content: [
-          { type: 'text', text: 'Extract every transaction row from this bank statement image, plus the statement\'s own period (periodStart/periodEnd) from its header.' },
+          { type: 'text', text: 'Extract every transaction row from this bank statement image, plus the statement\'s own period (periodStart/periodEnd) and currency from its header.' },
           { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}` } },
         ] as any,
       },
@@ -223,11 +241,12 @@ export async function structureTransactionsFromImage(
   try {
     parsed = JSON.parse(raw);
   } catch {
-    return { transactions: [], periodStart: null, periodEnd: null };
+    return { transactions: [], periodStart: null, periodEnd: null, currency: resolveDocumentCurrency(null) };
   }
 
   const periodStart: string | null = parsed.periodStart || null;
   const periodEnd: string | null = parsed.periodEnd || null;
+  const currency = resolveDocumentCurrency(parsed.currency);
   const rawTransactions = Array.isArray(parsed.transactions) ? parsed.transactions : [];
 
   // The model's own per-row year guess is unreliable when a row shows no explicit year
@@ -239,7 +258,7 @@ export async function structureTransactionsFromImage(
     return { ...t, date: resolved.date, dateNeedsReview: resolved.needsReview };
   });
 
-  return { transactions, periodStart, periodEnd };
+  return { transactions, periodStart, periodEnd, currency };
 }
 
 export async function extractReceiptFromImage(imageBase64: string, mimeType: string): Promise<ExtractedReceipt> {
@@ -294,17 +313,22 @@ export async function insertTransactionsWithFlags(
   workspaceId: string,
   documentId: string,
   transactions: (ExtractedTransaction & { suggestedAccountCode: string | null; dateNeedsReview?: boolean })[],
-  accounts: Array<{ id: string; code: string }>
+  accounts: Array<{ id: string; code: string }>,
+  currency: string = 'ZAR'
 ) {
   const accountByCode = new Map(accounts.map(a => [a.code, a.id]));
 
-  // Baseline for the "unusually large" check, computed before this batch is inserted.
+  // Baseline for the "unusually large" check, computed before this batch is inserted. Scoped
+  // to the same currency as this batch — comparing a PKR amount against a ZAR median (or vice
+  // versa) would flag almost everything as "unusual" purely from the exchange-rate gap, not
+  // from any real anomaly.
   const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const { data: recentTx } = await admin
     .from('accounting_transactions')
     .select('total_amount')
     .eq('workspace_id', workspaceId)
     .eq('source_type', 'bank_feed')
+    .eq('currency', currency)
     .gte('date', ninetyDaysAgo);
   const magnitudes = (recentTx || []).map((t: any) => Math.abs(Number(t.total_amount))).sort((a, b) => a - b);
   const median = magnitudes.length ? magnitudes[Math.floor(magnitudes.length / 2)] : 0;
@@ -314,7 +338,19 @@ export async function insertTransactionsWithFlags(
   for (const tx of transactions) {
     if (!tx.date || typeof tx.amount !== 'number' || Number.isNaN(tx.amount)) continue;
 
-    // Duplicate check — same workspace, same amount, description overlap, within 3 days.
+    try {
+    // Real-world statement extraction (unlike the clean synthetic fixtures this was built
+    // against) can legitimately hand back a row with no usable description — an ambiguous
+    // or garbled line in the source text/image. Normalize it once here instead of trusting
+    // every downstream `.toLowerCase()` call to have a string; a missing description is a
+    // review-worthy oddity, never a reason to crash the whole batch.
+    const description = typeof tx.description === 'string' && tx.description.length > 0
+      ? tx.description
+      : 'Uncategorized transaction (description not extracted)';
+
+    // Duplicate check — same workspace, same currency, same amount, description overlap,
+    // within 3 days. Currency-scoped for the same reason as the anomaly baseline: "500" in two
+    // different currencies is not the same amount and must never be flagged as a duplicate.
     const dateObj = new Date(tx.date);
     const windowStart = new Date(dateObj.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const windowEnd = new Date(dateObj.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -322,16 +358,17 @@ export async function insertTransactionsWithFlags(
       .from('accounting_transactions')
       .select('id, description, total_amount')
       .eq('workspace_id', workspaceId)
+      .eq('currency', currency)
       .eq('total_amount', tx.amount)
       .gte('date', windowStart)
       .lte('date', windowEnd);
     const isDuplicate = (candidates || []).some((c: any) =>
-      c.description?.toLowerCase().includes(tx.description.toLowerCase().slice(0, 15)) ||
-      tx.description.toLowerCase().includes((c.description || '').toLowerCase().slice(0, 15))
+      c.description?.toLowerCase().includes(description.toLowerCase().slice(0, 15)) ||
+      description.toLowerCase().includes((c.description || '').toLowerCase().slice(0, 15))
     );
 
     const isLarge = Math.abs(tx.amount) > largeThreshold;
-    const taxCode = suggestTaxDeductionAccountCode(tx.description);
+    const taxCode = suggestTaxDeductionAccountCode(description);
     const accountCode = tx.suggestedAccountCode || taxCode;
     const accountId = accountCode ? accountByCode.get(accountCode) || null : null;
 
@@ -347,12 +384,12 @@ export async function insertTransactionsWithFlags(
       .insert({
         workspace_id: workspaceId,
         date: tx.date,
-        description: tx.description,
+        description,
         reference: `doc-${documentId}-${inserted.length}`,
         source_type: 'bank_feed',
         document_id: documentId,
         total_amount: tx.amount,
-        currency: 'ZAR',
+        currency,
         account_id: accountId,
         category_source: accountId ? 'ai_suggested' : 'manual',
         is_duplicate_flag: isDuplicate,
@@ -363,6 +400,13 @@ export async function insertTransactionsWithFlags(
       .select()
       .single();
     if (!error && row) inserted.push(row);
+    } catch (err) {
+      // One malformed/unexpected row must never sink the whole statement — every other
+      // transaction in this batch may have parsed and inserted fine. Skip it and keep going;
+      // the row simply won't appear (same visible effect as any other extraction miss),
+      // instead of failing the entire document with a raw stack-trace error message.
+      logger.error({ tx, err }, 'finance.bookkeeping.transaction_row.skipped');
+    }
   }
 
   // Coverage-gap check: any of the last 3 full calendar months with zero bank_feed rows.

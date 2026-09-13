@@ -243,7 +243,7 @@ export async function advanceExpiredWaitlistOffers(): Promise<{ appointmentsScan
 // ---------------------------------------------------------------------------
 // Per-attendee records (migration 20260910000000).
 //
-// A booked class-session attendee is a `booking_waitlists` row with
+// A booked group-session (Class or Webinar) attendee is a `booking_waitlists` row with
 // confirmed = true, position IS NULL, cancelled_at IS NULL — created atomically
 // by fn_secure_booking_or_waitlist's "booked" branch. Each attendee manages
 // ONLY their own row, via the same waitlistToken scoped to booking_waitlists.id.
@@ -295,7 +295,7 @@ export async function getAttendeeRecord(recordId: string): Promise<AttendeeRecor
  * itself is unaffected and every other attendee keeps their spot.
  *
  * `skipWindow` bypasses the calendar's cancellation-window lock — used only by
- * cancelClassSession (a host cancelling the whole session).
+ * cancelGroupSession (a host cancelling the whole session).
  */
 export async function cancelAttendeeSpot(
   recordId: string,
@@ -384,7 +384,7 @@ export async function cancelAttendeeSpot(
  * flip appointments.status; the caller (deleteAppointment / updateAppointment /
  * updateAppointmentStatus) owns that.
  */
-export async function cancelClassSession(appointmentId: string): Promise<void> {
+export async function cancelGroupSession(appointmentId: string): Promise<void> {
   const supabase = createAdminClient();
 
   const { data: apt } = await supabase

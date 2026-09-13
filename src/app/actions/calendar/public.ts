@@ -11,6 +11,7 @@ import { isSlotConflictError, SLOT_CONFLICT_MESSAGE } from '@/lib/calendar/booki
 import { sendBookingConfirmation } from '@/lib/calendar/notifications';
 import { resolveMeetingLink, applyResolvedMeetingLink } from '@/lib/calendar/meetingLink';
 import { sendWaitlistJoinAck } from '@/lib/calendar/waitlist';
+import { isGroupSessionType } from '@/lib/calendar/calendarTypes';
 import { logger } from '@/shared/logger';
 
 /**
@@ -212,15 +213,17 @@ export async function fetchPublicSlots(calendarId: string, date: string) {
 }
 
 /**
- * Public action for a group-session (class_booking) calendar: reserve a spot
- * for a given session time, or — if that session is full and the calendar has
- * a waitlist — join the waitlist. Reuses the existing fn_secure_booking_or_waitlist
- * DB function (atomic capacity check + first-come-first-served waitlist insert)
- * rather than reimplementing that logic.
+ * Public action for a group-session calendar (Class or Webinar): reserve a
+ * spot for a given session time, or — if that session is full and the
+ * calendar has a waitlist — join the waitlist. Reuses the existing
+ * fn_secure_booking_or_waitlist DB function (atomic capacity check +
+ * first-come-first-served waitlist insert) rather than reimplementing that
+ * logic. Real, shared infrastructure for both types — see
+ * docs/calendar-webinar-feature.md for the Class-vs-Webinar decision.
  *
  * Returns { success, mode: 'booked' | 'waitlist', position? }.
  */
-export async function bookClassSession(
+export async function bookGroupSession(
   calendarId: string,
   slot: string,
   leadData: {
@@ -245,7 +248,7 @@ export async function bookClassSession(
     .eq('id', calendarId)
     .single();
   if (calError || !calendar) return { success: false, error: 'Calendar configuration not found' };
-  if (calendar.calendar_type !== 'class_booking') {
+  if (!isGroupSessionType(calendar.calendar_type)) {
     return { success: false, error: 'This is not a group-session calendar.' };
   }
 
@@ -309,7 +312,7 @@ export async function bookClassSession(
       .single();
 
     if (createErr || !created) {
-      logger.error({ err: createErr, calendarId }, 'calendar.class_booking.session_create.failed');
+      logger.error({ err: createErr, calendarId }, 'calendar.group_session.session_create.failed');
       return { success: false, error: 'Failed to reserve your spot' };
     }
 
@@ -322,7 +325,7 @@ export async function bookClassSession(
       p_contact_id: contact.id,
     });
     if (firstRpcErr || !firstRpc?.success) {
-      logger.error({ err: firstRpcErr, appointmentId: created.id }, 'calendar.class_booking.first_attendee.failed');
+      logger.error({ err: firstRpcErr, appointmentId: created.id }, 'calendar.group_session.first_attendee.failed');
       return { success: false, error: 'Failed to reserve your spot' };
     }
 
@@ -352,7 +355,7 @@ export async function bookClassSession(
         attendeeRecordId: firstRpc.attendee_id,
       });
     } catch (e) {
-      logger.error({ err: e, appointmentId: created.id }, 'calendar.class_booking.confirmation_email.failed');
+      logger.error({ err: e, appointmentId: created.id }, 'calendar.group_session.confirmation_email.failed');
     }
     return { success: true, mode: 'booked' as const, appointmentId: created.id };
   }
@@ -388,7 +391,7 @@ export async function bookClassSession(
   try {
     await sendWaitlistJoinAck(session.id, contact.id, rpc.position);
   } catch (e) {
-    logger.error({ err: e, appointmentId: session.id }, 'calendar.class_booking.waitlist_ack_email.failed');
+    logger.error({ err: e, appointmentId: session.id }, 'calendar.group_session.waitlist_ack_email.failed');
   }
   return { success: true, mode: 'waitlist' as const, position: rpc.position };
 }

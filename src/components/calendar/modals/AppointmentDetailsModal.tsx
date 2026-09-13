@@ -23,6 +23,7 @@ import {
   Building2
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { getCalendarTypeLabel } from '@/lib/calendar/calendarTypes';
 
 interface AppointmentDetailsModalProps {
   isOpen: boolean;
@@ -52,7 +53,7 @@ export default function AppointmentDetailsModal({
         <DialogHeader>
           <div className="flex items-center gap-2 mb-1">
             <span className="px-2 py-0.5 rounded-full bg-dash-accent/10 text-dash-accent text-[10px] font-bold border border-dash-accent/20">
-              {appointment.calendar?.calendar_type || 'Booking'}
+              {getCalendarTypeLabel(appointment.calendar?.calendar_type)}
             </span>
             {appointment.series_id && (
               <span className="px-2 py-0.5 rounded-full bg-dash-surface text-dash-textMuted text-[10px] font-bold border border-dash-border flex items-center gap-1">

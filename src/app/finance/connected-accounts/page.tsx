@@ -453,7 +453,7 @@ export default function ConnectedAccountsPage() {
           </p>
           <p className="text-[12px] max-w-sm !text-dash-textMuted">
             Bank statements, receipts, invoices, or prior financial records — LeadsMind's AI will organize and analyze them for you.
-            Works with any SA bank. Accepts CSV, XLSX, PDF, JPG, and PNG.
+            Works with statements from any bank, any country. Accepts CSV, XLSX, PDF, JPG, and PNG.
           </p>
           <input
             ref={fileInputRef}

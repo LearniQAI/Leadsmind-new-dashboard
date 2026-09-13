@@ -22,9 +22,18 @@ export async function generateBookkeepingReportExcel(data: BookkeepingReportData
   summarySheet.addRow(['Document', data.document.file_name]);
   summarySheet.addRow(['Generated', new Date().toLocaleDateString('en-ZA')]);
   summarySheet.addRow([]);
-  summarySheet.addRow(['Total Income', data.summary.totalIncome]);
-  summarySheet.addRow(['Total Expenses', data.summary.totalExpenses]);
-  summarySheet.addRow(['Net', data.summary.net]);
+  if (!data.summary.mixedCurrencies) {
+    summarySheet.addRow([`Total Income (${data.summary.currency || 'ZAR'})`, data.summary.totalIncome]);
+    summarySheet.addRow([`Total Expenses (${data.summary.currency || 'ZAR'})`, data.summary.totalExpenses]);
+    summarySheet.addRow([`Net (${data.summary.currency || 'ZAR'})`, data.summary.net]);
+  } else {
+    summarySheet.addRow(['Multiple currencies', 'Totals shown separately per currency below — a combined total would be meaningless.']);
+    for (const c of data.summary.byCurrency) {
+      summarySheet.addRow([`Total Income (${c.currency})`, c.totalIncome]);
+      summarySheet.addRow([`Total Expenses (${c.currency})`, c.totalExpenses]);
+      summarySheet.addRow([`Net (${c.currency})`, c.net]);
+    }
+  }
   summarySheet.addRow(['Transactions', data.summary.transactionCount]);
   summarySheet.addRow(['Possible Duplicates', data.summary.duplicateCount]);
   summarySheet.addRow(['Unusual/Anomaly Flags', data.summary.anomalyCount]);
@@ -35,7 +44,8 @@ export async function generateBookkeepingReportExcel(data: BookkeepingReportData
     { header: 'Date', key: 'date', width: 14 },
     { header: 'Description', key: 'description', width: 40 },
     { header: 'Category', key: 'category', width: 26 },
-    { header: 'Amount (ZAR)', key: 'amount', width: 14 },
+    { header: 'Amount', key: 'amount', width: 14 },
+    { header: 'Currency', key: 'currency', width: 10 },
     { header: 'Possible Duplicate', key: 'dup', width: 16 },
     { header: 'Unusual', key: 'anom', width: 12 },
     { header: 'Tax Candidate', key: 'tax', width: 14 },
@@ -47,6 +57,7 @@ export async function generateBookkeepingReportExcel(data: BookkeepingReportData
       description: t.description,
       category: t.account ? `${t.account.code} ${t.account.name}` : '',
       amount: t.total_amount,
+      currency: t.currency || 'ZAR',
       dup: t.is_duplicate_flag ? 'Yes' : '',
       anom: t.is_anomaly_flag ? 'Yes' : '',
       tax: t.tax_deduction_candidate ? 'Yes' : '',
@@ -58,7 +69,7 @@ export async function generateBookkeepingReportExcel(data: BookkeepingReportData
     receiptSheet.columns = [
       { header: 'Vendor', key: 'vendor', width: 30 },
       { header: 'Date', key: 'date', width: 14 },
-      { header: 'Amount (ZAR)', key: 'amount', width: 14 },
+      { header: 'Amount', key: 'amount', width: 14 },
       { header: 'Matched to bank transaction?', key: 'matched', width: 26 },
     ];
     receiptSheet.getRow(1).font = { bold: true };

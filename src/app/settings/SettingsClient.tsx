@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Globe, Users, Code2, CreditCard, ShieldCheck, Zap, Activity, FileSignature, Target, BarChart3, TrendingUp, Settings as SettingsIcon, Sparkles, Brain, Mail, Wallet
+  Globe, Users, Code2, CreditCard, ShieldCheck, Zap, Activity, FileSignature, Target, BarChart3, TrendingUp, Settings as SettingsIcon, Sparkles, Brain, Mail, Wallet, Phone
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -36,6 +36,7 @@ import CustomDomainsTab from './components/tabs/CustomDomainsTab';
 import AiTab from './components/tabs/AiTab';
 import AiCreditsTab from './components/tabs/AiCreditsTab';
 import EmailProviderTab from './components/tabs/EmailProviderTab';
+import PhoneTab from './components/tabs/PhoneTab';
 
 // Modals
 import InviteModal from './components/modals/InviteModal';
@@ -130,6 +131,7 @@ export default function SettingsClient({
         { id: 'custom-domains', label: 'Custom Domains', icon: Globe, description: 'Connect a domain for this workspace' },
         { id: 'email-provider', label: 'Email Provider', icon: Mail, description: 'Custom transactional email gateway' },
         { id: 'seo', label: 'SEO Settings', icon: TrendingUp, description: 'Google Search Console sync' },
+        { id: 'phone', label: 'Phone & IVR', icon: Phone, description: 'Connect your Twilio account for calling and numbers' },
       ],
     },
     {
@@ -546,6 +548,7 @@ export default function SettingsClient({
           {activeTab === 'domains' && <DomainsTab />}
           {activeTab === 'custom-domains' && <CustomDomainsTab workspaceId={branding?.workspace_id} />}
           {activeTab === 'email-provider' && <EmailProviderTab workspaceId={branding?.workspace_id} />}
+          {activeTab === 'phone' && <PhoneTab />}
         </div>
       </div>
 

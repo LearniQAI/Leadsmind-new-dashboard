@@ -5,7 +5,7 @@ import { Calendar, LayoutGrid, List, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type CalendarView = 'month' | 'week' | 'day' | 'list' | 'pages';
-export type CalendarTypeFilter = 'all' | 'personal' | 'round_robin' | 'collective' | 'class_booking';
+export type CalendarTypeFilter = 'all' | 'personal' | 'round_robin' | 'collective' | 'class_booking' | 'webinar';
 
 interface CalendarToolbarProps {
   activeView: CalendarView;
@@ -29,6 +29,7 @@ export default function CalendarToolbar({ activeView, onViewChange, activeFilter
     { id: 'round_robin', label: 'Round robin' },
     { id: 'collective', label: 'Collective' },
     { id: 'class_booking', label: 'Class' },
+    { id: 'webinar', label: 'Webinar' },
   ];
 
   return (
