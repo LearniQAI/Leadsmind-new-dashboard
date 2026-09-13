@@ -2,22 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 import { resolveHost } from '@/lib/domains/resolve'
 import { createAdminClient } from '@/lib/supabase/server'
+import { PLATFORM_HOSTS } from '@/lib/domains/platformHosts'
 
 // Never rewritten to course-serving on a custom domain, even though they're a single path
 // segment — real app-internal paths that could in principle be requested against a custom
 // domain host (e.g. a same-origin fetch that didn't get proxied correctly) must never be
 // swallowed by the course lookup.
 const RESERVED_ROOT_PATHS = new Set(['api', '_next', 'favicon.ico', 'book'])
-
-const PLATFORM_HOSTS = new Set([
-  'leadsmind.com',
-  'www.leadsmind.com',
-  'app.leadsmind.com',
-  'leadsmind.io',
-  'www.leadsmind.io',
-  'app.leadsmind.io',
-  'localhost'
-])
 
 export async function middleware(request: NextRequest) {
   const host = (request.headers.get('host') || '').split(':')[0].toLowerCase()

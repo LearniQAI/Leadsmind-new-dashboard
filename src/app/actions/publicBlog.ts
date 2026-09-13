@@ -1,9 +1,22 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 import { resolvePublicBlogWorkspaceId } from '@/lib/blog/publicWorkspace';
+import { isPlatformDefaultHost } from '@/lib/domains/platformHosts';
+
+/**
+ * True only for a request against the platform's own bare domain (leadsmind.io/.com, www.*,
+ * app.*, localhost) — never for an unresolved/misconfigured custom domain or subdomain, which
+ * must keep failing closed exactly as before.
+ */
+async function isRequestOnPlatformDefaultHost(): Promise<boolean> {
+  const requestHeaders = await headers();
+  const host = requestHeaders.get('x-forwarded-host') || requestHeaders.get('host');
+  return isPlatformDefaultHost(host);
+}
 
 /**
  * Fetch all published blog posts for the tenant serving this request.
@@ -13,8 +26,14 @@ export async function getPublicBlogPosts(filters?: { categoryId?: string; search
   try {
     const supabase = await createServerClient();
     const workspaceId = await resolvePublicBlogWorkspaceId();
-    if (!workspaceId) return { data: [] };
-    
+    // No tenant host resolved. On the platform's OWN bare domain, fall back to a global
+    // (cross-workspace) published-posts listing rather than an empty page — mirrors the
+    // existing default-domain fallback courses already have in middleware.ts, which blog
+    // posts never got. Any other unresolved host (a misconfigured/unverified custom domain)
+    // still fails closed to an empty list, unchanged.
+    const isDefaultHost = !workspaceId && (await isRequestOnPlatformDefaultHost());
+    if (!workspaceId && !isDefaultHost) return { data: [] };
+
     let query = supabase
       .from('blog_posts')
       .select(`
@@ -24,7 +43,7 @@ export async function getPublicBlogPosts(filters?: { categoryId?: string; search
       `)
       .eq('status', 'published');
 
-    query = query.eq('workspace_id', workspaceId);
+    if (workspaceId) query = query.eq('workspace_id', workspaceId);
     if (filters?.categoryId) {
       query = query.eq('category_id', filters.categoryId);
     }
@@ -96,7 +115,24 @@ export async function getPublicBlogPost(slug: string, preview = false) {
     }
 
     const workspaceId = await resolvePublicBlogWorkspaceId();
-    if (!workspaceId) return { data: null };
+    if (!workspaceId) {
+      // Same default-domain fallback as getPublicBlogPosts above — a global-by-slug lookup
+      // among PUBLISHED posts only, so this can never leak draft/unpublished content across
+      // tenants (that IDOR class is specifically what the preview branch above already
+      // guards against separately). This is exactly as public as any other published,
+      // publicly-linkable post already is; it's just no longer scoped to one workspace_id.
+      if (!(await isRequestOnPlatformDefaultHost())) return { data: null };
+
+      const { data: fallbackPost, error: fallbackError } = await supabase
+        .from('blog_posts')
+        .select(selectShape)
+        .eq('slug', slug)
+        .eq('status', 'published')
+        .limit(1)
+        .maybeSingle();
+      if (fallbackError) throw fallbackError;
+      return { data: fallbackPost };
+    }
 
     const { data, error } = await supabase
       .from('blog_posts')
