@@ -158,6 +158,10 @@ export default function CalendarClient({
 
   const hasCalendars = initialCalendars.length > 0;
 
+  const filteredAppointments = activeFilter === 'all'
+    ? initialAppointments
+    : initialAppointments.filter((a) => a.calendar?.calendar_type === activeFilter);
+
   return (
     <div className="max-w-[1600px] mx-auto px-6 py-6">
       {/* 1. Header Section */}
@@ -168,7 +172,7 @@ export default function CalendarClient({
       />
 
       {/* 2. Stats Section (Only if calendars exist) */}
-      {hasCalendars && <CalendarStats appointments={initialAppointments} />}
+      {hasCalendars && <CalendarStats appointments={filteredAppointments} />}
 
       {/* 3. Toolbar Section */}
       <CalendarToolbar
@@ -186,20 +190,20 @@ export default function CalendarClient({
           <div className="space-y-6">
             {/* View Orchestration */}
             {activeView === 'month' && (
-               <CalendarMonthView 
-                 appointments={initialAppointments} 
+               <CalendarMonthView
+                 appointments={filteredAppointments}
                  onDayClick={handleDayClick}
                  onAppointmentClick={handleAppointmentClick}
                />
             )}
             {activeView === 'week' && (
-               <CalendarWeekView appointments={initialAppointments} />
+               <CalendarWeekView appointments={filteredAppointments} />
             )}
             {activeView === 'day' && (
-               <CalendarDayView appointments={initialAppointments} />
+               <CalendarDayView appointments={filteredAppointments} />
             )}
             {activeView === 'list' && (
-               <CalendarListView appointments={initialAppointments} />
+               <CalendarListView appointments={filteredAppointments} />
             )}
             {activeView === 'pages' && (
                <CalendarPagesView

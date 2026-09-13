@@ -186,8 +186,8 @@ export function WaitlistManager({ initialSession, initialWaitlist, allSessions }
              </td>
              <td className="py-6 px-4">
               <div className="flex flex-col">
-                <span className="text-sm font-bold !text-dash-text">{entry.contact?.first_name || 'Guest'} {entry.contact?.last_name || ''}</span>
-                <span className="text-[11px] !text-dash-textMuted">{entry.contact?.email}</span>
+                <span className="text-sm font-bold !text-dash-text">{entry.contacts?.first_name || 'Guest'} {entry.contacts?.last_name || ''}</span>
+                <span className="text-[11px] !text-dash-textMuted">{entry.contacts?.email}</span>
               </div>
              </td>
              <td className="py-6">

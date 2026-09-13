@@ -2,10 +2,17 @@ import { useState } from 'react';
 import CalendarSettingsModal from '../modals/CalendarSettingsModal';
 import RoundRobinPoolModal from '../modals/RoundRobinPoolModal';
 import ResourceManagerModal from '../modals/ResourceManagerModal';
-import { createCalendar, updateCalendar } from '@/app/actions/calendar/calendars';
+import ConfirmationModal from '../modals/ConfirmationModal';
+import { createCalendar, updateCalendar, deleteCalendar } from '@/app/actions/calendar/calendars';
 import { toast } from 'sonner';
-import { Building2, Copy, Eye, GraduationCap, LayoutGrid, MoreVertical, Presentation, User, Users, Zap } from 'lucide-react';
+import { Building2, Copy, Eye, GraduationCap, LayoutGrid, MoreVertical, Pencil, Plus, Presentation, Trash2, User, Users, Zap } from 'lucide-react';
 import { DashButton } from '@/components/dashboard-ui';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { getCalendarTypeLabel } from '@/lib/calendar/calendarTypes';
 
 interface CalendarPagesViewProps {
@@ -19,6 +26,8 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
   // Task 71 — workspace-wide, not per-calendar, so it's a standalone entry
   // point rather than a per-card button like round-robin's "Manage team".
   const [isResourceModalOpen, setIsResourceModalOpen] = useState(false);
+  const [deletingCalendar, setDeletingCalendar] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const copyToClipboard = (slug: string) => {
     const url = `${window.location.origin}/book/${slug}`;
@@ -51,6 +60,19 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
     }
   };
 
+  const handleConfirmDelete = async () => {
+    if (!deletingCalendar) return;
+    setIsDeleting(true);
+    const res = await deleteCalendar(deletingCalendar.id);
+    setIsDeleting(false);
+    if (res.success) {
+      toast.success(`"${deletingCalendar.name}" deleted`);
+      setDeletingCalendar(null);
+    } else {
+      toast.error(res.error || 'Failed to delete booking page');
+    }
+  };
+
   const getIcon = (type: string) => {
     switch (type) {
       case 'personal': return <User size={18} />;
@@ -64,9 +86,12 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
 
   return (
     <>
-      <div className="flex justify-end mb-5">
+      <div className="flex justify-end gap-3 mb-5">
         <DashButton variant="secondary" size="sm" onClick={() => setIsResourceModalOpen(true)}>
           <Building2 size={14} /> Rooms, desks &amp; equipment
+        </DashButton>
+        <DashButton variant="primary" size="sm" onClick={handleCreate}>
+          <Plus size={14} /> New booking page
         </DashButton>
       </div>
 
@@ -89,12 +114,27 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
                     {getCalendarTypeLabel(cal.calendar_type)} engine
                   </p>
                 </div>
-                <button
-                  onClick={() => handleEdit(cal)}
-                  className="p-1.5 !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg transition-all motion-reduce:transition-none"
-                >
-                  <MoreVertical size={16} />
-                </button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="p-1.5 !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg transition-all motion-reduce:transition-none"
+                      aria-label="Booking page options"
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-white border-dash-border z-[1100] min-w-[160px]">
+                    <DropdownMenuItem onClick={() => handleEdit(cal)} className="!text-dash-text cursor-pointer">
+                      <Pencil size={14} className="mr-2" /> Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setDeletingCalendar(cal)}
+                      className="!text-red hover:!text-red focus:!text-red cursor-pointer"
+                    >
+                      <Trash2 size={14} className="mr-2" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
 
               <div className="space-y-4">
@@ -169,6 +209,17 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
       />
 
       <ResourceManagerModal isOpen={isResourceModalOpen} onClose={() => setIsResourceModalOpen(false)} />
+
+      <ConfirmationModal
+        isOpen={!!deletingCalendar}
+        onClose={() => setDeletingCalendar(null)}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Delete booking page"
+        description={`This permanently deletes "${deletingCalendar?.name ?? ''}" and its booking link. Any appointments already booked through this page will be removed too. This cannot be undone.`}
+        confirmText="Yes, delete"
+        isDestructive={true}
+      />
     </>
   );
 }

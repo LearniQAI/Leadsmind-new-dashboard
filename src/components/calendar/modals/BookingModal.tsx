@@ -34,6 +34,7 @@ import { searchContacts } from '@/app/actions/contacts';
 import { createAppointment, updateAppointment } from '@/app/actions/calendar/appointments';
 import { createRecurringSeries } from '@/app/actions/calendar/recurringMeetings';
 import { listResources, getResourceAvailability } from '@/app/actions/calendar/resources';
+import { getCalendarTypeLabel } from '@/lib/calendar/calendarTypes';
 import { toast } from 'sonner';
 
 const bookingSchema = z.object({
@@ -409,7 +410,7 @@ export default function BookingModal({
                     <SelectContent className="bg-white border-dash-border z-[1100]">
                       {calendars.map(cal => (
                         <SelectItem key={cal.id} value={cal.id} className="!text-dash-text focus:bg-dash-accent focus:text-white">
-                          {cal.name} ({cal.calendar_type})
+                          {cal.name} · {getCalendarTypeLabel(cal.calendar_type)}
                         </SelectItem>
                       ))}
                     </SelectContent>
