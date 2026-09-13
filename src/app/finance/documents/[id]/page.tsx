@@ -7,12 +7,17 @@ import { toast } from 'sonner'
 interface SummaryData {
   document: { file_name: string; document_kind: string; status: string; error_message: string | null; created_at: string }
   transactions: Array<{
-    id: string; date: string; description: string; total_amount: number;
+    id: string; date: string; description: string; total_amount: number; currency: string;
     is_duplicate_flag: boolean; is_anomaly_flag: boolean; anomaly_note: string | null;
     tax_deduction_candidate: boolean; account: { code: string; name: string } | null;
   }>
   receipts: Array<{ id: string; vendor: string | null; receipt_date: string | null; amount: number | null; matched_transaction_id: string | null }>
-  summary: { totalIncome: number; totalExpenses: number; net: number; transactionCount: number; duplicateCount: number; anomalyCount: number; taxCandidateCount: number }
+  summary: {
+    currency: string | null; totalIncome: number | null; totalExpenses: number | null; net: number | null
+    mixedCurrencies: boolean
+    byCurrency: Array<{ currency: string; totalIncome: number; totalExpenses: number; net: number; transactionCount: number }>
+    transactionCount: number; duplicateCount: number; anomalyCount: number; taxCandidateCount: number
+  }
   disclaimer: string
 }
 
@@ -31,7 +36,16 @@ export default function DocumentReportPage({ params }: { params: { id: string } 
       .finally(() => setLoading(false))
   }, [params.id])
 
-  const formatCurrency = (val: number) => new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR' }).format(val)
+  // Formats using whatever currency is actually stored for the value being shown — never
+  // assumes ZAR. Falls back to ZAR formatting only if a row somehow has no currency at all
+  // (pre-fix legacy rows, or a genuinely undetectable statement).
+  const formatCurrency = (val: number, currency: string | null = 'ZAR') => {
+    try {
+      return new Intl.NumberFormat('en-ZA', { style: 'currency', currency: currency || 'ZAR' }).format(val)
+    } catch {
+      return new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR' }).format(val)
+    }
+  }
 
   const handleExport = (format: 'pdf' | 'xlsx') => {
     window.open(`/api/finance/documents/${params.id}/export?format=${format}`, '_blank')
@@ -76,24 +90,54 @@ export default function DocumentReportPage({ params }: { params: { id: string } 
           </div>
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-          <div className="bg-dash-surface rounded-xl p-4">
-            <p className="text-[11px] !text-dash-textMuted mb-1">Total Income</p>
-            <p className="text-[16px] font-bold text-green flex items-center gap-1"><TrendingUp size={14} /> {formatCurrency(data.summary.totalIncome)}</p>
+        {data.summary.mixedCurrencies && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-start gap-2.5">
+            <AlertCircle size={15} className="text-amber-700 flex-shrink-0 mt-0.5" />
+            <p className="text-[12px] text-amber-800 leading-relaxed">
+              This document contains transactions in more than one currency
+              ({data.summary.byCurrency.map(c => c.currency).join(', ')}) — a combined total would be
+              meaningless, so totals below are shown separately per currency instead.
+            </p>
           </div>
-          <div className="bg-dash-surface rounded-xl p-4">
-            <p className="text-[11px] !text-dash-textMuted mb-1">Total Expenses</p>
-            <p className="text-[16px] font-bold text-red flex items-center gap-1"><TrendingDown size={14} /> {formatCurrency(data.summary.totalExpenses)}</p>
+        )}
+
+        {!data.summary.mixedCurrencies ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            <div className="bg-dash-surface rounded-xl p-4">
+              <p className="text-[11px] !text-dash-textMuted mb-1">Total Income</p>
+              <p className="text-[16px] font-bold text-green flex items-center gap-1"><TrendingUp size={14} /> {formatCurrency(data.summary.totalIncome ?? 0, data.summary.currency)}</p>
+            </div>
+            <div className="bg-dash-surface rounded-xl p-4">
+              <p className="text-[11px] !text-dash-textMuted mb-1">Total Expenses</p>
+              <p className="text-[16px] font-bold text-red flex items-center gap-1"><TrendingDown size={14} /> {formatCurrency(data.summary.totalExpenses ?? 0, data.summary.currency)}</p>
+            </div>
+            <div className="bg-dash-surface rounded-xl p-4">
+              <p className="text-[11px] !text-dash-textMuted mb-1">Net</p>
+              <p className="text-[16px] font-bold !text-dash-text">{formatCurrency(data.summary.net ?? 0, data.summary.currency)}</p>
+            </div>
+            <div className="bg-dash-surface rounded-xl p-4">
+              <p className="text-[11px] !text-dash-textMuted mb-1">Flagged Items</p>
+              <p className="text-[16px] font-bold !text-dash-text">{data.summary.duplicateCount + data.summary.anomalyCount}</p>
+            </div>
           </div>
-          <div className="bg-dash-surface rounded-xl p-4">
-            <p className="text-[11px] !text-dash-textMuted mb-1">Net</p>
-            <p className="text-[16px] font-bold !text-dash-text">{formatCurrency(data.summary.net)}</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+            {data.summary.byCurrency.map(c => (
+              <div key={c.currency} className="bg-dash-surface rounded-xl p-4">
+                <p className="text-[11px] font-semibold !text-dash-text mb-2">{c.currency} ({c.transactionCount} transaction{c.transactionCount === 1 ? '' : 's'})</p>
+                <div className="flex gap-4">
+                  <p className="text-[13px] font-bold text-green flex items-center gap-1"><TrendingUp size={13} /> {formatCurrency(c.totalIncome, c.currency)}</p>
+                  <p className="text-[13px] font-bold text-red flex items-center gap-1"><TrendingDown size={13} /> {formatCurrency(c.totalExpenses, c.currency)}</p>
+                  <p className="text-[13px] font-bold !text-dash-text">Net {formatCurrency(c.net, c.currency)}</p>
+                </div>
+              </div>
+            ))}
+            <div className="bg-dash-surface rounded-xl p-4">
+              <p className="text-[11px] !text-dash-textMuted mb-1">Flagged Items</p>
+              <p className="text-[16px] font-bold !text-dash-text">{data.summary.duplicateCount + data.summary.anomalyCount}</p>
+            </div>
           </div>
-          <div className="bg-dash-surface rounded-xl p-4">
-            <p className="text-[11px] !text-dash-textMuted mb-1">Flagged Items</p>
-            <p className="text-[16px] font-bold !text-dash-text">{data.summary.duplicateCount + data.summary.anomalyCount}</p>
-          </div>
-        </div>
+        )}
 
         {data.transactions.length > 0 && (
           <>
@@ -115,7 +159,7 @@ export default function DocumentReportPage({ params }: { params: { id: string } 
                       <td className="py-2 pr-3 !text-dash-text whitespace-nowrap">{t.date}</td>
                       <td className="py-2 pr-3 !text-dash-text">{t.description}</td>
                       <td className="py-2 pr-3 !text-dash-textMuted">{t.account ? `${t.account.code} ${t.account.name}` : '—'}</td>
-                      <td className={`py-2 pr-3 text-right font-semibold ${t.total_amount < 0 ? 'text-red' : 'text-green'}`}>{formatCurrency(t.total_amount)}</td>
+                      <td className={`py-2 pr-3 text-right font-semibold ${t.total_amount < 0 ? 'text-red' : 'text-green'}`}>{formatCurrency(t.total_amount, t.currency)}</td>
                       <td className="py-2 pr-3">
                         <div className="flex gap-1 flex-wrap">
                           {t.is_duplicate_flag && <span className="text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5">Possible duplicate</span>}

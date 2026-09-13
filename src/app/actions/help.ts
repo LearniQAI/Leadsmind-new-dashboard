@@ -1707,9 +1707,23 @@ export async function seedHelpArticles() {
     // verified content set (the old seed contained fabricated specifics, e.g.
     // named bank integrations and SSO/SAML claims, that do not exist in the
     // real product; those rows must not linger alongside the accurate ones).
+    //
+    // This single query also feeds the per-article existing-content check
+    // below -- it used to be a SEPARATE `.eq('slug', ...).maybeSingle()` query
+    // re-run inside the loop for every one of the ~94 articles, meaning this
+    // function did 94 sequential network round-trips to Supabase on every
+    // single /articles page load even when nothing needed re-seeding (the
+    // stableStringify fix above stopped the unnecessary re-*embedding* work,
+    // but never touched this separate N+1 *read* pattern, which is what was
+    // still making the page slow in production). Fetching every row's
+    // comparison fields once and indexing by slug in memory turns that into
+    // exactly one query.
     const validSlugs = allArticles.map((a) => a.slug);
-    const { data: staleRows } = await supabase.from('help_articles').select('id, slug');
-    const staleIds = (staleRows || []).filter((r) => !validSlugs.includes(r.slug)).map((r) => r.id);
+    const { data: existingRows } = await supabase
+      .from('help_articles')
+      .select('id, slug, title, body_plain, faq_json');
+    const existingBySlug = new Map((existingRows || []).map((r) => [r.slug, r]));
+    const staleIds = (existingRows || []).filter((r) => !validSlugs.includes(r.slug)).map((r) => r.id);
     if (staleIds.length > 0) {
       const { error: deleteError } = await supabase.from('help_articles').delete().in('id', staleIds);
       if (deleteError) {
@@ -1725,11 +1739,7 @@ export async function seedHelpArticles() {
     let seededCount = 0;
     const categoryFallbacksUsed: string[] = [];
     for (const article of allArticles) {
-      const { data: existing } = await supabase
-        .from('help_articles')
-        .select('id, title, body_plain, faq_json')
-        .eq('slug', article.slug)
-        .maybeSingle();
+      const existing = existingBySlug.get(article.slug);
 
       // A slug match with different content means a stale/fabricated row from
       // an earlier seed survived under the same slug — update it in place

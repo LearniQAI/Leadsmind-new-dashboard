@@ -120,7 +120,8 @@ async function processDocumentJobs(batchSize: number = 10) {
                 doc.workspace_id,
                 doc.id,
                 structured.transactions,
-                accounts || []
+                accounts || [],
+                structured.currency
               );
               await consumeAICredit(doc.workspace_id, 1);
               txCount = inserted.length;
@@ -183,7 +184,8 @@ async function processDocumentJobs(batchSize: number = 10) {
             doc.workspace_id,
             doc.id,
             structured.transactions,
-            accounts || []
+            accounts || [],
+            structured.currency
           );
           await consumeAICredit(doc.workspace_id, 1);
           txCount = inserted.length;

@@ -2,15 +2,16 @@
 
 // Telephony Phase 3 — real IVR menu builder + menu-to-number assignment + call log reads.
 //
-// Reuses getWorkspaceTwilioContext()/humanizeTwilioError() from telephony.ts (Phase 2) for the
-// ONE place that needs a live Twilio call here: assignMenuToNumber(), which points the real
-// Twilio number's Voice URL at the webhook in src/app/api/webhooks/twilio/voice. Everything
-// else here is plain workspace-scoped CRUD guarded by RLS + requireWorkspaceRole.
+// Reuses getWorkspaceTwilioContext() from telephony.ts (Phase 2) for the ONE place that needs a
+// live Twilio call here: assignMenuToNumber(), which points the real Twilio number's Voice URL
+// at the webhook in src/app/api/webhooks/twilio/voice. Everything else here is plain
+// workspace-scoped CRUD guarded by RLS + requireWorkspaceRole.
 
 import { revalidatePath } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
-import { getWorkspaceTwilioContext, humanizeTwilioError } from '@/app/actions/telephony';
+import { getWorkspaceTwilioContext } from '@/app/actions/telephony';
+import { humanizeTwilioError } from '@/lib/twilio/humanizeTwilioError';
 import { logger } from '@/shared/logger';
 
 const E164 = /^\+[1-9]\d{1,14}$/;

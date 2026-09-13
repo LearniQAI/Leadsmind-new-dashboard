@@ -36,8 +36,6 @@ export async function getDocumentSummaryData(workspaceId: string, documentId: st
     .eq('document_id', documentId);
 
   const txList = transactions || [];
-  const totalIncome = txList.filter(t => Number(t.total_amount) > 0).reduce((s, t) => s + Number(t.total_amount), 0);
-  const totalExpenses = txList.filter(t => Number(t.total_amount) < 0).reduce((s, t) => s + Math.abs(Number(t.total_amount)), 0);
   const duplicates = txList.filter(t => t.is_duplicate_flag);
   const anomalies = txList.filter(t => t.is_anomaly_flag);
   const taxCandidates = [
@@ -45,14 +43,36 @@ export async function getDocumentSummaryData(workspaceId: string, documentId: st
     ...(receipts || []).filter(r => r.tax_deduction_candidate),
   ];
 
+  // A statement is realistically single-currency throughout, so grouping (rather than blindly
+  // summing every row's total_amount regardless of currency) costs nothing in the common case
+  // and avoids ever silently combining e.g. PKR and ZAR into one meaningless number in the rare
+  // case a workspace does end up with mixed-currency transactions (two different uploads, say).
+  const currencies = Array.from(new Set(txList.map(t => t.currency || 'ZAR')));
+  const byCurrency = currencies.map(currency => {
+    const rows = txList.filter(t => (t.currency || 'ZAR') === currency);
+    const totalIncome = rows.filter(t => Number(t.total_amount) > 0).reduce((s, t) => s + Number(t.total_amount), 0);
+    const totalExpenses = rows.filter(t => Number(t.total_amount) < 0).reduce((s, t) => s + Math.abs(Number(t.total_amount)), 0);
+    return { currency, totalIncome, totalExpenses, net: totalIncome - totalExpenses, transactionCount: rows.length };
+  });
+  const mixedCurrencies = currencies.length > 1;
+
+  // Single-currency (the common case) still gets flat totalIncome/totalExpenses/net/currency
+  // fields for existing callers (UI, PDF/Excel export) to use directly. Mixed-currency documents
+  // get those set to null rather than a silently-wrong combined number — callers must use
+  // byCurrency instead and should surface the caveat to the user.
+  const single = !mixedCurrencies ? byCurrency[0] : null;
+
   return {
     document: doc,
     transactions: txList,
     receipts: receipts || [],
     summary: {
-      totalIncome,
-      totalExpenses,
-      net: totalIncome - totalExpenses,
+      currency: single ? single.currency : null,
+      totalIncome: single ? single.totalIncome : null,
+      totalExpenses: single ? single.totalExpenses : null,
+      net: single ? single.net : null,
+      mixedCurrencies,
+      byCurrency,
       transactionCount: txList.length,
       duplicateCount: duplicates.length,
       anomalyCount: anomalies.length,
