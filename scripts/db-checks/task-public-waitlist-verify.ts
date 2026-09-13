@@ -14,7 +14,7 @@ import { randomUUID } from 'crypto';
 
 async function main() {
   const { createAdminClient } = await import('../../src/lib/supabase/server');
-  const { bookClassSession, fetchPublicSlots } = await import('../../src/app/actions/calendar/public');
+  const { bookGroupSession, fetchPublicSlots } = await import('../../src/app/actions/calendar/public');
   const { notifyNewlyOfferedWaitlist } = await import('../../src/lib/calendar/waitlist');
   const { generateWaitlistToken } = await import('../../src/lib/calendar/waitlistToken');
   const { acceptWaitlistOffer } = await import('../../src/app/actions/calendar/waitlistAccept');
@@ -71,10 +71,10 @@ async function main() {
     check('public slot for the class session shows as open with real capacity', !!s0 && s0.full === false && s0.spotsLeft === 2, s0 ? `${s0.spotsLeft} left` : 'not found');
 
     // ---- 2. two public bookings fill it ----
-    const b1 = await bookClassSession(calId, sessionSlot, lead('Ann'));
+    const b1 = await bookGroupSession(calId, sessionSlot, lead('Ann'));
     check('public booking #1 → booked', b1.success && (b1 as any).mode === 'booked', JSON.stringify(b1));
     aptIds.push((b1 as any).appointmentId);
-    const b2 = await bookClassSession(calId, sessionSlot, lead('Bea'));
+    const b2 = await bookGroupSession(calId, sessionSlot, lead('Bea'));
     check('public booking #2 → booked (session now 2/2)', b2.success && (b2 as any).mode === 'booked');
 
     const { data: sess } = await db.from('appointments').select('id, current_attendee_count, max_attendees').eq('calendar_id', calId).single();
@@ -87,7 +87,7 @@ async function main() {
 
     // ---- 3. a 3rd public visitor joins the waitlist — ZERO admin involvement ----
     emails.length = 0;
-    const b3 = await bookClassSession(calId, sessionSlot, lead('Cid'));
+    const b3 = await bookGroupSession(calId, sessionSlot, lead('Cid'));
     check('★ public visitor #3 joins the waitlist (mode=waitlist)', b3.success && (b3 as any).mode === 'waitlist', JSON.stringify(b3));
     check('  → position #1 on the waitlist', (b3 as any).position === 1);
     const { data: wlRows } = await db.from('booking_waitlists').select('id, position, confirmed, contact:contacts(email)').eq('appointment_id', sess!.id).eq('confirmed', false).order('position');

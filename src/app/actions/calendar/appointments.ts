@@ -11,11 +11,11 @@ import { isSlotConflictError, SLOT_CONFLICT_MESSAGE, isResourceConflictError, RE
 import { sendBookingConfirmation } from '@/lib/calendar/notifications';
 import { resolveMeetingLink, applyResolvedMeetingLink } from '@/lib/calendar/meetingLink';
 import { pushEventCancellation, pushEventTimeUpdate } from '@/lib/calendar/calendarSync';
-import { cancelClassSession } from '@/lib/calendar/waitlist';
+import { cancelGroupSession } from '@/lib/calendar/waitlist';
 
-// A group session (class_booking) carries per-attendee records. When staff
+// A group session (Class or Webinar) carries per-attendee records. When staff
 // cancel or delete such a session, every attendee (and anyone waitlisted) must
-// be notified and their records marked cancelled — cancelClassSession does that
+// be notified and their records marked cancelled — cancelGroupSession does that
 // and makes NO waitlist offers (nothing is available).
 async function notifyGroupSessionCancellation(supabase: any, appointmentId: string, workspaceId: string) {
   const { data: apt } = await supabase
@@ -26,7 +26,7 @@ async function notifyGroupSessionCancellation(supabase: any, appointmentId: stri
     .maybeSingle();
   if (apt && (apt.max_attendees ?? 1) > 1) {
     try {
-      await cancelClassSession(appointmentId);
+      await cancelGroupSession(appointmentId);
     } catch (err) {
       logger.error({ err, appointmentId }, 'calendar.appointment.group_cancel.notify_failed');
     }

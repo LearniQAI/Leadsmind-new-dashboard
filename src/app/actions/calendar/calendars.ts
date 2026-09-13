@@ -5,6 +5,7 @@ import { requireWorkspaceAccess } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/shared/logger';
 import { toClientError } from '@/shared/errors/AppError';
+import { isGroupSessionType } from '@/lib/calendar/calendarTypes';
 
 // Consolidated onto this file per the Priority 2 booking_calendars CRUD
 // cleanup — calendar/core.ts and calendar.ts each had their own dead/drifted
@@ -41,9 +42,9 @@ function pickEditableFields(payload: any): Record<string, any> {
   for (const field of EDITABLE_CALENDAR_FIELDS) {
     if (payload[field] !== undefined) picked[field] = payload[field];
   }
-  // Capacity only makes sense for group sessions — never let it silently
-  // shrink/grow a non-class calendar.
-  if (picked.calendar_type !== undefined && picked.calendar_type !== 'class_booking') {
+  // Capacity only makes sense for group-session types (Class, Webinar) —
+  // never let it silently shrink/grow a non-group calendar.
+  if (picked.calendar_type !== undefined && !isGroupSessionType(picked.calendar_type)) {
     delete picked.capacity;
     delete picked.waitlist_enabled;
   } else if (picked.capacity !== undefined) {

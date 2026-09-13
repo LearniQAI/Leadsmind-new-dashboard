@@ -18,7 +18,7 @@ import { randomUUID } from 'crypto';
 
 async function main() {
   const { createAdminClient } = await import('../../src/lib/supabase/server');
-  const { bookClassSession } = await import('../../src/app/actions/calendar/public');
+  const { bookGroupSession } = await import('../../src/app/actions/calendar/public');
   const { generateWaitlistToken } = await import('../../src/lib/calendar/waitlistToken');
   const {
     getAttendeeBooking,
@@ -26,7 +26,7 @@ async function main() {
     acceptWaitlistOffer,
     getWaitlistOffer,
   } = await import('../../src/app/actions/calendar/waitlistAccept');
-  const { cancelClassSession } = await import('../../src/lib/calendar/waitlist');
+  const { cancelGroupSession } = await import('../../src/lib/calendar/waitlist');
   const db = createAdminClient();
 
   const runId = randomUUID().slice(0, 8);
@@ -75,8 +75,8 @@ async function main() {
 
     // ---- 1. two different people book the same 2-spot session ----
     emails.length = 0;
-    const bA = await bookClassSession(calId, slot, lead('Anna'));
-    const bB = await bookClassSession(calId, slot, lead('Bella'));
+    const bA = await bookGroupSession(calId, slot, lead('Anna'));
+    const bB = await bookGroupSession(calId, slot, lead('Bella'));
     check('two people book the same session → both booked', bA.success && bB.success && (bA as any).mode === 'booked' && (bB as any).mode === 'booked', JSON.stringify([bA, bB]));
 
     const { data: sess } = await db.from('appointments').select('id, status, current_attendee_count, contact_id').eq('calendar_id', calId).single();
@@ -101,7 +101,7 @@ async function main() {
     check('  → the two manage links are different', !!mailA && !!mailB && recA.id !== recB.id && !mailA!.text.includes(recB.id) && !mailB!.text.includes(recA.id));
 
     // ---- 3. a 3rd person joins the waitlist ----
-    const bC = await bookClassSession(calId, slot, lead('Cara'));
+    const bC = await bookGroupSession(calId, slot, lead('Cara'));
     check('3rd person joins the waitlist', bC.success && (bC as any).mode === 'waitlist' && (bC as any).position === 1);
     const { data: recC } = await db.from('booking_waitlists').select('id').eq('appointment_id', sess!.id).eq('confirmed', false).single();
 
@@ -149,7 +149,7 @@ async function main() {
 
     // ---- 7. the HOST cancels the whole session ----
     emails.length = 0;
-    await cancelClassSession(sess!.id);
+    await cancelGroupSession(sess!.id);
     await db.from('appointments').update({ status: 'cancelled' }).eq('id', sess!.id); // what the staff action does alongside
     const { data: allRows } = await db.from('booking_waitlists').select('cancelled_at').eq('appointment_id', sess!.id);
     check('★ host cancel → every remaining participation record is cancelled', (allRows || []).every((r: any) => !!r.cancelled_at));

@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { BookingFlow } from '@/components/calendar/public/BookingFlow';
-import { fetchPublicSlots, bookAppointment, bookClassSession } from '@/app/actions/calendar/public';
+import { fetchPublicSlots, bookAppointment, bookGroupSession } from '@/app/actions/calendar/public';
 import { format } from 'date-fns';
 import { Loader2, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/lib/calendar/useTranslation';
+import { isGroupSessionType, getGroupSessionNoun } from '@/lib/calendar/calendarTypes';
 
 interface BookingClientWrapperProps {
   calendar: any;
@@ -36,13 +37,14 @@ export default function BookingClientWrapper({ calendar }: BookingClientWrapperP
     loadSlots();
   }, [calendar.id, selectedDate]);
 
-  const isClass = calendar.calendar_type === 'class_booking';
+  const isGroupSession = isGroupSessionType(calendar.calendar_type);
+  const groupSessionNoun = getGroupSessionNoun(calendar.calendar_type);
 
   // 2. Booking Action
   const handleBook = async (slot: string, leadData: any): Promise<{ success: boolean; mode?: 'booked' | 'waitlist'; position?: number }> => {
     try {
-      if (isClass) {
-        const res = await bookClassSession(calendar.id, slot, leadData);
+      if (isGroupSession) {
+        const res = await bookGroupSession(calendar.id, slot, leadData);
         return { success: !!res.success, mode: (res as any).mode, position: (res as any).position };
       }
       const res = await bookAppointment(calendar.id, slot, leadData);
@@ -124,7 +126,8 @@ export default function BookingClientWrapper({ calendar }: BookingClientWrapperP
           onBook={handleBook}
           customFields={calendar.custom_fields || []}
           price={parseFloat(calendar.price || '0')}
-          isClass={isClass}
+          isGroupSession={isGroupSession}
+          groupSessionNoun={groupSessionNoun}
           t={t}
           lang={lang}
         />

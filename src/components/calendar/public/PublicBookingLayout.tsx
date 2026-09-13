@@ -1,22 +1,23 @@
 import React from 'react';
 import BookingClientWrapper from '@/components/calendar/public/BookingClientWrapper';
 import { ShieldCheck, Clock, Globe, Users } from 'lucide-react';
+import { isGroupSessionType, getGroupSessionNoun } from '@/lib/calendar/calendarTypes';
 
 /**
  * Shared shell for the public booking pages (/book/[slug] and the custom-domain
  * variant). Light premium theme — see docs/calendar-redesign-spec.md.
  */
 export default function PublicBookingLayout({ calendar }: { calendar: any }) {
-  const isClass = calendar.calendar_type === 'class_booking';
+  const isGroupSession = isGroupSessionType(calendar.calendar_type);
 
   const facts: { icon: React.ElementType; label: string; value: string }[] = [
     { icon: Clock, label: 'Duration', value: `${calendar.slot_duration} minutes` },
     { icon: Globe, label: 'Timezone', value: calendar.timezone || 'UTC' },
   ];
-  if (isClass) {
+  if (isGroupSession) {
     facts.push({
       icon: Users,
-      label: 'Group session',
+      label: getGroupSessionNoun(calendar.calendar_type),
       value: `Up to ${calendar.capacity || 1} spots${calendar.waitlist_enabled ? ' · waitlist' : ''}`,
     });
   }

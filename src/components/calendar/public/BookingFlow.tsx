@@ -6,7 +6,6 @@ import { BookingForm } from './BookingForm';
 import { TimeSlot } from '@/lib/calendar/availability';
 import { toast } from 'sonner';
 import { CalendarClock, CheckCircle2, Users } from 'lucide-react';
-import { DashButton } from '@/components/dashboard-ui';
 
 type BookResult = { success: boolean; mode?: 'booked' | 'waitlist'; position?: number };
 
@@ -15,7 +14,10 @@ interface BookingFlowProps {
   onBook: (slot: string, data: any) => Promise<BookResult>;
   customFields?: any[];
   price?: number;
-  isClass?: boolean;
+  /** True for both Class and Webinar calendars — the shared group-session model. */
+  isGroupSession?: boolean;
+  /** "Webinar" or "Group session" — real, type-specific copy (see calendarTypes.ts). */
+  groupSessionNoun?: string;
   t: (key: string) => string;
   lang: string;
 }
@@ -25,7 +27,8 @@ export function BookingFlow({
   onBook,
   customFields = [],
   price = 0,
-  isClass = false,
+  isGroupSession = false,
+  groupSessionNoun = 'Group session',
   t,
   lang
 }: BookingFlowProps) {
@@ -33,21 +36,22 @@ export function BookingFlow({
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [result, setResult] = useState<BookResult | null>(null);
 
-  // Optimistic UI: Hide booked slot instantly (1:1 only — a class slot stays
-  // visible until it's full).
+  // Optimistic UI: Hide booked slot instantly (1:1 only — a group-session slot
+  // stays visible until it's full).
   const [optimisticSlots, removeOptimisticSlot] = useOptimistic(
     availableSlots,
-    (state, bookedSlot: string) => (isClass ? state : state.filter(s => s.start !== bookedSlot))
+    (state, bookedSlot: string) => (isGroupSession ? state : state.filter(s => s.start !== bookedSlot))
   );
 
   const selectedSlotObj = optimisticSlots.find((s: any) => s.start === selectedSlot) as any;
-  const joiningWaitlist = isClass && !!selectedSlotObj?.full;
+  const joiningWaitlist = isGroupSession && !!selectedSlotObj?.full;
+  const sessionNounLower = groupSessionNoun.toLowerCase();
 
   const handleBooking = async (formData: any) => {
     if (!selectedSlot) return;
 
     startTransition(async () => {
-      if (!isClass) removeOptimisticSlot(selectedSlot);
+      if (!isGroupSession) removeOptimisticSlot(selectedSlot);
       const res = await onBook(selectedSlot, formData);
 
       if (res.success) {
@@ -76,12 +80,15 @@ export function BookingFlow({
         </h2>
         <p className="text-[14px] leading-relaxed text-dash-textMuted max-w-sm mb-7">
           {isWaitlist
-            ? `You're #${result.position} on the list. This session is full — if a spot opens up we'll email you a link to claim it (first come, first served).`
+            ? `You're #${result.position} on the list. This ${sessionNounLower} is full — if a spot opens up we'll email you a link to claim it (first come, first served).`
             : t('bookingSuccessMsg')}
         </p>
-        <DashButton onClick={() => window.location.reload()} variant="secondary">
+        <button
+          onClick={() => window.location.reload()}
+          className="h-11 px-6 rounded-xl border border-dash-border bg-white text-dash-text hover:bg-dash-surface text-[13px] font-semibold transition-colors motion-reduce:transition-none"
+        >
           {t('scheduleAnother')}
-        </DashButton>
+        </button>
       </div>
     );
   }
@@ -108,7 +115,7 @@ export function BookingFlow({
         </div>
         {joiningWaitlist && (
           <p className="text-[12px] font-medium text-amber -mt-1">
-            This session is full — submit your details to join the waitlist.
+            This {sessionNounLower} is full — submit your details to join the waitlist.
           </p>
         )}
         <BookingForm

@@ -4,7 +4,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/shared/logger';
 import { toClientError } from '@/shared/errors/AppError';
-import { sendWaitlistOfferEmail, cancelClassSession } from '@/lib/calendar/waitlist';
+import { sendWaitlistOfferEmail, cancelGroupSession } from '@/lib/calendar/waitlist';
 
 /**
  * --- HELPER: STANDARD ACTION WRAPPER ---
@@ -78,7 +78,7 @@ export async function updateAppointmentStatus(id: string, status: string) {
         .maybeSingle();
       if (apt && (apt.max_attendees ?? 1) > 1) {
         try {
-          await cancelClassSession(id);
+          await cancelGroupSession(id);
         } catch (err) {
           logger.error({ err, appointmentId: id }, 'calendar.appointment_status.group_cancel.failed');
         }

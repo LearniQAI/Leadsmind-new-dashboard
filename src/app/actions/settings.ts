@@ -766,6 +766,23 @@ export async function saveTwilioCredentials(
    return { error: 'Phone number must be in E.164 format (e.g. +15551234567).' };
   }
 
+  // Live check against Twilio's own Account API — a syntactically valid but wrong,
+  // revoked, or mistyped SID/token pair must be rejected here, not silently saved.
+  try {
+   const twilio = require('twilio');
+   const client = twilio(accountSid.trim(), authToken.trim());
+   const account = await client.api.v2010.accounts(accountSid.trim()).fetch();
+   if (account.status !== 'active') {
+    return { error: `This Twilio account is ${account.status}, not active. Use an active account's credentials.` };
+   }
+  } catch (twilioError: any) {
+   logger.warn({ err: twilioError }, 'save.twilio.credentials.live_check_failed');
+   if (twilioError?.status === 401 || twilioError?.code === 20003) {
+    return { error: 'Twilio rejected these credentials. Double-check the Account SID and Auth Token.' };
+   }
+   return { error: 'Could not verify these credentials with Twilio. Please try again.' };
+  }
+
   const adminClient = createAdminClient();
 
   const { error } = await adminClient
