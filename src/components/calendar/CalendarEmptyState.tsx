@@ -16,15 +16,15 @@ export default function CalendarEmptyState({ onCreateClick }: CalendarEmptyState
       </div>
 
       <h3 className="text-[15px] font-bold !text-dash-text mb-2">
-        No calendars configured yet
+        No booking pages yet
       </h3>
 
       <p className="text-[13.5px] !text-dash-textMuted max-w-[320px] mb-8 leading-relaxed">
-        Set up your first booking engine to start accepting appointments and growing your business.
+        Set up your first booking page to start accepting appointments and growing your business.
       </p>
 
       <DashButton variant="primary" size="default" onClick={onCreateClick}>
-        <Plus className="w-4 h-4" /> Create first calendar
+        <Plus className="w-4 h-4" /> Create first booking page
       </DashButton>
     </div>
   );

@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import CalendarSettingsModal from '../modals/CalendarSettingsModal';
 import RoundRobinPoolModal from '../modals/RoundRobinPoolModal';
 import ResourceManagerModal from '../modals/ResourceManagerModal';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { createCalendar, updateCalendar, deleteCalendar } from '@/app/actions/calendar/calendars';
+import { getRoundRobinEnrollmentCounts } from '@/app/actions/calendar/roundRobin';
 import { toast } from 'sonner';
-import { Building2, Copy, Eye, GraduationCap, LayoutGrid, MoreVertical, Pencil, Plus, Presentation, Trash2, User, Users, Zap } from 'lucide-react';
+import { AlertTriangle, Building2, Copy, Eye, GraduationCap, LayoutGrid, MoreVertical, Pencil, Plus, Presentation, Trash2, User, Users, Zap } from 'lucide-react';
 import { DashButton } from '@/components/dashboard-ui';
 import {
   DropdownMenu,
@@ -28,6 +29,17 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
   const [isResourceModalOpen, setIsResourceModalOpen] = useState(false);
   const [deletingCalendar, setDeletingCalendar] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  // Round Robin "no hosts enrolled" warning badge — catches an
+  // already-created empty pool, not just a newly-created one.
+  const [rrCounts, setRrCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const rrIds = calendars.filter((c) => c.calendar_type === 'round_robin').map((c) => c.id);
+    if (!rrIds.length) return;
+    getRoundRobinEnrollmentCounts(rrIds).then((res) => {
+      if (res.success && res.data) setRrCounts(res.data);
+    });
+  }, [calendars]);
 
   const copyToClipboard = (slug: string) => {
     const url = `${window.location.origin}/book/${slug}`;
@@ -46,6 +58,7 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
   };
 
   const handleSave = async (data: any) => {
+    const wasCreate = !editingCalendar;
     let res;
     if (editingCalendar) {
       res = await updateCalendar(editingCalendar.id, data);
@@ -54,9 +67,15 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
     }
 
     if (res.success) {
-      toast.success(editingCalendar ? 'Engine updated' : 'New engine created successfully');
+      toast.success(wasCreate ? 'Booking page created' : 'Booking page updated');
+      // A brand-new Round Robin page with nobody enrolled is a real,
+      // bookable page with no host behind it — go straight into "Manage
+      // team" instead of leaving that a separate, easy-to-skip step.
+      if (wasCreate && data.calendar_type === 'round_robin' && res.data) {
+        setTeamCalendar(res.data);
+      }
     } else {
-      toast.error(res.error || 'Failed to save engine');
+      toast.error(res.error || 'Failed to save booking page');
     }
   };
 
@@ -98,7 +117,7 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {calendars.map((cal) => (
           <div key={cal.id} className="bg-white border border-dash-border rounded-2xl overflow-hidden shadow-sm hover:border-dash-accent transition-all motion-reduce:transition-none group">
-            {/* Engine Preview Header */}
+            {/* Preview header */}
             <div className="h-32 bg-dash-surface flex items-center justify-center relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-dash-accent to-purple opacity-10 group-hover:opacity-20 transition-opacity motion-reduce:transition-none" />
               <div className="w-16 h-16 rounded-2xl bg-white border border-dash-border flex items-center justify-center text-dash-accent shadow-sm relative z-10">
@@ -111,7 +130,7 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
                 <div>
                   <h3 className="text-[16px] font-bold !text-dash-text">{cal.name}</h3>
                   <p className="text-[11px] font-bold !text-dash-textMuted mt-1">
-                    {getCalendarTypeLabel(cal.calendar_type)} engine
+                    {getCalendarTypeLabel(cal.calendar_type)} booking page
                   </p>
                 </div>
                 <DropdownMenu>
@@ -148,8 +167,15 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
                 </div>
               </div>
 
+              {cal.calendar_type === 'round_robin' && rrCounts[cal.id] === 0 && (
+                <div className="mt-5 flex items-center gap-2 rounded-lg border border-red/20 bg-red/5 px-3 py-2 text-[11px] font-semibold text-red">
+                  <AlertTriangle size={13} className="shrink-0" />
+                  No hosts assigned — bookings will fail
+                </div>
+              )}
+
               {cal.calendar_type === 'round_robin' && (
-                <DashButton variant="secondary" size="sm" onClick={() => setTeamCalendar(cal)} className="mt-5 w-full">
+                <DashButton variant="secondary" size="sm" onClick={() => setTeamCalendar(cal)} className="mt-3 w-full">
                   <Users size={14} /> Manage team
                 </DashButton>
               )}
@@ -179,7 +205,7 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
           </div>
         ))}
 
-        {/* Create New Engine Card */}
+        {/* Create New Booking Page Card */}
         <div
           onClick={handleCreate}
           className="border-2 border-dashed border-dash-border rounded-2xl p-6 flex flex-col items-center justify-center text-center gap-4 hover:border-dash-accent hover:bg-dash-surface transition-all motion-reduce:transition-none cursor-pointer min-h-[350px] group"
@@ -188,8 +214,8 @@ export default function CalendarPagesView({ calendars }: CalendarPagesViewProps)
             <Zap size={20} />
           </div>
           <div>
-            <h4 className="text-[14px] font-bold !text-dash-textMuted group-hover:!text-dash-text">New booking engine</h4>
-            <p className="text-[11px] !text-dash-textMuted mt-1 max-w-[200px]">Create a new automated scheduling workflow for your team.</p>
+            <h4 className="text-[14px] font-bold !text-dash-textMuted group-hover:!text-dash-text">New booking page</h4>
+            <p className="text-[11px] !text-dash-textMuted mt-1 max-w-[200px]">Create a new booking page for people to schedule time with you or your team.</p>
           </div>
         </div>
       </div>

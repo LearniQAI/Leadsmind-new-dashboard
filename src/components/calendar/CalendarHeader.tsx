@@ -15,7 +15,7 @@ interface CalendarHeaderProps {
 export default function CalendarHeader({ workspaceName, onNewAppointment, calendars = [], onViewPublicPages }: CalendarHeaderProps) {
   const handleViewPublicPages = () => {
     if (calendars.length === 0) {
-      toast.error('No public booking pages yet — create a booking engine first');
+      toast.error('No public booking pages yet — create a booking page first');
       return;
     }
     if (calendars.length === 1) {
@@ -29,10 +29,10 @@ export default function CalendarHeader({ workspaceName, onNewAppointment, calend
     <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
       <div className="space-y-1">
         <h1 className="text-[22px] font-bold leading-tight !text-dash-text">
-          Appointment <span className="text-dash-accent">calendar</span>
+          Booking <span className="text-dash-accent">Pages</span>
         </h1>
         <p className="text-[11.5px] font-medium !text-dash-textMuted">
-          Manage your scheduling engines, team availability, and booking links
+          Manage your booking pages, team availability, and booking links
         </p>
       </div>
 

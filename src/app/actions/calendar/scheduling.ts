@@ -106,24 +106,16 @@ async function diagnoseSlotUnavailable(calendarId: string, startTime: string, en
     return { code: 'calendar_not_found' as const, message: 'This calendar no longer exists or is unavailable.' };
   }
 
-  const { data: rrMember } = await supabase
-    .from('round_robin_assignment')
-    .select('user_id')
-    .eq('calendar_id', calendarId)
-    .limit(1)
-    .maybeSingle();
-  const userId = rrMember?.user_id || calendar.workspace_id;
+  const userId = (await resolveHostUserId(supabase, calendar, calendarId)) ?? calendar.workspace_id;
 
-  const { data: profile } = await supabase
+  const { data: profileRows } = await supabase
     .from('host_availability_profiles')
     .select('*')
-    .eq('user_id', userId)
-    .limit(1)
-    .maybeSingle();
+    .eq('user_id', userId);
 
-  const bufferTime = profile?.buffer_time ?? calendar.buffer_time ?? 15;
-  const minimumNoticePeriod = profile?.minimum_notice_period ?? 120;
-  const maximumDaysInAdvance = profile?.maximum_days_in_advance ?? 30;
+  const bufferTime = profileRows?.[0]?.buffer_time ?? calendar.buffer_time ?? 15;
+  const minimumNoticePeriod = profileRows?.[0]?.minimum_notice_period ?? 120;
+  const maximumDaysInAdvance = profileRows?.[0]?.maximum_days_in_advance ?? 30;
 
   const now = new Date();
   const minAvailableTime = addMinutes(now, minimumNoticePeriod);
@@ -155,9 +147,14 @@ async function diagnoseSlotUnavailable(calendarId: string, startTime: string, en
     daySlots = overrides.slots;
   } else {
     const dayOfWeek = isoDateDayOfWeek(dateStr);
-    daySlots = calendar.availability?.[dayOfWeek.toString()] || [];
-    if (daySlots.length === 0 && dayOfWeek >= 1 && dayOfWeek <= 5) {
-      daySlots = [{ start: '09:00', end: '17:00' }];
+    const dayProfile = profileRows?.find((r: any) => r.day_of_week === dayOfWeek);
+    if (dayProfile) {
+      daySlots = dayProfile.enabled ? dayProfile.slots || [] : [];
+    } else {
+      daySlots = calendar.availability?.[dayOfWeek.toString()] || [];
+      if (daySlots.length === 0 && dayOfWeek >= 1 && dayOfWeek <= 5) {
+        daySlots = [{ start: '09:00', end: '17:00' }];
+      }
     }
   }
 
@@ -315,10 +312,6 @@ export async function updateRoundRobinStats(_calendarId: string, _userId: string
   /* no-op — see getRoundRobinAssignee */
 }
 
-export async function validateCollectiveSlot(calendarId: string, startTime: string, endTime: string) {
-  return validateSlot(calendarId, startTime, endTime);
-}
-
 /**
  * Computes available slots for a given date.
  * Integrates: notice periods, buffer time, date overrides, SA public holidays, load shedding schedules, and slot leases.
@@ -336,29 +329,19 @@ export async function getAvailableSlots(calendarId: string, date: string) {
   if (!calendar) return [];
 
   // 2. Fetch Host Profile rules and settings (notice periods & buffer time)
-  // Check if calendar is assigned to a user or uses Round Robin
-  let hostId = calendar.workspace_id; // fallback
-  
-  // Retrieve the assignee if round-robin or custom personal calendar
-  const { data: rrMember } = await supabase
-    .from('round_robin_assignment')
-    .select('user_id')
-    .eq('calendar_id', calendarId)
-    .limit(1)
-    .maybeSingle();
+  // Round-robin calendars use the assigned member; everything else falls
+  // back to the workspace owner's profile (booking_calendars has no
+  // per-calendar owner column) — same resolution external-busy lookups use.
+  const userId = (await resolveHostUserId(supabase, calendar, calendarId)) ?? calendar.workspace_id;
 
-  const userId = rrMember?.user_id || calendar.workspace_id;
-
-  const { data: profile } = await supabase
+  const { data: profileRows } = await supabase
     .from('host_availability_profiles')
     .select('*')
-    .eq('user_id', userId)
-    .limit(1)
-    .maybeSingle();
+    .eq('user_id', userId);
 
-  const bufferTime = profile?.buffer_time ?? calendar.buffer_time ?? 15;
-  const minimumNoticePeriod = profile?.minimum_notice_period ?? 120;
-  const maximumDaysInAdvance = profile?.maximum_days_in_advance ?? 30;
+  const bufferTime = profileRows?.[0]?.buffer_time ?? calendar.buffer_time ?? 15;
+  const minimumNoticePeriod = profileRows?.[0]?.minimum_notice_period ?? 120;
+  const maximumDaysInAdvance = profileRows?.[0]?.maximum_days_in_advance ?? 30;
 
   // 3. Compute temporal boundaries
   const now = new Date();
@@ -397,9 +380,19 @@ export async function getAvailableSlots(calendarId: string, date: string) {
     // interpretation of a Date object — avoids day-of-week drift when the
     // server process timezone differs from UTC.
     const dayOfWeek = isoDateDayOfWeek(date);
-    daySlots = calendar.availability?.[dayOfWeek.toString()] || [];
-    if (daySlots.length === 0 && dayOfWeek >= 1 && dayOfWeek <= 5) {
-      daySlots = [{ start: '09:00', end: '17:00' }]; // fallback weekday
+    // The Availability page's weekly hours (host_availability_profiles) are
+    // the real single source of truth once set — they take precedence over
+    // the calendar's own `availability` JSONB, which only exists per-calendar
+    // and has no dedicated UI. A disabled day in the profile means "unavailable"
+    // (empty slots), same as the profile never existing falls through below.
+    const dayProfile = profileRows?.find((r: any) => r.day_of_week === dayOfWeek);
+    if (dayProfile) {
+      daySlots = dayProfile.enabled ? dayProfile.slots || [] : [];
+    } else {
+      daySlots = calendar.availability?.[dayOfWeek.toString()] || [];
+      if (daySlots.length === 0 && dayOfWeek >= 1 && dayOfWeek <= 5) {
+        daySlots = [{ start: '09:00', end: '17:00' }]; // fallback weekday
+      }
     }
   }
 

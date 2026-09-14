@@ -35,12 +35,13 @@ export default async function WaitlistPage() {
         <div className="h-20 w-20 rounded-2xl bg-dash-accent/10 flex items-center justify-center border border-dashed border-dash-accent/20 text-dash-accent mx-auto mb-8">
          <Users className="h-10 w-10" />
         </div>
-        <h4 className="text-xl font-bold !text-dash-text mb-4">No waitlist protocols active</h4>
+        <h4 className="text-xl font-bold !text-dash-text mb-4">No waitlists yet</h4>
         <p className="!text-dash-textMuted font-medium text-sm leading-relaxed mb-10 px-10">
-         You haven't configured any group sessions with waitlisting enabled. Dynamic attendee promotion is disabled.
+         You haven't set up any group sessions with waitlisting enabled yet. Turn on waitlisting on a Class or
+         Webinar booking page to start filling open spots automatically.
         </p>
         <DashButton asChild variant="primary" size="lg" className="px-10">
-         <Link href="/calendar">Configure nodes</Link>
+         <Link href="/calendar">Go to booking pages</Link>
         </DashButton>
        </div>
       </div>
@@ -68,13 +69,13 @@ export default async function WaitlistPage() {
           <div className="h-6 w-6 rounded-lg bg-dash-accent/10 flex items-center justify-center border border-dash-accent/20">
            <Users className="h-3.5 w-3.5 text-dash-accent" />
           </div>
-          <span className="text-[10px] font-bold text-dash-accent">Attendee propagation matrix</span>
+          <span className="text-[10px] font-bold text-dash-accent">Waitlist</span>
          </div>
          <h2 className="text-4xl font-bold tracking-tight !text-dash-text leading-tight mb-4">
-          Queue <span className="text-dash-accent">&</span> capacity
+          Waitlist <span className="text-dash-accent">&</span> capacity
          </h2>
          <p className="!text-dash-textMuted text-sm font-medium mt-4 max-w-2xl leading-relaxed">
-          Real-time sequential promotion engine for group sessions. Manage attendee overflow and offer manual spot overrides.
+          See who's waiting for a spot on your group sessions, and offer open spots manually when you need to.
          </p>
         </div>
        </div>
@@ -82,16 +83,16 @@ export default async function WaitlistPage() {
 
       <div className="col-span-12">
        <PremiumSection
-        label="Active queue management"
-        title="Real-time promotion"
-        description="Sequential attendee advancement for live event streams."
+        label="Waitlist management"
+        title="Auto-offer next spot"
+        description="When a spot opens up, the next person waiting is automatically offered it."
         accentColor="#1359FF"
         badge={
          <div className="flex items-center gap-4">
           <Badge className="bg-dash-accent/10 text-dash-accent border-none text-[9px] font-bold px-4 py-1.5 rounded-full">
-           {sessions.length} streams monitored
+           {sessions.length} sessions monitored
           </Badge>
-          <Link href="/calendar" className="text-[10px] font-bold text-dash-accent hover:underline">Exit to nodes</Link>
+          <Link href="/calendar" className="text-[10px] font-bold text-dash-accent hover:underline">Back to booking pages</Link>
          </div>
         }
        >

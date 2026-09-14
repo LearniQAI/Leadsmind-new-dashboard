@@ -30,7 +30,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { DashButton } from '@/components/dashboard-ui';
 import { Textarea } from '@/components/ui/textarea';
-import { Video, Globe, Users, Loader2, Check, Settings2, Link as LinkIcon, Sparkles, AlertTriangle } from 'lucide-react';
+import { Video, Globe, Users, Loader2, Check, Settings2, Link as LinkIcon, Sparkles, AlertTriangle, Clock, ArrowUpRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { isGroupSessionType, DEFAULT_GROUP_CAPACITY, getCapacityCeilingWarning, type CalendarType } from '@/lib/calendar/calendarTypes';
 
@@ -119,7 +119,7 @@ export default function CalendarSettingsModal({
       await onSave(values);
       onClose();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to save engine settings');
+      toast.error(error.message || 'Failed to save booking page');
     } finally {
       setIsSubmitting(false);
     }
@@ -155,7 +155,7 @@ export default function CalendarSettingsModal({
             <div className="w-10 h-10 rounded-xl bg-dash-accent/10 flex items-center justify-center text-dash-accent">
               <Settings2 size={22} />
             </div>
-            {calendar ? 'Engine Settings' : 'New Scheduling Engine'}
+            {calendar ? 'Booking Page Settings' : 'New Booking Page'}
           </DialogTitle>
         </DialogHeader>
 
@@ -168,7 +168,7 @@ export default function CalendarSettingsModal({
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[11px] font-bold !text-dash-textMuted">Engine Name</FormLabel>
+                    <FormLabel className="text-[11px] font-bold !text-dash-textMuted">Page name</FormLabel>
                     <FormControl>
                       <Input {...field} className="bg-white border-dash-border !text-dash-text h-11" placeholder="e.g. Sales Discovery" />
                     </FormControl>
@@ -183,7 +183,7 @@ export default function CalendarSettingsModal({
                 name="calendar_type"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[11px] font-bold !text-dash-textMuted">Engine Type</FormLabel>
+                    <FormLabel className="text-[11px] font-bold !text-dash-textMuted">Booking type</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                       <FormControl>
                         <SelectTrigger className="bg-white border-dash-border !text-dash-text h-11">
@@ -193,11 +193,29 @@ export default function CalendarSettingsModal({
                       <SelectContent className="bg-white border-dash-border z-[1100]">
                         <SelectItem value="personal">Personal Booking</SelectItem>
                         <SelectItem value="round_robin">Round Robin (Team)</SelectItem>
-                        <SelectItem value="collective">Collective Booking</SelectItem>
+                        {/* Collective had no distinct behavior anywhere in the booking/
+                            scheduling code (validateCollectiveSlot() and intersectSlots()
+                            were confirmed dead and have since been removed) — removed as a
+                            choice for new pages. Only rendered here so an existing page
+                            already typed 'collective' still shows its real type instead of
+                            a blank Select when its settings are opened. */}
+                        {calendar?.calendar_type === 'collective' && (
+                          <SelectItem value="collective">Collective Booking</SelectItem>
+                        )}
                         <SelectItem value="class_booking">Class/Group</SelectItem>
                         <SelectItem value="webinar">Webinar</SelectItem>
                       </SelectContent>
                     </Select>
+                    {calendarType === 'class_booking' && (
+                      <FormDescription className="text-[10px] !text-dash-textMuted">
+                        Best for small, interactive sessions (default 12 spots).
+                      </FormDescription>
+                    )}
+                    {calendarType === 'webinar' && (
+                      <FormDescription className="text-[10px] !text-dash-textMuted">
+                        Best for large one-to-many sessions (default 100 spots).
+                      </FormDescription>
+                    )}
                   </FormItem>
                 )}
               />
@@ -257,6 +275,20 @@ export default function CalendarSettingsModal({
                 </FormItem>
               )}
             />
+
+            {/* Availability discoverability link — Calendar & Meetings UX audit
+                found no way for a first-time user to find /calendar/availability
+                unless they already knew to look for it in the nav. */}
+            <a
+              href="/calendar/availability"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 rounded-lg border border-dash-border bg-dash-surface/50 px-3 py-2.5 text-[11px] font-semibold !text-dash-textMuted hover:!text-dash-accent hover:border-dash-accent/30 transition-colors motion-reduce:transition-none"
+            >
+              <Clock size={13} className="shrink-0" />
+              Bookings use your Availability settings (working hours, buffer, notice)
+              <ArrowUpRight size={12} className="ml-auto shrink-0" />
+            </a>
 
             {/* Location / Static Link */}
             {(meetingMode === 'custom_link' || meetingMode === 'in_person') && (
@@ -371,7 +403,7 @@ export default function CalendarSettingsModal({
             className="px-8"
           >
             {isSubmitting ? <Loader2 className="animate-spin motion-reduce:animate-none" size={16} /> : <Check size={16} />}
-            {calendar ? 'Update Engine' : 'Create Engine'}
+            {calendar ? 'Update Booking Page' : 'Create Booking Page'}
           </DashButton>
         </DialogFooter>
       </DialogContent>
