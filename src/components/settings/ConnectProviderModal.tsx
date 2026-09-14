@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { X, ExternalLink, AlertCircle, ShieldCheck } from 'lucide-react';
 import { useDashboardContext } from '@/components/layouts/DashboardProvider';
-import { getWorkspaceApiKey } from '@/app/actions/settings';
 import { DashButton } from '@/components/dashboard-ui/Button';
 import { DashFormField, DashInput } from '@/components/dashboard-ui/FormField';
 
@@ -63,21 +62,6 @@ export default function ConnectProviderModal({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [oauthWarning, setOauthWarning] = useState<string | null>(null);
 
-  // Zapier state
-  const [apiKey, setApiKey] = useState<string | null>(null);
-  const [copiedKey, setCopiedKey] = useState(false);
-  const [copiedUrl, setCopiedUrl] = useState(false);
-
-  useEffect(() => {
-    if (open && provider === 'Zapier') {
-      getWorkspaceApiKey().then(res => {
-        if (res && res.data) {
-          setApiKey(res.data);
-        }
-      });
-    }
-  }, [open, provider]);
-
   // Reset on close/re-open so a previous provider's typed values never leak into the next
   // provider's fields, and so nothing looks "pre-filled" between separate connect attempts.
   useEffect(() => {
@@ -86,20 +70,6 @@ export default function ConnectProviderModal({
       setErrorMsg(null); setOauthWarning(null);
     }
   }, [open]);
-
-  const handleCopyKey = () => {
-    if (apiKey) {
-      navigator.clipboard.writeText(apiKey);
-      setCopiedKey(true);
-      setTimeout(() => setCopiedKey(false), 2000);
-    }
-  };
-
-  const handleCopyUrl = () => {
-    navigator.clipboard.writeText('https://www.leadsmind.io/api/v1');
-    setCopiedUrl(true);
-    setTimeout(() => setCopiedUrl(false), 2000);
-  };
 
   if (!open) return null;
 
@@ -226,9 +196,7 @@ export default function ConnectProviderModal({
     }
   };
 
-  const description = provider === 'Zapier'
-    ? 'Follow the instructions below to authenticate your LeadsMind integration in Zapier.'
-    : (PROVIDER_TAGLINES[providerKey] || `Enter your credentials to connect ${provider} to LeadsMind.`);
+  const description = PROVIDER_TAGLINES[providerKey] || `Enter your credentials to connect ${provider} to LeadsMind.`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -268,76 +236,7 @@ export default function ConnectProviderModal({
           </div>
         </div>
 
-        {provider === 'Zapier' ? (
-          <div className="space-y-5">
-            <DashFormField label="Zapier base URL">
-              <div className="flex gap-2">
-                <DashInput
-                  type="text"
-                  readOnly
-                  value="https://www.leadsmind.io/api/v1"
-                  className="font-mono"
-                />
-                <DashButton type="button" variant="secondary" size="default" onClick={handleCopyUrl} className="flex-shrink-0">
-                  {copiedUrl ? 'Copied' : 'Copy'}
-                </DashButton>
-              </div>
-            </DashFormField>
-
-            <DashFormField label="Master API secret key">
-              {apiKey ? (
-                <div className="flex gap-2">
-                  <DashInput type="password" readOnly value={apiKey} className="font-mono" />
-                  <DashButton type="button" variant="secondary" size="default" onClick={handleCopyKey} className="flex-shrink-0">
-                    {copiedKey ? 'Copied' : 'Copy'}
-                  </DashButton>
-                </div>
-              ) : (
-                <div className="bg-amber/10 border border-amber/20 rounded-lg p-3 text-[12px] text-amber leading-relaxed">
-                  No Master API key found. Please generate one under{' '}
-                  <a
-                    href="/settings?tab=api"
-                    className="!text-dash-accent hover:underline font-semibold"
-                    onClick={onClose}
-                  >
-                    Settings &gt; Developer
-                  </a>{' '}
-                  first.
-                </div>
-              )}
-            </DashFormField>
-
-            <div className="bg-dash-surface border border-dash-border rounded-xl p-4 space-y-2 text-[12px] !text-dash-textMuted leading-relaxed">
-              <p className="font-semibold !text-dash-text">Instructions:</p>
-              <ol className="list-decimal list-inside space-y-1">
-                <li>Log in to your Zapier account and click "Create Zap".</li>
-                <li>Search for and select the "LeadsMind" app.</li>
-                <li>When prompted for authentication, enter your Master API Secret Key and set the Base URL to the one provided above.</li>
-                <li>Test your connection and begin building triggers (e.g. Contact Created) and actions.</li>
-              </ol>
-            </div>
-
-            <div className="pt-2 flex items-center gap-3">
-              {apiKey && (
-                <DashButton
-                  type="button"
-                  variant="primary"
-                  className="flex-1"
-                  onClick={() => {
-                    onConnected('Active Connection');
-                    onClose();
-                  }}
-                >
-                  Mark Connected
-                </DashButton>
-              )}
-              <DashButton type="button" variant="secondary" className="flex-1" onClick={onClose}>
-                Close
-              </DashButton>
-            </div>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
 
             {/* CATEGORY: Paystack — bring-your-own-key, real credential shape (one secret key) */}
             {providerKey === 'paystack' && (
@@ -617,7 +516,6 @@ export default function ConnectProviderModal({
             )}
 
           </form>
-        )}
 
       </div>
     </div>

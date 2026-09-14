@@ -114,27 +114,6 @@ export async function calculateAvailableSlots({
   return allSlots;
 }
 
-/**
- * Collective Availability: Computes the intersection of available slots across multiple hosts.
- */
-export function intersectSlots(hostSlotsArrays: TimeSlot[][]): TimeSlot[] {
-  if (hostSlotsArrays.length === 0) return [];
-  if (hostSlotsArrays.length === 1) return hostSlotsArrays[0];
-
-  let intersection = hostSlotsArrays[0];
-
-  for (let i = 1; i < hostSlotsArrays.length; i++) {
-    const currentHostSlots = hostSlotsArrays[i];
-    intersection = intersection.filter(slot => 
-      currentHostSlots.some(hSlot => 
-        hSlot.start === slot.start && hSlot.end === slot.end
-      )
-    );
-  }
-
-  return intersection;
-}
-
 export const DEFAULT_WORKING_HOURS: DayAvailability[] = [
   { dayOfWeek: 1, enabled: true, slots: [{ start: "09:00", end: "17:00" }] },
   { dayOfWeek: 2, enabled: true, slots: [{ start: "09:00", end: "17:00" }] },

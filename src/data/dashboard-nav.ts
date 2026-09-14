@@ -121,9 +121,10 @@ const dashboardNav: NavModule[] = [
     label: "Calendar & Meetings",
     icon: "fa-light fa-calendar-days",
     items: [
-      { id: 9, label: "Calendars", icon: "fa-light fa-calendar-days", link: "/calendar", permission: "calendar" },
+      { id: 9, label: "Booking Pages", icon: "fa-light fa-calendar-days", link: "/calendar", permission: "calendar" },
       { id: 10, label: "Waitlists", icon: "fa-light fa-clock-rotate-left", link: "/calendar/waitlist", permission: "calendar" },
       { id: 101, label: "Instant Meet", icon: "fa-light fa-video", link: "/calendar/instant-meet", permission: "calendar" },
+      { id: 305, label: "Availability", icon: "fa-light fa-clock", link: "/calendar/availability", permission: "calendar" },
     ],
   },
   {

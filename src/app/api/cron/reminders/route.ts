@@ -21,11 +21,17 @@ export async function GET(request) {
 
     const in24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     const in1Hour = new Date(now.getTime() + 60 * 60 * 1000);
+    const in30Min = new Date(now.getTime() + 30 * 60 * 1000);
 
     const start24h = new Date(in24Hours.getTime() - 15 * 60000).toISOString();
     const end24h = new Date(in24Hours.getTime() + 15 * 60000).toISOString();
     const start1h = new Date(in1Hour.getTime() - 15 * 60000).toISOString();
     const end1h = new Date(in1Hour.getTime() + 15 * 60000).toISOString();
+    // Tighter tolerance than the 24h/1h bands — this mark needs precision the
+    // others don't, backed by the cron now running every 5 minutes instead of
+    // hourly (vercel.json) so the window is reliably hit without drifting.
+    const start30m = new Date(in30Min.getTime() - 5 * 60000).toISOString();
+    const end30m = new Date(in30Min.getTime() + 5 * 60000).toISOString();
 
     const { data: upcoming, error } = await supabase
       .from('appointments')
@@ -34,7 +40,7 @@ export async function GET(request) {
         contact:contacts(id, first_name, last_name, email, phone, opted_out, sms_opt_out)
       `)
       .in('status', ['confirmed', 'scheduled'])
-      .or(`and(start_time.gte.${start24h},start_time.lte.${end24h},reminder_24h_sent.eq.false),and(start_time.gte.${start1h},start_time.lte.${end1h},reminder_1h_sent.eq.false)`);
+      .or(`and(start_time.gte.${start24h},start_time.lte.${end24h},reminder_24h_sent.eq.false),and(start_time.gte.${start1h},start_time.lte.${end1h},reminder_1h_sent.eq.false),and(start_time.gte.${start30m},start_time.lte.${end30m},reminder_30m_sent.eq.false)`);
 
     if (error || !upcoming) return NextResponse.json({ success: false, error: 'Query failed' });
     if (upcoming.length === 0) return NextResponse.json({ success: true, message: 'No reminders to send right now' });
@@ -74,9 +80,17 @@ export async function GET(request) {
     let whatsappSentCount = 0;
 
     for (const apt of upcoming) {
-      const is1Hour = new Date(apt.start_time).getTime() - now.getTime() < 2 * 60 * 60 * 1000;
-      const typeStr = is1Hour ? '1 hour' : '24 hours';
-      
+      const minutesOut = (new Date(apt.start_time).getTime() - now.getTime()) / 60000;
+      // Same "which band did this fall in" heuristic the 1h/24h split already
+      // used (re-derive from the delta rather than track which .or() branch
+      // matched) — safe because the three bands don't overlap: 30min±5 tops
+      // out at 35min, well under the 1h band's floor of 45min; 1h±15 tops out
+      // at 75min, well under the 24h band's floor of ~23h45.
+      const is30Min = minutesOut < 40;
+      const is1Hour = !is30Min && minutesOut < 2 * 60;
+      const typeStr = is30Min ? '30 minutes' : is1Hour ? '1 hour' : '24 hours';
+      const reminderColumn = is30Min ? 'reminder_30m_sent' : is1Hour ? 'reminder_1h_sent' : 'reminder_24h_sent';
+
       const contact = contactField(apt);
       const email = contact?.email;
       const phone = contact?.phone;
@@ -124,7 +138,7 @@ export async function GET(request) {
           });
         }
 
-        await supabase.from('appointments').update(is1Hour ? { reminder_1h_sent: true } : { reminder_24h_sent: true }).eq('id', apt.id);
+        await supabase.from('appointments').update({ [reminderColumn]: true }).eq('id', apt.id);
         reminderRecorded = true;
         sentCount++;
       } catch (err) {

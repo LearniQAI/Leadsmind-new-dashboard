@@ -26,8 +26,17 @@ export default function IntegrationsHubPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
 
-  const { isConnected, getLabel, needsReconnect, connect, disconnect, loading, error, refetch } =
+  const { isConnected, getLabel, needsReconnect, isPending, connect, disconnect, loading, error, refetch } =
     useWorkspaceIntegrations(workspaceId)
+
+  const handleDisconnect = async (provider: string) => {
+    try {
+      await disconnect(provider)
+      toast.success(`${provider} disconnected.`)
+    } catch (err: any) {
+      toast.error(err?.message || `Could not disconnect ${provider}. Please try again.`)
+    }
+  }
 
   // Surface the result of a calendar OAuth round-trip (Task 62 — the connect
   // routes redirect back here with ?calendar_connected=… / ?calendar_error=…).
@@ -73,6 +82,7 @@ export default function IntegrationsHubPage() {
           connected={isConnected(item.name)}
           accountLabel={getLabel(item.name)}
           needsReconnect={needsReconnect(item.name)}
+          loading={isPending(item.name)}
           reconnectHint={
             item.name === 'Microsoft Teams'
               ? 'Your Outlook connection predates Teams meeting links — reconnect Outlook to enable them.'
@@ -84,7 +94,7 @@ export default function IntegrationsHubPage() {
               ? (window.location.href = '/api/auth/microsoft')
               : setConnectingProvider({ provider: item.name, category: item.category })
           }
-          onDisconnect={() => disconnect(item.name)}
+          onDisconnect={() => handleDisconnect(item.name)}
         />
       )
     }
@@ -185,17 +195,6 @@ export default function IntegrationsHubPage() {
                   desc: 'Teams meeting links via your connected Microsoft 365 account — no separate connect', status: 'available', category: 'video_conferencing' },
               ].map(item => renderIntegrationCard(item as any))}
             </div>
-
-            {/* Automation Platforms */}
-            <p className="text-[10px] font-semibold mb-3 !text-dash-textMuted">
-              Automation platforms
-            </p>
-            <div className="flex flex-col gap-3">
-              {[
-                { name: 'Zapier', shortName: 'ZAP', color: '#ff4a00',
-                  desc: 'Connect LeadsMind to 5,000+ apps via Zapier triggers and actions', status: 'available', category: 'automation' },
-              ].map(item => renderIntegrationCard(item as any))}
-            </div>
           </>
         )}
       </div>
@@ -207,8 +206,11 @@ export default function IntegrationsHubPage() {
           open={true}
           onClose={() => setConnectingProvider(null)}
           onConnected={(label) => {
-            connect(connectingProvider.provider, connectingProvider.category, label)
+            const { provider, category } = connectingProvider
             setConnectingProvider(null)
+            connect(provider, category, label).catch((err: any) => {
+              toast.error(err?.message || `Could not connect ${provider}. Please try again.`)
+            })
           }}
         />
       )}

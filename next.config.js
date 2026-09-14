@@ -51,19 +51,38 @@ const nextConfig = {
                 'node_modules/@esbuild/linux-x64',
             ],
         },
-        // serverComponentsExternalPackages alone keeps webpack from mangling
-        // @sparticuz/chromium, but Vercel's output file tracing (@vercel/nft)
-        // still decides what actually gets uploaded into each Lambda — and it
-        // can't statically discover chromium's brotli binaries, since
-        // chromium.executablePath() resolves them at runtime, not via a
-        // traceable require(). Without this, every route calling
-        // htmlToPdfBuffer() gets a deployed function missing
-        // node_modules/@sparticuz/chromium/bin, even though it's present locally.
+        // serverComponentsExternalPackages alone keeps webpack from mangling these packages,
+        // but Vercel's output file tracing (@vercel/nft) still decides what actually gets
+        // uploaded into each Lambda — and it can't statically discover things resolved at
+        // runtime rather than via a traceable require() (chromium.executablePath(), pdfjs's
+        // worker, jsdom's optional native pieces).
+        //
+        // Scoped to the SPECIFIC routes that actually import each package — NOT a blanket
+        // '/**/*' (which is what this block originally used). Real, live-confirmed regression
+        // from that: @sparticuz/chromium (67MB) + pdfjs-dist (36MB) + jsdom (15MB) force-
+        // bundled into EVERY function in the app pushed /blog/[slug]'s deployed function over
+        // whatever limit Vercel enforces — live request headers showed its X-Vercel-Id never
+        // gained the edge→origin (iad1) hop that every other route's did, meaning Vercel's
+        // edge was short-circuiting to its own static /500 fallback WITHOUT ever invoking the
+        // function at all — a deploy/bundle-level failure, not a runtime crash. Route keys
+        // below use the exact real callers (grepped, not guessed) — add a new key rather than
+        // widening an existing one if a new caller is added later.
         outputFileTracingIncludes: {
-            '/**/*': [
+            '/api/student/courses/[id]/certificate': [
                 './node_modules/@sparticuz/chromium/**/*',
                 './node_modules/puppeteer-core/**/*',
+            ],
+            '/api/finance/documents/[id]/export': [
+                './node_modules/@sparticuz/chromium/**/*',
+                './node_modules/puppeteer-core/**/*',
+            ],
+            '/api/cron/workers/document-processing': [
                 './node_modules/pdfjs-dist/**/*',
+            ],
+            '/api/finance/documents/[id]/unlock': [
+                './node_modules/pdfjs-dist/**/*',
+            ],
+            '/blog/[slug]': [
                 './node_modules/jsdom/**/*',
                 './node_modules/isomorphic-dompurify/**/*',
             ],

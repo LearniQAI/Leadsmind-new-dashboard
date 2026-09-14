@@ -102,6 +102,35 @@ export async function getRoundRobinPool(
 }
 
 /**
+ * Enrolled-host count per calendar — backs the "No hosts assigned" warning
+ * badge on the Booking Pages grid, so an already-created empty Round Robin
+ * page is caught too, not just newly-created ones.
+ */
+export async function getRoundRobinEnrollmentCounts(calendarIds: string[]): Promise<ActionResult<Record<string, number>>> {
+  try {
+    const { workspaceId } = await requireWorkspaceAccess();
+    if (!calendarIds.length) return { success: true, data: {} };
+    const supabase = await createServerClient();
+
+    const { data: rows } = await supabase
+      .from('round_robin_assignment')
+      .select('calendar_id')
+      .eq('workspace_id', workspaceId)
+      .in('calendar_id', calendarIds);
+
+    const counts: Record<string, number> = {};
+    for (const id of calendarIds) counts[id] = 0;
+    for (const r of rows || []) counts[r.calendar_id] = (counts[r.calendar_id] ?? 0) + 1;
+
+    return { success: true, data: counts };
+  } catch (err: any) {
+    logger.error({ err }, 'calendar.round_robin.get_enrollment_counts.failed');
+    const clientError = toClientError(err);
+    return { success: false, error: clientError.error };
+  }
+}
+
+/**
  * Replace this calendar's round-robin pool with exactly `userIds`. Existing
  * enrolled hosts that stay keep their booking_count / last_assigned_at (their
  * place in the rotation); hosts removed here keep any bookings already assigned

@@ -76,7 +76,7 @@ export function WaitlistManager({ initialSession, initialWaitlist, allSessions }
    <div className="md:col-span-1 space-y-6">
      {/* Session Selection */}
      <div className="space-y-4">
-      <span className="text-[10px] font-bold !text-dash-textMuted border-b border-dash-border pb-2 block">Select event stream</span>
+      <span className="text-[10px] font-bold !text-dash-textMuted border-b border-dash-border pb-2 block">Select session</span>
       {allSessions.map(s => (
         <button
          key={s.id}
@@ -125,7 +125,7 @@ export function WaitlistManager({ initialSession, initialWaitlist, allSessions }
          </div>
          <div className="flex items-center gap-2 !text-dash-textMuted">
           <div className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-          <span className="text-[10px] font-bold">Automatic promotion: on</span>
+          <span className="text-[10px] font-bold">Auto-offer next spot: on</span>
          </div>
        </div>
       </CardContent>
@@ -157,8 +157,8 @@ export function WaitlistManager({ initialSession, initialWaitlist, allSessions }
      <Card className="bg-white border-dash-border rounded-[32px] overflow-hidden shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between border-b border-dash-border bg-dash-surface">
        <div>
-         <CardTitle className="text-lg font-bold !text-dash-text">Queue: {activeSession.title}</CardTitle>
-         <CardDescription className="!text-dash-textMuted text-xs">Sequential promotion queue</CardDescription>
+         <CardTitle className="text-lg font-bold !text-dash-text">Waiting list: {activeSession.title}</CardTitle>
+         <CardDescription className="!text-dash-textMuted text-xs">Waiting list order — first come, first served</CardDescription>
        </div>
        <Badge variant="outline" className="bg-dash-accent/5 border-dash-accent/20 text-dash-accent">{waitlist.length} Waiting</Badge>
       </CardHeader>

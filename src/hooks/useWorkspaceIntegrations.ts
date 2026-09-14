@@ -14,6 +14,10 @@ export function useWorkspaceIntegrations(workspaceId: string | null) {
   const [integrations, setIntegrations] = useState<Integration[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // Per-provider, not global `loading` (that one only gates the initial page
+  // skeleton) — lets a single card show a spinner/disable its own button
+  // while its own connect/disconnect request is in flight.
+  const [pendingProvider, setPendingProvider] = useState<string | null>(null)
 
   const fetch = useCallback(async () => {
     if (!workspaceId) return
@@ -51,21 +55,49 @@ export function useWorkspaceIntegrations(workspaceId: string | null) {
   const needsReconnect = (provider: string) =>
     integrations.find(i => i.provider.toLowerCase() === provider.toLowerCase())?.needs_reconnect ?? false
 
+  // Root cause of "Disconnect does nothing, no error shown": both of these
+  // previously fired the request, ignored whether it actually succeeded (a
+  // non-2xx response still resolves — fetch only rejects on network failure),
+  // and unconditionally refetched — which just re-displays the unchanged
+  // server state with zero feedback on why nothing changed. Both now check
+  // `res.ok` and throw with the server's real error message on failure, so a
+  // caller can catch it and show it, instead of the failure being invisible.
   const connect = async (provider: string, category: string, accountLabel?: string) => {
-    await window.fetch('/api/settings/integrations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ workspaceId, provider, category, accountLabel }),
-    })
-    await fetch()
+    setPendingProvider(provider)
+    try {
+      const res = await window.fetch('/api/settings/integrations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspaceId, provider, category, accountLabel }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data.error || `Could not connect ${provider}.`)
+      }
+      await fetch()
+    } finally {
+      setPendingProvider(null)
+    }
   }
 
   const disconnect = async (provider: string) => {
-    await window.fetch(`/api/settings/integrations?workspaceId=${workspaceId}&provider=${provider}`, {
-      method: 'DELETE',
-    })
-    await fetch()
+    setPendingProvider(provider)
+    try {
+      const res = await window.fetch(`/api/settings/integrations?workspaceId=${workspaceId}&provider=${provider}`, {
+        method: 'DELETE',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data.error || `Could not disconnect ${provider}.`)
+      }
+      await fetch()
+    } finally {
+      setPendingProvider(null)
+    }
   }
 
-  return { integrations, loading, error, isConnected, getLabel, needsReconnect, connect, disconnect, refetch: fetch }
+  const isPending = (provider: string) =>
+    pendingProvider !== null && pendingProvider.toLowerCase() === provider.toLowerCase()
+
+  return { integrations, loading, error, isConnected, getLabel, needsReconnect, isPending, connect, disconnect, refetch: fetch }
 }

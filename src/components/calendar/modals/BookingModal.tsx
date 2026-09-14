@@ -400,7 +400,7 @@ export default function BookingModal({
               name="calendarId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[11px] font-bold !text-dash-textMuted">Calendar Engine</FormLabel>
+                  <FormLabel className="text-[11px] font-bold !text-dash-textMuted">Booking Page</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger className="bg-white border-dash-border !text-dash-text h-11">

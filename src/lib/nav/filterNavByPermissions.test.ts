@@ -200,6 +200,16 @@ const NEWLY_ADDED_HR_ROUTES = new Set([
 ]);
 
 /**
+ * Calendar & Meetings UX audit: /calendar/availability is a genuinely new page
+ * (working-hours/buffer/notice/date-override settings) added alongside the
+ * existing Calendars/Waitlists/Instant Meet items, under the same "calendar"
+ * permission -- not a behavior change to any existing route.
+ */
+const NEWLY_ADDED_CALENDAR_ROUTES = new Set([
+  "/calendar/availability",
+]);
+
+/**
  * Task 47: /hr/payroll changed from role-restricted (admin/owner/hr/payroll only) to
  * visible to any workspace member -- the page itself now branches (full payroll-run
  * management for privileged roles, a self-service "my payslips" view for everyone else),
@@ -276,6 +286,7 @@ describe("filterNavByPermissions matches the old inline filtering logic exactly"
         !NEWLY_ADDED_MARKETING_ROUTES.has(l) &&
         !NEWLY_ADDED_LEAD_FINDER_ROUTES.has(l) &&
         !NEWLY_ADDED_HR_ROUTES.has(l) &&
+        !NEWLY_ADDED_CALENDAR_ROUTES.has(l) &&
         !HR_PAYROLL_NOW_OPEN_TO_ALL.has(l)
     );
     expect(newLinksExcludingAdditions.sort()).toEqual(oldLinksExcludingChanges.sort());
@@ -318,6 +329,14 @@ describe("filterNavByPermissions matches the old inline filtering logic exactly"
     const hadHrLeave = newLinks.has("/hr/leave");
     NEWLY_ADDED_HR_ROUTES.forEach((route) => {
       expect(newLinks.has(route)).toBe(hadHrLeave);
+    });
+  });
+
+  it.each(scenarios)("%s: Availability is visible iff /calendar already was (same 'calendar' permission)", (_label, role, permissions) => {
+    const newLinks = newVisibleLinks({ role, permissions });
+    const hadCalendar = newLinks.has("/calendar");
+    NEWLY_ADDED_CALENDAR_ROUTES.forEach((route) => {
+      expect(newLinks.has(route)).toBe(hadCalendar);
     });
   });
 
