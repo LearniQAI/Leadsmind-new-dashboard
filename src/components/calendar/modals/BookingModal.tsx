@@ -35,6 +35,7 @@ import { createAppointment, updateAppointment } from '@/app/actions/calendar/app
 import { createRecurringSeries } from '@/app/actions/calendar/recurringMeetings';
 import { listResources, getResourceAvailability } from '@/app/actions/calendar/resources';
 import { getCalendarTypeLabel } from '@/lib/calendar/calendarTypes';
+import { computeDefaultStartTime } from '@/lib/calendar/bookingDefaults';
 import { toast } from 'sonner';
 
 const bookingSchema = z.object({
@@ -107,6 +108,11 @@ export default function BookingModal({
   const [resourceAvailability, setResourceAvailability] = useState<Record<string, boolean> | null>(null);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
 
+  const initialStartTime = initialDate ? computeDefaultStartTime(initialDate, calendars[0]) : '';
+  const initialEndTime = initialDate
+    ? format(addMinutes(new Date(`${format(initialDate, 'yyyy-MM-dd')}T${initialStartTime}`), 30), 'HH:mm')
+    : '';
+
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingSchema) as any,
     defaultValues: {
@@ -114,8 +120,8 @@ export default function BookingModal({
       contactId: '',
       title: '',
       date: initialDate ? format(initialDate, 'yyyy-MM-dd') : '',
-      startTime: initialDate ? format(initialDate, 'HH:mm') : '',
-      endTime: initialDate ? format(addMinutes(initialDate, 30), 'HH:mm') : '',
+      startTime: initialStartTime,
+      endTime: initialEndTime,
       meetingMode: 'internal_meet',
       resourceId: '',
       repeat: 'none',
@@ -219,13 +225,16 @@ export default function BookingModal({
           setView('form');
         }
 
+        const defaultStart = computeDefaultStartTime(initialDate, calendars[0]);
+        const defaultEnd = format(addMinutes(new Date(`${dateStr}T${defaultStart}`), 30), 'HH:mm');
+
         form.reset({
           calendarId: calendars[0]?.id || '',
           contactId: '',
           title: '',
           date: dateStr,
-          startTime: format(initialDate, 'HH:mm'),
-          endTime: format(addMinutes(initialDate, 30), 'HH:mm'),
+          startTime: defaultStart,
+          endTime: defaultEnd,
           meetingMode: calendars[0]?.meeting_mode || 'internal_meet',
           resourceId: '',
           repeat: 'none',
