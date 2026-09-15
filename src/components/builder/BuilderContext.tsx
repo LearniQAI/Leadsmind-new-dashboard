@@ -39,17 +39,40 @@ interface BuilderProviderProps {
   funnelId?: string;
   websiteData: any;
   onUpdateWebsite: (updates: any) => void;
+  /** Live/published rendering has no Desktop/Tablet/Mobile toggle UI — `viewMode` (and every
+   *  `useResponsiveValue`-driven `_mobile`/`_tablet` prop) would otherwise sit stuck at its
+   *  'desktop' initial value forever, since nothing ever calls `setViewMode` there. Set this
+   *  on the published-site provider (PublishedPageRenderer) to track real viewport width via
+   *  matchMedia instead, at the same breakpoints Tailwind's own md:/lg: classes use elsewhere
+   *  in these same templates, so responsive props actually take effect for real visitors.
+   *  The in-editor provider leaves this off — viewMode there is the deliberate manual toggle. */
+  autoDetectViewport?: boolean;
 }
 
-export function BuilderProvider({ 
-  children, 
-  pages, 
-  websiteId, 
+export function BuilderProvider({
+  children,
+  pages,
+  websiteId,
   funnelId,
-  websiteData: initialWebsiteData, 
-  onUpdateWebsite: externalUpdate 
+  websiteData: initialWebsiteData,
+  onUpdateWebsite: externalUpdate,
+  autoDetectViewport = false,
 }: BuilderProviderProps) {
   const [viewMode, setViewMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+
+  useEffect(() => {
+    if (!autoDetectViewport || typeof window === 'undefined') return;
+    const mobileQuery = window.matchMedia('(max-width: 767px)');
+    const tabletQuery = window.matchMedia('(min-width: 768px) and (max-width: 1023px)');
+    const resolve = () => setViewMode(mobileQuery.matches ? 'mobile' : tabletQuery.matches ? 'tablet' : 'desktop');
+    resolve();
+    mobileQuery.addEventListener('change', resolve);
+    tabletQuery.addEventListener('change', resolve);
+    return () => {
+      mobileQuery.removeEventListener('change', resolve);
+      tabletQuery.removeEventListener('change', resolve);
+    };
+  }, [autoDetectViewport]);
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [leftPanelTab, setLeftPanelTab] = useState('elements');
   const [previewMode, setPreviewMode] = useState(false);

@@ -72,7 +72,7 @@ export const ImageSettings = () => {
             <Button
               variant="secondary"
               size="icon"
-              className="h-9 w-9 shrink-0 bg-purple-600/10 hover:bg-purple-600/20 border border-purple-600/30 text-purple-600 transition-colors motion-reduce:transition-none"
+              className="h-9 w-9 shrink-0 bg-slate-100 hover:bg-slate-200 border border-transparent text-slate-700 transition-colors motion-reduce:transition-none"
               onClick={() => setIsVaultOpen(true)}
               title="Browse Media Library"
             >
@@ -81,12 +81,12 @@ export const ImageSettings = () => {
             <Button
               variant="secondary"
               size="icon"
-              className="h-9 w-9 shrink-0 bg-dash-surface hover:bg-dash-border border-none transition-colors motion-reduce:transition-none"
+              className="h-9 w-9 shrink-0 bg-slate-100 hover:bg-slate-200 border-none transition-colors motion-reduce:transition-none"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
               title="Direct File Upload"
             >
-              {isUploading ? <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none !text-dash-textMuted" /> : <Upload className="w-4 h-4 !text-dash-textMuted" />}
+              {isUploading ? <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none text-slate-500" /> : <Upload className="w-4 h-4 text-slate-500" />}
             </Button>
           </div>
         </div>

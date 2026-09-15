@@ -36,9 +36,9 @@ export const ProgressBarSettings = () => {
         onChange={(val) => setProp((props: any) => props.color = val)}
       />
 
-      <div className="space-y-2 pt-2 border-t border-dash-border">
+      <div className="space-y-2 pt-2 border-t border-slate-200">
         <div className="flex items-center justify-between">
-          <Label className="text-xs font-bold !text-dash-textMuted">Show label</Label>
+          <Label className="text-[12px] font-medium text-slate-700">Show label</Label>
           <Switch
             checked={showLabel}
             onCheckedChange={(val) => setProp((props: any) => props.showLabel = val)}
@@ -48,29 +48,29 @@ export const ProgressBarSettings = () => {
           <Input
             value={label}
             onChange={(e) => setProp((props: any) => props.label = e.target.value)}
-            className="h-8 bg-white border-dash-border text-xs mt-2"
+            className="h-8 bg-white border-slate-200 rounded-xl text-xs text-slate-700 mt-2 focus-visible:border-slate-300"
             placeholder="e.g. Step 1 of 3"
           />
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-4 pt-2 border-t border-dash-border">
+      <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-200">
         <div className="space-y-2">
-          <Label className="text-xs font-bold !text-dash-textMuted block">Thickness (px)</Label>
+          <Label className="text-[12px] font-medium text-slate-700 block">Thickness (px)</Label>
           <Input
             type="number"
             value={height}
             onChange={(e) => setProp((props: any) => props.height = Number(e.target.value))}
-            className="h-8 bg-white border-dash-border text-xs"
+            className="h-8 bg-white border-slate-200 rounded-xl text-xs text-slate-700 focus-visible:border-slate-300"
           />
         </div>
         <div className="space-y-2">
-          <Label className="text-xs font-bold !text-dash-textMuted block">Radius (px)</Label>
+          <Label className="text-[12px] font-medium text-slate-700 block">Radius (px)</Label>
           <Input
             type="number"
             value={borderRadius}
             onChange={(e) => setProp((props: any) => props.borderRadius = Number(e.target.value))}
-            className="h-8 bg-white border-dash-border text-xs"
+            className="h-8 bg-white border-slate-200 rounded-xl text-xs text-slate-700 focus-visible:border-slate-300"
           />
         </div>
       </div>

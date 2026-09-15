@@ -80,7 +80,7 @@ export const VideoSettings = () => {
 
         <button
           type="button"
-          className="w-full h-9 rounded-lg bg-dash-accent/10 hover:bg-dash-accent/15 border border-dash-accent/25 text-dash-accent text-[11px] font-bold uppercase tracking-wide flex items-center justify-center gap-2 transition-all duration-150 motion-reduce:transition-none active:scale-[0.99] motion-reduce:active:scale-100"
+          className="w-full h-9 rounded-lg bg-slate-100 hover:bg-slate-200 border border-transparent text-slate-700 text-[11px] font-bold uppercase tracking-wide flex items-center justify-center gap-2 transition-all duration-150 motion-reduce:transition-none active:scale-[0.99] motion-reduce:active:scale-100"
           onClick={() => setIsVaultOpen(true)}
         >
           <FolderOpen className="w-4 h-4" />
@@ -92,16 +92,16 @@ export const VideoSettings = () => {
             <input type="file" ref={fileInputRef} onChange={handleUpload} accept="video/*" className="hidden" />
             <button
               type="button"
-              className="w-full h-20 rounded-xl border-2 border-dashed border-dash-border bg-dash-surface/40 hover:border-dash-accent/40 hover:bg-dash-accent/5 flex flex-col items-center justify-center gap-2 transition-all duration-150 motion-reduce:transition-none disabled:opacity-60"
+              className="w-full h-20 rounded-xl border-2 border-dashed border-slate-200 bg-slate-100/40 hover:border-slate-300 hover:bg-slate-100 flex flex-col items-center justify-center gap-2 transition-all duration-150 motion-reduce:transition-none disabled:opacity-60"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
             >
               {isUploading ? (
-                <Loader2 className="w-6 h-6 animate-spin motion-reduce:animate-none text-dash-accent" />
+                <Loader2 className="w-6 h-6 animate-spin motion-reduce:animate-none text-slate-500" />
               ) : (
                 <>
-                  <Upload className="w-5 h-5 !text-dash-textMuted" />
-                  <span className="text-[11px] font-bold uppercase tracking-wide !text-dash-textMuted">Upload MP4</span>
+                  <Upload className="w-5 h-5 text-slate-500" />
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Upload MP4</span>
                 </>
               )}
             </button>

@@ -28,11 +28,11 @@ export const AddStepModal = ({ isOpen, onOpenChange, onPick }: AddStepModalProps
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl bg-white border-dash-border !text-dash-text rounded-3xl p-0 overflow-hidden shadow-2xl z-[9999]">
+      <DialogContent className="max-w-2xl bg-white border-slate-200 text-slate-900 rounded-3xl p-0 overflow-hidden shadow-2xl z-[9999]">
         <div className="flex flex-col max-h-[80vh]">
-          <DialogHeader className="p-6 pb-4 border-b border-dash-border">
-            <DialogTitle className="text-xl font-bold">Add a <span className="text-primary">step</span></DialogTitle>
-            <DialogDescription className="text-xs !text-dash-textMuted font-bold mt-1">
+          <DialogHeader className="p-6 pb-4 border-b border-slate-200">
+            <DialogTitle className="text-xl font-bold text-slate-900">Add a step</DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 font-medium mt-1">
               Grouped by business goal — pick what this step is for.
             </DialogDescription>
           </DialogHeader>
@@ -40,7 +40,7 @@ export const AddStepModal = ({ isOpen, onOpenChange, onPick }: AddStepModalProps
           <div className="flex-1 overflow-y-auto p-6 space-y-7">
             {BUSINESS_GOAL_ORDER.map((goal) => (
               <section key={goal}>
-                <h3 className="text-[11px] font-bold !text-dash-textMuted tracking-wider mb-3 uppercase">{goal}</h3>
+                <h3 className="text-[13px] font-bold text-slate-900 mb-3">{goal}</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {grouped[goal].map((stepType) => {
                     const meta = STEP_TYPE_META[stepType];
@@ -54,24 +54,24 @@ export const AddStepModal = ({ isOpen, onOpenChange, onPick }: AddStepModalProps
                         className={cn(
                           "relative flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border text-center transition-all duration-150 motion-reduce:transition-none",
                           enabled
-                            ? "border-dash-border bg-dash-surface hover:border-primary/50 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 cursor-pointer"
-                            : "border-dash-border/60 bg-dash-surface/40 opacity-50 cursor-not-allowed"
+                            ? "border-transparent bg-slate-100 hover:bg-slate-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 cursor-pointer"
+                            : "border-transparent bg-slate-50 opacity-50 cursor-not-allowed"
                         )}
                       >
                         {!enabled && (
-                          <div className="absolute top-2 right-2 !text-dash-textMuted">
+                          <div className="absolute top-2 right-2 text-slate-400">
                             <Lock className="w-3 h-3" />
                           </div>
                         )}
                         <div className={cn(
                           "h-9 w-9 rounded-xl flex items-center justify-center",
-                          enabled ? "bg-primary/10 text-primary" : "bg-dash-border/40 !text-dash-textMuted"
+                          enabled ? "bg-white text-slate-700" : "bg-slate-100 text-slate-400"
                         )}>
                           <Icon className="w-4 h-4" />
                         </div>
-                        <span className="text-[11px] font-bold leading-tight">{meta.label}</span>
+                        <span className="text-[11px] font-bold leading-tight text-slate-900">{meta.label}</span>
                         {!enabled && (
-                          <span className="text-[9px] font-semibold !text-dash-textMuted">Coming soon</span>
+                          <span className="text-[9px] font-semibold text-slate-500">Coming soon</span>
                         )}
                       </button>
                     );

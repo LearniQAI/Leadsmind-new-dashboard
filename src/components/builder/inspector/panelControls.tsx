@@ -112,7 +112,7 @@ export const FontInheritSelect = ({
           type="button"
           data-testid="fontinherit-trigger"
           onClick={() => setOpen((v) => !v)}
-          className={`${FIELD_CLS} flex items-center justify-between gap-2 text-left ${open ? 'border-dash-accent ring-2 ring-dash-accent/15' : ''}`}
+          className={`${FIELD_CLS} flex items-center justify-between gap-2 text-left ${open ? 'border-slate-300 ring-2 ring-slate-100' : ''}`}
         >
           <span
             className="truncate"
@@ -120,39 +120,39 @@ export const FontInheritSelect = ({
           >
             {inheriting ? inheritLabel : value}
           </span>
-          <ChevronDown className={`w-3.5 h-3.5 !text-dash-textMuted shrink-0 transition-transform duration-150 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-150 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} />
         </button>
 
         {open && (
-          <div className="absolute left-0 right-0 mt-1.5 z-[1200] bg-white border border-dash-border rounded-xl shadow-[0_12px_32px_-8px_rgba(0,0,0,0.18)] ring-1 ring-black/5 overflow-hidden">
+          <div className="absolute left-0 right-0 mt-1.5 z-[1200] bg-white border border-slate-200 rounded-xl shadow-[0_12px_32px_-8px_rgba(0,0,0,0.18)] ring-1 ring-black/5 overflow-hidden">
             <button
               type="button"
               data-testid="fontinherit-option-inherit"
               onClick={() => pick(null)}
-              className={`w-full text-left px-3 py-2.5 text-xs border-b border-dash-border flex items-center justify-between hover:bg-dash-surface transition-colors motion-reduce:transition-none ${
-                inheriting ? 'bg-dash-accent/10' : ''
+              className={`w-full text-left px-3 py-2.5 text-xs border-b border-slate-200 flex items-center justify-between hover:bg-slate-100 transition-colors motion-reduce:transition-none ${
+                inheriting ? 'bg-slate-100' : ''
               }`}
             >
-              <span className="!text-dash-text">{inheritLabel}</span>
-              {inheriting && <Check className="w-3.5 h-3.5 text-dash-accent shrink-0" />}
+              <span className="text-slate-700">{inheritLabel}</span>
+              {inheriting && <Check className="w-3.5 h-3.5 text-slate-700 shrink-0" />}
             </button>
 
-            <div className="p-2 border-b border-dash-border">
+            <div className="p-2 border-b border-slate-200">
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 !text-dash-textMuted" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                 <input
                   autoFocus
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search Google Fonts..."
-                  className="w-full h-8 pl-8 pr-2 text-xs bg-dash-surface border border-dash-border rounded-lg outline-none focus:border-dash-accent !text-dash-text"
+                  className="w-full h-8 pl-8 pr-2 text-xs bg-slate-100 border border-slate-200 rounded-lg outline-none focus:border-slate-300 text-slate-700"
                 />
               </div>
             </div>
 
             <div className="max-h-52 overflow-y-auto py-1">
               {results.length === 0 ? (
-                <div className="px-3 py-4 text-[11px] !text-dash-textMuted text-center">
+                <div className="px-3 py-4 text-[11px] text-slate-500 text-center">
                   No fonts match &quot;{query}&quot;
                 </div>
               ) : (
@@ -161,20 +161,20 @@ export const FontInheritSelect = ({
                     key={f.family}
                     type="button"
                     onClick={() => pick(f.family)}
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-dash-surface transition-colors motion-reduce:transition-none ${
-                      f.family === value ? 'bg-dash-accent/10' : ''
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-100 transition-colors motion-reduce:transition-none ${
+                      f.family === value ? 'bg-slate-100' : ''
                     }`}
                     style={{ fontFamily: `'${f.family}', sans-serif` }}
                   >
                     {f.family}
-                    <span className="ml-2 text-[9px] !text-dash-textMuted font-sans capitalize">
+                    <span className="ml-2 text-[9px] text-slate-500 font-sans capitalize">
                       {f.category}
                     </span>
                   </button>
                 ))
               )}
               {results.length === 30 && (
-                <div className="px-3 py-2 text-[10px] !text-dash-textMuted text-center border-t border-dash-border">
+                <div className="px-3 py-2 text-[10px] text-slate-500 text-center border-t border-slate-200">
                   Showing top 30 of {GOOGLE_FONTS.length} — refine your search
                 </div>
               )}
@@ -207,14 +207,14 @@ const NumCell = ({
   title?: string;
 }) => (
   <div className={CELL_CLS} title={title}>
-    {icon && <span className="!text-dash-textMuted shrink-0">{icon}</span>}
+    {icon && <span className="text-slate-500 shrink-0">{icon}</span>}
     <input
       type="number"
       data-testid={testid}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder="0"
-      className="w-full h-full text-[11px] !text-dash-text bg-transparent outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+      className="w-full h-full text-[11px] text-slate-700 bg-transparent outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
     />
   </div>
 );
@@ -265,7 +265,7 @@ export const SpacingControl = ({
             data-testid={`${label.toLowerCase()}-expand`}
             onClick={() => setExpanded(true)}
             title="Edit each side"
-            className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg border border-dash-border !text-dash-textMuted hover:!text-dash-text hover:border-dash-accent/50 hover:bg-dash-accent/5 transition-all duration-150 motion-reduce:transition-none active:scale-[0.97] motion-reduce:active:scale-100"
+            className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300 hover:bg-slate-100 transition-all duration-150 motion-reduce:transition-none active:scale-[0.97] motion-reduce:active:scale-100"
           >
             <Maximize2 className="w-3.5 h-3.5" />
           </button>
@@ -275,7 +275,7 @@ export const SpacingControl = ({
           <div className="grid grid-cols-4 gap-1.5">
             {(['top', 'right', 'bottom', 'left'] as const).map((side) => (
               <div key={side} className="space-y-1">
-                <span className="text-[8px] font-bold !text-dash-textMuted block text-center capitalize">
+                <span className="text-[8px] font-bold text-slate-500 block text-center capitalize">
                   {side}
                 </span>
                 <NumCell
@@ -290,7 +290,7 @@ export const SpacingControl = ({
             type="button"
             data-testid={`${label.toLowerCase()}-collapse`}
             onClick={() => setExpanded(false)}
-            className="text-[10px] font-bold text-dash-accent hover:underline"
+            className="text-[10px] font-bold text-slate-700 hover:underline"
           >
             Use one value for each axis
           </button>
@@ -332,12 +332,12 @@ export const CornerRadiusControl = ({
   const modeBtn = (on: boolean) =>
     `h-8 w-8 shrink-0 flex items-center justify-center rounded-lg border transition-all duration-150 motion-reduce:transition-none active:scale-[0.97] motion-reduce:active:scale-100 ${
       on
-        ? 'border-dash-accent text-dash-accent bg-dash-accent/10 ring-2 ring-dash-accent/15'
-        : 'border-dash-border !text-dash-textMuted hover:!text-dash-text hover:border-dash-border/80'
+        ? 'border-slate-300 text-slate-900 bg-slate-100 ring-2 ring-slate-100'
+        : 'border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300'
     }`;
   const numCls =
-    'h-8 text-[11px] font-medium tabular-nums !text-dash-text bg-white border border-dash-border rounded-lg px-2 outline-none ' +
-    'transition-all duration-150 motion-reduce:transition-none focus:border-dash-accent focus:ring-2 focus:ring-dash-accent/15 ' +
+    'h-8 text-[11px] font-medium tabular-nums text-slate-700 bg-white border border-slate-200 rounded-lg px-2 outline-none ' +
+    'transition-all duration-150 motion-reduce:transition-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 ' +
     '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none';
   return (
     <div className="space-y-2">
@@ -383,7 +383,7 @@ export const CornerRadiusControl = ({
             ['bl', 'BL'],
           ] as const).map(([key, lbl]) => (
             <div key={key} className="space-y-1">
-              <span className="text-[8px] font-bold tracking-wide !text-dash-textMuted block text-center">{lbl}</span>
+              <span className="text-[8px] font-bold tracking-wide text-slate-500 block text-center">{lbl}</span>
               <input
                 type="number"
                 data-testid={`radius-${key}`}
@@ -410,7 +410,7 @@ export const SwatchTrigger = ({ value }: { value: string }) => {
   return (
     <span
       data-testid="swatch-trigger"
-      className="relative h-6 w-6 rounded-full border border-dash-border shadow-sm shrink-0 inline-block overflow-hidden bg-white"
+      className="relative h-6 w-6 rounded-full border border-slate-200 shadow-sm shrink-0 inline-block overflow-hidden bg-white"
       style={{ backgroundColor: unset ? '#ffffff' : value }}
     >
       {unset && (
@@ -436,14 +436,14 @@ export const SectionHeader = ({
   resetTitle?: string;
 }) => (
   <div className="flex items-center gap-3">
-    <h3 className="text-[11px] font-bold uppercase tracking-[0.09em] !text-dash-text shrink-0">{title}</h3>
-    <span className="h-px flex-1 bg-gradient-to-r from-dash-border/80 to-transparent" />
+    <h3 className="text-[13px] font-bold text-slate-900 shrink-0">{title}</h3>
+    <span className="h-px flex-1 bg-gradient-to-r from-slate-200 to-transparent" />
     <button
       type="button"
       data-testid={`section-reset-${title.toLowerCase().replace(/\s+/g, '-')}`}
       onClick={onReset}
       title={resetTitle}
-      className="h-6 w-6 shrink-0 flex items-center justify-center rounded-md !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface transition-colors motion-reduce:transition-none active:scale-95 motion-reduce:active:scale-100"
+      className="h-6 w-6 shrink-0 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors motion-reduce:transition-none active:scale-95 motion-reduce:active:scale-100"
     >
       <RotateCcw className="w-3.5 h-3.5" />
     </button>

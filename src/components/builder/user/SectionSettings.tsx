@@ -36,12 +36,12 @@ export const SectionSettings = () => {
     <div className="space-y-6">
       <PropertyGroup title="Background">
         <div className="flex items-center justify-between -mt-1">
-          <span className="text-[10px] !text-dash-textMuted">Section fill color</span>
+          <span className="text-[12px] font-medium text-slate-700">Section fill color</span>
           <Button
              variant="ghost"
              size="sm"
              onClick={() => setProp((props: any) => props.backgroundColor = 'transparent')}
-             className="h-6 text-[9px] font-bold !text-dash-textMuted hover:!text-dash-text px-2 py-0 bg-dash-surface rounded"
+             className="h-6 text-[9px] font-bold text-slate-500 hover:text-slate-700 px-2 py-0 bg-slate-100 hover:bg-slate-200 rounded-lg"
           >
             Transparent
           </Button>

@@ -104,9 +104,9 @@ export const LinkSelector = ({ value, onChange, pages: propPages }: LinkSelector
   const activeActionType = linkObj.value.split(':')[0] || '';
 
   return (
-    <div className="space-y-3 p-3 bg-dash-surface rounded-xl border border-dash-border">
+    <div className="space-y-3 p-3 bg-slate-100 rounded-2xl border border-transparent">
       <div className="space-y-1.5">
-        <Label className="text-[10px] font-bold text-muted-foreground">Destination type</Label>
+        <Label className="text-[12px] font-medium text-slate-700">Destination type</Label>
         <div className="grid grid-cols-4 gap-1">
           {types.map((t) => {
             const Icon = t.icon;
@@ -116,7 +116,7 @@ export const LinkSelector = ({ value, onChange, pages: propPages }: LinkSelector
                 key={t.id}
                 onClick={() => handleTypeChange(t.id as any)}
                 title={t.label}
-                className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all motion-reduce:transition-none border ${active ? 'bg-primary/20 border-primary text-primary shadow-lg shadow-primary/10' : 'bg-white border-dash-border text-muted-foreground hover:!text-dash-text'}`}
+                className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all motion-reduce:transition-none border ${active ? 'bg-slate-900 border-transparent text-white' : 'bg-white border-slate-200 text-slate-500 hover:text-slate-900'}`}
               >
                 <Icon size={14} />
               </button>
@@ -126,7 +126,7 @@ export const LinkSelector = ({ value, onChange, pages: propPages }: LinkSelector
       </div>
 
       <div className="space-y-1.5">
-        <Label className="text-[10px] font-bold text-muted-foreground">
+        <Label className="text-[12px] font-medium text-slate-700">
           {types.find(t => t.id === linkObj.type)?.label}
         </Label>
 
@@ -135,16 +135,16 @@ export const LinkSelector = ({ value, onChange, pages: propPages }: LinkSelector
             value={linkObj.value}
             onChange={(e) => handleValueChange(e.target.value)}
             placeholder="https://example.com"
-            className="h-8 bg-white border-dash-border text-[11px]"
+            className="h-8 bg-white border-slate-200 rounded-xl text-slate-700 text-[11px]"
           />
         )}
 
         {linkObj.type === 'page' && (
           <Select value={linkObj.value} onValueChange={handleValueChange}>
-            <SelectTrigger className="h-8 bg-white border-dash-border text-[11px]">
+            <SelectTrigger className="h-8 bg-white border-slate-200 rounded-xl text-slate-700 text-[11px]">
               <SelectValue placeholder="Select a page..." />
             </SelectTrigger>
-            <SelectContent className="bg-white border-dash-border !text-dash-text">
+            <SelectContent className="bg-white border-slate-200 text-slate-700">
               {pages.length > 0 ? pages.map(p => (
                 <SelectItem key={p.id} value={p.slug} className="text-[11px]">
                   {p.name} ({p.slug})
@@ -158,12 +158,12 @@ export const LinkSelector = ({ value, onChange, pages: propPages }: LinkSelector
 
         {linkObj.type === 'section' && (
           <div className="flex gap-1 items-center">
-            <span className="text-muted-foreground text-xs pl-2">#</span>
+            <span className="text-slate-500 text-xs pl-2">#</span>
             <Input
               value={linkObj.value.replace('#', '')}
               onChange={(e) => handleValueChange('#' + e.target.value.replace('#', ''))}
               placeholder="section-id"
-              className="h-8 bg-white border-dash-border text-[11px]"
+              className="h-8 bg-white border-slate-200 rounded-xl text-slate-700 text-[11px]"
             />
           </div>
         )}
@@ -189,10 +189,10 @@ export const LinkSelector = ({ value, onChange, pages: propPages }: LinkSelector
                 }
               }}
             >
-              <SelectTrigger className="h-8 bg-white border-dash-border text-[11px]">
+              <SelectTrigger className="h-8 bg-white border-slate-200 rounded-xl text-slate-700 text-[11px]">
                 <SelectValue placeholder={loading ? "Loading..." : "Select an action..."} />
               </SelectTrigger>
-              <SelectContent className="bg-white border-dash-border !text-dash-text">
+              <SelectContent className="bg-white border-slate-200 text-slate-700">
                 {actions.map(a => (
                   <SelectItem key={a.id} value={a.id} className="text-[11px]">
                     {a.label}
@@ -205,18 +205,18 @@ export const LinkSelector = ({ value, onChange, pages: propPages }: LinkSelector
               activeActionType === 'open_player' ||
               activeActionType === 'start_trial' ||
               activeActionType === 'go_checkout') && (
-              <div className="space-y-1 pl-2 border-l border-dash-border">
-                <Label className="text-[9px] text-muted-foreground">Select course</Label>
+              <div className="space-y-1 pl-2 border-l border-slate-200">
+                <Label className="text-[12px] font-medium text-slate-700">Select course</Label>
                 <Select
                   value={linkObj.value.split(':')[1] || ''}
                   onValueChange={(courseId) => {
                     handleValueChange(`${activeActionType}:${courseId}`);
                   }}
                 >
-                  <SelectTrigger className="h-8 bg-white border-dash-border text-[11px]">
+                  <SelectTrigger className="h-8 bg-white border-slate-200 rounded-xl text-slate-700 text-[11px]">
                     <SelectValue placeholder="Choose course..." />
                   </SelectTrigger>
-                  <SelectContent className="bg-white border-dash-border !text-dash-text">
+                  <SelectContent className="bg-white border-slate-200 text-slate-700">
                     {courses.map(c => (
                       <SelectItem key={c.id} value={c.id} className="text-[11px]">
                         {c.title}
@@ -228,18 +228,18 @@ export const LinkSelector = ({ value, onChange, pages: propPages }: LinkSelector
             )}
 
             {activeActionType === 'enroll_bundle' && (
-              <div className="space-y-1 pl-2 border-l border-dash-border">
-                <Label className="text-[9px] text-muted-foreground">Select bundle</Label>
+              <div className="space-y-1 pl-2 border-l border-slate-200">
+                <Label className="text-[12px] font-medium text-slate-700">Select bundle</Label>
                 <Select
                   value={linkObj.value.split(':')[1] || ''}
                   onValueChange={(bundleId) => {
                     handleValueChange(`enroll_bundle:${bundleId}`);
                   }}
                 >
-                  <SelectTrigger className="h-8 bg-white border-dash-border text-[11px]">
+                  <SelectTrigger className="h-8 bg-white border-slate-200 rounded-xl text-slate-700 text-[11px]">
                     <SelectValue placeholder="Choose bundle..." />
                   </SelectTrigger>
-                  <SelectContent className="bg-white border-dash-border !text-dash-text">
+                  <SelectContent className="bg-white border-slate-200 text-slate-700">
                     {bundles.map(b => (
                       <SelectItem key={b.id} value={b.id} className="text-[11px]">
                         {b.name}
@@ -251,9 +251,9 @@ export const LinkSelector = ({ value, onChange, pages: propPages }: LinkSelector
             )}
 
             {activeActionType === 'deep_link' && (
-              <div className="space-y-2 pl-2 border-l border-dash-border">
+              <div className="space-y-2 pl-2 border-l border-slate-200">
                 <div className="space-y-1">
-                  <Label className="text-[9px] text-muted-foreground">Select course</Label>
+                  <Label className="text-[12px] font-medium text-slate-700">Select course</Label>
                   <Select
                     value={linkObj.value.split(':')[1] || ''}
                     onValueChange={(courseId) => {
@@ -262,10 +262,10 @@ export const LinkSelector = ({ value, onChange, pages: propPages }: LinkSelector
                       handleValueChange(`deep_link:${courseId}:${firstLesson}`);
                     }}
                   >
-                    <SelectTrigger className="h-8 bg-white border-dash-border text-[11px]">
+                    <SelectTrigger className="h-8 bg-white border-slate-200 rounded-xl text-slate-700 text-[11px]">
                       <SelectValue placeholder="Choose course..." />
                     </SelectTrigger>
-                    <SelectContent className="bg-white border-dash-border !text-dash-text">
+                    <SelectContent className="bg-white border-slate-200 text-slate-700">
                       {courses.map(c => (
                         <SelectItem key={c.id} value={c.id} className="text-[11px]">
                           {c.title}
@@ -276,7 +276,7 @@ export const LinkSelector = ({ value, onChange, pages: propPages }: LinkSelector
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-[9px] text-muted-foreground">Select lesson</Label>
+                  <Label className="text-[12px] font-medium text-slate-700">Select lesson</Label>
                   <Select
                     value={linkObj.value.split(':')[2] || ''}
                     onValueChange={(lessonId) => {
@@ -284,10 +284,10 @@ export const LinkSelector = ({ value, onChange, pages: propPages }: LinkSelector
                       handleValueChange(`deep_link:${courseId}:${lessonId}`);
                     }}
                   >
-                    <SelectTrigger className="h-8 bg-white border-dash-border text-[11px]">
+                    <SelectTrigger className="h-8 bg-white border-slate-200 rounded-xl text-slate-700 text-[11px]">
                       <SelectValue placeholder="Choose lesson..." />
                     </SelectTrigger>
-                    <SelectContent className="bg-white border-dash-border !text-dash-text">
+                    <SelectContent className="bg-white border-slate-200 text-slate-700">
                       {lessons.filter(l => l.course_id === (linkObj.value.split(':')[1] || '')).map(l => (
                         <SelectItem key={l.id} value={l.id} className="text-[11px]">
                           {l.title}
@@ -302,7 +302,7 @@ export const LinkSelector = ({ value, onChange, pages: propPages }: LinkSelector
         )}
       </div>
 
-      <p className="text-[9px] text-muted-foreground px-1">
+      <p className="text-[9px] text-slate-500 px-1">
         {linkObj.type === 'url' && "Directs the user to an external website."}
         {linkObj.type === 'page' && "Seamlessly links to another page in this site."}
         {linkObj.type === 'section' && "Smooth-scrolls to a specific ID on this page."}

@@ -94,7 +94,7 @@ export const HeadingSettings = () => {
           <button
             type="button"
             onClick={() => setResponsiveValue('fontSize', undefined)}
-            className="h-8 px-2.5 text-[10px] font-bold uppercase tracking-wide !text-dash-textMuted hover:!text-dash-text hover:border-dash-accent/50 hover:bg-dash-accent/5 rounded-lg border border-dash-border transition-all duration-150 motion-reduce:transition-none active:scale-[0.97] motion-reduce:active:scale-100 shrink-0"
+            className="h-8 px-2.5 text-[10px] font-bold uppercase tracking-wide text-slate-500 hover:text-slate-700 hover:border-slate-300 hover:bg-slate-100 rounded-lg border border-slate-200 transition-all duration-150 motion-reduce:transition-none active:scale-[0.97] motion-reduce:active:scale-100 shrink-0"
             title="Reset to the heading level's default size"
           >
             Auto

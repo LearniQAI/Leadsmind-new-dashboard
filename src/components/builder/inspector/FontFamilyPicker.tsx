@@ -46,52 +46,52 @@ export const FontFamilyPicker = ({
 
   return (
     <div className="space-y-2" ref={rootRef}>
-      <Label className="text-[10px] font-bold !text-dash-textMuted block">Font family</Label>
+      <Label className="text-[10px] font-bold text-slate-500 block">Font family</Label>
       <div className="relative">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="w-full h-9 flex items-center justify-between text-xs bg-white border border-dash-border rounded-lg !text-dash-text px-3 focus:border-dash-accent outline-none"
+          className="w-full h-9 flex items-center justify-between text-xs bg-white border border-slate-200 rounded-lg text-slate-900 px-3 focus:border-slate-300 outline-none"
         >
           <span style={{ fontFamily: `'${value}', sans-serif` }}>{value || 'Select a font'}</span>
-          <ChevronDown className="w-3.5 h-3.5 !text-dash-textMuted shrink-0" />
+          <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
         </button>
 
         {open && (
-          <div className="absolute left-0 right-0 mt-1 z-[1200] bg-white border border-dash-border rounded-xl shadow-xl overflow-hidden">
-            <div className="p-2 border-b border-dash-border">
+          <div className="absolute left-0 right-0 mt-1 z-[1200] bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden">
+            <div className="p-2 border-b border-slate-200">
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 !text-dash-textMuted" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
                 <input
                   autoFocus
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search Google Fonts..."
-                  className="w-full h-8 pl-8 pr-2 text-xs bg-dash-surface border border-dash-border rounded-lg outline-none focus:border-dash-accent !text-dash-text"
+                  className="w-full h-8 pl-8 pr-2 text-xs bg-slate-100 border border-slate-200 rounded-lg outline-none focus:border-slate-300 text-slate-900"
                 />
               </div>
             </div>
             <div className="max-h-56 overflow-y-auto py-1">
               {results.length === 0 ? (
-                <div className="px-3 py-4 text-[11px] !text-dash-textMuted text-center">No fonts match "{query}"</div>
+                <div className="px-3 py-4 text-[11px] text-slate-500 text-center">No fonts match "{query}"</div>
               ) : (
                 results.map((f) => (
                   <button
                     key={f.family}
                     type="button"
                     onClick={() => handleSelect(f.family)}
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-dash-surface transition-colors motion-reduce:transition-none ${
-                      f.family === value ? 'bg-dash-accent/10' : ''
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-100 transition-colors motion-reduce:transition-none ${
+                      f.family === value ? 'bg-slate-100' : ''
                     }`}
                     style={{ fontFamily: `'${f.family}', sans-serif` }}
                   >
                     {f.family}
-                    <span className="ml-2 text-[9px] !text-dash-textMuted font-sans capitalize">{f.category}</span>
+                    <span className="ml-2 text-[9px] text-slate-500 font-sans capitalize">{f.category}</span>
                   </button>
                 ))
               )}
               {results.length === 30 && (
-                <div className="px-3 py-2 text-[10px] !text-dash-textMuted text-center border-t border-dash-border">
+                <div className="px-3 py-2 text-[10px] text-slate-500 text-center border-t border-slate-200">
                   Showing top 30 of {GOOGLE_FONTS.length} — refine your search
                 </div>
               )}

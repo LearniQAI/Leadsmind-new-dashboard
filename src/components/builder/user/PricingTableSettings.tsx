@@ -47,15 +47,15 @@ export const PricingTableSettings = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <Label className="text-xs font-bold !text-dash-textMuted block">Pricing plans</Label>
-        <Button variant="ghost" size="icon" onClick={addPlan} className="h-6 w-6">
+        <Label className="text-[13px] font-bold text-slate-900 block">Pricing plans</Label>
+        <Button variant="ghost" size="icon" onClick={addPlan} className="h-6 w-6 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg">
           <Plus className="h-4 w-4" />
         </Button>
       </div>
 
       <div className="space-y-4">
         {plans.map((plan: any, i: number) => (
-          <div key={i} className="p-4 bg-dash-surface rounded-xl border border-dash-border space-y-3 relative group">
+          <div key={i} className="p-4 bg-slate-100 rounded-xl border border-transparent space-y-3 relative group">
             <button
               onClick={() => removePlan(i)}
               className="absolute -top-2 -right-2 p-1.5 bg-red text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity motion-reduce:transition-none z-10"
@@ -67,7 +67,7 @@ export const PricingTableSettings = () => {
                <Input
                 value={plan.name}
                 onChange={(e) => updatePlan(i, 'name', e.target.value)}
-                className="h-8 bg-white border-dash-border text-xs font-bold flex-1"
+                className="h-8 bg-white border-slate-200 rounded-xl text-xs font-bold text-slate-700 flex-1 focus-visible:border-slate-300"
                 placeholder="Plan name"
               />
               <button
@@ -76,7 +76,7 @@ export const PricingTableSettings = () => {
                     props.plans.forEach((p: any, idx: number) => p.highlight = idx === i ? !p.highlight : false);
                   });
                 }}
-                className={`p-1.5 rounded border transition-colors motion-reduce:transition-none ${plan.highlight ? 'bg-dash-accent border-dash-accent text-white' : 'bg-white border-dash-border !text-dash-textMuted'}`}
+                className={`p-1.5 rounded-lg border transition-colors motion-reduce:transition-none ${plan.highlight ? 'bg-slate-900 border-transparent text-white' : 'bg-white border-slate-200 text-slate-500'}`}
                 title="Feature this plan"
               >
                 <Star className="w-4 h-4" fill={plan.highlight ? 'currentColor' : 'none'} />
@@ -87,13 +87,13 @@ export const PricingTableSettings = () => {
               <Input
                 value={plan.price}
                 onChange={(e) => updatePlan(i, 'price', e.target.value)}
-                className="h-8 bg-white border-dash-border text-xs"
+                className="h-8 bg-white border-slate-200 rounded-xl text-xs text-slate-700 focus-visible:border-slate-300"
                 placeholder="Price"
               />
               <Input
                 value={plan.period}
                 onChange={(e) => updatePlan(i, 'period', e.target.value)}
-                className="h-8 bg-white border-dash-border text-xs"
+                className="h-8 bg-white border-slate-200 rounded-xl text-xs text-slate-700 focus-visible:border-slate-300"
                 placeholder="Period"
               />
             </div>
@@ -101,16 +101,16 @@ export const PricingTableSettings = () => {
             <Input
               value={plan.buttonText}
               onChange={(e) => updatePlan(i, 'buttonText', e.target.value)}
-              className="h-8 bg-white border-dash-border text-xs"
+              className="h-8 bg-white border-slate-200 rounded-xl text-xs text-slate-700 focus-visible:border-slate-300"
               placeholder="Button text"
             />
 
             <div className="pt-2 space-y-2">
-               <Label className="text-[10px] font-bold !text-dash-textMuted">Features (one per line)</Label>
+               <Label className="text-[12px] font-medium text-slate-700">Features (one per line)</Label>
                <textarea
                 value={plan.features.join('\n')}
                 onChange={(e) => updatePlan(i, 'features', e.target.value.split('\n'))}
-                className="w-full bg-white border border-dash-border rounded p-2 text-xs !text-dash-text h-20 outline-none"
+                className="w-full bg-white border border-slate-200 rounded-xl p-2 text-xs text-slate-700 h-20 outline-none focus:border-slate-300"
                />
             </div>
           </div>

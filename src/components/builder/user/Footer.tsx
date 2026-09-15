@@ -1,12 +1,17 @@
 "use client";
 
-import React from 'react';
-import { useNode } from '@craftjs/core';
+import React, { useState } from 'react';
+import { useNode, useEditor } from '@craftjs/core';
+import { Pencil, Image as ImageIcon } from 'lucide-react';
 import { FooterSettings } from './FooterSettings';
 import { useBuilder } from '../BuilderContext';
 import { useGlobalSync } from '@/lib/builder/hooks';
+import { InlineTextEditor } from './InlineTextEditor';
+import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
+import { MediaVaultModal } from '../MediaVaultModal';
 
 export interface FooterProps {
+ logo: string;
  brandName: string;
  description: string;
  columns: { title: string, links: { label: string, href: string }[] }[];
@@ -32,6 +37,7 @@ export interface FooterProps {
 
 
 export const Footer = ({
+ logo,
  brandName,
  description,
  // Templates/deserialized JSON can omit these arrays entirely (Craft.js's
@@ -61,12 +67,18 @@ export const Footer = ({
  dragRef,
  ...props
 }: FooterProps & any) => {
- const { connectors: { connect, drag } } = useNode();
+ const { connectors: { connect, drag }, actions: { setProp } } = useNode();
  const { websiteData } = useBuilder();
+ const { enabled } = useEditor((state) => ({ enabled: state.options.enabled }));
+ const [isLogoVaultOpen, setIsLogoVaultOpen] = useState(false);
+
+ const updateColumnLinkLabel = (colIndex: number, linkIndex: number, val: string) => {
+  setProp((p: any) => { p.columns[colIndex].links[linkIndex].label = val; }, 500);
+ };
 
  // Sync props to global config if enabled
  useGlobalSync(!!isGlobal, globalId || 'main_footer', {
-  brandName, description, columns, backgroundColor, textColor, accentColor,
+  logo, brandName, description, columns, backgroundColor, textColor, accentColor,
   padding, fullWidth, socialLinks, columnsCount, showSocial,
   borderTopWidth, borderTopColor, titleFontSize, linkFontSize, titleFontWeight,
   showNewsletter: activeNewsletterToggle, newsletterTitle, newsletterDescription
@@ -107,8 +119,53 @@ export const Footer = ({
    <div className={`${fullWidth ? 'w-full' : 'max-w-7xl mx-auto'} w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-${Math.min(4, columnsCount + 1 + (activeNewsletterToggle ? 1 : 0))} gap-x-12 gap-y-16`}>
     {/* Brand Info */}
     <div className="space-y-6">
-     <h2 className="font-black text-2xl uppercase tracking-tighter" style={{ color: accentColor }}>{brandName}</h2>
-     <p className="text-sm opacity-60 leading-relaxed max-w-xs">{description}</p>
+     {enabled ? (
+      <div
+       className="relative group/logo inline-block"
+       onClick={(e) => { e.preventDefault(); setIsLogoVaultOpen(true); }}
+       title="Click to replace logo"
+      >
+       {logo ? (
+        <img src={logo} alt="Logo" className="h-8 w-auto object-contain" />
+       ) : (
+        <div className="h-8 w-8 rounded-md border border-dashed border-current opacity-50 flex items-center justify-center">
+         <ImageIcon size={14} />
+        </div>
+       )}
+       <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-md opacity-0 group-hover/logo:opacity-100 transition-opacity motion-reduce:transition-none">
+        <Pencil size={12} className="text-white" />
+       </div>
+      </div>
+     ) : (
+      logo && <img src={logo} alt="Logo" className="h-8 w-auto object-contain" />
+     )}
+     {enabled ? (
+      <h2 className="font-black text-2xl uppercase tracking-tighter outline-none" style={{ color: accentColor }}>
+       <InlineTextEditor
+        value={brandName}
+        onChange={(val) => setProp((p: any) => { p.brandName = val; }, 500)}
+       />
+      </h2>
+     ) : (
+      <h2
+       className="font-black text-2xl uppercase tracking-tighter"
+       style={{ color: accentColor }}
+       dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(brandName) }}
+      />
+     )}
+     {enabled ? (
+      <p className="text-sm opacity-60 leading-relaxed max-w-xs outline-none">
+       <InlineTextEditor
+        value={description}
+        onChange={(val) => setProp((p: any) => { p.description = val; }, 500)}
+       />
+      </p>
+     ) : (
+      <p
+       className="text-sm opacity-60 leading-relaxed max-w-xs"
+       dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(description) }}
+      />
+     )}
     </div>
 
     {/* Dynamic Columns */}
@@ -127,13 +184,25 @@ export const Footer = ({
       <ul className="flex flex-col gap-4">
        {col.links.map((link: { label: string, href: string }, j: number) => (
         <li key={j}>
-         <a
-          href={link.href}
-          className="opacity-60 hover:opacity-100 transition-opacity text-inherit whitespace-nowrap"
-          style={{ fontSize: `${linkFontSize}px` }}
-         >
-          {link.label}
-         </a>
+         {enabled ? (
+          <span
+           className="opacity-60 hover:opacity-100 transition-opacity text-inherit whitespace-nowrap outline-none cursor-text"
+           style={{ fontSize: `${linkFontSize}px` }}
+          >
+           <InlineTextEditor
+            value={link.label}
+            onChange={(val) => updateColumnLinkLabel(i, j, val)}
+           />
+          </span>
+         ) : (
+          <a
+           href={link.href}
+           className="opacity-60 hover:opacity-100 transition-opacity text-inherit whitespace-nowrap"
+           style={{ fontSize: `${linkFontSize}px` }}
+          >
+           {link.label}
+          </a>
+         )}
         </li>
        ))}
       </ul>
@@ -185,12 +254,23 @@ export const Footer = ({
    )}
 
    <div className="max-w-7xl mx-auto w-full mt-16 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6 text-[10px] uppercase font-bold tracking-widest opacity-40 text-center md:text-left">
-    <span>© {new Date().getFullYear()} {brandName}. Built with Leadsmind.</span>
+    <span>
+     © {new Date().getFullYear()}{' '}
+     <span dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(brandName) }} />. Built with Leadsmind.
+    </span>
     <div className="flex gap-8">
      <a href="#" className="hover:opacity-100 transition-opacity">Privacy Policy</a>
      <a href="#" className="hover:opacity-100 transition-opacity">Terms of Service</a>
     </div>
    </div>
+
+   {enabled && (
+    <MediaVaultModal
+     isOpen={isLogoVaultOpen}
+     onOpenChange={setIsLogoVaultOpen}
+     onSelect={(url) => setProp((p: any) => { p.logo = url; })}
+    />
+   )}
   </footer>
  );
 };
@@ -199,6 +279,7 @@ export const Footer = ({
 Footer.craft = {
  displayName: 'Global Footer',
  props: {
+  logo: '',
   brandName: 'Leadsmind',
   description: 'Empowering businesses with intelligent automation and high-conversion sales funnels that work 24/7.',
   columns: [

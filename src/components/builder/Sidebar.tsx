@@ -48,24 +48,31 @@ import { generateAISectionLayout } from '@/app/actions/builderAI';
 import { saveCustomComponent } from '@/app/actions/builder';
 import { cn } from '@/lib/utils';
 
-const RailButton = ({ active, onClick, title, icon: Icon }: { active: boolean; onClick: () => void; title: string; icon: any }) => (
+// Pill-toggle tab button — Sidebar Visual Polish, applied to the Website/Funnel Builder's
+// own Sidebar (matches the course/lesson builder's LessonBuilderSidebar.tsx segmented-pill
+// tab language). Icon-only (vs. the course builder's text-label pills) since this sidebar
+// carries up to 5 tabs instead of 2 and a full-width row of "Elements / Layers / Funnel
+// steps / Page settings / Globals" labels wouldn't fit at 320px.
+const PillTabButton = ({ active, onClick, title, icon: Icon }: { active: boolean; onClick: () => void; title: string; icon: any }) => (
   <button
     onClick={onClick}
     title={title}
     className={cn(
-      "h-11 w-11 rounded-xl flex items-center justify-center transition-colors motion-reduce:transition-none",
-      active ? "bg-dash-accent/10 text-dash-accent" : "!text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface"
+      "flex-1 h-9 rounded-full flex items-center justify-center transition-all duration-150 motion-reduce:transition-none",
+      active ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
     )}
   >
     <Icon className="w-[18px] h-[18px]" />
   </button>
 );
 
-// `variant` is additive — default behavior/look is byte-for-byte unchanged for every
-// existing caller (the Website/Funnel Builder's own Sidebar.tsx tiles). "lesson" is used only
-// by LessonBuilderSidebar.tsx (Systeme-parity Master Prompt, Sidebar Visual Polish pass) to
-// match its reference's flat light-gray card look, without touching the live product's own
-// tile style or duplicating the real connectors.create() drag-wiring in a second component.
+// `variant` is additive. "lesson" was introduced for LessonBuilderSidebar.tsx (Systeme-parity
+// Master Prompt, Sidebar Visual Polish pass) to match its reference's flat light-gray card
+// look, without duplicating the real connectors.create() drag-wiring in a second component.
+// The Website/Funnel Builder's own Sidebar.tsx below now also renders its Elements tiles with
+// variant="lesson" (Sidebar Visual Polish extended to this builder) so both builders share one
+// visual language and one drag implementation — "default" is kept only for any other caller
+// that still wants the original dash-token tile look.
 export const DraggableItem = ({
   name,
   icon: Icon,
@@ -111,6 +118,15 @@ export const DraggableItem = ({
     </div>
   );
 };
+
+// Matches LessonBuilderSidebar.tsx's `SidebarSection` exactly (sentence-case header,
+// grid-cols-2, mb-7 last:mb-0) — kept local rather than imported since that one isn't exported.
+const ElementSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <div className="mb-7 last:mb-0">
+    <h3 className="text-[13px] font-bold text-slate-900 mb-3">{title}</h3>
+    <div className="grid grid-cols-2 gap-2.5">{children}</div>
+  </div>
+);
 
 export const Sidebar = ({
   type,
@@ -324,19 +340,18 @@ export const Sidebar = ({
   };
 
   return (
-    <div className="w-[320px] h-full bg-white flex font-sans select-none z-40">
-      {/* Icon rail */}
-      <div className="w-[60px] h-full border-r border-dash-border flex flex-col items-center py-4 shrink-0">
-        <div className="flex flex-col items-center gap-1.5">
-          <RailButton active={activeTab === 'elements'} onClick={() => setActiveTab('elements')} title="Elements" icon={Plus} />
-          <RailButton active={activeTab === 'layers'} onClick={() => setActiveTab('layers')} title="Layers" icon={Layers} />
+    <div className="w-[320px] h-full bg-white flex flex-col font-sans select-none z-40">
+      {/* Pill tab row (Sidebar Visual Polish — matches LessonBuilderSidebar.tsx) */}
+      <div className="p-3 shrink-0 flex items-center gap-2">
+        <div className="flex-1 flex items-center bg-slate-100 rounded-full p-1">
+          <PillTabButton active={activeTab === 'elements'} onClick={() => setActiveTab('elements')} title="Elements" icon={Plus} />
+          <PillTabButton active={activeTab === 'layers'} onClick={() => setActiveTab('layers')} title="Layers" icon={Layers} />
           {type === 'funnel' && (
-            <RailButton active={activeTab === 'steps'} onClick={() => setActiveTab('steps')} title="Funnel steps" icon={ListOrdered} />
+            <PillTabButton active={activeTab === 'steps'} onClick={() => setActiveTab('steps')} title="Funnel steps" icon={ListOrdered} />
           )}
-          <RailButton active={activeTab === 'page'} onClick={() => setActiveTab('page')} title="Page settings" icon={FileText} />
-          <RailButton active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} title="Globals" icon={Paintbrush} />
+          <PillTabButton active={activeTab === 'page'} onClick={() => setActiveTab('page')} title="Page settings" icon={FileText} />
+          <PillTabButton active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} title="Globals" icon={Paintbrush} />
         </div>
-        <div className="flex-1" />
         <UserAvatar
           avatarUrl={user?.avatarUrl}
           oauthImage={user?.oauthImage}
@@ -350,198 +365,172 @@ export const Sidebar = ({
       <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden">
       {activeTab === 'elements' ? (
         <div className="flex flex-col flex-1 overflow-hidden">
-          {/* Sticky Search */}
-          <div className="px-4 py-3 border-b border-dash-border bg-white/95 backdrop-blur-sm z-10 shrink-0">
+          {/* Search stays sticky — the course builder's reference has none, but with grid-cols-2
+              and taller (104px) tiles this list runs long, so keeping it reachable while
+              scrolling is a functional call, not a copy of the old dash-token look. */}
+          <div className="px-4 py-3 border-b border-slate-200 bg-white/95 backdrop-blur-sm z-10 shrink-0">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 !text-dash-textMuted" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
                 placeholder="Search widgets..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 h-10 text-[12px] bg-white border border-dash-border rounded-xl outline-none focus:border-dash-accent focus:ring-1 focus:ring-dash-accent transition-colors motion-reduce:transition-none placeholder:text-dash-textMuted !text-dash-text"
+                className="w-full pl-9 pr-3 h-10 text-[12px] bg-white border border-slate-200 rounded-xl outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-300 transition-colors motion-reduce:transition-none placeholder:text-slate-400 text-slate-700"
               />
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-8 common-scrollbar">
+          <div className="flex-1 overflow-y-auto p-4 common-scrollbar">
           {/* AI Generator Panel */}
-          <section className="p-4 bg-dash-accent/5 rounded-2xl border border-dash-accent/10 space-y-3">
-            <h3 className="text-[10px] font-bold text-dash-accent flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 animate-pulse motion-reduce:animate-none text-dash-accent" />
+          <section className="mb-7 p-4 bg-slate-100 rounded-2xl border border-transparent space-y-3">
+            <h3 className="text-[13px] font-bold text-slate-900 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 animate-pulse motion-reduce:animate-none text-slate-500" />
               AI section generator
             </h3>
             <Input
               value={aiLayoutPrompt}
               onChange={(e) => setAiLayoutPrompt(e.target.value)}
               placeholder="e.g. bento grid, pricing table"
-              className="h-8 bg-white border-dash-border !text-dash-text text-xs placeholder:text-dash-textMuted"
+              className="h-8 bg-white border-slate-200 text-slate-700 text-xs placeholder:text-slate-400"
             />
             <Button
               onClick={handleGenerateLayout}
               disabled={generatingLayout}
               size="sm"
-              className="w-full bg-dash-accent/10 hover:bg-dash-accent/20 text-dash-accent border border-dash-accent/20 text-[10px] font-bold h-8"
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-bold h-8"
             >
               {generatingLayout ? 'Generating...' : 'Ingest canvas block'}
             </Button>
           </section>
 
           {customBlueprints.length > 0 && (
-            <section>
-              <h3 className="text-[10px] font-bold text-green mb-4 px-1 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-green" />
-                Saved blueprints
-              </h3>
-              <div className="grid grid-cols-3 gap-2.5">
-                {customBlueprints.map((blueprint) => (
-                  <div
-                    key={blueprint.id}
-                    ref={ref => {
-                      if (ref) {
-                        try {
-                          const tree = typeof blueprint.content === 'string' ? JSON.parse(blueprint.content) : blueprint.content;
-                          connectors.create(ref, tree);
-                        } catch (e) {
-                          console.error('Failed to parse blueprint node tree:', e);
+            <ElementSection title="Saved blueprints">
+              {customBlueprints.map((blueprint) => (
+                <div
+                  key={blueprint.id}
+                  ref={ref => {
+                    if (ref) {
+                      try {
+                        const tree = typeof blueprint.content === 'string' ? JSON.parse(blueprint.content) : blueprint.content;
+                        connectors.create(ref, tree);
+                      } catch (e) {
+                        console.error('Failed to parse blueprint node tree:', e);
+                      }
+                    }
+                  }}
+                  className="relative flex h-[104px] flex-col items-center justify-center gap-2 rounded-2xl bg-slate-100 hover:bg-slate-200 border border-transparent hover:border-slate-300 transition-all duration-150 motion-reduce:transition-none cursor-grab active:cursor-grabbing active:scale-[0.97] group"
+                >
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      if (confirm(`Delete blueprint "${blueprint.name}"?`)) {
+                        const { deleteCustomComponent } = await import('@/app/actions/builder');
+                        const res = await deleteCustomComponent(blueprint.id);
+                        if (res.success) {
+                          toast.success('Blueprint deleted');
+                          fetchBlueprints();
+                        } else {
+                          toast.error('Failed to delete blueprint');
                         }
                       }
                     }}
-                    className="relative flex flex-col items-center justify-center p-4 rounded-2xl border border-dash-border bg-dash-surface hover:border-green/50 hover:bg-green/5 hover:shadow-[0_0_20px_rgba(16,185,129,0.1)] transition-all motion-reduce:transition-none cursor-grab active:cursor-grabbing group"
+                    className="absolute top-2 right-2 text-slate-400 hover:text-red cursor-pointer p-0.5 transition-colors motion-reduce:transition-none z-20"
+                    title="Delete blueprint"
                   >
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        if (confirm(`Delete blueprint "${blueprint.name}"?`)) {
-                          const { deleteCustomComponent } = await import('@/app/actions/builder');
-                          const res = await deleteCustomComponent(blueprint.id);
-                          if (res.success) {
-                            toast.success('Blueprint deleted');
-                            fetchBlueprints();
-                          } else {
-                            toast.error('Failed to delete blueprint');
-                          }
-                        }
-                      }}
-                      className="absolute top-2 right-2 !text-dash-textMuted hover:text-red cursor-pointer p-0.5 transition-colors motion-reduce:transition-none z-20"
-                      title="Delete blueprint"
-                    >
-                      <Minus size={10} />
-                    </button>
-                    <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center mb-3 group-hover:bg-green group-hover:text-white transition-all motion-reduce:transition-none duration-300">
-                      <Layers className="w-5 h-5 group-hover:scale-110 transition-transform motion-reduce:transition-none pointer-events-none" />
-                    </div>
-                    <span className="text-[9px] font-bold !text-dash-textMuted group-hover:!text-dash-text text-center leading-tight truncate w-full px-1">{blueprint.name}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
+                    <Minus size={10} />
+                  </button>
+                  <Layers className="h-5 w-5 text-slate-500 group-hover:text-slate-700 transition-colors motion-reduce:transition-none pointer-events-none" strokeWidth={1.75} />
+                  <span className="text-[12px] font-medium text-slate-700 text-center leading-tight px-1.5 line-clamp-2 w-full">{blueprint.name}</span>
+                </div>
+              ))}
+            </ElementSection>
           )}
 
-          <section>
-            <h3 className="text-[11px] font-bold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Structure nodes</h3>
-            <div className="grid grid-cols-3 gap-2.5">
-              <DraggableItem name="Section" icon={SectionIcon} component={<RESOLVER.Section canvas paddingBottom={64} paddingTop={64} paddingLeft={24} paddingRight={24} backgroundColor="transparent" />} />
-              <DraggableItem name="Container" icon={Square} component={<RESOLVER.Container canvas layoutType="fixed" maxWidth="1200px" padding={16} backgroundColor="transparent" />} />
-              <DraggableItem name="Columns" icon={ColumnsIcon} component={<RESOLVER.Columns canvas layout="2" gap={16} padding={16} />} />
-              <DraggableItem name="Spacer" icon={ArrowUpDown} component={<RESOLVER.Spacer height={32} />} />
-              <DraggableItem name="Divider" icon={Minus} component={<RESOLVER.Divider weight={1} color="#e5e7eb" width="100%" alignment="center" />} />
-            </div>
-          </section>
+          <ElementSection title="Structure nodes">
+            <DraggableItem variant="lesson" name="Section" icon={SectionIcon} component={<RESOLVER.Section canvas paddingBottom={64} paddingTop={64} paddingLeft={24} paddingRight={24} backgroundColor="transparent" />} />
+            <DraggableItem variant="lesson" name="Container" icon={Square} component={<RESOLVER.Container canvas layoutType="fixed" maxWidth="1200px" padding={16} backgroundColor="transparent" />} />
+            <DraggableItem variant="lesson" name="Columns" icon={ColumnsIcon} component={<RESOLVER.Columns canvas layout="2" gap={16} padding={16} />} />
+            <DraggableItem variant="lesson" name="Spacer" icon={ArrowUpDown} component={<RESOLVER.Spacer height={32} />} />
+            <DraggableItem variant="lesson" name="Divider" icon={Minus} component={<RESOLVER.Divider weight={1} color="#e5e7eb" width="100%" alignment="center" />} />
+          </ElementSection>
 
-          <section>
-            <h3 className="text-[11px] font-bold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Typography</h3>
-            <div className="grid grid-cols-3 gap-2.5">
-              <DraggableItem name="Heading" icon={HeadingIcon} component={<RESOLVER.Heading level="h2" text="Heading" fontWeight="bold" textAlign="left" color="#111827" />} />
-              <DraggableItem name="Paragraph" icon={AlignLeft} component={<RESOLVER.Paragraph text="Type your paragraph here." fontSize={16} textAlign="left" color="#4b5563" lineHeight="relaxed" />} />
-              <DraggableItem name="Text / Edit" icon={Type} component={<RESOLVER.Text text="Custom Text" fontSize={16} />} />
-            </div>
-          </section>
+          <ElementSection title="Typography">
+            <DraggableItem variant="lesson" name="Heading" icon={HeadingIcon} component={<RESOLVER.Heading level="h2" text="Heading" fontWeight="bold" textAlign="left" color="#111827" />} />
+            <DraggableItem variant="lesson" name="Paragraph" icon={AlignLeft} component={<RESOLVER.Paragraph text="Type your paragraph here." fontSize={16} textAlign="left" color="#4b5563" lineHeight="relaxed" />} />
+            <DraggableItem variant="lesson" name="Text / Edit" icon={Type} component={<RESOLVER.Text text="Custom Text" fontSize={16} />} />
+          </ElementSection>
 
-          <section>
-            <h3 className="text-[11px] font-bold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Media & assets</h3>
-            <div className="grid grid-cols-3 gap-2.5">
-              <DraggableItem name="Image" icon={ImageIcon} component={<RESOLVER.Image src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop" alt="Placeholder" borderRadius={16} objectFit="cover" />} />
-              <DraggableItem name="Video" icon={VideoIcon} component={<RESOLVER.Video url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" provider="youtube" autoPlay={false} controls={true} loop={false} muted={false} borderRadius={16} />} />
-              <DraggableItem name="Icon" icon={Star} component={<RESOLVER.Icon name="Star" size={24} color="#000000" strokeWidth={2} alignment="center" />} />
-            </div>
-          </section>
+          <ElementSection title="Media & assets">
+            <DraggableItem variant="lesson" name="Image" icon={ImageIcon} component={<RESOLVER.Image src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop" alt="Placeholder" borderRadius={16} objectFit="cover" />} />
+            <DraggableItem variant="lesson" name="Video" icon={VideoIcon} component={<RESOLVER.Video url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" provider="youtube" autoPlay={false} controls={true} loop={false} muted={false} borderRadius={16} />} />
+            <DraggableItem variant="lesson" name="Icon" icon={Star} component={<RESOLVER.Icon name="Star" size={24} color="#000000" strokeWidth={2} alignment="center" />} />
+          </ElementSection>
 
-          <section>
-            <h3 className="text-[11px] font-bold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Layout & authority</h3>
-            <div className="grid grid-cols-3 gap-2.5">
-              <DraggableItem name="Ultra Hero" icon={SectionIcon} component={<RESOLVER.Hero />} />
-              <DraggableItem name="Global Navbar" icon={Navigation} component={<RESOLVER.Navbar />} />
-              <DraggableItem name="Global Footer" icon={Layout} component={<RESOLVER.Footer />} />
-              <DraggableItem name="Blog Feed" icon={LayoutGrid} component={<RESOLVER.BlogFeed />} />
-            </div>
-          </section>
+          <ElementSection title="Layout & authority">
+            <DraggableItem variant="lesson" name="Ultra Hero" icon={SectionIcon} component={<RESOLVER.Hero />} />
+            <DraggableItem variant="lesson" name="Global Navbar" icon={Navigation} component={<RESOLVER.Navbar />} />
+            <DraggableItem variant="lesson" name="Global Footer" icon={Layout} component={<RESOLVER.Footer />} />
+            <DraggableItem variant="lesson" name="Blog Feed" icon={LayoutGrid} component={<RESOLVER.BlogFeed />} />
+          </ElementSection>
 
-          <section>
-            <h3 className="text-[11px] font-bold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Trust & social proof</h3>
-            <div className="grid grid-cols-3 gap-2.5">
-              <DraggableItem name="Testimonial" icon={MessageCircleQuestion} component={<RESOLVER.Testimonial />} />
-              <DraggableItem name="Star Rating" icon={Star} component={<RESOLVER.StarRating />} />
-              <DraggableItem name="Logo Cloud" icon={ImageIcon} component={<RESOLVER.LogoStrip />} />
-              <DraggableItem name="FAQ" icon={MessageCircleQuestion} component={<RESOLVER.FAQ />} />
-            </div>
-          </section>
+          <ElementSection title="Trust & social proof">
+            <DraggableItem variant="lesson" name="Testimonial" icon={MessageCircleQuestion} component={<RESOLVER.Testimonial />} />
+            <DraggableItem variant="lesson" name="Star Rating" icon={Star} component={<RESOLVER.StarRating />} />
+            <DraggableItem variant="lesson" name="Logo Cloud" icon={ImageIcon} component={<RESOLVER.LogoStrip />} />
+            <DraggableItem variant="lesson" name="FAQ" icon={MessageCircleQuestion} component={<RESOLVER.FAQ />} />
+          </ElementSection>
 
-          <section>
-            <h3 className="text-[11px] font-bold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Conversion & logic</h3>
-            <div className="grid grid-cols-3 gap-2.5">
-              <DraggableItem name="Button" icon={ButtonIcon} component={<RESOLVER.Button text="Click Here" size="md" variant="primary" color="#6c47ff" textColor="#ffffff" borderRadius={8} width="fit" link="#" iconPosition="right" />} />
-              <DraggableItem name="Lead Form" icon={FormInput} component={<RESOLVER.Form />} />
-              <DraggableItem name="Order Form" icon={CreditCard} component={<RESOLVER.OrderForm />} />
-              <DraggableItem name="Upsell" icon={TrendingUp} component={<RESOLVER.Upsell />} />
-              <DraggableItem name="Downsell" icon={TrendingDown} component={<RESOLVER.Downsell />} />
-              <DraggableItem name="Thank You" icon={CheckCircle2} component={<RESOLVER.ThankYou />} />
-              <DraggableItem name="Popup Form" icon={FormInput} component={<RESOLVER.PopupForm canvas />} />
-              <DraggableItem name="Webinar Registration" icon={VideoIcon} component={<RESOLVER.WebinarRegistration />} />
-              <DraggableItem name="Webinar Thank You" icon={CalendarCheck} component={<RESOLVER.WebinarThankYou />} />
-              <DraggableItem name="Countdown" icon={Timer} component={<RESOLVER.Countdown />} />
-              <DraggableItem name="Pricing" icon={CreditCard} component={<RESOLVER.PricingTable />} />
-              <DraggableItem name="Progress" icon={Layout} component={<RESOLVER.ProgressBar value={65} color="#6c47ff" height={12} showLabel={true} label="Step 1 of 3" borderRadius={99} />} />
-            </div>
-          </section>
+          <ElementSection title="Conversion & logic">
+            <DraggableItem variant="lesson" name="Button" icon={ButtonIcon} component={<RESOLVER.Button text="Click Here" size="md" variant="primary" color="#6c47ff" textColor="#ffffff" borderRadius={8} width="fit" link="#" iconPosition="right" />} />
+            <DraggableItem variant="lesson" name="Lead Form" icon={FormInput} component={<RESOLVER.Form />} />
+            <DraggableItem variant="lesson" name="Order Form" icon={CreditCard} component={<RESOLVER.OrderForm />} />
+            <DraggableItem variant="lesson" name="Upsell" icon={TrendingUp} component={<RESOLVER.Upsell />} />
+            <DraggableItem variant="lesson" name="Downsell" icon={TrendingDown} component={<RESOLVER.Downsell />} />
+            <DraggableItem variant="lesson" name="Thank You" icon={CheckCircle2} component={<RESOLVER.ThankYou />} />
+            <DraggableItem variant="lesson" name="Popup Form" icon={FormInput} component={<RESOLVER.PopupForm canvas />} />
+            <DraggableItem variant="lesson" name="Webinar Registration" icon={VideoIcon} component={<RESOLVER.WebinarRegistration />} />
+            <DraggableItem variant="lesson" name="Webinar Thank You" icon={CalendarCheck} component={<RESOLVER.WebinarThankYou />} />
+            <DraggableItem variant="lesson" name="Countdown" icon={Timer} component={<RESOLVER.Countdown />} />
+            <DraggableItem variant="lesson" name="Pricing" icon={CreditCard} component={<RESOLVER.PricingTable />} />
+            <DraggableItem variant="lesson" name="Progress" icon={Layout} component={<RESOLVER.ProgressBar value={65} color="#6c47ff" height={12} showLabel={true} label="Step 1 of 3" borderRadius={99} />} />
+          </ElementSection>
 
-          <section>
-            <h3 className="text-[11px] font-bold !text-dash-textMuted tracking-wider mb-3.5 uppercase px-1">Advanced</h3>
-            <div className="grid grid-cols-3 gap-2.5">
-              <DraggableItem
-                name="Embed Code"
-                icon={CodeIcon}
-                component={<RESOLVER.CodeBlock customCode={`<div style="padding: 20px; background: #f4f4f5; border-radius: 12px; text-align: center; border: 1px dashed #e4e4e7;"><h3>Custom HTML Block</h3><p>Edit this in the settings panel</p></div>`} />}
-              />
-            </div>
-          </section>
+          <ElementSection title="Advanced">
+            <DraggableItem
+              variant="lesson"
+              name="Embed Code"
+              icon={CodeIcon}
+              component={<RESOLVER.CodeBlock customCode={`<div style="padding: 20px; background: #f4f4f5; border-radius: 12px; text-align: center; border: 1px dashed #e4e4e7;"><h3>Custom HTML Block</h3><p>Edit this in the settings panel</p></div>`} />}
+            />
+          </ElementSection>
 
           <button
             onClick={() => setIsTemplateDirectoryOpen(true)}
-            className="w-full flex items-start gap-3 p-4 bg-dash-accent/5 rounded-2xl border border-dash-accent/10 text-left hover:bg-dash-accent/10 transition-colors motion-reduce:transition-none"
+            className="w-full flex items-start gap-3 p-4 bg-slate-100 hover:bg-slate-200 rounded-2xl border border-transparent text-left transition-colors motion-reduce:transition-none"
           >
-            <div className="h-9 w-9 rounded-xl bg-white flex items-center justify-center shrink-0 border border-dash-accent/10">
-              <PackageSearch className="w-4 h-4 text-dash-accent" />
+            <div className="h-9 w-9 rounded-xl bg-white flex items-center justify-center shrink-0">
+              <PackageSearch className="w-4 h-4 text-slate-500" />
             </div>
             <div className="min-w-0">
-              <p className="text-[11px] font-bold !text-dash-text">Need more elements?</p>
-              <p className="text-[10px] !text-dash-textMuted leading-relaxed mt-0.5">
+              <p className="text-[13px] font-bold text-slate-900">Need more elements?</p>
+              <p className="text-[11px] text-slate-500 leading-relaxed mt-0.5">
                 Explore our templates and pre-built sections.
               </p>
-              <span className="text-[10px] font-bold text-dash-accent mt-1 inline-block">Browse Templates →</span>
+              <span className="text-[11px] font-bold text-slate-900 mt-1 inline-block">Browse Templates →</span>
             </div>
           </button>
         </div>
       </div>
       ) : activeTab === 'layers' ? (
         <div className="flex-1 overflow-hidden h-full">
-          <div className="p-3 text-[10px] font-bold !text-dash-textMuted border-b border-dash-border">Layer tree</div>
+          <div className="p-3 text-[13px] font-bold text-slate-900 border-b border-slate-200">Layer tree</div>
           <NodeTreeExplorer />
         </div>
       ) : activeTab === 'steps' ? (
         <div className="flex-1 overflow-hidden h-full">
-          <div className="p-3 text-[10px] font-bold !text-dash-textMuted border-b border-dash-border">Funnel steps</div>
+          <div className="p-3 text-[13px] font-bold text-slate-900 border-b border-slate-200">Funnel steps</div>
           <StepNavigator
             steps={funnelSteps}
             activeStepId={pageId as string}

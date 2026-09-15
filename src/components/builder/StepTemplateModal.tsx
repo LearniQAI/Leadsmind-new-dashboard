@@ -72,16 +72,16 @@ export const StepTemplateModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl bg-white border-dash-border !text-dash-text rounded-3xl p-0 overflow-hidden shadow-2xl z-[9999]">
+      <DialogContent className="max-w-4xl bg-white border-slate-200 text-slate-900 rounded-3xl p-0 overflow-hidden shadow-2xl z-[9999]">
         <div className="flex flex-col h-[75vh]">
-          <DialogHeader className="p-6 pb-4 border-b border-dash-border flex flex-col gap-4">
+          <DialogHeader className="p-6 pb-4 border-b border-slate-200 flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div>
-                <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-primary animate-pulse motion-reduce:animate-none" />
-                  Change template {stepName ? <span className="text-primary">— {stepName}</span> : null}
+                <DialogTitle className="text-xl font-bold flex items-center gap-2 text-slate-900">
+                  <Sparkles className="w-5 h-5 text-slate-500 animate-pulse motion-reduce:animate-none" />
+                  Change template {stepName ? <span className="text-slate-500">— {stepName}</span> : null}
                 </DialogTitle>
-                <DialogDescription className="text-xs !text-dash-textMuted font-bold mt-1">
+                <DialogDescription className="text-xs text-slate-500 font-medium mt-1">
                   Replaces this step&apos;s content. The current layout will be lost.
                 </DialogDescription>
               </div>
@@ -89,12 +89,12 @@ export const StepTemplateModal = ({
 
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 !text-dash-textMuted" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input
                   placeholder="Search templates (e.g. Lead, Agency...)"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-10 pl-10 bg-white border-dash-border !text-dash-text rounded-xl focus:border-primary/50 text-xs placeholder:text-dash-textMuted"
+                  className="h-10 pl-10 bg-white border-slate-200 text-slate-700 rounded-xl focus-visible:border-slate-300 text-xs placeholder:text-slate-400"
                 />
               </div>
               <div className="flex gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
@@ -105,8 +105,8 @@ export const StepTemplateModal = ({
                     onClick={() => setSelectedCategory(cat)}
                     className={`h-10 px-4 text-[10px] font-bold rounded-xl border transition-all motion-reduce:transition-none shrink-0 ${
                       selectedCategory === cat
-                        ? 'bg-primary/10 border-primary/30 text-primary'
-                        : 'border-dash-border hover:bg-dash-surface !text-dash-textMuted hover:!text-dash-text'
+                        ? 'bg-slate-900 border-transparent text-white'
+                        : 'border-slate-200 hover:bg-slate-100 text-slate-500 hover:text-slate-900'
                     }`}
                   >
                     {cat}
@@ -118,7 +118,7 @@ export const StepTemplateModal = ({
 
           <div className="flex-1 overflow-y-auto p-6 scrollbar-thin">
             {filteredTemplates.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center opacity-50">
+              <div className="h-full flex flex-col items-center justify-center text-center text-slate-400">
                 <LayoutGrid className="w-12 h-12 mb-4" />
                 <p className="text-sm font-bold">No templates found matching filters</p>
               </div>
@@ -127,9 +127,9 @@ export const StepTemplateModal = ({
                 {filteredTemplates.map((template) => (
                   <div
                     key={template.id}
-                    className="group flex flex-col bg-white border border-dash-border hover:border-primary/45 rounded-2xl overflow-hidden transition-all duration-300 motion-reduce:transition-none hover:shadow-[0_0_30px_rgba(19,89,255,0.15)]"
+                    className="group flex flex-col bg-white border border-slate-200 hover:border-slate-300 rounded-2xl overflow-hidden transition-all duration-300 motion-reduce:transition-none hover:shadow-md"
                   >
-                    <div className="aspect-[16/10] bg-dash-surface relative overflow-hidden shrink-0">
+                    <div className="aspect-[16/10] bg-slate-100 relative overflow-hidden shrink-0">
                       {template.thumbnail ? (
                         <img
                           src={template.thumbnail}
@@ -138,7 +138,7 @@ export const StepTemplateModal = ({
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <LayoutGrid className="w-8 h-8 opacity-40" />
+                          <LayoutGrid className="w-8 h-8 text-slate-300" />
                         </div>
                       )}
                       {template.is_premium && (
@@ -150,7 +150,7 @@ export const StepTemplateModal = ({
                         <Button
                           onClick={() => handleApplyTemplate(template)}
                           disabled={applyingId !== null}
-                          className="bg-primary hover:bg-primary/95 text-white rounded-xl font-bold text-[10px] px-6 h-10 shadow-lg active:scale-95 transition-transform motion-reduce:transition-none"
+                          className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-[10px] px-6 h-10 shadow-lg active:scale-95 transition-transform motion-reduce:transition-none"
                         >
                           {applyingId === template.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Use template'}
                         </Button>
@@ -160,14 +160,14 @@ export const StepTemplateModal = ({
                     <div className="p-4 flex-1 flex flex-col justify-between gap-4">
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <h4 className="text-xs font-bold !text-dash-text truncate max-w-[150px]">
+                          <h4 className="text-xs font-bold text-slate-900 truncate max-w-[150px]">
                             {template.name}
                           </h4>
-                          <span className="text-[8px] font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full shrink-0">
+                          <span className="text-[8px] font-bold text-slate-700 bg-slate-100 border border-transparent px-2 py-0.5 rounded-full shrink-0">
                             {template.category || 'General'}
                           </span>
                         </div>
-                        <p className="text-[10px] !text-dash-textMuted leading-relaxed font-medium line-clamp-2">
+                        <p className="text-[10px] text-slate-500 leading-relaxed font-medium line-clamp-2">
                           {template.description}
                         </p>
                       </div>

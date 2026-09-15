@@ -190,12 +190,14 @@ const BuilderEditorContent = ({
 
             if (error) throw error;
             toast.success('Draft saved successfully');
+            if (type === 'website') router.push('/websites');
         } catch (err: any) {
             logDataError('Save draft', err);
             // Fallback to server action if client save fails (e.g. RLS issues)
             const result = await updatePageContent(pageId, content);
             if (result.success) {
                 toast.success('Draft saved (Server Fallback)');
+                if (type === 'website') router.push('/websites');
             } else {
                 toast.error('Failed to save draft: ' + (result.error || err.message));
             }

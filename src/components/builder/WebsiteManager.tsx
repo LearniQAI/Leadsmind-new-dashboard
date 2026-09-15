@@ -77,9 +77,8 @@ export default function WebsiteManager() {
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
 
-  // Template Filter States
-  const [templateSearch, setTemplateSearch] = useState('');
-  const [templateCategory, setTemplateCategory] = useState('All');
+  // Create modal step: pick a template first, then name it
+  const [modalStep, setModalStep] = useState<'select' | 'details'>('select');
 
   const router = useRouter();
   const supabase = createClient();
@@ -149,19 +148,17 @@ export default function WebsiteManager() {
     return result;
   }, [websites, filter, searchQuery]);
 
-  const categories = useMemo(() => {
-    const cats = new Set(dbTemplates.map(t => t.category).filter(Boolean));
-    return ['All', ...Array.from(cats).sort()];
-  }, [dbTemplates]);
+  const closeCreateModal = () => {
+    setIsModalOpen(false);
+    setModalStep('select');
+    setSelectedTemplate(null);
+    setNewSiteName('');
+  };
 
-  const filteredTemplates = useMemo(() => {
-    return dbTemplates.filter(t => {
-      const matchesSearch = t.name.toLowerCase().includes(templateSearch.toLowerCase()) ||
-        t.description.toLowerCase().includes(templateSearch.toLowerCase());
-      const matchesCategory = templateCategory === 'All' || t.category === templateCategory;
-      return matchesSearch && matchesCategory;
-    });
-  }, [dbTemplates, templateSearch, templateCategory]);
+  const selectTemplate = (id: string) => {
+    setSelectedTemplate(id);
+    setModalStep('details');
+  };
 
   const toggleSelection = (id: string) => {
     setSelectedIds(prev => {
@@ -209,6 +206,7 @@ export default function WebsiteManager() {
 
     if (result.success) {
       toast.success('Website created successfully');
+      setIsModalOpen(false);
       router.push(`/editor/website/${result.websiteId}/${result.pageId}`);
     } else {
       setCreating(false);
@@ -298,7 +296,7 @@ export default function WebsiteManager() {
                   className="h-9 w-[220px] pl-9 text-[11px]"
                 />
               </div>
-              <DashButton onClick={() => setIsModalOpen(true)}>
+              <DashButton onClick={() => { setModalStep('select'); setIsModalOpen(true); }}>
                 <Plus className="h-4 w-4" />
                 New
               </DashButton>
@@ -377,7 +375,7 @@ export default function WebsiteManager() {
                 title="No websites found"
                 description="Create your first website to start capturing traffic and deploying funnels."
                 actionLabel="Create first website"
-                onAction={() => setIsModalOpen(true)}
+                onAction={() => { setModalStep('select'); setIsModalOpen(true); }}
               />
             </div>
           ) : viewMode === 'grid' ? (
@@ -490,7 +488,7 @@ export default function WebsiteManager() {
 
               {/* Dashed Add New Card */}
               <div
-                onClick={() => setIsModalOpen(true)}
+                onClick={() => { setModalStep('select'); setIsModalOpen(true); }}
                 className="relative bg-dash-surface border-[1.5px] border-dashed border-dash-border rounded-xl flex flex-col items-center justify-center gap-3 min-h-[180px] cursor-pointer hover:bg-dash-accent/5 hover:border-dash-accent/30 transition-colors motion-reduce:transition-none group"
               >
                 <div className="w-12 h-12 rounded-full bg-white border border-dash-border flex items-center justify-center !text-dash-textMuted group-hover:text-dash-accent group-hover:border-dash-accent/30 transition-colors motion-reduce:transition-none">
@@ -576,9 +574,9 @@ export default function WebsiteManager() {
 
         {/* MODALS */}
 
-        {/* New Website Modal - Blueprint Selection */}
-        <DashModal open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DashModalContent className="max-w-[950px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+        {/* New Website Modal - Template Selection */}
+        <DashModal open={isModalOpen} onOpenChange={(open) => !open && closeCreateModal()}>
+          <DashModalContent className="max-w-[900px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
             <div className="px-6 py-5 border-b border-dash-border">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-dash-accent/10 flex items-center justify-center border border-dash-accent/20">
@@ -587,195 +585,158 @@ export default function WebsiteManager() {
                 <div>
                   <DashModalTitle>Create <span className="text-dash-accent">website</span></DashModalTitle>
                   <DashModalDescription>
-                    Select a template or start from a blank canvas
+                    {modalStep === 'select'
+                      ? 'Pick a starting point for your new site'
+                      : 'Name your website to finish creating it'}
                   </DashModalDescription>
                 </div>
               </div>
             </div>
 
-            <div className="flex-1 overflow-hidden flex bg-dash-surface min-h-0">
-              {/* Sidebar for Filtering */}
-              <div className="w-[240px] border-r border-dash-border p-6 space-y-8 hidden md:block overflow-y-auto custom-scrollbar">
-                <div className="space-y-3">
-                  <label className="text-[11px] font-bold !text-dash-textMuted">Templates library</label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 !text-dash-textMuted" />
-                    <DashInput
-                      placeholder="Search templates..."
-                      value={templateSearch}
-                      onChange={(e) => setTemplateSearch(e.target.value)}
-                      className="h-9 pl-9 text-[11px]"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <label className="text-[11px] font-bold !text-dash-textMuted">Categories</label>
-                  <div className="flex flex-col gap-1.5">
-                    {categories.map(cat => (
-                      <button
-                        key={cat}
-                        onClick={() => setTemplateCategory(cat)}
-                        className={cn(
-                          "px-3 py-2 rounded-lg text-left text-[11px] font-semibold transition-colors motion-reduce:transition-none",
-                          templateCategory === cat
-                            ? "bg-dash-accent/10 text-dash-accent border border-dash-accent/20"
-                            : "!text-dash-textMuted hover:!text-dash-text hover:bg-white"
-                        )}
-                      >
-                        {cat}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="pt-4">
-                  <div className="p-4 rounded-xl bg-dash-accent/5 border border-dash-accent/10">
-                    <h5 className="text-[11px] font-bold text-dash-accent mb-2">Pro tip</h5>
-                    <p className="text-[10px] !text-dash-textMuted leading-relaxed">
-                      Choose a template that matches your industry for the best pre-configured layout.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Main Content Area */}
-              <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-white">
-                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-                  <div className="space-y-8">
-                    {/* Step 1: Designation */}
-                    <DashFormField label="Website name" htmlFor="name">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="w-4.5 h-4.5 rounded-full bg-dash-accent/10 text-dash-accent text-[9px] font-bold flex items-center justify-center border border-dash-accent/20">1</span>
-                      </div>
-                      <DashInput
-                        id="name"
-                        placeholder="E.g. Lunar AI Marketing Site..."
-                        value={newSiteName}
-                        onChange={(e) => setNewSiteName(e.target.value)}
-                        className="h-11 text-[14px]"
-                      />
-                    </DashFormField>
-
-                    {/* Step 2: Blueprints */}
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="w-4.5 h-4.5 rounded-full bg-dash-accent/10 text-dash-accent text-[9px] font-bold flex items-center justify-center border border-dash-accent/20">2</span>
-                          <label className="text-[11px] font-bold !text-dash-textMuted">Templates</label>
-                        </div>
-                        <div className="text-[10px] font-bold !text-dash-textMuted bg-dash-surface px-2.5 py-1 rounded-full border border-dash-border">
-                          {filteredTemplates.length} options matching
-                        </div>
-                      </div>
-
-                      {templateError ? (
-                        <div className="p-12 rounded-2xl border border-dashed border-red/20 bg-red/5 flex flex-col items-center justify-center gap-5 text-center">
-                          <div className="h-14 w-14 rounded-full bg-red/10 text-red flex items-center justify-center">
-                            <AlertCircle className="w-8 h-8" />
-                          </div>
-                          <div>
-                            <h4 className="font-bold !text-dash-text">Could not load templates</h4>
-                            <p className="text-[11px] !text-dash-textMuted mt-1 max-w-[240px]">{templateError}</p>
-                          </div>
-                          <DashButton variant="secondary" onClick={fetchTemplates}>
-                            Retry
-                          </DashButton>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                          {filteredTemplates.map((t) => {
-                            const isBlank = t.id === 'blank-slate';
-                            return (
-                              <div
-                                key={t.id}
-                                onClick={() => setSelectedTemplate(t.id)}
-                                className={cn(
-                                  "group relative cursor-pointer rounded-2xl border-2 transition-all duration-200 motion-reduce:transition-none overflow-hidden flex flex-col h-full hover:shadow-lg hover:-translate-y-0.5 motion-reduce:hover:translate-y-0",
-                                  selectedTemplate === t.id
-                                    ? "border-dash-accent bg-dash-accent/5 shadow-md"
-                                    : isBlank
-                                      ? "border-dash-accent/30 border-dashed bg-dash-accent/[0.03] hover:border-dash-accent/50"
-                                      : "border-dash-border bg-dash-surface hover:border-dash-text/20"
-                                )}
-                              >
-                                <div className={cn(
-                                  // Fixed aspect ratio (not flex-1) so every card's image area is the
-                                  // same height regardless of how much the name/description wraps below —
-                                  // previously flex-1 let row-mates end up with mismatched image heights.
-                                  "aspect-[4/3] relative overflow-hidden shrink-0",
-                                  isBlank ? "flex items-center justify-center bg-transparent" : "bg-dash-surface"
-                                )}>
-                                  {isBlank ? (
-                                    <div className="w-14 h-14 rounded-2xl bg-dash-accent/10 flex items-center justify-center text-dash-accent group-hover:bg-dash-accent group-hover:text-white transition-colors motion-reduce:transition-none">
-                                      <Plus size={26} strokeWidth={2.25} />
-                                    </div>
-                                  ) : (
-                                    (t.thumbnail || t.preview_image) && (
-                                      <img
-                                        src={t.thumbnail || t.preview_image}
-                                        alt={t.name}
-                                        className={cn(
-                                          "absolute inset-0 w-full h-full object-cover transition-all duration-500 motion-reduce:transition-none",
-                                          selectedTemplate === t.id ? "scale-105 opacity-90" : "opacity-80 group-hover:opacity-100"
-                                        )}
-                                      />
-                                    )
-                                  )}
-
-                                  {selectedTemplate === t.id && (
-                                    isBlank ? (
-                                      <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-dash-accent border-[4px] border-white flex items-center justify-center">
-                                        <Check className="w-3 h-3 text-white" strokeWidth={4} />
-                                      </div>
-                                    ) : (
-                                      <div className="absolute inset-0 flex items-center justify-center z-20 bg-dash-text/10">
-                                        <div className="w-10 h-10 rounded-full bg-dash-accent flex items-center justify-center">
-                                          <Check className="w-5 h-5 text-white" strokeWidth={4} />
-                                        </div>
-                                      </div>
-                                    )
-                                  )}
-
-                                  {!isBlank && (
-                                    <div className="absolute top-3 left-3 flex gap-2">
-                                      <div className="px-2.5 py-0.5 rounded-full bg-white/90 backdrop-blur-sm border border-dash-border text-[9px] font-bold text-dash-accent">
-                                        {t.category}
-                                      </div>
-                                      {t.is_premium && (
-                                        <div className="px-2.5 py-0.5 rounded-full bg-amber-50/90 backdrop-blur-sm border border-amber-200 text-[9px] font-bold text-amber-600">
-                                          Premium
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                                <div className={cn("p-4", isBlank ? "bg-dash-surface" : "bg-white")}>
-                                  <span className={cn(
-                                    "font-bold text-[12px] block transition-colors motion-reduce:transition-none leading-tight",
-                                    selectedTemplate === t.id ? "text-dash-accent" : "!text-dash-text group-hover:text-dash-accent"
-                                  )}>{t.name}</span>
-                                  <span className="text-[10px] font-medium !text-dash-textMuted line-clamp-2 mt-1 leading-relaxed">{t.description}</span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
+            {modalStep === 'select' ? (
+              <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-white">
+                {templateError ? (
+                  <div className="p-12 rounded-2xl border border-dashed border-red/20 bg-red/5 flex flex-col items-center justify-center gap-5 text-center">
+                    <div className="h-14 w-14 rounded-full bg-red/10 text-red flex items-center justify-center">
+                      <AlertCircle className="w-8 h-8" />
                     </div>
+                    <div>
+                      <h4 className="font-bold !text-dash-text">Could not load templates</h4>
+                      <p className="text-[11px] !text-dash-textMuted mt-1 max-w-[240px]">{templateError}</p>
+                    </div>
+                    <DashButton variant="secondary" onClick={fetchTemplates}>
+                      Retry
+                    </DashButton>
                   </div>
-                </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    {dbTemplates.map((t) => {
+                      const isBlank = t.id === 'blank-slate';
+                      return (
+                        <div
+                          key={t.id}
+                          onClick={() => selectTemplate(t.id)}
+                          className={cn(
+                            "group relative cursor-pointer rounded-2xl border-2 transition-all duration-200 motion-reduce:transition-none overflow-hidden flex flex-col h-full hover:shadow-lg hover:-translate-y-0.5 motion-reduce:hover:translate-y-0",
+                            isBlank
+                              ? "border-dash-accent/30 border-dashed bg-dash-accent/[0.03] hover:border-dash-accent/50"
+                              : "border-dash-border bg-dash-surface hover:border-dash-text/20"
+                          )}
+                        >
+                          <div className={cn(
+                            "aspect-[16/10] relative overflow-hidden shrink-0",
+                            isBlank ? "flex items-center justify-center bg-transparent" : "bg-dash-surface"
+                          )}>
+                            {isBlank ? (
+                              <div className="w-16 h-16 rounded-2xl bg-dash-accent/10 flex items-center justify-center text-dash-accent group-hover:bg-dash-accent group-hover:text-white transition-colors motion-reduce:transition-none">
+                                <Plus size={30} strokeWidth={2.25} />
+                              </div>
+                            ) : (
+                              (t.thumbnail || t.preview_image) && (
+                                <img
+                                  src={t.thumbnail || t.preview_image}
+                                  alt={t.name}
+                                  className="absolute inset-0 w-full h-full object-cover transition-all duration-500 motion-reduce:transition-none opacity-80 group-hover:opacity-100"
+                                />
+                              )
+                            )}
+
+                            {!isBlank && (
+                              <div className="absolute top-3 left-3 flex gap-2">
+                                <div className="px-2.5 py-0.5 rounded-full bg-white/90 backdrop-blur-sm border border-dash-border text-[9px] font-bold text-dash-accent">
+                                  {t.category}
+                                </div>
+                                {t.is_premium && (
+                                  <div className="px-2.5 py-0.5 rounded-full bg-amber-50/90 backdrop-blur-sm border border-amber-200 text-[9px] font-bold text-amber-600">
+                                    Premium
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          <div className={cn("p-5", isBlank ? "bg-dash-surface" : "bg-white")}>
+                            <span className="font-bold text-[14px] block transition-colors motion-reduce:transition-none leading-tight !text-dash-text group-hover:text-dash-accent">
+                              {t.name}
+                            </span>
+                            <span className="text-[11px] font-medium !text-dash-textMuted line-clamp-2 mt-1.5 leading-relaxed">{t.description}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-white">
+                {(() => {
+                  const t = dbTemplates.find(tpl => tpl.id === selectedTemplate);
+                  const isBlank = selectedTemplate === 'blank-slate';
+                  return (
+                    <div className="max-w-[420px] mx-auto space-y-6">
+                      <div className="rounded-2xl border-2 border-dash-accent bg-dash-accent/5 shadow-md overflow-hidden">
+                        <div className={cn(
+                          "aspect-[16/10] relative overflow-hidden",
+                          isBlank ? "flex items-center justify-center bg-transparent" : "bg-dash-surface"
+                        )}>
+                          {isBlank ? (
+                            <div className="w-16 h-16 rounded-2xl bg-dash-accent/10 flex items-center justify-center text-dash-accent">
+                              <Plus size={30} strokeWidth={2.25} />
+                            </div>
+                          ) : (
+                            (t?.thumbnail || t?.preview_image) && (
+                              <img
+                                src={t.thumbnail || t.preview_image}
+                                alt={t.name}
+                                className="absolute inset-0 w-full h-full object-cover"
+                              />
+                            )
+                          )}
+                          <div className="absolute inset-0 flex items-center justify-center bg-dash-text/10">
+                            <div className="w-10 h-10 rounded-full bg-dash-accent flex items-center justify-center">
+                              <Check className="w-5 h-5 text-white" strokeWidth={4} />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="p-4 flex items-center justify-between bg-white">
+                          <span className="font-bold text-[13px] text-dash-accent">{t?.name || 'Blank Slate'}</span>
+                          <button
+                            onClick={() => setModalStep('select')}
+                            className="text-[11px] font-bold text-dash-accent hover:underline"
+                          >
+                            Change
+                          </button>
+                        </div>
+                      </div>
+
+                      <DashFormField label="Website name" htmlFor="name">
+                        <DashInput
+                          id="name"
+                          placeholder="E.g. Lunar AI Marketing Site..."
+                          value={newSiteName}
+                          onChange={(e) => setNewSiteName(e.target.value)}
+                          className="h-11 text-[14px]"
+                          autoFocus
+                        />
+                      </DashFormField>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
 
             <div className="px-6 py-5 border-t border-dash-border bg-white flex items-center justify-end gap-3">
-              <DashButton variant="ghost" onClick={() => setIsModalOpen(false)}>
-                Cancel
+              <DashButton
+                variant="ghost"
+                onClick={() => modalStep === 'details' ? setModalStep('select') : closeCreateModal()}
+              >
+                {modalStep === 'details' ? 'Back' : 'Cancel'}
               </DashButton>
-              <DashButton onClick={handleCreate} disabled={creating || !newSiteName}>
-                {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
-                Create website
-              </DashButton>
+              {modalStep === 'details' && (
+                <DashButton onClick={handleCreate} disabled={creating || !newSiteName}>
+                  {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+                  Create website
+                </DashButton>
+              )}
             </div>
           </DashModalContent>
         </DashModal>

@@ -73,8 +73,8 @@ export const NodeTreeExplorer = () => {
           className={cn(
             "group flex items-center justify-between px-3 py-2 rounded-xl border transition-all motion-reduce:transition-none cursor-pointer",
             isSelected
-              ? "bg-primary/10 border-primary/20 text-primary font-bold"
-              : "bg-transparent border-transparent hover:bg-dash-surface !text-dash-textMuted hover:!text-dash-text"
+              ? "bg-slate-100 border-slate-300 text-slate-900 font-bold"
+              : "bg-transparent border-transparent hover:bg-slate-100 text-slate-500 hover:text-slate-700"
           )}
           style={{ marginLeft: `${depth * 14}px` }}
         >
@@ -83,7 +83,7 @@ export const NodeTreeExplorer = () => {
               <button
                 type="button"
                 onClick={(e) => toggleExpand(id, e)}
-                className="p-1 hover:bg-dash-border/60 rounded transition-colors motion-reduce:transition-none !text-dash-textMuted hover:!text-dash-text"
+                className="p-1 hover:bg-slate-200 rounded-lg transition-colors motion-reduce:transition-none text-slate-500 hover:text-slate-700"
               >
                 {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
               </button>
@@ -92,12 +92,12 @@ export const NodeTreeExplorer = () => {
             )}
 
             {hasChildren ? (
-              <Folder size={13} className={cn("shrink-0", isSelected ? "text-primary" : "text-amber-600")} />
+              <Folder size={13} className={cn("shrink-0", isSelected ? "text-slate-700" : "text-slate-400")} />
             ) : (
-              <File size={13} className="shrink-0 !text-dash-textMuted" />
+              <File size={13} className="shrink-0 text-slate-400" />
             )}
 
-            <span className="text-[10px] font-medium truncate">
+            <span className="text-[12px] font-medium truncate">
               {displayName}
             </span>
           </div>
@@ -108,21 +108,21 @@ export const NodeTreeExplorer = () => {
               <>
                 <button
                   onClick={(e) => handleMoveUp(id, node.data.parent!, e)}
-                  className="p-1 hover:bg-dash-border/60 !text-dash-textMuted hover:!text-dash-text rounded transition-colors motion-reduce:transition-none"
+                  className="p-1 hover:bg-slate-200 text-slate-500 hover:text-slate-700 rounded-lg transition-colors motion-reduce:transition-none"
                   title="Move up"
                 >
                   <ArrowUp size={10} />
                 </button>
                 <button
                   onClick={(e) => handleMoveDown(id, node.data.parent!, e)}
-                  className="p-1 hover:bg-dash-border/60 !text-dash-textMuted hover:!text-dash-text rounded transition-colors motion-reduce:transition-none"
+                  className="p-1 hover:bg-slate-200 text-slate-500 hover:text-slate-700 rounded-lg transition-colors motion-reduce:transition-none"
                   title="Move down"
                 >
                   <ArrowDown size={10} />
                 </button>
                 <button
                   onClick={(e) => handleDeleteNode(id, e)}
-                  className="p-1 hover:bg-red/20 text-red hover:text-red/80 rounded transition-colors motion-reduce:transition-none"
+                  className="p-1 hover:bg-red/10 text-red/70 hover:text-red rounded-lg transition-colors motion-reduce:transition-none"
                   title="Delete node"
                 >
                   <Trash2 size={10} />
@@ -143,11 +143,11 @@ export const NodeTreeExplorer = () => {
   };
 
   return (
-    <div className="h-full flex flex-col pt-2 bg-transparent !text-dash-text select-none">
-      <div className="px-4 py-3 border-b border-dash-border flex items-center justify-between">
+    <div className="h-full flex flex-col pt-2 bg-white text-slate-700 select-none">
+      <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Layers className="w-3.5 h-3.5 text-primary" />
-          <h2 className="text-[10px] font-bold !text-dash-textMuted">Layout node tree</h2>
+          <Layers className="w-3.5 h-3.5 text-slate-500" />
+          <h2 className="text-[13px] font-bold text-slate-900">Layout node tree</h2>
         </div>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-1.5 common-scrollbar">

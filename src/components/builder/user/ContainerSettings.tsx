@@ -36,18 +36,18 @@ export const ContainerSettings = () => {
   return (
     <div className="space-y-4 px-3 py-3">
       <PropertyGroup title="Layout">
-        <div className="space-y-2">
-          <Label className="text-xs font-bold !text-dash-textMuted block">Container type</Label>
-          <div className="grid grid-cols-2 bg-dash-surface p-1 rounded-lg border border-dash-border">
+        <div className="space-y-1.5">
+          <Label className="text-[12px] font-medium text-slate-700 block">Container type</Label>
+          <div className="grid grid-cols-2 gap-2">
             {['fixed', 'fluid'].map((type) => (
               <button
                 key={type}
                 type="button"
                 onClick={() => setProp((props: any) => props.layoutType = type)}
-                className={`text-[10px] py-1.5 rounded capitalize font-bold transition-all motion-reduce:transition-none ${
+                className={`text-[12px] py-1.5 rounded-xl capitalize font-medium border transition-all motion-reduce:transition-none ${
                   layoutType === type
-                    ? 'bg-dash-accent text-white shadow'
-                    : '!text-dash-textMuted hover:!text-dash-text'
+                    ? 'bg-slate-900 text-white border-transparent'
+                    : 'bg-slate-100 border-transparent text-slate-600 hover:bg-slate-200'
                 }`}
               >
                 {type}
@@ -57,12 +57,12 @@ export const ContainerSettings = () => {
         </div>
 
         {layoutType === 'fixed' && (
-          <div className="space-y-2">
-            <Label className="text-xs font-bold !text-dash-textMuted block">Max width</Label>
+          <div className="space-y-1.5">
+            <Label className="text-[12px] font-medium text-slate-700 block">Max width</Label>
             <Input
               value={getDisplayValue('maxWidth', maxWidth)}
               onChange={(e) => setResponsiveValue('maxWidth', e.target.value)}
-              className="h-9 text-xs bg-white border-dash-border rounded-lg focus:border-dash-accent"
+              className="h-9 text-xs bg-white border-slate-200 rounded-xl text-slate-700 focus-visible:border-slate-300"
               placeholder="e.g. 1200px or 90%"
             />
           </div>
@@ -85,19 +85,19 @@ export const ContainerSettings = () => {
         />
       </PropertyGroup>
 
-      <Separator className="bg-dash-border my-2" />
+      <Separator className="bg-slate-200 my-2" />
       <FlexboxControl />
 
-      <Separator className="bg-dash-border my-2" />
+      <Separator className="bg-slate-200 my-2" />
       <BoxModelControl />
 
-      <Separator className="bg-dash-border my-2" />
+      <Separator className="bg-slate-200 my-2" />
       <TypographyControl />
 
-      <Separator className="bg-dash-border my-2" />
+      <Separator className="bg-slate-200 my-2" />
       <BackgroundBorderControl />
 
-      <Separator className="bg-dash-border my-2" />
+      <Separator className="bg-slate-200 my-2" />
       <CustomClassControl />
     </div>
   );

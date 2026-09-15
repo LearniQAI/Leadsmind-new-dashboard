@@ -31,7 +31,7 @@ export const ColumnsSettings = () => {
             <button
               key={l.id}
               onClick={() => setProp((props: any) => props.layout = l.id)}
-              className={`text-[10px] py-2 rounded font-bold transition-all motion-reduce:transition-none border border-dash-border ${layout === l.id ? 'bg-primary text-white shadow-lg' : 'bg-dash-surface !text-dash-textMuted hover:!text-dash-text'}`}
+              className={`text-[12px] py-2 rounded-xl font-medium transition-all motion-reduce:transition-none border ${layout === l.id ? 'bg-slate-900 text-white border-transparent' : 'bg-slate-100 border-transparent text-slate-600 hover:bg-slate-200'}`}
             >
               {l.label}
             </button>

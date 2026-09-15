@@ -24,11 +24,11 @@ export const PopupFormSettings = () => {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label className="text-xs font-bold !text-dash-textMuted block">Display mode</Label>
+        <Label className="text-[12px] font-medium text-slate-700 block">Display mode</Label>
         <select
           value={displayMode}
           onChange={(e) => setProp((p: any) => p.displayMode = e.target.value)}
-          className="w-full bg-white border border-dash-border rounded h-9 text-[11px] px-2 outline-none font-bold !text-dash-text focus:border-dash-accent"
+          className="w-full bg-white border border-slate-200 rounded-xl h-9 text-[11px] px-2 outline-none font-bold text-slate-700 focus:border-slate-300"
         >
           <option value="inline">Inline — embedded directly in the page</option>
           <option value="popup">Popup — shown in a modal, based on a trigger</option>
@@ -38,11 +38,11 @@ export const PopupFormSettings = () => {
       {displayMode === 'popup' && (
         <>
           <div className="space-y-2">
-            <Label className="text-xs font-bold !text-dash-textMuted block">Show popup</Label>
+            <Label className="text-[12px] font-medium text-slate-700 block">Show popup</Label>
             <select
               value={triggerType}
               onChange={(e) => setProp((p: any) => p.triggerType = e.target.value)}
-              className="w-full bg-white border border-dash-border rounded h-9 text-[11px] px-2 outline-none font-bold !text-dash-text focus:border-dash-accent"
+              className="w-full bg-white border border-slate-200 rounded-xl h-9 text-[11px] px-2 outline-none font-bold text-slate-700 focus:border-slate-300"
             >
               {TRIGGER_OPTIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
@@ -50,13 +50,13 @@ export const PopupFormSettings = () => {
 
           {selectedTrigger?.helpsWithValue && (
             <div className="space-y-2">
-              <Label className="text-xs font-bold !text-dash-textMuted block">{selectedTrigger.valueLabel}</Label>
+              <Label className="text-[12px] font-medium text-slate-700 block">{selectedTrigger.valueLabel}</Label>
               <Input
                 type="number"
                 min={0}
                 value={triggerValue}
                 onChange={(e) => setProp((p: any) => p.triggerValue = parseFloat(e.target.value) || 0)}
-                className="h-9 bg-white border-dash-border text-xs"
+                className="h-9 bg-white border-slate-200 rounded-xl text-xs text-slate-700 focus-visible:border-slate-300"
               />
             </div>
           )}
@@ -69,19 +69,19 @@ export const PopupFormSettings = () => {
               onChange={(e) => setProp((p: any) => p.showCloseButton = e.target.checked)}
               className="w-4 h-4 rounded accent-primary"
             />
-            <Label htmlFor="popup-close-button" className="text-xs font-bold !text-dash-textMuted cursor-pointer">
+            <Label htmlFor="popup-close-button" className="text-[12px] font-medium text-slate-700 cursor-pointer">
               Show close button
             </Label>
           </div>
 
           <div className="space-y-2">
-            <Label className="text-[10px] font-bold !text-dash-textMuted">Overlay color</Label>
+            <Label className="text-[12px] font-medium text-slate-700">Overlay color</Label>
             <ColorPicker value={overlayColor} onChange={(val) => setProp((p: any) => p.overlayColor = val)} />
           </div>
         </>
       )}
 
-      <p className="text-[10px] !text-dash-textMuted leading-relaxed pt-2 border-t border-dash-border">
+      <p className="text-[11px] text-slate-500 leading-relaxed pt-2 border-t border-slate-200">
         Drop a Form widget inside this container — it renders normally in the
         editor either way; the popup/trigger behavior only applies on the live page.
       </p>

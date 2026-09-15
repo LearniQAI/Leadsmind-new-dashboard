@@ -29,10 +29,10 @@ class MonacoErrorBoundary extends React.Component<{ children: React.ReactNode },
  render() {
   if (this.state.hasError) {
    return (
-    <div className="h-[400px] w-full flex flex-col items-center justify-center bg-dash-surface rounded-xl border border-red-500/20 text-center p-6 gap-3">
+    <div className="h-[400px] w-full flex flex-col items-center justify-center bg-slate-100 rounded-xl border border-red-500/20 text-center p-6 gap-3">
      <AlertCircle className="w-8 h-8 text-red-500 opacity-50" />
-     <h4 className="text-xs font-bold !text-dash-text">Editor failed to load</h4>
-     <p className="text-[10px] !text-dash-textMuted leading-relaxed max-w-[200px]">
+     <h4 className="text-xs font-bold text-slate-900">Editor failed to load</h4>
+     <p className="text-[12px] text-slate-500 leading-relaxed max-w-[200px]">
       There was a conflict with the code editor worker. Please try refreshing the page.
      </p>
     </div>
@@ -60,9 +60,9 @@ export const CodeBlockSettings = () => {
  }
 
  return (
-  <div className="space-y-6">
-   <div className="space-y-3">
-    <Label className="text-[10px] font-bold !text-dash-textMuted flex items-center justify-between">
+  <div>
+   <div className="mb-7 last:mb-0 space-y-3">
+    <Label className="text-[12px] font-medium text-slate-700 flex items-center justify-between">
      <span>HTML / CSS / JS</span>
      <span className="text-primary animate-pulse motion-reduce:animate-none">● Live edit</span>
     </Label>
@@ -73,7 +73,7 @@ export const CodeBlockSettings = () => {
       matching the same convention as other content-preview surfaces in this
       app. Only the surrounding chrome (label, border, help text) is converted.
     */}
-    <div className="rounded-xl overflow-hidden border border-dash-border h-[400px] bg-[#1e1e1e]">
+    <div className="rounded-xl overflow-hidden border border-slate-200 h-[400px] bg-[#1e1e1e]">
      <MonacoErrorBoundary>
       <Editor
        height="100%"
@@ -95,7 +95,7 @@ export const CodeBlockSettings = () => {
       />
      </MonacoErrorBoundary>
     </div>
-    <p className="text-[10px] !text-dash-textMuted leading-relaxed">
+    <p className="text-[12px] text-slate-500 leading-relaxed">
      * Scripts will be executed in the final published site. Use sparingly to avoid performance issues.
     </p>
    </div>

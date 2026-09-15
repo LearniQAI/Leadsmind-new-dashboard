@@ -22,7 +22,7 @@ export const ColorPicker = ({ value, onChange, label, swatch }: ColorPickerProps
   const unset = !value || value === 'transparent';
 
   const presets = [
-    '#000000', '#ffffff', '#6c47ff', '#f43f5e', '#3b82f6', 
+    '#000000', '#ffffff', '#6c47ff', '#f43f5e', '#3b82f6',
     '#10b981', '#f59e0b', '#6366f1', '#a855f7', '#ec4899',
     '#64748b', '#94a3b8'
   ];
@@ -31,13 +31,13 @@ export const ColorPicker = ({ value, onChange, label, swatch }: ColorPickerProps
     return (
       <div className="flex items-center justify-between">
         {label && (
-          <Label className="text-xs font-bold text-muted-foreground">{label}</Label>
+          <Label className="text-[12px] font-medium text-slate-700">{label}</Label>
         )}
         <Popover>
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="relative h-6 w-6 rounded-full border border-dash-border ring-1 ring-inset ring-black/5 shadow-[0_1px_2px_rgba(0,0,0,0.12)] shrink-0 overflow-hidden transition-transform duration-150 motion-reduce:transition-none hover:scale-110 active:scale-95"
+              className="relative h-6 w-6 rounded-full border border-slate-200 ring-1 ring-inset ring-black/5 shadow-[0_1px_2px_rgba(0,0,0,0.12)] shrink-0 overflow-hidden transition-transform duration-150 motion-reduce:transition-none hover:scale-110 active:scale-95"
               style={{ backgroundColor: unset ? '#ffffff' : color }}
               aria-label={label || 'Pick colour'}
             >
@@ -48,30 +48,30 @@ export const ColorPicker = ({ value, onChange, label, swatch }: ColorPickerProps
               )}
             </button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-3 bg-white border-dash-border backdrop-blur-xl shadow-2xl">
+          <PopoverContent className="w-auto p-3 bg-white border-slate-200 rounded-2xl shadow-xl">
             <div className="space-y-4 pt-2">
               <HexColorPicker color={color.startsWith('#') ? color.substring(0, 7) : '#6c47ff'} onChange={onChange} />
               <div className="grid grid-cols-6 gap-1 mt-2">
                 {presets.map((preset) => (
                   <button
                     key={preset}
-                    className="w-6 h-6 rounded-md border border-dash-border transition-transform motion-reduce:transition-none hover:scale-110"
+                    className="w-6 h-6 rounded-lg border border-slate-200 hover:border-slate-300 transition-transform motion-reduce:transition-none hover:scale-110"
                     style={{ backgroundColor: preset }}
                     onClick={() => onChange(preset)}
                   />
                 ))}
               </div>
               <div className="flex items-center gap-2 mt-2">
-                <div className="text-[10px] font-mono text-muted-foreground">Hex</div>
+                <div className="text-[10px] font-mono text-slate-500">Hex</div>
                 <Input
                   value={value}
                   onChange={(e) => onChange(e.target.value)}
-                  className="h-8 text-[10px] bg-white border-dash-border font-mono"
+                  className="h-8 text-[10px] bg-white border-slate-200 rounded-xl text-slate-700 font-mono focus-visible:border-slate-300"
                 />
                 <button
                   type="button"
                   onClick={() => onChange('transparent')}
-                  className="text-[9px] font-bold text-muted-foreground hover:text-dash-text px-1.5 py-1 rounded border border-dash-border shrink-0"
+                  className="text-[9px] font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-700 px-1.5 py-1 rounded-lg border border-slate-200 shrink-0 transition-colors motion-reduce:transition-none"
                 >
                   None
                 </button>
@@ -86,7 +86,7 @@ export const ColorPicker = ({ value, onChange, label, swatch }: ColorPickerProps
   return (
     <div className="space-y-2">
       {label && (
-        <Label className="text-xs font-bold text-muted-foreground block">
+        <Label className="text-[12px] font-medium text-slate-700 block">
           {label}
         </Label>
       )}
@@ -94,13 +94,13 @@ export const ColorPicker = ({ value, onChange, label, swatch }: ColorPickerProps
         <Popover>
           <PopoverTrigger asChild>
             <button
-              className="w-10 h-10 rounded-lg border-2 border-dash-border shadow-sm transition-all motion-reduce:transition-none hover:scale-105 active:scale-95 flex items-center justify-center overflow-hidden bg-[url('https://www.transparenttextures.com/patterns/checkerboard.png')]"
+              className="w-10 h-10 rounded-xl border-2 border-slate-200 shadow-sm transition-all motion-reduce:transition-none hover:scale-105 hover:border-slate-300 active:scale-95 flex items-center justify-center overflow-hidden bg-[url('https://www.transparenttextures.com/patterns/checkerboard.png')]"
               style={{ backgroundColor: color }}
             >
-              <div className="w-full h-full border border-black/5 rounded-md" style={{ backgroundColor: color }} />
+              <div className="w-full h-full border border-black/5 rounded-lg" style={{ backgroundColor: color }} />
             </button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-3 bg-white border-dash-border backdrop-blur-xl shadow-2xl">
+          <PopoverContent className="w-auto p-3 bg-white border-slate-200 rounded-2xl shadow-xl">
             <div className="space-y-4 pt-2">
               <HexColorPicker color={color.startsWith('#') ? color.substring(0, 7) : '#6c47ff'} onChange={onChange} />
 
@@ -108,7 +108,7 @@ export const ColorPicker = ({ value, onChange, label, swatch }: ColorPickerProps
                 {presets.map((preset) => (
                   <button
                     key={preset}
-                    className="w-6 h-6 rounded-md border border-dash-border transition-transform motion-reduce:transition-none hover:scale-110"
+                    className="w-6 h-6 rounded-lg border border-slate-200 hover:border-slate-300 transition-transform motion-reduce:transition-none hover:scale-110"
                     style={{ backgroundColor: preset }}
                     onClick={() => onChange(preset)}
                   />
@@ -116,11 +116,11 @@ export const ColorPicker = ({ value, onChange, label, swatch }: ColorPickerProps
               </div>
 
               <div className="flex items-center gap-2 mt-2">
-                <div className="text-[10px] font-mono text-muted-foreground">Hex</div>
+                <div className="text-[10px] font-mono text-slate-500">Hex</div>
                 <Input
                   value={value}
                   onChange={(e) => onChange(e.target.value)}
-                  className="h-8 text-[10px] bg-white border-dash-border font-mono"
+                  className="h-8 text-[10px] bg-white border-slate-200 rounded-xl text-slate-700 font-mono focus-visible:border-slate-300"
                 />
               </div>
             </div>
@@ -130,7 +130,7 @@ export const ColorPicker = ({ value, onChange, label, swatch }: ColorPickerProps
           <Input
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className="h-9 text-xs bg-white border-dash-border font-mono"
+            className="h-9 text-xs bg-white border-slate-200 rounded-xl text-slate-700 font-mono focus-visible:border-slate-300"
           />
         </div>
       </div>
