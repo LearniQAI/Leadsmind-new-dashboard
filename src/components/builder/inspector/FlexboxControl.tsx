@@ -34,23 +34,23 @@ export const FlexboxControl = () => {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between w-full py-1.5 hover:bg-dash-surface transition-colors motion-reduce:transition-none group text-left"
+        className="flex items-center justify-between w-full py-1.5 hover:bg-slate-100 transition-colors motion-reduce:transition-none group text-left"
       >
-        <span className="text-xs font-bold !text-dash-textMuted group-hover:!text-dash-text transition-colors motion-reduce:transition-none">
+        <span className="text-xs font-bold text-slate-500 group-hover:text-slate-900 transition-colors motion-reduce:transition-none">
           Layout (flexbox)
         </span>
         {isOpen ? (
-          <ChevronDown className="w-4 h-4 !text-dash-textMuted group-hover:!text-dash-text transition-colors motion-reduce:transition-none" />
+          <ChevronDown className="w-4 h-4 text-slate-500 group-hover:text-slate-900 transition-colors motion-reduce:transition-none" />
         ) : (
-          <ChevronRight className="w-4 h-4 !text-dash-textMuted group-hover:!text-dash-text transition-colors motion-reduce:transition-none" />
+          <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-slate-900 transition-colors motion-reduce:transition-none" />
         )}
       </button>
 
       {isOpen && (
         <div className="space-y-4 pt-1">
           <div className="space-y-2">
-            <Label className="text-xs font-bold !text-dash-textMuted block">Display mode</Label>
-            <div className="grid grid-cols-4 bg-dash-surface p-1 rounded-lg border border-dash-border">
+            <Label className="text-xs font-bold text-slate-500 block">Display mode</Label>
+            <div className="grid grid-cols-4 bg-slate-100 p-1 rounded-lg border border-slate-200">
               {[
                 { id: 'block', label: 'Block', icon: Square },
                 { id: 'flex', label: 'Flex', icon: Columns },
@@ -66,8 +66,8 @@ export const FlexboxControl = () => {
                     onClick={() => setResponsiveValue('display', item.id)}
                     className={`flex flex-col items-center justify-center py-1.5 rounded transition-all motion-reduce:transition-none ${
                       active
-                        ? 'bg-dash-accent text-white shadow font-bold'
-                        : '!text-dash-textMuted hover:!text-dash-text hover:bg-white'
+                        ? 'bg-slate-900 text-white shadow font-bold'
+                        : 'text-slate-500 hover:text-slate-900 hover:bg-white'
                     }`}
                     title={item.label}
                   >
@@ -80,9 +80,9 @@ export const FlexboxControl = () => {
           </div>
 
           {display === 'flex' && (
-            <div className="space-y-3 p-3 rounded-lg bg-dash-surface border border-dash-border">
+            <div className="space-y-3 p-3 rounded-lg bg-slate-100 border border-slate-200">
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold !text-dash-textMuted block">Flex direction</Label>
+                <Label className="text-[10px] font-bold text-slate-500 block">Flex direction</Label>
                 <div className="grid grid-cols-4 gap-1">
                   {[
                     { id: 'row', label: 'Row', arrow: '→' },
@@ -96,8 +96,8 @@ export const FlexboxControl = () => {
                       onClick={() => setResponsiveValue('flexDirection', item.id)}
                       className={`text-[9px] py-1.5 rounded border font-bold transition-all motion-reduce:transition-none ${
                         flexDirection === item.id
-                          ? 'bg-dash-accent border-dash-accent text-white'
-                          : 'border-dash-border !text-dash-textMuted hover:!text-dash-text bg-white'
+                          ? 'bg-slate-900 border-transparent text-white'
+                          : 'border-slate-200 text-slate-500 hover:text-slate-900 bg-white'
                       }`}
                     >
                       <span className="block text-xs">{item.arrow}</span>
@@ -108,7 +108,7 @@ export const FlexboxControl = () => {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold !text-dash-textMuted block">Justify content</Label>
+                <Label className="text-[10px] font-bold text-slate-500 block">Justify content</Label>
                 <div className="grid grid-cols-3 gap-1">
                   {[
                     { id: 'flex-start', label: 'Start' },
@@ -124,8 +124,8 @@ export const FlexboxControl = () => {
                       onClick={() => setResponsiveValue('justifyContent', item.id)}
                       className={`text-[9px] py-1.5 rounded border font-bold transition-all motion-reduce:transition-none ${
                         justifyContent === item.id
-                          ? 'bg-dash-accent border-dash-accent text-white'
-                          : 'border-dash-border !text-dash-textMuted hover:!text-dash-text bg-white'
+                          ? 'bg-slate-900 border-transparent text-white'
+                          : 'border-slate-200 text-slate-500 hover:text-slate-900 bg-white'
                       }`}
                     >
                       {item.label}
@@ -135,7 +135,7 @@ export const FlexboxControl = () => {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold !text-dash-textMuted block">Align items</Label>
+                <Label className="text-[10px] font-bold text-slate-500 block">Align items</Label>
                 <div className="grid grid-cols-5 gap-1">
                   {[
                     { id: 'flex-start', label: 'Start' },
@@ -150,8 +150,8 @@ export const FlexboxControl = () => {
                       onClick={() => setResponsiveValue('alignItems', item.id)}
                       className={`text-[9px] py-1.5 rounded border font-bold transition-all motion-reduce:transition-none ${
                         alignItems === item.id
-                          ? 'bg-dash-accent border-dash-accent text-white'
-                          : 'border-dash-border !text-dash-textMuted hover:!text-dash-text bg-white'
+                          ? 'bg-slate-900 border-transparent text-white'
+                          : 'border-slate-200 text-slate-500 hover:text-slate-900 bg-white'
                       }`}
                     >
                       {item.label}
@@ -164,11 +164,11 @@ export const FlexboxControl = () => {
 
           {(display === 'flex' || display === 'grid') && (
             <div className="space-y-2">
-              <Label className="text-xs font-bold !text-dash-textMuted block">Gap</Label>
+              <Label className="text-xs font-bold text-slate-500 block">Gap</Label>
               <Input
                 value={gap}
                 onChange={(e) => setResponsiveValue('gap', e.target.value)}
-                className="h-9 text-xs bg-white border-dash-border"
+                className="h-9 text-xs bg-white border-slate-200"
                 placeholder="e.g. 16px or 1rem"
               />
             </div>

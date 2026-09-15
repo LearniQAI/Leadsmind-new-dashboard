@@ -117,40 +117,40 @@ export const ElementProperties = ({ nodeId }: { nodeId: string }) => {
   return (
     <div className="w-full h-full bg-white flex flex-col z-40 select-none">
       {/* Breadcrumb + back */}
-      <div className="px-4 h-11 border-b border-dash-border flex items-center gap-1.5 shrink-0 bg-white text-[11px] font-semibold !text-dash-textMuted">
+      <div className="px-4 h-11 border-b border-slate-200 flex items-center gap-1.5 shrink-0 bg-white text-[11px] font-semibold text-slate-500">
         <button
           onClick={() => actions.selectNode()}
-          className="h-7 px-2 -ml-1.5 flex items-center gap-1 rounded-lg hover:bg-dash-surface hover:!text-dash-text transition-colors motion-reduce:transition-none active:scale-95 motion-reduce:active:scale-100"
+          className="h-7 px-2 -ml-1.5 flex items-center gap-1 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition-colors motion-reduce:transition-none active:scale-95 motion-reduce:active:scale-100"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Back
         </button>
-        <span className="text-dash-border/70">/</span>
+        <span className="text-slate-300">/</span>
         {parentName && (
           <>
             <span className="truncate">{parentName}</span>
-            <span className="text-dash-border/70">/</span>
+            <span className="text-slate-300">/</span>
           </>
         )}
-        <span className="!text-dash-text truncate">{selected.name}</span>
+        <span className="text-slate-900 truncate">{selected.name}</span>
       </div>
 
       {/* Panel Header */}
-      <div className="px-4 pt-3.5 pb-3 border-b border-dash-border shrink-0 bg-gradient-to-b from-white to-dash-surface/30 space-y-2.5">
+      <div className="px-4 pt-3.5 pb-3 border-b border-slate-200 shrink-0 bg-gradient-to-b from-white to-slate-50 space-y-2.5">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="h-8 w-8 rounded-[9px] bg-gradient-to-br from-dash-accent/15 to-dash-accent/5 flex items-center justify-center ring-1 ring-inset ring-dash-accent/20 shadow-[0_1px_3px_rgba(0,0,0,0.06)] shrink-0">
-            <ComponentIcon className="w-4 h-4 text-dash-accent" />
+          <div className="h-8 w-8 rounded-[9px] bg-slate-100 flex items-center justify-center ring-1 ring-inset ring-slate-200 shrink-0">
+            <ComponentIcon className="w-4 h-4 text-slate-700" />
           </div>
           <div className="min-w-0">
-            <p className="text-[13px] font-bold !text-dash-text leading-none truncate">{selected.name}</p>
-            <p className="text-[9px] uppercase tracking-[0.1em] !text-dash-textMuted mt-1 font-bold truncate">Element Properties</p>
+            <p className="text-[13px] font-bold text-slate-900 leading-none truncate">{selected.name}</p>
+            <p className="text-[10px] text-slate-500 mt-1 font-medium truncate">Element properties</p>
           </div>
         </div>
         <div className="flex items-center gap-0.5">
           <button
             onClick={() => handleMove(-1)}
             disabled={siblingIndex <= 0}
-            className="h-7 w-7 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-white rounded-md transition-all motion-reduce:transition-none duration-150 active:scale-90 motion-reduce:active:scale-100 disabled:opacity-30 disabled:pointer-events-none"
+            className="h-7 w-7 flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-white rounded-md transition-all motion-reduce:transition-none duration-150 active:scale-90 motion-reduce:active:scale-100 disabled:opacity-30 disabled:pointer-events-none"
             title="Move up"
           >
             <ArrowUp className="w-4 h-4" />
@@ -158,7 +158,7 @@ export const ElementProperties = ({ nodeId }: { nodeId: string }) => {
           <button
             onClick={() => handleMove(1)}
             disabled={siblingIndex < 0 || siblingIndex >= siblingCount - 1}
-            className="h-7 w-7 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-white rounded-md transition-all motion-reduce:transition-none duration-150 active:scale-90 motion-reduce:active:scale-100 disabled:opacity-30 disabled:pointer-events-none"
+            className="h-7 w-7 flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-white rounded-md transition-all motion-reduce:transition-none duration-150 active:scale-90 motion-reduce:active:scale-100 disabled:opacity-30 disabled:pointer-events-none"
             title="Move down"
           >
             <ArrowDown className="w-4 h-4" />
@@ -166,24 +166,24 @@ export const ElementProperties = ({ nodeId }: { nodeId: string }) => {
           <button
             onClick={handleDuplicate}
             disabled={!parentId}
-            className="h-7 w-7 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-white rounded-md transition-all motion-reduce:transition-none duration-150 active:scale-90 motion-reduce:active:scale-100 disabled:opacity-30 disabled:pointer-events-none"
+            className="h-7 w-7 flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-white rounded-md transition-all motion-reduce:transition-none duration-150 active:scale-90 motion-reduce:active:scale-100 disabled:opacity-30 disabled:pointer-events-none"
             title="Duplicate"
           >
             <Copy className="w-4 h-4" />
           </button>
           <button
             onClick={() => setBlueprintNodeId(nodeId)}
-            className="h-7 w-7 flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-white rounded-md transition-all motion-reduce:transition-none duration-150 active:scale-90 motion-reduce:active:scale-100"
+            className="h-7 w-7 flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-white rounded-md transition-all motion-reduce:transition-none duration-150 active:scale-90 motion-reduce:active:scale-100"
             title="Save as reusable blueprint"
           >
             <Save className="w-4 h-4" />
           </button>
           {selected.isDeletable && (
             <>
-              <span className="w-px h-4 bg-dash-border mx-0.5" />
+              <span className="w-px h-4 bg-slate-200 mx-0.5" />
               <button
                 onClick={handleDelete}
-                className="h-7 w-7 flex items-center justify-center !text-dash-textMuted hover:text-red hover:bg-red/10 rounded-md transition-all motion-reduce:transition-none duration-150 active:scale-90 motion-reduce:active:scale-100"
+                className="h-7 w-7 flex items-center justify-center text-slate-500 hover:text-red hover:bg-red/10 rounded-md transition-all motion-reduce:transition-none duration-150 active:scale-90 motion-reduce:active:scale-100"
                 title="Delete element"
               >
                 <Trash2 className="w-4 h-4" />
@@ -207,11 +207,11 @@ export const ElementProperties = ({ nodeId }: { nodeId: string }) => {
           React.createElement(selected.settings as any)
         ) : (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-12 h-12 rounded-xl bg-dash-surface flex items-center justify-center mx-auto mb-4 border border-dash-border">
-              <Settings className="w-5 h-5 !text-dash-textMuted" />
+            <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mx-auto mb-4 border border-slate-200">
+              <Settings className="w-5 h-5 text-slate-500" />
             </div>
-            <p className="text-[12px] font-semibold !text-dash-textMuted mb-1">No settings available</p>
-            <p className="text-[11px] !text-dash-textMuted">This element does not have configurable properties.</p>
+            <p className="text-[12px] font-semibold text-slate-700 mb-1">No settings available</p>
+            <p className="text-[11px] text-slate-500">This element does not have configurable properties.</p>
           </div>
         )}
       </div>

@@ -83,15 +83,15 @@ export const BackgroundBorderControl = () => {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between w-full py-1.5 hover:bg-dash-surface transition-colors motion-reduce:transition-none group text-left"
+        className="flex items-center justify-between w-full py-1.5 hover:bg-slate-100 transition-colors motion-reduce:transition-none group text-left"
       >
-        <span className="text-xs font-bold !text-dash-textMuted group-hover:!text-dash-text transition-colors motion-reduce:transition-none">
+        <span className="text-xs font-bold text-slate-500 group-hover:text-slate-900 transition-colors motion-reduce:transition-none">
           Background & border
         </span>
         {isOpen ? (
-          <ChevronDown className="w-4 h-4 !text-dash-textMuted group-hover:!text-dash-text transition-colors motion-reduce:transition-none" />
+          <ChevronDown className="w-4 h-4 text-slate-500 group-hover:text-slate-900 transition-colors motion-reduce:transition-none" />
         ) : (
-          <ChevronRight className="w-4 h-4 !text-dash-textMuted group-hover:!text-dash-text transition-colors motion-reduce:transition-none" />
+          <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-slate-900 transition-colors motion-reduce:transition-none" />
         )}
       </button>
 
@@ -107,19 +107,19 @@ export const BackgroundBorderControl = () => {
           )}
 
           {/* Gradient Builder */}
-          <div className="space-y-3 p-3 rounded-lg bg-dash-surface border border-dash-border">
+          <div className="space-y-3 p-3 rounded-lg bg-slate-100 border border-slate-200">
             <div className="flex items-center justify-between">
-              <Label className="text-[10px] font-bold !text-dash-textMuted">Use linear gradient</Label>
+              <Label className="text-[10px] font-bold text-slate-500">Use linear gradient</Label>
               <input
                 type="checkbox"
                 checked={backgroundGradient}
                 onChange={(e) => setResponsiveValue('backgroundGradient', e.target.checked)}
-                className="accent-dash-accent h-4 w-4 rounded border-dash-border"
+                className="accent-slate-900 h-4 w-4 rounded border-slate-200"
               />
             </div>
 
             {backgroundGradient && (
-              <div className="space-y-3 pt-2 border-t border-dash-border">
+              <div className="space-y-3 pt-2 border-t border-slate-200">
                 <div className="grid grid-cols-2 gap-2">
                   <ColorPicker
                     label="Stop 1"
@@ -134,7 +134,7 @@ export const BackgroundBorderControl = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-[9px] font-bold !text-dash-textMuted block flex justify-between">
+                  <Label className="text-[9px] font-bold text-slate-500 block flex justify-between">
                     <span>Angle</span>
                     <span>{gradientAngle}°</span>
                   </Label>
@@ -142,7 +142,7 @@ export const BackgroundBorderControl = () => {
                     type="range" min="0" max="360" step="5"
                     value={gradientAngle}
                     onChange={(e) => setResponsiveValue('gradientAngle', e.target.value)}
-                    className="w-full accent-dash-accent"
+                    className="w-full accent-slate-900"
                   />
                 </div>
               </div>
@@ -152,24 +152,24 @@ export const BackgroundBorderControl = () => {
           {/* Border Width & Style */}
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-2">
-              <Label className="text-[10px] font-bold !text-dash-textMuted block">Border width</Label>
+              <Label className="text-[10px] font-bold text-slate-500 block">Border width</Label>
               <Input
                 value={borderWidth}
                 onChange={(e) => setResponsiveValue('borderWidth', e.target.value)}
-                className="h-9 text-xs bg-white border-dash-border"
+                className="h-9 text-xs bg-white border-slate-200"
                 placeholder="e.g. 1px or 2px"
               />
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[10px] font-bold !text-dash-textMuted block">Border style</Label>
+              <Label className="text-[10px] font-bold text-slate-500 block">Border style</Label>
               <select
                 value={borderStyle}
                 onChange={(e) => setResponsiveValue('borderStyle', e.target.value)}
-                className="w-full h-9 text-xs bg-white border border-dash-border rounded-lg !text-dash-text px-2 focus:border-dash-accent outline-none"
+                className="w-full h-9 text-xs bg-white border border-slate-200 rounded-lg text-slate-900 px-2 focus:border-slate-300 outline-none"
               >
                 {borderStyles.map((s) => (
-                  <option key={s} value={s} className="bg-white text-dash-text capitalize">{s}</option>
+                  <option key={s} value={s} className="bg-white text-slate-700 capitalize">{s}</option>
                 ))}
               </select>
             </div>
@@ -184,65 +184,65 @@ export const BackgroundBorderControl = () => {
           )}
 
           {/* Border Radius */}
-          <div className="space-y-3 p-3 rounded-lg bg-dash-surface border border-dash-border">
+          <div className="space-y-3 p-3 rounded-lg bg-slate-100 border border-slate-200">
             <div className="flex items-center justify-between">
-              <Label className="text-[10px] font-bold !text-dash-textMuted">Individual corners</Label>
+              <Label className="text-[10px] font-bold text-slate-500">Individual corners</Label>
               <input
                 type="checkbox"
                 checked={borderRadiusIndividual}
                 onChange={(e) => setResponsiveValue('borderRadiusIndividual', e.target.checked)}
-                className="accent-dash-accent h-4 w-4 rounded border-dash-border"
+                className="accent-slate-900 h-4 w-4 rounded border-slate-200"
               />
             </div>
 
             {!borderRadiusIndividual ? (
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold !text-dash-textMuted block flex justify-between">
+                <Label className="text-[10px] font-bold text-slate-500 block flex justify-between">
                   <span>Tailwind roundness</span>
-                  <span className="text-dash-accent font-bold text-[9px]">{currentRounded.replace('rounded-', '') || 'none'}</span>
+                  <span className="text-slate-700 font-bold text-[9px]">{currentRounded.replace('rounded-', '') || 'none'}</span>
                 </Label>
                 <input
                   type="range" min="0" max="8" step="1"
                   value={currentRoundedIdx !== -1 ? currentRoundedIdx : 0}
                   onChange={(e) => handleRoundedChange(Number(e.target.value))}
-                  className="w-full accent-dash-accent"
+                  className="w-full accent-slate-900"
                 />
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-dash-border">
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200">
                 <div className="space-y-1">
-                  <Label className="text-[9px] font-bold !text-dash-textMuted block">Top-left</Label>
+                  <Label className="text-[9px] font-bold text-slate-500 block">Top-left</Label>
                   <Input
                     value={btlr}
                     onChange={(e) => setResponsiveValue('borderTopLeftRadius', e.target.value)}
-                    className="h-8 text-xs bg-white border-dash-border"
+                    className="h-8 text-xs bg-white border-slate-200"
                     placeholder="0px"
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[9px] font-bold !text-dash-textMuted block">Top-right</Label>
+                  <Label className="text-[9px] font-bold text-slate-500 block">Top-right</Label>
                   <Input
                     value={btrr}
                     onChange={(e) => setResponsiveValue('borderTopRightRadius', e.target.value)}
-                    className="h-8 text-xs bg-white border-dash-border"
+                    className="h-8 text-xs bg-white border-slate-200"
                     placeholder="0px"
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[9px] font-bold !text-dash-textMuted block">Bottom-right</Label>
+                  <Label className="text-[9px] font-bold text-slate-500 block">Bottom-right</Label>
                   <Input
                     value={bbrr}
                     onChange={(e) => setResponsiveValue('borderBottomRightRadius', e.target.value)}
-                    className="h-8 text-xs bg-white border-dash-border"
+                    className="h-8 text-xs bg-white border-slate-200"
                     placeholder="0px"
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[9px] font-bold !text-dash-textMuted block">Bottom-left</Label>
+                  <Label className="text-[9px] font-bold text-slate-500 block">Bottom-left</Label>
                   <Input
                     value={bblr}
                     onChange={(e) => setResponsiveValue('borderBottomLeftRadius', e.target.value)}
-                    className="h-8 text-xs bg-white border-dash-border"
+                    className="h-8 text-xs bg-white border-slate-200"
                     placeholder="0px"
                   />
                 </div>
@@ -252,8 +252,8 @@ export const BackgroundBorderControl = () => {
 
           {/* Shadow Preset */}
           <div className="space-y-2">
-            <Label className="text-xs font-bold !text-dash-textMuted block">Box shadow</Label>
-            <div className="grid grid-cols-5 bg-dash-surface p-1 rounded-lg border border-dash-border">
+            <Label className="text-xs font-bold text-slate-500 block">Box shadow</Label>
+            <div className="grid grid-cols-5 bg-slate-100 p-1 rounded-lg border border-slate-200">
               {shadows.map((preset) => {
                 const active = boxShadow === preset;
                 return (
@@ -263,8 +263,8 @@ export const BackgroundBorderControl = () => {
                     onClick={() => setResponsiveValue('boxShadow', preset)}
                     className={`py-1 rounded text-[10px] font-bold transition-all motion-reduce:transition-none capitalize ${
                       active
-                        ? 'bg-dash-accent text-white shadow'
-                        : '!text-dash-textMuted hover:!text-dash-text hover:bg-white'
+                        ? 'bg-slate-900 text-white shadow'
+                        : 'text-slate-500 hover:text-slate-900 hover:bg-white'
                     }`}
                   >
                     {preset}

@@ -151,7 +151,12 @@ export const UserButton = (allProps: ButtonProps & any) => {
       className={`w-full transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 group ${sizeClasses[(size || 'md') as keyof typeof sizeClasses]}`}
       style={{
         borderRadius: `${borderRadius}px`,
-        backgroundColor: color || undefined,
+        // 'color' is the "Background" field in ButtonSettings — but for outline/ghost/link
+        // variants it also doubles as the border/text color (matching the template-authoring
+        // convention already in use), so it must NOT also become the background fill for
+        // those variants, or a black-bordered/black-text outline button renders as a solid
+        // black box with invisible black-on-black text.
+        backgroundColor: (variant === 'outline' || variant === 'ghost' || variant === 'link') ? 'transparent' : (color || undefined),
         color: textColor || undefined,
         border: variant === 'outline' ? `2px solid ${color}` : undefined,
       }}

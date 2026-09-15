@@ -70,11 +70,11 @@ export const ContentBoxSettings = () => {
     <div className="p-5 space-y-5">
       <PropertyGroup title="Callout appearance">
         <div className="space-y-1.5">
-          <Label className="text-[10px] font-bold !text-dash-textMuted block">Header label</Label>
+          <Label className="text-[12px] font-medium text-slate-700 block">Header label</Label>
           <input
             value={props.headerLabel}
             onChange={(e) => setProp((p: ContentBoxProps) => { p.headerLabel = e.target.value; })}
-            className="w-full bg-white border border-dash-border rounded-lg px-3 py-2 text-xs !text-dash-text outline-none focus:border-primary"
+            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 outline-none focus:border-slate-300"
           />
         </div>
 
@@ -91,36 +91,36 @@ export const ContentBoxSettings = () => {
         />
 
         <div className="space-y-1.5">
-          <Label className="text-[10px] font-bold !text-dash-textMuted block">Headline (supports basic HTML — &lt;br/&gt;, &lt;em&gt;, &lt;strong&gt;)</Label>
+          <Label className="text-[12px] font-medium text-slate-700 block">Headline (supports basic HTML — &lt;br/&gt;, &lt;em&gt;, &lt;strong&gt;)</Label>
           <input
             value={props.headline}
             onChange={(e) => setProp((p: ContentBoxProps) => { p.headline = e.target.value; })}
-            className="w-full bg-white border border-dash-border rounded-lg px-3 py-2 text-xs !text-dash-text outline-none focus:border-primary"
+            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 outline-none focus:border-slate-300"
           />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-[10px] font-bold !text-dash-textMuted block">Supporting text (supports basic HTML)</Label>
+          <Label className="text-[12px] font-medium text-slate-700 block">Supporting text (supports basic HTML)</Label>
           <textarea
             value={props.body}
             onChange={(e) => setProp((p: ContentBoxProps) => { p.body = e.target.value; })}
             rows={3}
-            className="w-full bg-white border border-dash-border rounded-lg px-3 py-2 text-xs !text-dash-text outline-none focus:border-primary resize-none"
+            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 outline-none focus:border-slate-300 resize-none"
           />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-[10px] font-bold !text-dash-textMuted block">CTA button text</Label>
+          <Label className="text-[12px] font-medium text-slate-700 block">CTA button text</Label>
           <input
             value={props.ctaText}
             onChange={(e) => setProp((p: ContentBoxProps) => { p.ctaText = e.target.value; })}
-            className="w-full bg-white border border-dash-border rounded-lg px-3 py-2 text-xs !text-dash-text outline-none focus:border-primary"
+            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 outline-none focus:border-slate-300"
           />
         </div>
       </PropertyGroup>
 
-      <div className="border-t border-dash-border pt-4">
+      <div className="border-t border-slate-200 pt-4">
         <PropertyGroup title={`Linked ${props.blockType} block`}>
           {isLoading || !block ? (
-            <div className="flex items-center justify-center gap-2 py-6 text-[11px] !text-dash-textMuted">
+            <div className="flex items-center justify-center gap-2 py-6 text-[12px] text-slate-500">
               <Loader2 size={13} className="animate-spin motion-reduce:animate-none" /> Loading…
             </div>
           ) : (

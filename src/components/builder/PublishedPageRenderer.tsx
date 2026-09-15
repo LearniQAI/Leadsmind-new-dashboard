@@ -121,6 +121,7 @@ export default function PublishedPageRenderer({
     websiteId={websiteId}
     funnelId={funnelId}
     onUpdateWebsite={() => {}}
+    autoDetectViewport
    >
     {hasNav && (
      <nav

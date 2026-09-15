@@ -37,22 +37,22 @@ export const IconPicker = ({ value, onChange }: IconPickerProps) => {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button className="flex items-center gap-2 p-2 rounded-lg border border-dash-border bg-dash-surface hover:bg-dash-border/60 transition-all motion-reduce:transition-none w-full group">
-          <div className="w-8 h-8 rounded bg-white flex items-center justify-center !text-dash-text">
+        <button className="flex items-center gap-2 p-2 rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 transition-all motion-reduce:transition-none w-full group">
+          <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-slate-700">
             <CurrentIcon size={18} />
           </div>
-          <span className="text-xs font-bold text-muted-foreground group-hover:!text-dash-text transition-colors motion-reduce:transition-none">{value}</span>
+          <span className="text-[12px] font-medium text-slate-700 group-hover:text-slate-900 transition-colors motion-reduce:transition-none">{value}</span>
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[300px] p-0 bg-white border-dash-border backdrop-blur-xl shadow-2xl overflow-hidden">
-        <div className="p-3 border-b border-dash-border bg-dash-surface">
+      <PopoverContent className="w-[300px] p-0 bg-white border-slate-200 rounded-2xl shadow-xl overflow-hidden">
+        <div className="p-3 border-b border-slate-200 bg-slate-100">
           <div className="relative">
-            <Search className="absolute left-2 top-2.5 w-4 h-4 text-muted-foreground" />
+            <Search className="absolute left-2 top-2.5 w-4 h-4 text-slate-400" />
             <Input
               placeholder="Search icons..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-9 text-xs bg-white border-dash-border"
+              className="pl-8 h-9 text-xs bg-white border-slate-200 rounded-xl text-slate-700 focus-visible:border-slate-300"
             />
           </div>
         </div>
@@ -64,7 +64,7 @@ export const IconPicker = ({ value, onChange }: IconPickerProps) => {
                 <button
                   key={iconName}
                   onClick={() => onChange(iconName)}
-                  className={`p-2 rounded-md hover:bg-primary/20 hover:text-primary transition-all motion-reduce:transition-none flex items-center justify-center ${value === iconName ? 'bg-primary text-white shadow-lg' : 'text-muted-foreground'}`}
+                  className={`p-2 rounded-md hover:bg-slate-100 hover:text-slate-900 transition-all motion-reduce:transition-none flex items-center justify-center ${value === iconName ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500'}`}
                   title={iconName}
                 >
                   <IconComponent size={20} />
@@ -73,12 +73,12 @@ export const IconPicker = ({ value, onChange }: IconPickerProps) => {
             })}
           </div>
           {filteredIcons.length === 0 && (
-            <div className="py-8 text-center text-xs text-muted-foreground">
+            <div className="py-8 text-center text-xs text-slate-500">
               No icons found for "{search}"
             </div>
           )}
         </ScrollArea>
-        <div className="p-2 border-t border-dash-border bg-dash-surface text-[9px] text-center text-muted-foreground">
+        <div className="p-2 border-t border-slate-200 bg-slate-100 text-[9px] text-center text-slate-500">
           {allIconNames.length} professional icons
         </div>
       </PopoverContent>

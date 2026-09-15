@@ -151,17 +151,17 @@ export const MediaVaultModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl bg-white border-dash-border !text-dash-text rounded-3xl p-0 overflow-hidden shadow-2xl z-[9999]">
+      <DialogContent className="max-w-4xl bg-white border-slate-200 text-slate-900 rounded-3xl p-0 overflow-hidden shadow-2xl z-[9999]">
         <div className="flex flex-col h-[70vh]">
           {/* Header */}
-          <DialogHeader className="p-6 pb-4 border-b border-dash-border flex flex-col gap-4">
+          <DialogHeader className="p-6 pb-4 border-b border-slate-200 flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div>
-                <DialogTitle className="text-lg font-bold flex items-center gap-2">
-                  <ImageIcon className="w-5 h-5 text-primary" />
-                  Media <span className="text-primary">library vault</span>
+                <DialogTitle className="text-lg font-bold flex items-center gap-2 text-slate-900">
+                  <ImageIcon className="w-5 h-5 text-slate-500" />
+                  Media library vault
                 </DialogTitle>
-                <DialogDescription className="text-[10px] !text-dash-textMuted font-bold mt-1">
+                <DialogDescription className="text-[11px] text-slate-500 font-medium mt-1">
                   Manage workspace uploads and search stock photography assets
                 </DialogDescription>
               </div>
@@ -169,16 +169,16 @@ export const MediaVaultModal = ({
 
             {/* Tab Controls */}
             <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex gap-1 bg-dash-surface p-1 rounded-xl border border-dash-border">
+              <div className="flex gap-1 bg-slate-100 p-1 rounded-full">
                 {(['library', 'unsplash', 'upload'] as const).map((tab) => (
                   <Button
                     key={tab}
                     variant="ghost"
                     onClick={() => setActiveTab(tab)}
-                    className={`h-9 px-4 text-[10px] font-bold rounded-lg transition-all motion-reduce:transition-none ${
+                    className={`h-9 px-4 text-[12px] font-medium rounded-full transition-all motion-reduce:transition-none ${
                       activeTab === tab
-                        ? 'bg-primary text-white shadow'
-                        : '!text-dash-textMuted hover:!text-dash-text'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
                     }`}
                   >
                     {tab === 'library' ? 'Workspace library' : tab === 'unsplash' ? 'Stock photos' : 'Upload asset'}
@@ -192,9 +192,9 @@ export const MediaVaultModal = ({
                     placeholder="Search Unsplash..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="h-9 bg-white border-dash-border text-xs placeholder:text-dash-textMuted rounded-xl"
+                    className="h-9 bg-white border-slate-200 text-xs placeholder:text-slate-400 text-slate-700 rounded-xl focus-visible:border-slate-300"
                   />
-                  <Button onClick={handleSearchUnsplash} className="h-9 bg-primary text-white text-[10px] font-bold rounded-xl px-4">
+                  <Button onClick={handleSearchUnsplash} className="h-9 bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-bold rounded-xl px-4">
                     Search
                   </Button>
                 </div>
@@ -207,10 +207,10 @@ export const MediaVaultModal = ({
             {activeTab === 'library' && (
               isLoading ? (
                 <div className="h-full flex items-center justify-center py-20">
-                  <Loader2 className="w-8 h-8 animate-spin motion-reduce:animate-none text-primary" />
+                  <Loader2 className="w-8 h-8 animate-spin motion-reduce:animate-none text-slate-400" />
                 </div>
               ) : assets.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center opacity-50 text-center">
+                <div className="h-full flex flex-col items-center justify-center text-slate-400 text-center">
                   <Upload className="w-10 h-10 mb-4" />
                   <p className="text-xs font-bold">No uploaded assets inside workspace yet</p>
                 </div>
@@ -220,7 +220,7 @@ export const MediaVaultModal = ({
                     <div
                       key={asset.id}
                       onClick={() => { onSelect(asset.url); onOpenChange(false); }}
-                      className="group relative aspect-square bg-dash-surface border border-dash-border hover:border-primary/50 rounded-xl overflow-hidden cursor-pointer transition-all motion-reduce:transition-none"
+                      className="group relative aspect-square bg-slate-100 border border-transparent hover:border-slate-300 rounded-xl overflow-hidden cursor-pointer transition-all motion-reduce:transition-none"
                     >
                       <img src={asset.url} alt={asset.filename} className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity motion-reduce:transition-none flex items-center justify-center">
@@ -230,7 +230,7 @@ export const MediaVaultModal = ({
                         >
                           <Trash2 size={12} />
                         </button>
-                        <span className="text-[8px] font-bold text-white px-3 py-1.5 bg-primary/80 rounded-full">Select</span>
+                        <span className="text-[8px] font-bold text-white px-3 py-1.5 bg-slate-900/80 rounded-full">Select</span>
                       </div>
                     </div>
                   ))}
@@ -241,7 +241,7 @@ export const MediaVaultModal = ({
             {activeTab === 'unsplash' && (
               isSearchingUnsplash ? (
                 <div className="h-full flex items-center justify-center py-20">
-                  <Loader2 className="w-8 h-8 animate-spin motion-reduce:animate-none text-primary" />
+                  <Loader2 className="w-8 h-8 animate-spin motion-reduce:animate-none text-slate-400" />
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
@@ -249,11 +249,11 @@ export const MediaVaultModal = ({
                     <div
                       key={photo.id}
                       onClick={() => { onSelect(photo.url); onOpenChange(false); }}
-                      className="group relative aspect-square bg-dash-surface border border-dash-border hover:border-primary/50 rounded-xl overflow-hidden cursor-pointer transition-all motion-reduce:transition-none"
+                      className="group relative aspect-square bg-slate-100 border border-transparent hover:border-slate-300 rounded-xl overflow-hidden cursor-pointer transition-all motion-reduce:transition-none"
                     >
                       <img src={photo.url} alt={photo.name} className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity motion-reduce:transition-none flex items-center justify-center">
-                        <span className="text-[8px] font-bold text-white px-3 py-1.5 bg-primary/80 rounded-full">Use image</span>
+                        <span className="text-[8px] font-bold text-white px-3 py-1.5 bg-slate-900/80 rounded-full">Use image</span>
                       </div>
                     </div>
                   ))}
@@ -265,16 +265,16 @@ export const MediaVaultModal = ({
               <div className="h-full flex flex-col items-center justify-center">
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full max-w-md p-10 border-2 border-dashed border-dash-border hover:border-primary/50 bg-dash-surface hover:bg-primary/5 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all motion-reduce:transition-none gap-4"
+                  className="w-full max-w-md p-10 border-2 border-dashed border-slate-200 hover:border-slate-300 bg-slate-100 hover:bg-slate-200 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all motion-reduce:transition-none gap-4"
                 >
                   {isUploading ? (
-                    <Loader2 className="w-8 h-8 animate-spin motion-reduce:animate-none text-primary" />
+                    <Loader2 className="w-8 h-8 animate-spin motion-reduce:animate-none text-slate-400" />
                   ) : (
-                    <Upload className="w-8 h-8 !text-dash-textMuted" />
+                    <Upload className="w-8 h-8 text-slate-500" />
                   )}
                   <div className="text-center">
-                    <p className="text-xs font-bold !text-dash-textMuted">Click or drag image to upload</p>
-                    <p className="text-[10px] !text-dash-textMuted mt-1">JPG, PNG, GIF up to 5MB</p>
+                    <p className="text-xs font-bold text-slate-700">Click or drag image to upload</p>
+                    <p className="text-[10px] text-slate-500 mt-1">JPG, PNG, GIF up to 5MB</p>
                   </div>
                 </div>
                 <input

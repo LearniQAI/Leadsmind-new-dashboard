@@ -30,49 +30,49 @@ export const TestimonialSettings = () => {
 
   return (
     <Tabs defaultValue="content" className="w-full">
-      <TabsList className="grid w-full grid-cols-2 bg-dash-surface border border-dash-border p-1 mb-4">
-        <TabsTrigger value="content" className="text-[10px] font-bold gap-2 !text-dash-textMuted data-[state=active]:bg-white data-[state=active]:!text-dash-text">
-          <User size={12} /> Content
+      <TabsList className="grid w-full grid-cols-2 bg-slate-100 rounded-full p-1 mb-4 h-auto">
+        <TabsTrigger value="content" className="text-[12px] font-medium gap-2 rounded-full text-slate-500 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm h-9">
+          <User size={14} /> Content
         </TabsTrigger>
-        <TabsTrigger value="style" className="text-[10px] font-bold gap-2 !text-dash-textMuted data-[state=active]:bg-white data-[state=active]:!text-dash-text">
-          <Palette size={12} /> Style
+        <TabsTrigger value="style" className="text-[12px] font-medium gap-2 rounded-full text-slate-500 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm h-9">
+          <Palette size={14} /> Style
         </TabsTrigger>
       </TabsList>
 
-      <TabsContent value="content" className="space-y-6">
-        <div className="space-y-2">
-          <Label className="text-xs font-bold !text-dash-textMuted block">Avatar image URL</Label>
+      <TabsContent value="content" className="space-y-0">
+        <div className="mb-7 space-y-1.5">
+          <Label className="text-[12px] font-medium text-slate-700">Avatar image URL</Label>
           <Input
             value={image}
             onChange={(e) => setProp((p: any) => p.image = e.target.value)}
-            className="h-9 bg-white border-dash-border text-xs"
+            className="h-9 bg-white border-slate-200 rounded-xl text-slate-700 text-xs focus-visible:border-slate-300"
           />
         </div>
 
-        <div className="space-y-4 pt-2">
-          <div className="space-y-1">
-            <Label className="text-[9px] font-bold !text-dash-textMuted">Author name</Label>
-            <Input value={author} onChange={(e) => setProp((p: any) => p.author = e.target.value)} className="h-8 bg-white border-dash-border" />
+        <div className="mb-7 last:mb-0 space-y-4">
+          <div className="space-y-1.5">
+            <Label className="text-[12px] font-medium text-slate-700">Author name</Label>
+            <Input value={author} onChange={(e) => setProp((p: any) => p.author = e.target.value)} className="h-8 bg-white border-slate-200 rounded-lg text-slate-700 focus-visible:border-slate-300" />
           </div>
-          <div className="space-y-1">
-            <Label className="text-[9px] font-bold !text-dash-textMuted">Title / company</Label>
-            <Input value={title} onChange={(e) => setProp((p: any) => p.title = e.target.value)} className="h-8 bg-white border-dash-border" />
+          <div className="space-y-1.5">
+            <Label className="text-[12px] font-medium text-slate-700">Title / company</Label>
+            <Input value={title} onChange={(e) => setProp((p: any) => p.title = e.target.value)} className="h-8 bg-white border-slate-200 rounded-lg text-slate-700 focus-visible:border-slate-300" />
           </div>
-          <div className="space-y-1">
-            <Label className="text-[9px] font-bold !text-dash-textMuted">Testimonial quote</Label>
+          <div className="space-y-1.5">
+            <Label className="text-[12px] font-medium text-slate-700">Testimonial quote</Label>
             <textarea
               value={quote}
               onChange={(e) => setProp((p: any) => p.quote = e.target.value)}
-              className="w-full bg-white border border-dash-border rounded p-2 text-xs !text-dash-text h-32 outline-none focus:ring-1 focus:ring-dash-accent"
+              className="w-full bg-white border border-slate-200 rounded-xl p-2 text-xs text-slate-700 h-32 outline-none focus:border-slate-300"
             />
           </div>
         </div>
       </TabsContent>
 
-      <TabsContent value="style" className="space-y-6">
-        <div className="space-y-4">
-          <h4 className="text-[10px] font-bold !text-dash-textMuted border-b border-dash-border pb-2">Layout</h4>
-          <div className="flex bg-dash-surface p-1 rounded-lg border border-dash-border">
+      <TabsContent value="style" className="space-y-0">
+        <div className="mb-7 space-y-4">
+          <h4 className="text-[13px] font-bold text-slate-900">Layout</h4>
+          <div className="flex bg-slate-100 p-1 rounded-full border border-transparent">
             {[
               { id: 'left', icon: AlignLeft },
               { id: 'center', icon: AlignCenter },
@@ -80,7 +80,7 @@ export const TestimonialSettings = () => {
               <button
                 key={item.id}
                 onClick={() => setProp((p: any) => p.textAlign = item.id)}
-                className={`flex-1 flex justify-center py-1.5 rounded-md transition-all motion-reduce:transition-none ${textAlign === item.id ? 'bg-white shadow-sm text-dash-accent' : '!text-dash-textMuted hover:!text-dash-text'}`}
+                className={`flex-1 flex justify-center py-1.5 rounded-full transition-all motion-reduce:transition-none ${textAlign === item.id ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 <item.icon size={16} />
               </button>
@@ -93,8 +93,8 @@ export const TestimonialSettings = () => {
           </div>
         </div>
 
-        <div className="space-y-4 pt-4">
-          <h4 className="text-[10px] font-bold !text-dash-textMuted border-b border-dash-border pb-2">Colors</h4>
+        <div className="mb-7 last:mb-0 pt-4 border-t border-slate-200 space-y-4">
+          <h4 className="text-[13px] font-bold text-slate-900">Colors</h4>
           <ColorPicker label="Background" value={backgroundColor} onChange={(val) => setProp((p: any) => p.backgroundColor = val)} />
           <ColorPicker label="Text color" value={textColor} onChange={(val) => setProp((p: any) => p.textColor = val)} />
           <ColorPicker label="Accent color" value={accentColor} onChange={(val) => setProp((p: any) => p.accentColor = val)} />

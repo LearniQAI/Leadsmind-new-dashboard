@@ -98,18 +98,18 @@ export default function StepNavigator({
   };
 
   return (
-    <div className="w-[300px] h-full bg-dash-surface border-r border-dash-border flex flex-col select-none">
+    <div className="w-[300px] h-full bg-white border-r border-slate-200 flex flex-col select-none">
       {/* Header section */}
-      <div className="p-4 border-b border-dash-border flex items-center justify-between bg-dash-bg">
+      <div className="p-4 border-b border-slate-200 flex items-center justify-between">
         <div className="flex flex-col">
-          <h2 className="text-[10px] font-bold uppercase tracking-[2px] text-dash-accent">Funnel Lane</h2>
-          <span className="text-[12px] font-extrabold text-dash-text mt-0.5">Sequential Steps</span>
+          <h2 className="text-[10px] font-bold uppercase tracking-[2px] text-slate-400">Funnel Lane</h2>
+          <span className="text-[13px] font-bold text-slate-900 mt-0.5">Sequential Steps</span>
         </div>
         <Button
           variant="ghost"
           size="icon"
           onClick={onAddStep}
-          className="h-8 w-8 rounded-lg bg-dash-surface border border-dash-border text-dash-textMuted hover:text-dash-accent hover:bg-dash-accent/10 hover:border-dash-accent/20 transition-all"
+          className="h-8 w-8 rounded-lg bg-slate-100 border border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-200 transition-all"
         >
           <Plus className="h-4 w-4" />
         </Button>
@@ -136,23 +136,24 @@ export default function StepNavigator({
                           className={cn(
                             "group flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer transition-all duration-200",
                             isActive
-                              ? "bg-dash-accent/10 border-dash-accent/30 shadow-md shadow-dash-accent/5"
-                              : "bg-dash-bg border-dash-border hover:bg-dash-border/20 hover:border-dash-accent/20",
-                            snapshot.isDragging && "bg-dash-surface border-dash-accent shadow-xl"
+                              ? "bg-slate-100 border-slate-300"
+                              : "bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300",
+                            snapshot.isDragging && "bg-white border-slate-300 shadow-lg"
                           )}
                         >
                           {/* Drag handle */}
                           <div
                             {...provided.dragHandleProps}
-                            className="text-dash-textMuted hover:text-dash-text transition-colors cursor-grab active:cursor-grabbing"
+                            className="text-slate-400 hover:text-slate-600 transition-colors cursor-grab active:cursor-grabbing"
                           >
                             <GripVertical className="w-4 h-4" />
                           </div>
 
-                          {/* Order index badge */}
+                          {/* Order index badge — keeps its type-derived color (opt-in/sales/checkout/thank-you)
+                              since that's real informational state, not generic chrome. */}
                           <div className={cn(
                             "w-8 h-8 rounded-lg flex items-center justify-center border font-bold text-xs shrink-0 transition-all",
-                            isActive ? "border-dash-accent/25" : "border-dash-border",
+                            isActive ? "border-slate-300" : "border-slate-200",
                             itemDesign.bgClass
                           )}>
                             <StepIconComponent className={cn("w-4 h-4", itemDesign.colorClass)} />
@@ -161,11 +162,11 @@ export default function StepNavigator({
                           {/* Text info */}
                           <div className="flex-1 overflow-hidden">
                             <div className="flex items-center gap-1.5">
-                              <span className="text-[10px] font-black text-dash-textMuted">{index + 1}</span>
-                              <span className="text-xs font-bold text-dash-text truncate leading-none">{step.name}</span>
+                              <span className="text-[10px] font-bold text-slate-400">{index + 1}</span>
+                              <span className="text-[12px] font-bold text-slate-900 truncate leading-none">{step.name}</span>
                             </div>
-                            <div className="flex items-center gap-1 text-[9.5px] text-dash-textMuted mt-1 font-semibold">
-                              <LinkIcon className="w-2.5 h-2.5 text-dash-accent" />
+                            <div className="flex items-center gap-1 text-[10px] text-slate-500 mt-1 font-medium">
+                              <LinkIcon className="w-2.5 h-2.5 text-slate-400" />
                               <span className="truncate lowercase">{step.path}</span>
                             </div>
                           </div>
@@ -175,27 +176,27 @@ export default function StepNavigator({
                             <DropdownMenuTrigger asChild>
                               <button
                                 onClick={(e) => e.stopPropagation()}
-                                className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-dash-border/40 rounded-lg transition-all text-dash-textMuted hover:text-dash-text data-[state=open]:opacity-100"
+                                className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-slate-200 rounded-lg transition-all text-slate-500 hover:text-slate-700 data-[state=open]:opacity-100"
                               >
                                 <MoreVertical className="w-3.5 h-3.5" />
                               </button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-44 bg-dash-surface border border-dash-border p-1.5 rounded-xl shadow-xl z-[100]">
+                            <DropdownMenuContent align="end" className="w-44 bg-white border border-slate-200 p-1.5 rounded-xl shadow-xl z-[100]">
                               <DropdownMenuItem
                                 onClick={(e) => { e.stopPropagation(); onViewStep?.(step); }}
-                                className="flex items-center gap-2.5 p-2 rounded-lg text-[11px] font-semibold text-dash-text cursor-pointer hover:bg-dash-bg focus:bg-dash-bg focus:text-dash-text"
+                                className="flex items-center gap-2.5 p-2 rounded-lg text-[11px] font-semibold text-slate-700 cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900"
                               >
                                 <Eye size={13} /> View
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={(e) => { e.stopPropagation(); onSelectStep?.(step.id); }}
-                                className="flex items-center gap-2.5 p-2 rounded-lg text-[11px] font-semibold text-dash-text cursor-pointer hover:bg-dash-bg focus:bg-dash-bg focus:text-dash-text"
+                                className="flex items-center gap-2.5 p-2 rounded-lg text-[11px] font-semibold text-slate-700 cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900"
                               >
                                 <Pencil size={13} /> Edit
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={(e) => { e.stopPropagation(); onChangeTemplate?.(step); }}
-                                className="flex items-center gap-2.5 p-2 rounded-lg text-[11px] font-semibold text-dash-text cursor-pointer hover:bg-dash-bg focus:bg-dash-bg focus:text-dash-text"
+                                className="flex items-center gap-2.5 p-2 rounded-lg text-[11px] font-semibold text-slate-700 cursor-pointer hover:bg-slate-100 focus:bg-slate-100 focus:text-slate-900"
                               >
                                 <LayoutTemplate size={13} /> Change template
                               </DropdownMenuItem>
@@ -214,9 +215,9 @@ export default function StepNavigator({
       </div>
 
       {/* Footer helper */}
-      <div className="p-4 bg-dash-bg border-t border-dash-border">
-        <div className="text-[9.5px] text-dash-textMuted font-semibold uppercase tracking-wider flex items-center gap-2">
-          <Layout className="w-3.5 h-3.5 text-dash-accent" />
+      <div className="p-4 bg-slate-50 border-t border-slate-200">
+        <div className="text-[10px] text-slate-500 font-medium uppercase tracking-wider flex items-center gap-2">
+          <Layout className="w-3.5 h-3.5 text-slate-400" />
           <span>Drag steps to reorder flow</span>
         </div>
       </div>

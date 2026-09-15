@@ -38,7 +38,7 @@ export const BoxModelControl = () => {
       type="text"
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-12 h-6 text-[10px] text-center bg-white border border-dash-border rounded focus:border-dash-accent focus:bg-dash-surface !text-dash-text p-0.5 outline-none transition-all motion-reduce:transition-none placeholder:!text-dash-textMuted"
+      className="w-12 h-6 text-[10px] text-center bg-white border border-slate-200 rounded focus:border-slate-300 focus:bg-slate-100 text-slate-900 p-0.5 outline-none transition-all motion-reduce:transition-none placeholder:text-slate-500"
       placeholder={placeholder}
     />
   );
@@ -48,23 +48,23 @@ export const BoxModelControl = () => {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between w-full py-1.5 hover:bg-dash-surface transition-colors motion-reduce:transition-none group text-left"
+        className="flex items-center justify-between w-full py-1.5 hover:bg-slate-100 transition-colors motion-reduce:transition-none group text-left"
       >
-        <span className="text-xs font-bold !text-dash-textMuted group-hover:!text-dash-text transition-colors motion-reduce:transition-none">
+        <span className="text-xs font-bold text-slate-500 group-hover:text-slate-900 transition-colors motion-reduce:transition-none">
           Spacing (box model)
         </span>
         {isOpen ? (
-          <ChevronDown className="w-4 h-4 !text-dash-textMuted group-hover:!text-dash-text transition-colors motion-reduce:transition-none" />
+          <ChevronDown className="w-4 h-4 text-slate-500 group-hover:text-slate-900 transition-colors motion-reduce:transition-none" />
         ) : (
-          <ChevronRight className="w-4 h-4 !text-dash-textMuted group-hover:!text-dash-text transition-colors motion-reduce:transition-none" />
+          <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-slate-900 transition-colors motion-reduce:transition-none" />
         )}
       </button>
 
       {isOpen && (
         <div className="space-y-4 pt-1">
           {/* Outer Margin Box */}
-          <div className="relative border border-dashed border-dash-border rounded-xl bg-dash-surface p-4 flex flex-col items-center justify-center">
-            <span className="absolute top-1 left-2 text-[8px] font-bold !text-dash-textMuted">Margin</span>
+          <div className="relative border border-dashed border-slate-200 rounded-xl bg-slate-100 p-4 flex flex-col items-center justify-center">
+            <span className="absolute top-1 left-2 text-[8px] font-bold text-slate-500">Margin</span>
 
             {/* Margin Top */}
             <div className="mb-2">
@@ -84,8 +84,8 @@ export const BoxModelControl = () => {
               />
 
               {/* Inner Padding Box */}
-              <div className="flex-1 relative border border-solid border-dash-border rounded-lg bg-white p-4 flex flex-col items-center justify-center min-h-[100px] max-w-[190px]">
-                <span className="absolute top-1 left-2 text-[8px] font-bold !text-dash-textMuted">Padding</span>
+              <div className="flex-1 relative border border-solid border-slate-200 rounded-lg bg-white p-4 flex flex-col items-center justify-center min-h-[100px] max-w-[190px]">
+                <span className="absolute top-1 left-2 text-[8px] font-bold text-slate-500">Padding</span>
 
                 {/* Padding Top */}
                 <div className="mb-2">
@@ -105,7 +105,7 @@ export const BoxModelControl = () => {
                   />
 
                   {/* Center Content Indicator */}
-                  <div className="text-[9px] font-bold !text-dash-textMuted select-none">
+                  <div className="text-[9px] font-bold text-slate-500 select-none">
                     Content
                   </div>
 
