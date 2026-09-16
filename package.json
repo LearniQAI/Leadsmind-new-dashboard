@@ -18,7 +18,9 @@
     "test": "cross-env NODE_ENV=test vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "validate:templates": "tsx scripts/validate-container-flex-props.js",
+    "prepare": "node scripts/setup-git-hooks.js"
   },
   "dependencies": {
     "@craftjs/core": "^0.2.12",

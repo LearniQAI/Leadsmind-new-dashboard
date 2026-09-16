@@ -56,6 +56,14 @@ export const Columns = ({
  // loses to an earlier `md:grid-cols-2` in the real stylesheet), so this REPLACES gridStyle
  // entirely rather than appending to it — editor-preview-only, production always uses the
  // real breakpoint classes above.
+ //
+ // This per-component JS override is the ACCEPTED PERMANENT PATTERN for this problem, not a
+ // stopgap — a real fix (rendering the canvas in an iframe with its own true viewport) was
+ // investigated and reverted, since it breaks every canvas interaction that depends on native
+ // DOM events (select, drag-reorder, inline-edit, block insertion) once content crosses an
+ // iframe document boundary. See the long comment on Viewport.tsx's `getWidth()` for the full
+ // reasoning. Copy this same pattern into any other multi-column component only if/when its
+ // own preview-stacking is actually reported wrong — not a batch retrofit.
  const viewModeColsOverride: Record<string, Partial<Record<string, string>>> = {
   mobile: { '2': 'grid-cols-1', '3': 'grid-cols-1', '4': 'grid-cols-1', '1/3-2/3': 'grid-cols-1', '2/3-1/3': 'grid-cols-1' },
   tablet: { '4': 'grid-cols-2' }, // '2'/'3' already show their md: column count at tablet width for real

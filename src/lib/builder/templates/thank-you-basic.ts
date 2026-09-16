@@ -11,7 +11,7 @@ export const thankYouBasic: BuilderTemplate = {
     ROOT: {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'min-h-screen bg-slate-50 flex items-center justify-center py-16 px-4' },
+      props: { className: 'min-h-screen bg-slate-50 flex items-center justify-center py-16 px-4', display: 'flex', alignItems: 'center', justifyContent: 'center' },
       nodes: ['thankyou-1']
     },
     'thankyou-1': {

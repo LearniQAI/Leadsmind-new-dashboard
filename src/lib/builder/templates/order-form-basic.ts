@@ -11,7 +11,7 @@ export const orderFormBasic: BuilderTemplate = {
     ROOT: {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'min-h-screen bg-slate-50 flex items-center justify-center py-16 px-4' },
+      props: { className: 'min-h-screen bg-slate-50 flex items-center justify-center py-16 px-4', display: 'flex', alignItems: 'center', justifyContent: 'center' },
       nodes: ['order-form-heading', 'order-form-1']
     },
     'order-form-heading': {

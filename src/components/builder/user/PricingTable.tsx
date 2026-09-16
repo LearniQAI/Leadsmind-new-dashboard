@@ -1,10 +1,11 @@
 "use client";
 
 import React from 'react';
-import { useNode } from '@craftjs/core';
+import { useNode, useEditor } from '@craftjs/core';
 import { Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useResponsiveValue } from '@/lib/builder/hooks';
+import { useBuilder } from '../BuilderContext';
 
 // The non-highlighted tier's card background is a near-transparent overlay
 // (rgba(255,255,255,0.03)) — effectively just whatever sits behind it — so a
@@ -29,6 +30,12 @@ export const PricingTable = ({
   // Templates/deserialized JSON can omit this entirely — plans.map below is
   // unguarded, so default it rather than let a bare PricingTable node crash the canvas.
   plans = [],
+  // Optional second plan set + toggle — both default off/empty so every existing
+  // template (which never sets these) renders byte-identical to before this was added.
+  plansYearly = [],
+  enableBillingToggle = false,
+  monthlyLabel = 'Monthly',
+  yearlyLabel = 'Yearly',
   primaryColor = '#2563eb',
   accentColor = '#f59e0b',
   backgroundColor = 'transparent',
@@ -37,8 +44,22 @@ export const PricingTable = ({
   ...props
 }: any) => {
   const { connectors: { connect, drag } } = useNode();
+  const { enabled } = useEditor((state) => ({ enabled: state.options.enabled }));
+  const { viewMode } = useBuilder();
+  // Same accepted permanent pattern as Columns.tsx's `viewModeColsOverride` (see the long
+  // comment there and on Viewport.tsx's `getWidth()`): the editor's Desktop/Tablet/Mobile
+  // toggle only narrows a wrapper <div>'s CSS width, not the real browser viewport, so
+  // `md:grid-cols-3` below — keyed to the real window width — never responds to it. At
+  // "mobile"/"tablet" preview this squeezed 3 real columns into a ~390-768px-wide box,
+  // rendering each plan card as a tall sliver. Force stacked layout in the editor's
+  // mobile/tablet preview only; production always uses the real breakpoint classes.
+  const previewStacked = enabled && (viewMode === 'mobile' || viewMode === 'tablet');
   const resolvedTextColor = textColor
     ?? (isLightColor(backgroundColor) ? '#111827' : '#ffffff');
+  const [billingPeriod, setBillingPeriod] = React.useState<'monthly' | 'yearly'>('monthly');
+  const activePlans = (enableBillingToggle && billingPeriod === 'yearly' && plansYearly.length > 0)
+    ? plansYearly
+    : plans;
 
   return (
     <div
@@ -53,10 +74,37 @@ export const PricingTable = ({
           }
         }
       }}
-      className="flex flex-col md:grid md:grid-cols-3 gap-8 p-6 md:p-12 w-full transition-all duration-500"
+      className="flex flex-col w-full transition-all duration-500"
       style={{ backgroundColor }}
     >
-      {plans.map((plan: any, i: number) => (
+      {enableBillingToggle && plansYearly.length > 0 && (
+        <div className="flex items-center justify-center gap-1 mb-10">
+          <button
+            type="button"
+            onClick={() => setBillingPeriod('monthly')}
+            className="px-5 py-2 rounded-full text-xs font-black uppercase tracking-widest transition-all"
+            style={{
+              backgroundColor: billingPeriod === 'monthly' ? primaryColor : 'transparent',
+              color: billingPeriod === 'monthly' ? '#ffffff' : resolvedTextColor,
+            }}
+          >
+            {monthlyLabel}
+          </button>
+          <button
+            type="button"
+            onClick={() => setBillingPeriod('yearly')}
+            className="px-5 py-2 rounded-full text-xs font-black uppercase tracking-widest transition-all"
+            style={{
+              backgroundColor: billingPeriod === 'yearly' ? primaryColor : 'transparent',
+              color: billingPeriod === 'yearly' ? '#ffffff' : resolvedTextColor,
+            }}
+          >
+            {yearlyLabel}
+          </button>
+        </div>
+      )}
+      <div className={previewStacked ? "flex flex-col gap-8 p-6 w-full" : "flex flex-col md:grid md:grid-cols-3 gap-8 p-6 md:p-12 w-full"}>
+      {activePlans.map((plan: any, i: number) => (
         <div 
           key={i} 
           className={`relative p-8 rounded-[32px] border transition-all duration-300 ${plan.highlight ? 'shadow-2xl z-10 md:scale-105' : 'hover:border-white/20'}`}
@@ -113,6 +161,7 @@ export const PricingTable = ({
           </div>
         </div>
       ))}
+      </div>
     </div>
   );
 };
@@ -127,6 +176,10 @@ PricingTable.craft = {
       { name: 'Pro', price: '$99', period: '/mo', description: 'Growing businesses', features: ['Unlimited Workflows', '5,000 Contacts', 'Advanced Analytics', 'Priority Support'], buttonText: 'Upgrade to Pro', highlight: true },
       { name: 'Elite', price: '$249', period: '/mo', description: 'Enterprise-grade scale', features: ['Everything in Pro', 'Unlimited Contacts', 'Dedicate Manager', 'Custom API'], buttonText: 'Contact Sales', highlight: false },
     ],
+    plansYearly: [],
+    enableBillingToggle: false,
+    monthlyLabel: 'Monthly',
+    yearlyLabel: 'Yearly',
     primaryColor: '#2563eb',
     accentColor: '#f59e0b',
     backgroundColor: 'transparent',

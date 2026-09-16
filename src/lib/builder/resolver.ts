@@ -26,6 +26,7 @@ import { ProgressBar } from '@/components/builder/user/ProgressBar';
 import { UserTestimonial } from '@/components/builder/user/Testimonial';
 import { StarRating } from '@/components/builder/user/StarRating';
 import { LogoStrip } from '@/components/builder/user/LogoStrip';
+import { StatCounter } from '@/components/builder/user/StatCounter';
 import { Hero } from '@/components/builder/user/Hero';
 import { Navbar } from '@/components/builder/user/Navbar';
 import { Footer } from '@/components/builder/user/Footer';
@@ -84,6 +85,7 @@ export const RESOLVER = {
  UserTestimonial: wrapForReact19(UserTestimonial),
  StarRating: wrapForReact19(StarRating),
  LogoStrip: wrapForReact19(LogoStrip),
+ StatCounter: wrapForReact19(StatCounter),
  Hero: wrapForReact19(Hero),
  Navbar: wrapForReact19(Navbar),
  Footer: wrapForReact19(Footer),
