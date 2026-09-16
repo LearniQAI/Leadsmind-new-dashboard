@@ -20,7 +20,7 @@ if (!fs.existsSync(gitDir)) {
 
 try {
   execFileSync("git", ["config", "core.hooksPath", ".githooks"], { cwd: repoRoot, stdio: "ignore" });
-  console.log("Git hooks path set to .githooks/ (pre-commit: Container display-prop template check).");
+  console.log("Git hooks path set to .githooks/ (pre-commit: Container display-prop + Button variant checks).");
 } catch (err) {
   // Never fail `npm install` over this — worst case, the pre-commit check simply doesn't run
   // locally and the same check still runs in CI.

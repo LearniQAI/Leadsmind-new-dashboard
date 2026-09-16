@@ -73,8 +73,17 @@ export const Navbar = ({
  ...props
 }: NavbarProps & any) => {
  const { connectors: { connect, drag }, actions: { setProp } } = useNode();
- const { pages, websiteData } = useBuilder();
+ const { pages, websiteData, viewMode } = useBuilder();
  const { enabled } = useEditor((state) => ({ enabled: state.options.enabled }));
+ // Same accepted permanent pattern as Columns.tsx's `viewModeColsOverride` (see the long
+ // comment there and on Viewport.tsx's `getWidth()`): the editor's Desktop/Tablet/Mobile
+ // toggle only narrows a wrapper <div>'s CSS width, not the real browser viewport, so the
+ // `hidden md:flex` / `md:hidden` classes below — keyed to the real window width — never
+ // respond to it. At "mobile"/"tablet" preview this kept the full desktop link row visible
+ // and overflowing off the narrowed canvas instead of collapsing behind the hamburger.
+ // Force the mobile layout in the editor's mobile/tablet preview only; production always
+ // uses the real breakpoint classes.
+ const previewMobile = enabled && (viewMode === 'mobile' || viewMode === 'tablet');
  const [isOpen, setIsOpen] = useState(false);
  const [isScrolled, setIsScrolled] = useState(false);
  const [isLogoVaultOpen, setIsLogoVaultOpen] = useState(false);
@@ -172,7 +181,7 @@ export const Navbar = ({
     </div>
 
     {/* Desktop Links */}
-    <div className={`hidden md:flex items-center transition-all ${layoutType === 'split' ? 'gap-12 flex-1 justify-center' : 'gap-8'} ${layoutType === 'stacked' ? 'w-full justify-center' : ''}`}>
+    <div className={`${previewMobile ? 'hidden' : 'hidden md:flex'} items-center transition-all ${layoutType === 'split' ? 'gap-12 flex-1 justify-center' : 'gap-8'} ${layoutType === 'stacked' ? 'w-full justify-center' : ''}`}>
      {displayLinks.map((link: { label: string, href: string }, i: number) => (
       enabled && isManualLinks ? (
        <span
@@ -216,7 +225,7 @@ export const Navbar = ({
 
     {/* Action Button for Split Layout */}
     {(showButton && layoutType === 'split') && (
-     <div className="hidden md:block">
+     <div className={previewMobile ? 'hidden' : 'hidden md:block'}>
       <button
        className="px-6 py-2.5 rounded-full font-bold text-xs uppercase tracking-widest transition-transform hover:scale-105 active:scale-95 shadow-xl"
        style={{ backgroundColor: buttonBg, color: buttonTextColor }}
@@ -228,7 +237,7 @@ export const Navbar = ({
 
     {/* Mobile Toggle */}
     <button
-     className="md:hidden p-2"
+     className={previewMobile ? 'p-2' : 'md:hidden p-2'}
      onClick={() => setIsOpen(!isOpen)}
      style={{ color: hamburgerColor }}
     >

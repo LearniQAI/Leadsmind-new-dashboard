@@ -148,6 +148,15 @@ export const UserButton = (allProps: ButtonProps & any) => {
    >
     <ShadcnButton
       disabled={loading}
+      // 'unstyled': every other shadcn Button variant carries a themed bg-*/text-* class (e.g.
+      // the default variant's `bg-primary`) that BrandingProvider's global `.bg-primary { ...
+      // !important }` white-label rule can hijack, silently overriding the backgroundColor/color
+      // set below regardless of what color/textColor this button was actually configured with —
+      // only reproduces when a workspace has branding.primary_color set, which is why it never
+      // showed up in a harness rendered without real auth/branding data. This button already
+      // fully owns its own background/text/border via inline style, so it needs no variant
+      // classes to fight with — see the comment on 'unstyled' in components/ui/button.tsx.
+      variant="unstyled"
       className={`w-full transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 group ${sizeClasses[(size || 'md') as keyof typeof sizeClasses]}`}
       style={{
         borderRadius: `${borderRadius}px`,

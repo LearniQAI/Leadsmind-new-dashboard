@@ -149,9 +149,10 @@ export const PricingTable = ({
               ))}
             </ul>
 
-            <Button 
+            <Button
+              variant="unstyled"
               className="w-full rounded-2xl font-black uppercase tracking-widest text-[11px] h-14 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg"
-              style={{ 
+              style={{
                 backgroundColor: plan.highlight ? '#ffffff' : primaryColor,
                 color: plan.highlight ? primaryColor : '#ffffff'
               }}
