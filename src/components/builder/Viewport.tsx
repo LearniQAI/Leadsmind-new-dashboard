@@ -71,6 +71,29 @@ export const Viewport = ({ children }: { children?: React.ReactNode }) => {
    }
  `;
 
+  // KNOWN LIMITATION (investigated, accepted — do not re-investigate without new
+  // information): this only narrows a <div>'s CSS width, not the real browser viewport.
+  // Tailwind's md:/lg: classes compile to real `@media (min-width: …)` rules that evaluate
+  // against the actual window, never an ancestor element's width — so those classes cannot
+  // ever respond to this toggle, no matter how this function or its caller is rewritten.
+  //
+  // The only standards-based real fix is a genuinely separate viewport, i.e. rendering the
+  // canvas inside an <iframe> with its own real `window.innerWidth`. That was attempted here
+  // (React portal into the iframe's document) and reverted: native DOM events never cross an
+  // iframe's document boundary, so every canvas interaction that depends on them — select,
+  // drag-to-reorder, inline text editing, dragging a new block in from the Sidebar — would
+  // silently stop working the moment content moved into the iframe. A working version would
+  // require mounting a second, independent React root inside the iframe and manually
+  // re-threading Craft.js's internal Editor context (useEditor/useNode, which the entire
+  // builder depends on) across that root boundary by hand — Craft.js has no supported
+  // mechanism for this. Not attempted again without a much larger, dedicated rebuild.
+  //
+  // Accepted permanent approach instead: components that need accurate stacking in this
+  // preview (like Columns.tsx) read `viewMode` themselves and swap in the correct class
+  // directly, replacing the whole responsive class string rather than trying to out-order a
+  // real breakpoint (which cannot work — variant-scoped CSS rules win regardless of class
+  // order). Extend that same per-component pattern to any other component only if/when its
+  // own preview-stacking is actually reported wrong — not a batch retrofit.
   const getWidth = () => {
    switch(viewMode) {
      case 'mobile': return '390px';

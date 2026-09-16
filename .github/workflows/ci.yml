@@ -38,3 +38,6 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      - name: Validate builder templates (Container display-prop check)
+        run: npm run validate:templates

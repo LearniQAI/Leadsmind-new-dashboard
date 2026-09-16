@@ -27,6 +27,11 @@ export interface HeroProps {
  heightPreset: 'full' | 'large' | 'compact';
  animation: 'none' | 'fade-in' | 'slide-up';
  showSecondaryButton: boolean;
+ /** The two blurred accent-colored "blob" decorations were unconditional — fine for a
+  *  colorful hero, but they bleed a visible tinted glow onto an otherwise plain white
+  *  background for clinical/monochrome designs (e.g. Velocity). Defaults to true so every
+  *  existing template keeps its current look untouched. */
+ showBackgroundBlobs?: boolean;
  children?: React.ReactNode;
 }
 
@@ -46,6 +51,7 @@ export const Hero = (allProps: HeroProps & any) => {
   heightPreset,
   animation,
   showSecondaryButton,
+  showBackgroundBlobs = true,
   // Style Props (Catch these so they don't leak to DOM)
   padding: _padding,
   padding_mobile,
@@ -143,8 +149,12 @@ export const Hero = (allProps: HeroProps & any) => {
    )}
 
    {/* Background Blobs (Premium Aesthetic) */}
-   <div className="absolute top-0 -left-20 w-72 h-72 bg-primary/20 rounded-full blur-[100px] pointer-events-none opacity-50"></div>
-   <div className="absolute bottom-0 -right-20 w-96 h-96 bg-purple-500/10 rounded-full blur-[120px] pointer-events-none opacity-50"></div>
+   {showBackgroundBlobs && (
+    <>
+     <div className="absolute top-0 -left-20 w-72 h-72 bg-primary/20 rounded-full blur-[100px] pointer-events-none opacity-50"></div>
+     <div className="absolute bottom-0 -right-20 w-96 h-96 bg-purple-500/10 rounded-full blur-[120px] pointer-events-none opacity-50"></div>
+    </>
+   )}
 
    <div className={`relative z-10 max-w-7xl mx-auto w-full flex ${layoutStyles[layout as keyof typeof layoutStyles]} ${alignStyles[contentAlignment as keyof typeof alignStyles]} ${animationClasses[animation as keyof typeof animationClasses] || ''}`} style={{ gap: `${gap}px` }}>
     <div
@@ -188,6 +198,7 @@ Hero.craft = {
   heightPreset: 'large',
   animation: 'fade-in',
   showSecondaryButton: false,
+  showBackgroundBlobs: true,
  },
  related: {
   settings: HeroSettings,

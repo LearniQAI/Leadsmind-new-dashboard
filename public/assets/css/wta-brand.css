@@ -1,0 +1,80 @@
+/*
+ * World Teachers Academy — Brand Color Override
+ * -----------------------------------------------
+ * Do NOT edit public/assets/css/style.css directly — that file belongs to the
+ * "Escul" vendor template and editing it makes future template updates
+ * unmergeable. This stylesheet is loaded AFTER style.css (see app/layout.tsx)
+ * so it overrides the template's default purple/violet/orange theme with the
+ * real World Teachers Academy palette. Colors only — no typography changes.
+ *
+ * Palette reference (docs/color-branding.html):
+ *   Ink Navy       #0F172A  — foundation / dark backgrounds / headline text
+ *   Signal Indigo  #4F46E5  — brand color (logo, links, section markers)
+ *   Action Orange  #F97316  — CTA only (enrol/apply/subscribe buttons)
+ *   Growth Teal    #14B8A6  — progress, pass marks, regional/category tags
+ *   Paper          #E9ECF5  — light text on dark backgrounds
+ *   Paper Dim      #9AA4C0  — secondary/muted text on dark backgrounds
+ */
+
+:root {
+  /* Primary brand / theme color -> Signal Indigo.
+     Drives: logo accents, links, section markers, category labels, the
+     default .th-btn hover-reveal fill, and every `.text-theme` / `.bg-theme`
+     utility in the vendor stylesheet. */
+  --theme-color: #4F46E5;
+
+  /* Secondary/accent color -> Action Orange.
+     Drives the vendor's "accent" button modifiers (.th-btn.style3/.style5/
+     .style7/.style8/.style11/.style12, .style-border/.style-border2/
+     .style-border4/.style-border5 hover states) and `.bg-theme2` /
+     `.text-theme2` utilities. Per the brand rule this is reserved for CTAs;
+     see the final report for the handful of places (mostly decorative
+     .bg-theme2 shapes/badges elsewhere in the vendor CSS) where this
+     variable is also used decoratively — those were out of scope for this
+     pass but are flagged for follow-up. */
+  --theme-color2: #F97316;
+
+  /* Headline text on light surfaces AND the base background for dark
+     (default) .th-btn buttons -> Ink Navy. Both usages map cleanly to the
+     "Ink Navy" role in the brand guide. */
+  --title-color: #0F172A;
+
+  /* Dark section background variants (.bg-black, .bg-black2 … .bg-black7)
+     all consolidate to a single Ink Navy so every dark section/footer/CTA
+     banner reads as one consistent brand color instead of the template's
+     scattered near-black/near-navy/near-purple shades. */
+  --black-color: #0F172A;
+  --black-color2: #0F172A;
+  --black-color3: #0F172A;
+  --black-color4: #0F172A;
+  --black-color5: #0F172A;
+  --black-color6: #0F172A;
+  --black-color7: #0F172A;
+}
+
+/* app/layout.tsx sets <body class="th-magic-cursor theme-style4">, and the
+   vendor stylesheet's `body.theme-style4` rule overrides --theme-color to a
+   demo purple (#743EF9) — this is the actual source of the site's current
+   purple/violet look. Re-declare all of the vendor's body.theme-styleN demo
+   variants here (same selector/specificity, loaded later, so it wins by
+   source order) so no matter which demo class ends up on <body>, the real
+   brand colors apply. */
+body.theme-style2,
+body.theme-style3,
+body.theme-style4,
+body.theme-style5 {
+  --theme-color: #4F46E5;
+  --theme-color2: #F97316;
+}
+
+/* Course Details page (app/courses/[slug]/page.tsx): the "25% Off" discount
+   badge next to the price (.widget_course_info .course-price .tag) inherits
+   var(--theme-color) = Signal Indigo from the vendor stylesheet by default.
+   Semantically this is a small informational tag, not a CTA or brand mark,
+   so per the palette's "Growth Teal -> tags" rule it is remapped here
+   instead of left on Indigo. The star-rating fill (var(--yellow-color),
+   unrelated to --theme-color/--theme-color2) is left as its conventional
+   gold, since it isn't part of the brand palette to begin with. */
+.widget_course_info .course-price .tag {
+  background: #14B8A6;
+}
