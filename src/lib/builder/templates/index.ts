@@ -1,6 +1,7 @@
 import { educationLms } from './education-lms';
 import { fitnessPower } from './fitness-power';
 import { velocity } from './velocity';
+import { mentor } from './mentor';
 import { orderFormBasic } from './order-form-basic';
 import { upsellBasic } from './upsell-basic';
 import { downsellBasic } from './downsell-basic';
@@ -15,6 +16,7 @@ export const ALL_TEMPLATES: BuilderTemplate[] = [
   educationLms,
   fitnessPower,
   velocity,
+  mentor,
   orderFormBasic,
   upsellBasic,
   downsellBasic,

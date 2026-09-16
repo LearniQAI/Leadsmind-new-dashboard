@@ -34,8 +34,14 @@ const TEMPLATES_DIR = path.resolve(__dirname, "..", "src", "lib", "builder", "te
 // checks accept either a base prop or a responsive variant of it (see flexDirection).
 const RISK_RULES = [
   {
+    // Negative lookahead excludes flex-ITEM sizing utilities (flex-1, flex-auto, flex-none,
+    // flex-initial, flex-shrink, flex-grow, flex-basis-*, flex-row/col, grid-cols-*, etc.) —
+    // \b alone matches "flex" as a standalone word even inside "flex-1", since "-" is a
+    // non-word character and word-boundary regex doesn't look past it. Those utilities size
+    // an element AS a flex/grid item (a property of its PARENT's display), they don't set
+    // this element's own `display`, so they must not trigger the "add a display prop" fix.
     label: "display",
-    classPattern: /\b(?:flex|inline-flex|grid|inline-grid)\b/,
+    classPattern: /\b(?:flex|inline-flex|grid|inline-grid)\b(?!-)/,
     requiredProps: ["display"],
   },
   {

@@ -23,6 +23,7 @@ import { ProgressBar } from './user/ProgressBar';
 import { StarRating } from './user/StarRating';
 import { UserTestimonial } from './user/Testimonial';
 import { LogoStrip } from './user/LogoStrip';
+import { StatCounter } from './user/StatCounter';
 import { Hero } from './user/Hero';
 import { Navbar } from './user/Navbar';
 import { Footer } from './user/Footer';
@@ -480,6 +481,7 @@ export const Sidebar = ({
             <DraggableItem variant="lesson" name="Star Rating" icon={Star} component={<RESOLVER.StarRating />} />
             <DraggableItem variant="lesson" name="Logo Cloud" icon={ImageIcon} component={<RESOLVER.LogoStrip />} />
             <DraggableItem variant="lesson" name="FAQ" icon={MessageCircleQuestion} component={<RESOLVER.FAQ />} />
+            <DraggableItem variant="lesson" name="Stat Counter" icon={TrendingUp} component={<RESOLVER.StatCounter />} />
           </ElementSection>
 
           <ElementSection title="Conversion & logic">

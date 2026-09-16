@@ -7,7 +7,7 @@ import {
   Box, Type, Image, Video, RectangleHorizontal as ButtonIconPlaceholder,
   AlignLeft, Columns, Minus, ArrowUpDown, Code, Star,
   Navigation, FormInput, Timer, CreditCard, MessageCircle, LayoutGrid,
-  Layers, ArrowLeft, ArrowUp, ArrowDown, Copy, Save
+  Layers, ArrowLeft, ArrowUp, ArrowDown, Copy, Save, TrendingUp
 } from 'lucide-react';
 import { useBuilder } from './BuilderContext';
 
@@ -28,6 +28,7 @@ const COMPONENT_ICONS: Record<string, any> = {
   'FAQ': MessageCircle,
   'Testimonial': Star,
   'LogoStrip': LayoutGrid,
+  'StatCounter': TrendingUp,
   'StarRating': Star,
   'BlogFeed': LayoutGrid,
   'Hero': Layers,
