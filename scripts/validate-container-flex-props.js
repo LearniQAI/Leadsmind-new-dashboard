@@ -19,6 +19,10 @@
 // template's serialized Craft.js node tree (JSON `content`), not the TypeScript AST — ESLint
 // has no visibility into that structure.
 //
+// This is one instance of a recurring bug family (see docs/builder-component-footguns.md): a
+// shared/base component's hardcoded style or unset-prop fallback silently overriding what a
+// template explicitly configured.
+//
 // Usage: node scripts/validate-container-flex-props.js
 // Exit code 0 = clean, 1 = violations found (or a template failed to load).
 

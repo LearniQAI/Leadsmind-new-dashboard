@@ -102,6 +102,7 @@ export const WebinarThankYou = (allProps: WebinarThankYouProps & any) => {
           {session.joinUrl && (
             <a href={session.joinUrl} target="_blank" rel="noopener noreferrer">
               <Button
+                variant="unstyled"
                 className="w-full rounded-lg h-11 font-bold shadow-lg hover:scale-[1.01] transition-all"
                 style={{ backgroundColor: accentColor, color: '#ffffff' }}
               >

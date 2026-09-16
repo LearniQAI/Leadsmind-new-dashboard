@@ -266,6 +266,7 @@ export const Form = (allProps: FormProps & any) => {
     <Button
      type="submit"
      disabled={isSubmitting}
+     variant="unstyled"
      className="w-full rounded-lg h-12 font-bold shadow-lg hover:scale-[1.01] transition-all disabled:opacity-70"
      style={{ backgroundColor: buttonBg, color: buttonTextColor }}
     >

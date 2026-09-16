@@ -41,3 +41,6 @@ jobs:
 
       - name: Validate builder templates (Container display-prop check)
         run: npm run validate:templates
+
+      - name: Validate builder components (Button variant check)
+        run: npm run validate:buttons

@@ -1,21 +1,30 @@
 #!/bin/sh
-# Only runs the Container display-prop check when a template file is actually staged, so
-# unrelated commits aren't slowed down by it. Installed automatically via `npm install`'s
-# `prepare` script (see scripts/setup-git-hooks.js) — no manual husky-style setup needed.
+# Only runs each check when a file it actually cares about is staged, so unrelated commits
+# aren't slowed down. Installed automatically via `npm install`'s `prepare` script (see
+# scripts/setup-git-hooks.js) — no manual husky-style setup needed.
+
+status=0
 
 staged_templates=$(git diff --cached --name-only --diff-filter=ACM -- 'src/lib/builder/templates/*.ts')
-
-if [ -z "$staged_templates" ]; then
-  exit 0
+if [ -n "$staged_templates" ]; then
+  echo "Checking staged builder templates for the Container display-prop footgun..."
+  npm run --silent validate:templates
+  if [ $? -ne 0 ]; then
+    echo ""
+    echo "Commit blocked: fix the violation(s) above, or see scripts/validate-container-flex-props.js for why this check exists."
+    status=1
+  fi
 fi
 
-echo "Checking staged builder templates for the Container display-prop footgun..."
-npm run --silent validate:templates
-status=$?
-
-if [ $status -ne 0 ]; then
-  echo ""
-  echo "Commit blocked: fix the violation(s) above, or see scripts/validate-container-flex-props.js for why this check exists."
+staged_user_components=$(git diff --cached --name-only --diff-filter=ACM -- 'src/components/builder/user/*.tsx')
+if [ -n "$staged_user_components" ]; then
+  echo "Checking staged builder components for the Button variant footgun..."
+  npm run --silent validate:buttons
+  if [ $? -ne 0 ]; then
+    echo ""
+    echo "Commit blocked: fix the violation(s) above, or see scripts/validate-button-variant.js for why this check exists."
+    status=1
+  fi
 fi
 
 exit $status

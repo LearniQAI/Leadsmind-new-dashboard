@@ -17,6 +17,16 @@ const buttonVariants = cva(
  "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all motion-reduce:transition-none whitespace-nowrap [&_svg]:pointer-events-none [&_svg]:shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.97]",
  {
   variants: {
+   // WARNING: any component that renders <Button> with its OWN inline backgroundColor/color
+   // style (a template-configured color, not this design system's) MUST pass an explicit
+   // `variant="unstyled"` (see that variant's comment below) — omitting `variant` silently falls
+   // back to `default`'s `bg-primary` class below, which BrandingProvider's global
+   // `.bg-primary { ... !important }` white-label rule can then hijack, overriding the inline
+   // style regardless of specificity. This shipped live in Velocity/Mentor/Ascent's buttons,
+   // Mentor's pricing-table CTAs, and every form's submit button before being caught and fixed —
+   // `npm run validate:buttons` (scripts/validate-button-variant.js) now flags any new <Button>
+   // usage in builder/user/*.tsx with no explicit `variant`, but it can't judge which variant is
+   // *correct*, only that one must be chosen on purpose.
    variant: {
     default: "bg-primary text-white hover:bg-primary/90 shadow-sm hover:shadow-md",
     destructive: "bg-red text-white hover:bg-red/90 shadow-sm hover:shadow-md",
@@ -26,6 +36,15 @@ const buttonVariants = cva(
     link: "text-primary underline-offset-4 hover:underline",
     gradient: "bg-gradientPrimary text-white hover:opacity-90 transition-opacity",
     gradientAccent: "bg-gradientAccent text-white hover:opacity-90 transition-opacity",
+    // No bg-*/text-* classes at all — for callers (site/funnel builder's UserButton) that fully
+    // own background/text/border color themselves via inline `style`. Every other variant above
+    // carries a themed Tailwind class (bg-primary, bg-red, !text-dash-text, ...) that a global
+    // `!important` rule can target — BrandingProvider injects `.bg-primary { ... !important }`
+    // site-wide for white-label branding, which then silently overrides any inline
+    // background-color a caller set, no matter how specific, because `!important` in an author
+    // stylesheet always beats a plain inline style. Keeping this variant's class list empty
+    // means there's never a themed class in the DOM for such a rule to latch onto.
+    unstyled: "",
    },
    size: {
     // "Default" and "small" — a primary action and a row-level trigger don't share a type
