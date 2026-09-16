@@ -70,9 +70,14 @@ export const FAQ = (allProps: FAQProps & any) => {
      <button
       onClick={() => setOpenIndex(openIndex === i ? null : i)}
       className="w-full flex items-center justify-between px-8 py-5 text-left transition-colors hover:brightness-95"
-      style={{ backgroundColor: 'transparent' }}
+      style={{ backgroundColor: 'transparent', color: questionColor }}
      >
-      <span className="font-bold text-lg tracking-tight" style={{ color: questionColor }}>{item.question}</span>
+      {/* Viewport.tsx's `.node-canvas-area span { color: inherit !important }` rule strips
+          any color set directly on a span (it exists to defend headings/paragraphs against the
+          dashboard theme's own dark-mode color leaking into canvas content) — so the color has
+          to live on the button (not targeted by that selector) and the span just inherits it,
+          same pattern Heading.tsx/Paragraph.tsx already use. */}
+      <span className="font-bold text-lg tracking-tight" style={{ color: 'inherit' }}>{item.question}</span>
       <div 
         className={`transition-transform duration-500 p-2 rounded-full`}
         style={{ 
