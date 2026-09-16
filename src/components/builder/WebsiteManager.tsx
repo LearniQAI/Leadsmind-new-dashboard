@@ -576,7 +576,7 @@ export default function WebsiteManager() {
 
         {/* New Website Modal - Template Selection */}
         <DashModal open={isModalOpen} onOpenChange={(open) => !open && closeCreateModal()}>
-          <DashModalContent className="max-w-[900px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+          <DashModalContent className="max-w-[1080px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
             <div className="px-6 py-5 border-b border-dash-border">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-dash-accent/10 flex items-center justify-center border border-dash-accent/20">
@@ -609,7 +609,7 @@ export default function WebsiteManager() {
                     </DashButton>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                     {dbTemplates.map((t) => {
                       const isBlank = t.id === 'blank-slate';
                       return (
@@ -617,19 +617,23 @@ export default function WebsiteManager() {
                           key={t.id}
                           onClick={() => selectTemplate(t.id)}
                           className={cn(
-                            "group relative cursor-pointer rounded-2xl border-2 transition-all duration-200 motion-reduce:transition-none overflow-hidden flex flex-col h-full hover:shadow-lg hover:-translate-y-0.5 motion-reduce:hover:translate-y-0",
+                            "group relative cursor-pointer rounded-xl border-2 transition-all duration-200 motion-reduce:transition-none overflow-hidden flex flex-col h-full hover:shadow-lg hover:-translate-y-0.5 motion-reduce:hover:translate-y-0",
                             isBlank
                               ? "border-dash-accent/30 border-dashed bg-dash-accent/[0.03] hover:border-dash-accent/50"
                               : "border-dash-border bg-dash-surface hover:border-dash-text/20"
                           )}
                         >
+                          {/* aspect-[16/10] kept consistent across every real template's thumbnail —
+                              matches the crop used when capturing each template's real hero
+                              screenshot, so the grid reads as one uniform, curated set rather than
+                              mismatched image shapes. */}
                           <div className={cn(
                             "aspect-[16/10] relative overflow-hidden shrink-0",
                             isBlank ? "flex items-center justify-center bg-transparent" : "bg-dash-surface"
                           )}>
                             {isBlank ? (
-                              <div className="w-16 h-16 rounded-2xl bg-dash-accent/10 flex items-center justify-center text-dash-accent group-hover:bg-dash-accent group-hover:text-white transition-colors motion-reduce:transition-none">
-                                <Plus size={30} strokeWidth={2.25} />
+                              <div className="w-11 h-11 rounded-xl bg-dash-accent/10 flex items-center justify-center text-dash-accent group-hover:bg-dash-accent group-hover:text-white transition-colors motion-reduce:transition-none">
+                                <Plus size={22} strokeWidth={2.25} />
                               </div>
                             ) : (
                               (t.thumbnail || t.preview_image) && (
@@ -642,23 +646,23 @@ export default function WebsiteManager() {
                             )}
 
                             {!isBlank && (
-                              <div className="absolute top-3 left-3 flex gap-2">
-                                <div className="px-2.5 py-0.5 rounded-full bg-white/90 backdrop-blur-sm border border-dash-border text-[9px] font-bold text-dash-accent">
+                              <div className="absolute top-2 left-2 flex gap-1.5">
+                                <div className="px-2 py-0.5 rounded-full bg-white/90 backdrop-blur-sm border border-dash-border text-[8px] font-bold text-dash-accent">
                                   {t.category}
                                 </div>
                                 {t.is_premium && (
-                                  <div className="px-2.5 py-0.5 rounded-full bg-amber-50/90 backdrop-blur-sm border border-amber-200 text-[9px] font-bold text-amber-600">
+                                  <div className="px-2 py-0.5 rounded-full bg-amber-50/90 backdrop-blur-sm border border-amber-200 text-[8px] font-bold text-amber-600">
                                     Premium
                                   </div>
                                 )}
                               </div>
                             )}
                           </div>
-                          <div className={cn("p-5", isBlank ? "bg-dash-surface" : "bg-white")}>
-                            <span className="font-bold text-[14px] block transition-colors motion-reduce:transition-none leading-tight !text-dash-text group-hover:text-dash-accent">
+                          <div className={cn("p-3.5", isBlank ? "bg-dash-surface" : "bg-white")}>
+                            <span className="font-bold text-[13px] block transition-colors motion-reduce:transition-none leading-tight !text-dash-text group-hover:text-dash-accent">
                               {t.name}
                             </span>
-                            <span className="text-[11px] font-medium !text-dash-textMuted line-clamp-2 mt-1.5 leading-relaxed">{t.description}</span>
+                            <span className="text-[10.5px] font-medium !text-dash-textMuted line-clamp-2 mt-1 leading-relaxed">{t.description}</span>
                           </div>
                         </div>
                       );

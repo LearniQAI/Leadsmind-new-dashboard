@@ -63,6 +63,22 @@ const RISK_RULES = [
     classPattern: /\bitems-(?:start|end|center|baseline|stretch)\b/,
     requiredProps: ["alignItems"],
   },
+  {
+    // Live-verified real bug (Archiste template audit): Container.craft.props defaults
+    // `backgroundColor` to 'transparent', which Craft merges in for any node that doesn't set
+    // it explicitly — Container.tsx's getResponsiveStyles() then emits a real
+    // `.node-<id> { background-color: transparent }` rule in an injected <style> tag, which
+    // wins over an equivalent `bg-*` Tailwind class in the same node's className by DOM source
+    // order, regardless of equal selector specificity. A hand-typed `bg-white`/`bg-[#f4f2ee]`/
+    // `bg-slate-100`/etc. className with no matching `backgroundColor` prop silently renders
+    // transparent instead. Deliberately excludes non-color bg-* utilities (bg-cover, bg-center,
+    // bg-gradient-to-*, bg-clip-*, bg-no-repeat, etc.) and `bg-transparent` itself (already the
+    // default, so not a bug even if it "wins") — only matches bg-* tokens that are actually a
+    // Tailwind color name/family, `current`/`inherit`, or an arbitrary color value.
+    label: "backgroundColor",
+    classPattern: /\bbg-(?:white|black|current|inherit|\[(?:#|rgb|rgba|hsl)|(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|primary|secondary|accent|dash-[a-zA-Z]+)(?:-\d{2,3})?)\b/,
+    requiredProps: ["backgroundColor", "backgroundGradient"],
+  },
 ];
 
 /**
@@ -86,6 +102,11 @@ function checkNode(fileLabel, nodeId, node, violations) {
   if (typeof className !== "string" || className.trim() === "") return;
 
   for (const rule of RISK_RULES) {
+    // ROOT is special-cased in Container.tsx itself: it strips any `bg-*` class out of its
+    // className and always renders `var(--theme-bg)` regardless, so a `bg-*` token there is
+    // inert by design, not a bug — only relevant to the backgroundColor rule since ROOT
+    // realistically never carries flex/grid classes.
+    if (nodeId === "ROOT" && rule.label === "backgroundColor") continue;
     if (!rule.classPattern.test(className)) continue;
     const hasRequiredProp = rule.requiredProps.some(
       (propName) => node.props?.[propName] !== undefined
@@ -129,6 +150,28 @@ async function main() {
     }
   }
 
+  // Blank Slate is defined inline in templates.ts (BLANK_PAGE), one directory up from
+  // TEMPLATES_DIR — the directory scan above never sees it, so it was silently unchecked by
+  // this script until this was noticed during a coverage review. Checked separately here
+  // rather than folded into the loop above, since it's not a `<name>.ts` file exporting a
+  // `{ content: "..." }`-shaped template object; it's a bare JSON string constant.
+  const templatesTsPath = path.resolve(TEMPLATES_DIR, "..", "templates.ts");
+  const blankSlateLabel = path.relative(process.cwd(), templatesTsPath).replace(/\\/g, "/") + " (BLANK_PAGE / blank-slate)";
+  try {
+    const mod = await import(pathToFileURL(templatesTsPath).href);
+    const blankPageJson = mod.BLANK_PAGE;
+    if (typeof blankPageJson !== "string") {
+      loadErrors.push({ file: blankSlateLabel, error: "no `BLANK_PAGE` string export found" });
+    } else {
+      const content = JSON.parse(blankPageJson);
+      for (const [nodeId, node] of Object.entries(content)) {
+        checkNode(blankSlateLabel, nodeId, node, violations);
+      }
+    }
+  } catch (err) {
+    loadErrors.push({ file: blankSlateLabel, error: err.message });
+  }
+
   if (loadErrors.length > 0) {
     console.error("\n✖ Could not load the following template files:\n");
     for (const e of loadErrors) {
@@ -159,7 +202,7 @@ async function main() {
   if (violations.length > 0 || loadErrors.length > 0) {
     process.exitCode = 1;
   } else {
-    console.log(`✓ Container display-prop check passed — ${files.length} template(s) scanned, 0 violations.`);
+    console.log(`✓ Container display-prop check passed — ${files.length + 1} template(s) scanned (incl. Blank Slate), 0 violations.`);
   }
 }
 

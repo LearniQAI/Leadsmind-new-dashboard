@@ -7,7 +7,8 @@ export const educationLms: BuilderTemplate = {
   category: 'Education',
   type: 'funnel',
   step_type: 'sales_page',
-  thumbnail: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644',
+  // A real screenshot of this template's own rendered hero (public/web-templates/education-lms/).
+  thumbnail: '/web-templates/education-lms/thumbnail.jpg',
   content: JSON.stringify({
     ROOT: {
       type: { resolvedName: 'Container' },
@@ -58,13 +59,13 @@ export const educationLms: BuilderTemplate = {
       nodes: ['feat-col-1', 'feat-col-2', 'feat-col-3'],
       parent: 'features-8'
     },
-    'feat-col-1': { type: { resolvedName: 'Container' }, isCanvas: true, props: { className: 'p-6 bg-indigo-50 rounded-2xl' }, nodes: ['f1-h', 'f1-p'], parent: 'feat-grid-8' },
+    'feat-col-1': { type: { resolvedName: 'Container' }, isCanvas: true, props: { className: 'p-6 rounded-2xl', backgroundColor: '#eef2ff' }, nodes: ['f1-h', 'f1-p'], parent: 'feat-grid-8' },
     'f1-h': { type: { resolvedName: 'Heading' }, props: { text: 'Module 1: Foundations', level: 'h4', color: '#312e81', className: 'text-lg font-bold mb-3' }, parent: 'feat-col-1' },
     'f1-p': { type: { resolvedName: 'Paragraph' }, props: { text: 'Set up the systems and mindset that separate six-figure businesses from side projects.', color: '#4338ca' }, parent: 'feat-col-1' },
-    'feat-col-2': { type: { resolvedName: 'Container' }, isCanvas: true, props: { className: 'p-6 bg-indigo-50 rounded-2xl' }, nodes: ['f2-h', 'f2-p'], parent: 'feat-grid-8' },
+    'feat-col-2': { type: { resolvedName: 'Container' }, isCanvas: true, props: { className: 'p-6 rounded-2xl', backgroundColor: '#eef2ff' }, nodes: ['f2-h', 'f2-p'], parent: 'feat-grid-8' },
     'f2-h': { type: { resolvedName: 'Heading' }, props: { text: 'Module 2: Growth Engine', level: 'h4', color: '#312e81', className: 'text-lg font-bold mb-3' }, parent: 'feat-col-2' },
     'f2-p': { type: { resolvedName: 'Paragraph' }, props: { text: 'Build repeatable acquisition channels so revenue growth stops depending on you personally.', color: '#4338ca' }, parent: 'feat-col-2' },
-    'feat-col-3': { type: { resolvedName: 'Container' }, isCanvas: true, props: { className: 'p-6 bg-indigo-50 rounded-2xl' }, nodes: ['f3-h', 'f3-p'], parent: 'feat-grid-8' },
+    'feat-col-3': { type: { resolvedName: 'Container' }, isCanvas: true, props: { className: 'p-6 rounded-2xl', backgroundColor: '#eef2ff' }, nodes: ['f3-h', 'f3-p'], parent: 'feat-grid-8' },
     'f3-h': { type: { resolvedName: 'Heading' }, props: { text: 'Module 3: Scale & Systemize', level: 'h4', color: '#312e81', className: 'text-lg font-bold mb-3' }, parent: 'feat-col-3' },
     'f3-p': { type: { resolvedName: 'Paragraph' }, props: { text: 'Delegate, automate, and step out of the day-to-day without losing momentum.', color: '#4338ca' }, parent: 'feat-col-3' },
 

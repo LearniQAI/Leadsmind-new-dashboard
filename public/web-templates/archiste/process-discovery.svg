@@ -1,0 +1,12 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="#3a3a3a" stroke-width="0.75" stroke-linecap="round">
+    <path d="M60 12 L20 60 L60 108" />
+    <path d="M60 12 L34 60 L60 108" />
+    <path d="M60 12 L47 60 L60 108" />
+    <path d="M60 12 L60 108" />
+    <path d="M60 12 L73 60 L60 108" />
+    <path d="M60 12 L86 60 L60 108" />
+    <path d="M60 12 L100 60 L60 108" />
+    <ellipse cx="60" cy="60" rx="40" ry="10" />
+  </g>
+</svg>

@@ -7,7 +7,8 @@ export const fitnessPower: BuilderTemplate = {
   category: 'Fitness',
   type: 'funnel',
   step_type: 'sales_page',
-  thumbnail: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48',
+  // A real screenshot of this template's own rendered hero (public/web-templates/fitness-power/).
+  thumbnail: '/web-templates/fitness-power/thumbnail.jpg',
   content: JSON.stringify({
     ROOT: {
       type: { resolvedName: 'Container' },

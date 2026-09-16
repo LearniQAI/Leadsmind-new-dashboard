@@ -13,7 +13,8 @@ export const ascent: BuilderTemplate = {
   type: 'both',
   step_type: 'sales_page',
   is_premium: true,
-  thumbnail: 'https://images.unsplash.com/photo-1553877522-43269d4ea984?q=80&w=1200&auto=format&fit=crop',
+  // A real screenshot of this template's own rendered hero (public/web-templates/ascent/).
+  thumbnail: '/web-templates/ascent/thumbnail.jpg',
   content: JSON.stringify({
     ROOT: {
       type: { resolvedName: 'Container' },
@@ -94,7 +95,10 @@ export const ascent: BuilderTemplate = {
     'hero-badge': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'inline-flex items-center gap-2 bg-white border rounded-full px-4 py-2 mb-6 w-fit', display: 'inline-flex', alignItems: 'center' },
+      // backgroundColor as a real prop, not the `bg-white` className — Container.craft.props
+      // defaults backgroundColor to 'transparent', which silently wins over a bg-* className
+      // via an injected per-node CSS rule (see scripts/validate-container-flex-props.js).
+      props: { className: 'inline-flex items-center gap-2 border rounded-full px-4 py-2 mb-6 w-fit', display: 'inline-flex', alignItems: 'center', backgroundColor: '#ffffff' },
       nodes: ['hero-badge-dot', 'hero-badge-text'],
       parent: 'hero-left',
     },
@@ -379,7 +383,8 @@ export const ascent: BuilderTemplate = {
     'role-card': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'bg-white border rounded p-10 md:p-12' },
+      // backgroundColor as a real prop — see the comment on hero-badge's `backgroundColor` prop.
+      props: { className: 'border rounded p-10 md:p-12', backgroundColor: '#ffffff' },
       nodes: ['role-card-head', 'role-own-label', 'role-own-grid', 'role-split'],
       parent: 'role-inner',
     },
@@ -791,7 +796,7 @@ export const ascent: BuilderTemplate = {
     'road-1': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'bg-white border-l-4 rounded p-6', borderColor: '#4a8c5c', borderWidth: 4, borderStyle: 'solid' },
+      props: { className: 'border-l-4 rounded p-6', borderColor: '#4a8c5c', borderWidth: 4, borderStyle: 'solid', backgroundColor: '#ffffff' },
       nodes: ['road-1-dot', 'road-1-title', 'road-1-desc'],
       parent: 'roadmap-grid',
     },
@@ -813,7 +818,7 @@ export const ascent: BuilderTemplate = {
     'road-2': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'bg-white border-l-4 rounded p-6', borderColor: ACCENT, borderWidth: 4, borderStyle: 'solid' },
+      props: { className: 'border-l-4 rounded p-6', borderColor: ACCENT, borderWidth: 4, borderStyle: 'solid', backgroundColor: '#ffffff' },
       nodes: ['road-2-dot', 'road-2-title', 'road-2-desc'],
       parent: 'roadmap-grid',
     },
@@ -835,7 +840,7 @@ export const ascent: BuilderTemplate = {
     'road-3': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'bg-white border-l-4 rounded p-6', borderColor: '#d9d3c7', borderWidth: 4, borderStyle: 'solid' },
+      props: { className: 'border-l-4 rounded p-6', borderColor: '#d9d3c7', borderWidth: 4, borderStyle: 'solid', backgroundColor: '#ffffff' },
       nodes: ['road-3-dot', 'road-3-title', 'road-3-desc'],
       parent: 'roadmap-grid',
     },
@@ -886,7 +891,7 @@ export const ascent: BuilderTemplate = {
     'domain-2': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'bg-white border rounded p-6' },
+      props: { className: 'border rounded p-6', backgroundColor: '#ffffff' },
       nodes: ['domain-2-phase', 'domain-2-name', 'domain-2-desc'],
       parent: 'domain-grid',
     },
@@ -908,7 +913,7 @@ export const ascent: BuilderTemplate = {
     'domain-3': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'bg-white border rounded p-6' },
+      props: { className: 'border rounded p-6', backgroundColor: '#ffffff' },
       nodes: ['domain-3-phase', 'domain-3-name', 'domain-3-desc'],
       parent: 'domain-grid',
     },

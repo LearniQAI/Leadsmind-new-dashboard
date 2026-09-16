@@ -8,7 +8,8 @@ export const mentor: BuilderTemplate = {
   type: 'both',
   step_type: 'sales_page',
   is_premium: true,
-  thumbnail: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1200&auto=format&fit=crop',
+  // A real screenshot of this template's own rendered hero (public/web-templates/mentor/).
+  thumbnail: '/web-templates/mentor/thumbnail.jpg',
   content: JSON.stringify({
     ROOT: {
       type: { resolvedName: 'Container' },
@@ -89,7 +90,7 @@ export const mentor: BuilderTemplate = {
     'hero-badge': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'inline-flex items-center gap-2 bg-teal-50 rounded-full px-4 py-2 mb-6 w-fit', display: 'inline-flex', alignItems: 'center' },
+      props: { className: 'inline-flex items-center gap-2 rounded-full px-4 py-2 mb-6 w-fit', display: 'inline-flex', alignItems: 'center', backgroundColor: '#f0fdfa' },
       nodes: ['hero-badge-dot', 'hero-badge-text'],
       parent: 'hero-left',
     },
@@ -182,7 +183,7 @@ export const mentor: BuilderTemplate = {
     'feat-col-1-iconbox': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'w-14 h-14 bg-teal-50 rounded-2xl flex items-center justify-center mb-5 mx-auto md:mx-0', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+      props: { className: 'w-14 h-14 rounded-2xl flex items-center justify-center mb-5 mx-auto md:mx-0', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0fdfa' },
       nodes: ['feat-col-1-icon'],
       parent: 'feat-col-1',
     },
@@ -211,7 +212,7 @@ export const mentor: BuilderTemplate = {
     'feat-col-2-iconbox': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'w-14 h-14 bg-teal-50 rounded-2xl flex items-center justify-center mb-5 mx-auto md:mx-0', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+      props: { className: 'w-14 h-14 rounded-2xl flex items-center justify-center mb-5 mx-auto md:mx-0', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0fdfa' },
       nodes: ['feat-col-2-icon'],
       parent: 'feat-col-2',
     },
@@ -240,7 +241,7 @@ export const mentor: BuilderTemplate = {
     'feat-col-3-iconbox': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'w-14 h-14 bg-teal-50 rounded-2xl flex items-center justify-center mb-5 mx-auto md:mx-0', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+      props: { className: 'w-14 h-14 rounded-2xl flex items-center justify-center mb-5 mx-auto md:mx-0', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0fdfa' },
       nodes: ['feat-col-3-icon'],
       parent: 'feat-col-3',
     },
