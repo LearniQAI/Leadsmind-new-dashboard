@@ -20,9 +20,10 @@ export default async function TaskAnalyticsDashboardPage() {
 
   const { tasks, escalations } = data;
 
-  const overdueCount = tasks.filter((t: any) => t.status === 'Overdue').length;
-  const completedCount = tasks.filter((t: any) => t.status === 'Completed').length;
-  const pendingCount = tasks.filter((t: any) => t.status === 'Pending' || t.status === 'In Progress').length;
+  const isOverdue = (t: any) => t.status !== 'done' && t.due_date && new Date(t.due_date) < new Date();
+  const overdueCount = tasks.filter(isOverdue).length;
+  const completedCount = tasks.filter((t: any) => t.status === 'done').length;
+  const pendingCount = tasks.filter((t: any) => t.status !== 'done' && !isOverdue(t)).length;
   
   const completionRate = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
 
@@ -93,7 +94,7 @@ export default async function TaskAnalyticsDashboardPage() {
               <Clock className="text-dash-accent" /> Upcoming Tasks
             </h2>
             <div className="space-y-3">
-              {tasks.filter((t: any) => t.status === 'Pending' || t.status === 'In Progress').slice(0, 8).map((task: any) => (
+              {tasks.filter((t: any) => t.status !== 'done').slice(0, 8).map((task: any) => (
                 <div key={task.id} className="p-4 bg-white border border-dash-border rounded-2xl flex items-center justify-between">
                   <div>
                     <h4 className="font-bold !text-dash-text text-sm">{task.title}</h4>
@@ -119,7 +120,7 @@ export default async function TaskAnalyticsDashboardPage() {
               ) : (
                 escalations.map((esc: any) => (
                   <div key={esc.id} className="p-4 bg-white border border-red/30 rounded-2xl">
-                    <h4 className="font-bold !text-dash-text text-sm mb-1">{esc.crm_tasks?.title}</h4>
+                    <h4 className="font-bold !text-dash-text text-sm mb-1">{esc.tasks?.title}</h4>
                     <p className="text-xs text-red">{esc.escalation_reason}</p>
                   </div>
                 ))

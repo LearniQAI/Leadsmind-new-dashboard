@@ -108,11 +108,11 @@ export const docCategories: DocCategory[] = [
         ],
       },
       {
-        title: 'Quotes & Proposals',
-        intro: 'Put together professional quotes and proposals for your customers without leaving LeadsMind.',
+        title: 'Quotes',
+        intro: 'Put together professional quotes for your customers without leaving LeadsMind.',
         steps: [
-          'Create a quote or proposal and add your line items.',
-          'Share it with your customer, or download it as a PDF.',
+          'Create a quote and add your line items.',
+          'Send it, or download it as a PDF — once sent, your customer can review and electronically sign it from their client portal.',
           'Convert an accepted quote into an invoice in one click — no need to re-enter line items.',
         ],
       },

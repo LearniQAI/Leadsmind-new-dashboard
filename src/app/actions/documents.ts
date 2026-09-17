@@ -154,9 +154,17 @@ export async function uploadClientDocument(formData: FormData) {
 }
 
 /**
- * Seals an agreement using a cryptographically signed signature confirmation
+ * Seals a quote using a cryptographically signed signature confirmation.
+ * Replaces the old signPortalProposal(), which targeted the now-dropped
+ * public.proposals table — that table had a real e-signature schema and this
+ * same well-built canvas/typed-signature UI in DocumentsClient.tsx, but
+ * nothing anywhere in the app ever inserted a row into it, so the whole flow
+ * was permanently unreachable. Quotes is the real, populated table, so
+ * signing now attaches here: a quote must be 'sent' to be signable, and
+ * signing moves it straight to 'accepted' — the same status that already
+ * unlocks "Convert to Invoice" in the Quotes Ledger.
  */
-export async function signPortalProposal(proposalId: string, signatureData: string, ipAddress: string) {
+export async function signPortalQuote(quoteId: string, signatureData: string, ipAddress: string) {
   try {
     const session = await getPortalSession();
     if (!session) {
@@ -166,33 +174,38 @@ export async function signPortalProposal(proposalId: string, signatureData: stri
     const { contact, workspace } = session;
     const adminClient = createAdminClient();
 
-    // 1. Verify proposal belongs to this contact
-    const { data: proposal, error: fetchErr } = await adminClient
-      .from('proposals')
+    // 1. Verify quote belongs to this contact and is actually signable
+    const { data: quote, error: fetchErr } = await adminClient
+      .from('quotes')
       .select('*')
-      .eq('id', proposalId)
+      .eq('id', quoteId)
       .single();
 
-    if (fetchErr || !proposal) {
-      return { success: false, error: 'Proposal agreement not found.' };
+    if (fetchErr || !quote) {
+      return { success: false, error: 'Quote not found.' };
     }
 
-    if (proposal.contact_id !== contact.id) {
-      return { success: false, error: 'Access denied. You do not own this proposal.' };
+    if (quote.contact_id !== contact.id) {
+      return { success: false, error: 'Access denied. You do not own this quote.' };
     }
 
-    // 2. Perform digital signature seal
+    if (quote.status !== 'sent') {
+      return { success: false, error: 'This quote is not awaiting a signature.' };
+    }
+
+    // 2. Perform digital signature seal — moves the quote to 'accepted' so it
+    // can be converted to an invoice like any other accepted quote.
     const { error: updateErr } = await adminClient
-      .from('proposals')
+      .from('quotes')
       .update({
-        status: 'signed',
+        status: 'accepted',
         signed_at: new Date().toISOString(),
         signature_data: signatureData
       })
-      .eq('id', proposalId);
+      .eq('id', quoteId);
 
     if (updateErr) {
-      logger.error({ err: updateErr, proposalId }, 'documents.proposal_signature.record.failed');
+      logger.error({ err: updateErr, quoteId }, 'documents.quote_signature.record.failed');
       return { success: false, error: 'Failed to record signature.' };
     }
 
@@ -201,13 +214,14 @@ export async function signPortalProposal(proposalId: string, signatureData: stri
       workspace_id: workspace.id,
       contact_id: contact.id,
       type: 'signature',
-      description: `Executed proposal e-signature agreement: "${proposal.title}" (IP: ${ipAddress})`
+      description: `Executed quote e-signature agreement: "${quote.quote_number}" (IP: ${ipAddress})`
     });
 
     revalidatePath('/portal/documents');
+    revalidatePath('/quotes');
     return { success: true };
   } catch (err: any) {
-    logger.error({ err, proposalId }, 'documents.proposal_signature.action.failed');
+    logger.error({ err, quoteId }, 'documents.quote_signature.action.failed');
     return { success: false, error: 'An unexpected error occurred.' };
   }
 }

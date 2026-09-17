@@ -8,7 +8,26 @@ import { revalidatePath } from 'next/cache';
 import { sendEmail } from '@/lib/email';
 import { logger } from '@/shared/logger';
 
-export async function getTasks() {
+export interface TaskFilters {
+  search?: string;
+  assigneeIds?: string[];
+  dueToday?: boolean;
+  highPriorityOnly?: boolean;
+  sortBy?: 'newest' | 'priority' | 'due_date';
+}
+
+// Filters/search/sort are applied server-side here (matching the pattern
+// the public /api/v1/tasks REST route already uses: real .eq()/.ilike()
+// queries, not a client-side .filter() over an already-fetched, unbounded
+// list) — confirmed live that the previous client-side approach would miss
+// any task not already loaded into the browser. A capped .limit() replaces
+// true fetch-everything, since the Kanban/Calendar views need the board's
+// full current working set to render columns/dates correctly (unlike the
+// REST route's page-through consumers, there's no "next page" affordance in
+// this UI to paginate into).
+const TASKS_FETCH_LIMIT = 500;
+
+export async function getTasks(filters: TaskFilters = {}) {
   let workspaceId: string | null = null;
   try {
     // Was getCurrentWorkspaceId()-only (no getUser()/membership check at
@@ -19,7 +38,43 @@ export async function getTasks() {
     ({ workspaceId } = await requireWorkspaceAccess());
 
     const supabase = await createServerClient();
-    const { data, error } = await supabase
+
+    // Assignee filter: resolve to a concrete task-id set first, since
+    // PostgREST can't filter parent rows on a left-joined embed without
+    // restructuring the select as an inner join (which would also drop
+    // tasks with zero assignees from the result whenever any assignee
+    // filter runs).
+    let assigneeTaskIds: string[] | null = null;
+    if (filters.assigneeIds && filters.assigneeIds.length > 0) {
+      const { data: rows } = await supabase
+        .from('task_assignees')
+        .select('task_id')
+        .in('user_id', filters.assigneeIds);
+      assigneeTaskIds = Array.from(new Set((rows || []).map((r) => r.task_id)));
+      if (assigneeTaskIds.length === 0) return { data: [] };
+    }
+
+    // Search matches title/description directly, plus assignee first/last
+    // name (the search box's stated behavior) — resolved the same way, via
+    // a task-id set from a name lookup joined through task_assignees.
+    let searchAssigneeTaskIds: string[] = [];
+    if (filters.search) {
+      const term = `%${filters.search}%`;
+      const { data: matchingUsers } = await supabase
+        .from('users')
+        .select('id')
+        .or(`first_name.ilike.${term},last_name.ilike.${term}`);
+      const matchingUserIds = (matchingUsers || []).map((u) => u.id);
+      if (matchingUserIds.length > 0) {
+        const { data: rows } = await supabase
+          .from('task_assignees')
+          .select('task_id')
+          .in('user_id', matchingUserIds);
+        searchAssigneeTaskIds = Array.from(new Set((rows || []).map((r) => r.task_id)));
+      }
+    }
+
+    let query = supabase
       .from('tasks')
       .select(`
         id,
@@ -29,6 +84,8 @@ export async function getTasks() {
         priority,
         due_date,
         due_time,
+        created_at,
+        sort_order,
         contact_id,
         contacts (first_name, last_name, avatar_url),
         assignees:task_assignees(
@@ -36,13 +93,41 @@ export async function getTasks() {
           profile:users(id, first_name, last_name, avatar_url)
         )
       `)
-      .eq('workspace_id', workspaceId)
-      .order('priority', { ascending: false })
-      .order('sort_order', { ascending: true })
-      .order('created_at', { ascending: false });
+      .eq('workspace_id', workspaceId);
 
+    if (assigneeTaskIds) query = query.in('id', assigneeTaskIds);
+    if (filters.highPriorityOnly) query = query.eq('priority', 'high');
+    if (filters.dueToday) query = query.eq('due_date', new Date().toISOString().split('T')[0]);
+
+    if (filters.search) {
+      const term = `%${filters.search}%`;
+      const idClause = searchAssigneeTaskIds.length > 0 ? `,id.in.(${searchAssigneeTaskIds.join(',')})` : '';
+      query = query.or(`title.ilike.${term},description.ilike.${term}${idClause}`);
+    }
+
+    if (filters.sortBy === 'due_date') {
+      query = query.order('due_date', { ascending: true, nullsFirst: false });
+    } else {
+      // Priority-ranked sort (high > medium > low) can't be expressed as a
+      // plain column .order() since priority is free-text, not an enum with
+      // that ordering — sorted client-side below, over this already
+      // server-filtered, capped result set (not the unbounded list the
+      // dashboard fetched before).
+      query = query.order('created_at', { ascending: false });
+    }
+    query = query.order('sort_order', { ascending: true }).limit(TASKS_FETCH_LIMIT);
+
+    const { data, error } = await query;
     if (error) throw error;
-    return { data };
+
+    const result = filters.sortBy === 'priority' && data
+      ? [...data].sort((a: any, b: any) => {
+          const rank: Record<string, number> = { high: 3, medium: 2, low: 1 };
+          return (rank[b.priority] || 0) - (rank[a.priority] || 0);
+        })
+      : data;
+
+    return { data: result };
   } catch (error: any) {
     logger.error({ err: error, workspaceId }, 'tasks.list.fetch.failed');
     return { error: 'Failed to fetch tasks' };
@@ -65,6 +150,10 @@ export async function getTaskDetails(taskId: string) {
           profile:users(id, first_name, last_name, avatar_url)
         ),
         activities:task_activities(
+          *,
+          user:users(id, first_name, last_name, avatar_url)
+        ),
+        comments:task_comments(
           *,
           user:users(id, first_name, last_name, avatar_url)
         ),
@@ -155,46 +244,78 @@ export async function updateTask(taskId: string, updates: any) {
     // Get old data for comparison — scoped to the verified workspace
     // (previously unscoped, flagged in the triage).
     const { data: oldTask } = await supabase.from('tasks').select('*').eq('id', taskId).eq('workspace_id', workspaceId).single();
+    if (!oldTask) return { error: 'Task not found' };
 
-    const { data, error } = await supabase
-      .from('tasks')
-      .update(updates)
-      .eq('id', taskId)
-      .eq('workspace_id', workspaceId)
-      .select()
-      .single();
+    // A status change (e.g. from TaskDetailDrawer's status dropdown) is
+    // routed through the same move_task_to_position RPC the Kanban
+    // drag-and-drop path uses (see updateTaskStatus), appended to the end
+    // of the destination column, instead of writing `status` as a plain
+    // column update here — otherwise this path could leave the task's
+    // stale sort_order colliding with an existing task already at that
+    // position in the destination status column (see
+    // 20260917070000_task_position_resequence.sql).
+    const { status: newStatus, sort_order: _sortOrder, ...rest } = updates;
+    const isStatusChange = newStatus !== undefined && newStatus !== oldTask.status;
 
-    if (error) throw error;
+    if (isStatusChange) {
+      const { count } = await supabase
+        .from('tasks')
+        .select('id', { count: 'exact', head: true })
+        .eq('workspace_id', workspaceId)
+        .eq('status', newStatus);
+
+      const { error: moveError } = await supabase.rpc('move_task_to_position', {
+        p_workspace_id: workspaceId,
+        p_task_id: taskId,
+        p_target_status: newStatus,
+        p_target_index: count ?? 0,
+      });
+      if (moveError) throw moveError;
+    }
+
+    let data = oldTask;
+    if (Object.keys(rest).length > 0) {
+      const { data: updated, error } = await supabase
+        .from('tasks')
+        .update(rest)
+        .eq('id', taskId)
+        .eq('workspace_id', workspaceId)
+        .select()
+        .single();
+      if (error) throw error;
+      data = updated;
+    } else if (isStatusChange) {
+      const { data: refreshed } = await supabase.from('tasks').select('*').eq('id', taskId).single();
+      if (refreshed) data = refreshed;
+    }
 
     // Log Strategic Changes
-    if (oldTask) {
-      if (updates.priority && oldTask.priority !== updates.priority) {
-        await supabase.from('task_activities').insert({
-          task_id: taskId,
-          user_id: profile.id,
-          type: 'status_change',
-          description: `Escalated priority from ${oldTask.priority} to ${updates.priority}`,
-          metadata: { from: oldTask.priority, to: updates.priority }
-        });
-      }
-      if (updates.status && oldTask.status !== updates.status) {
-        await supabase.from('task_activities').insert({
-          task_id: taskId,
-          user_id: profile.id,
-          type: 'status_change',
-          description: `Shifted objective to ${updates.status.replace('_', ' ')}`,
-          metadata: { from: oldTask.status, to: updates.status }
-        });
-      }
-      if (updates.due_date !== undefined && oldTask.due_date !== updates.due_date) {
-        await supabase.from('task_activities').insert({
-          task_id: taskId,
-          user_id: profile.id,
-          type: 'status_change',
-          description: updates.due_date ? 'Recalibrated deadline' : 'Cleared objective deadline',
-          metadata: { from: oldTask.due_date, to: updates.due_date }
-        });
-      }
+    if (updates.priority && oldTask.priority !== updates.priority) {
+      await supabase.from('task_activities').insert({
+        task_id: taskId,
+        user_id: profile.id,
+        type: 'status_change',
+        description: `Escalated priority from ${oldTask.priority} to ${updates.priority}`,
+        metadata: { from: oldTask.priority, to: updates.priority }
+      });
+    }
+    if (isStatusChange) {
+      await supabase.from('task_activities').insert({
+        task_id: taskId,
+        user_id: profile.id,
+        type: 'status_change',
+        description: `Shifted objective to ${newStatus.replace('_', ' ')}`,
+        metadata: { from: oldTask.status, to: newStatus }
+      });
+    }
+    if (updates.due_date !== undefined && oldTask.due_date !== updates.due_date) {
+      await supabase.from('task_activities').insert({
+        task_id: taskId,
+        user_id: profile.id,
+        type: 'status_change',
+        description: updates.due_date ? 'Recalibrated deadline' : 'Cleared objective deadline',
+        metadata: { from: oldTask.due_date, to: updates.due_date }
+      });
     }
 
     revalidatePath('/tasks');
@@ -207,7 +328,54 @@ export async function updateTask(taskId: string, updates: any) {
 }
 
 export async function updateTaskStatus(taskId: string, status: string, index?: number) {
-  return updateTask(taskId, { status, sort_order: index });
+  try {
+    const { workspaceId } = await requireWorkspaceAccess();
+
+    const profile = await getCurrentProfile();
+    if (!profile) return { error: 'Unauthorized' };
+
+    const role = await getUserRole();
+    if (role === 'viewer') return { error: 'Read-only access' };
+
+    const supabase = await createServerClient();
+
+    const { data: oldTask } = await supabase.from('tasks').select('status').eq('id', taskId).eq('workspace_id', workspaceId).single();
+    if (!oldTask) return { error: 'Task not found' };
+
+    // index is @hello-pangea/dnd's destination.index — the client's LOCAL
+    // rendered index at drag-end, not a value computed from the database's
+    // actual current state. move_task_to_position (see
+    // 20260917070000_task_position_resequence.sql) treats it only as an
+    // insertion-index HINT and computes/writes the real sort_order itself,
+    // atomically, from a fresh read of the destination status column's
+    // current order — writing the client's index straight into sort_order
+    // (the old behavior) let concurrent/rapid drags produce duplicate
+    // sort_order values within the same status column.
+    const { error } = await supabase.rpc('move_task_to_position', {
+      p_workspace_id: workspaceId,
+      p_task_id: taskId,
+      p_target_status: status,
+      p_target_index: index ?? 0,
+    });
+    if (error) throw error;
+
+    if (oldTask.status !== status) {
+      await supabase.from('task_activities').insert({
+        task_id: taskId,
+        user_id: profile.id,
+        type: 'status_change',
+        description: `Shifted objective to ${status.replace('_', ' ')}`,
+        metadata: { from: oldTask.status, to: status }
+      });
+    }
+
+    revalidatePath('/tasks');
+    revalidatePath('/dashboard');
+    return { success: true };
+  } catch (error: any) {
+    logger.error({ err: error }, 'update.task_status.failed');
+    return { error: 'Failed to update task status' };
+  }
 }
 
 export async function addTaskComment(taskId: string, content: string, mentions: string[] = []) {
@@ -224,15 +392,17 @@ export async function addTaskComment(taskId: string, content: string, mentions: 
     const { data: task } = await supabase.from('tasks').select('title').eq('id', taskId).eq('workspace_id', workspaceId).maybeSingle();
     if (!task) return { error: 'Task not found' };
 
-    // 1. Record Comment Activity
+    // 1. Record Comment — written to task_comments (not task_activities):
+    // the DB's on_task_comment notification trigger and TasksBoard's
+    // realtime subscription both listen on task_comments, and
+    // ActivityThread's comment rendering already expects a `content` field
+    // shaped like this table, not task_activities' `description`/`type`.
     const { data: comment, error: commentError } = await supabase
-      .from('task_activities')
+      .from('task_comments')
       .insert({
         task_id: taskId,
         user_id: profile.id,
-        type: 'comment',
-        description: content,
-        metadata: { mentions }
+        content
       })
       .select()
       .single();

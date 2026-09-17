@@ -1,8 +1,17 @@
-import { createServerClient } from '@/lib/supabase/server';
+import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 
 export class WorkspaceNotificationCenter {
   /**
    * Pushes a universal notification to a specific user or all workspace admins.
+   *
+   * Uses the admin client, not createServerClient() — confirmed live that
+   * the previous session/cookie-scoped client silently failed under RLS
+   * whenever this ran from a cron (no logged-in user), swallowing the error
+   * via console.error rather than throwing. Both current callers
+   * (EscalationHandler, ReminderScheduler) are cron-only, and the insert is
+   * already trusted server-side (the caller supplies workspaceId/userId
+   * directly, same as every other cron-driven notification write in this
+   * codebase).
    */
   public static async notify(
     workspaceId: string,
@@ -13,8 +22,8 @@ export class WorkspaceNotificationCenter {
     referenceId?: string,
     referenceType?: string
   ) {
-    const supabase = await createServerClient();
-    
+    const supabase = createAdminClient();
+
     const { error } = await supabase.from('crm_notifications').insert({
       workspace_id: workspaceId,
       user_id: userId,

@@ -12,7 +12,7 @@ const QuickActions = () => {
     { label: 'Send Campaign', icon: <Send size={12} />, link: '/campaigns' },
     { label: 'Book Appointment', icon: <Calendar size={12} />, link: '/calendar' },
     { label: 'New Automation', icon: <Zap size={12} />, link: '/automations' },
-    { label: 'New Proposal', icon: <FileSignature size={12} />, link: '/proposals' },
+    { label: 'New Quote', icon: <FileSignature size={12} />, link: '/quotes/new' },
   ];
 
   return (

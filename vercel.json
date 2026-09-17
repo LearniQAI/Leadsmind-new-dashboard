@@ -86,6 +86,14 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/workers/task-reminders",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/workers/task-escalations",
+      "schedule": "0 6 * * *"
+    },
+    {
       "path": "/api/cron/pre-meeting-brief",
       "schedule": "*/5 * * * *"
     },

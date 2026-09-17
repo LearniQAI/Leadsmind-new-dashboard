@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Globe, Users, Code2, CreditCard, ShieldCheck, Zap, Activity, FileSignature, Target, BarChart3, TrendingUp, Settings as SettingsIcon, Sparkles, Brain, Mail, Wallet, Phone
+  Globe, Users, Code2, CreditCard, ShieldCheck, Zap, Activity, Target, BarChart3, TrendingUp, Settings as SettingsIcon, Sparkles, Brain, Mail, Wallet, Phone
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -105,7 +105,6 @@ export default function SettingsClient({
     { id: 'dashboard', label: 'Dashboard', icon: Zap },
     { id: 'contacts', label: 'Contacts', icon: Users },
     { id: 'pipelines', label: 'Pipelines', icon: Activity },
-    { id: 'proposals', label: 'Proposals', icon: FileSignature },
     { id: 'invoices', label: 'Invoices', icon: CreditCard },
     { id: 'marketing', label: 'Marketing', icon: Target },
     { id: 'commerce', label: 'Commerce & Ops', icon: CreditCard },

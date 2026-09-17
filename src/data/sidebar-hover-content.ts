@@ -48,7 +48,7 @@ export const level1Content: Record<string, Level1Content> = {
       { label: 'Send Campaign', icon: 'Send', href: '/campaigns' },
       { label: 'Book Appointment', icon: 'Calendar', href: '/calendar' },
       { label: 'New Automation', icon: 'Zap', href: '/automations' },
-      { label: 'New Proposal', icon: 'PenSquare', href: '/proposals' },
+      { label: 'New Quote', icon: 'PenSquare', href: '/quotes/new' },
     ],
   },
   marketing: {
@@ -119,8 +119,7 @@ export const level2Content: Record<string, string> = {
   '/lead-finder': 'Search for and add new potential leads to your CRM.',
   '/lead-finder/map': 'See where your leads and customers are located, on a map — useful for spotting patterns and planning field visits.',
   '/pipelines': 'Track deals as they move from first contact through to closed.',
-  '/proposals': 'Create and send proposals to prospects, and track when they’re viewed.',
-  '/quotes': 'Send price quotes and track their status.',
+  '/quotes': 'Create and send price quotes to prospects, track their status, and convert accepted ones to invoices.',
   '/tasks': 'Your to-do list for follow-ups, calls, and reminders tied to a contact or deal.',
   '/projects': 'Manage work for a client after the deal is won.',
   '/automations': 'Set up rules that act automatically — like sending a follow-up when a lead goes quiet.',

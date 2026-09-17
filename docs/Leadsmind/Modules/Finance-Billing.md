@@ -24,7 +24,7 @@ Two distinct concerns:
 - Pages: `src/app/finance/` (`chart-of-accounts`, `connected-accounts`,
   `credit-notes`, `expenses`, `payment-gateways`, `reconciliation`, `reports`,
   `retainers`, `revenue-forecast`, `transactions`), `src/app/invoices`,
-  `src/app/(dashboard)/quotes`, `src/app/portal/quotes`, `src/app/settings/billing`.
+  `src/app/(dashboard)/quotes`, `src/app/settings/billing`.
 - Server actions: `finance.ts`, `chartOfAccounts.ts`, `creditNotes.ts`,
   `retainers.ts`, `quotes.ts`, `expenses.ts`, `refunds.ts` (+ test),
   `stripeConnect.ts`, `paypalConnect.ts`, `funnelOrders.ts`, `order_actions.ts`,

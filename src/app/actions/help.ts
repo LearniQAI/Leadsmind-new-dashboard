@@ -554,17 +554,17 @@ export async function seedHelpArticles() {
         ]
       },
       {
-        slug: 'proposals-esignatures',
+        slug: 'quote-esignatures',
         category: 'CRM Foundations',
-        title: 'Proposals and Electronic Signatures',
-        body_plain: 'Create client proposals from Marketing then Proposals. Proposals are built on the same underlying Quotes and Estimates data as an enhanced quote with an e-signature step, rather than a separate document type. Signing records the signature data, the signer IP address, and an audit-log entry.',
+        title: 'Client Electronic Signatures on Quotes',
+        body_plain: 'Any quote you mark as sent becomes signable by the client from their client portal (Documents > E-Signature Pending Tray). The client reviews the quote and signs by drawing or typing their signature; signing records the signature data, the signer\'s IP address, and an audit-log entry, and moves the quote straight to accepted status so it can be converted to an invoice with one click.',
         content_json: [
-          { step: 1, title: 'Create a Quote', description: 'Build a quote with your line items.' },
-          { step: 2, title: 'Add E-Signature Step', description: 'Send it as a proposal with the signature step enabled.' },
-          { step: 3, title: 'Client Signs', description: 'The client signs; the signature, their IP address, and an audit entry are recorded.' }
+          { step: 1, title: 'Create and Send a Quote', description: 'Build a quote with your line items, then mark it as sent from the Quotes Ledger.' },
+          { step: 2, title: 'Client Signs in the Portal', description: 'The client opens their portal, reviews the quote, and signs by drawing or typing their name.' },
+          { step: 3, title: 'Quote Moves to Accepted', description: 'The signature, their IP address, and an audit entry are recorded, and the quote is marked accepted, ready to convert to an invoice.' }
         ],
         faq_json: [
-          { q: 'Are proposals a different feature from Quotes?', a: 'No, in LeadsMind a Proposal is a Quote taken through an added e-signature step, not a separate document type.' }
+          { q: 'Is a Proposal a different feature from a Quote?', a: 'No — Proposals was retired as a separate feature. Quotes is the single implementation, and e-signature is a capability of any sent quote, not a separate document type.' }
         ]
       },
       {
@@ -614,14 +614,13 @@ export async function seedHelpArticles() {
         slug: 'quotes-ledger-conversion',
         category: 'CRM Foundations',
         title: 'Managing Quotes and Converting to Invoices',
-        body_plain: 'The Quotes Ledger lists every quote with its status (sent, accepted, converted) and a running Pipeline Value total across all open quotes. Quotes and Proposals share the same underlying document and the same ledger page — the "Create Proposal" button starts the same quote-builder, and adding the e-signature step is what turns a quote into what LeadsMind calls a proposal, not a separate feature. An accepted quote can be converted directly into an invoice with one click, which runs as a single database transaction so a quote cannot be converted twice, and you can update a quote\'s status or delete it from the ledger.',
+        body_plain: 'The Quotes Ledger lists every quote with its status (sent, accepted, converted) and a running Pipeline Value total across all open quotes. An accepted quote — whether marked accepted manually or signed by the client in their portal — can be converted directly into an invoice with one click, which runs as a single database transaction so a quote cannot be converted twice, and you can update a quote\'s status or delete it from the ledger.',
         content_json: [
-          { step: 1, title: 'Create a Quote', description: 'Go to Quotes and click Create Proposal to build a quote with client and line items.' },
+          { step: 1, title: 'Create a Quote', description: 'Go to Quotes and click Create Quote to build a quote with client and line items.' },
           { step: 2, title: 'Track Status', description: 'Watch it move through sent, accepted, and converted in the ledger stats row.' },
           { step: 3, title: 'Convert to Invoice', description: 'Once accepted, convert the quote to an invoice directly from the ledger.' }
         ],
         faq_json: [
-          { q: 'What is the difference between a Quote and a Proposal?', a: 'None structurally — a Proposal is a Quote with the optional e-signature step enabled. They live on the same ledger and use the same builder.' },
           { q: 'Can I convert the same quote to an invoice twice?', a: 'No, conversion is a single guarded database operation; re-running it on an already-converted quote returns the existing invoice instead of creating a duplicate.' }
         ]
       },

@@ -17,7 +17,7 @@ export function EscalationPanel({ escalations }: { escalations: any[] }) {
           <div key={escalation.id} className="p-4 bg-white border border-red/30 rounded-2xl flex items-start justify-between">
             <div>
               <h4 className="font-bold text-white text-sm flex items-center gap-2">
-                {escalation.crm_tasks?.title}
+                {escalation.tasks?.title}
               </h4>
               <p className="text-xs text-red mt-2 font-semibold">
                 Reason: {escalation.escalation_reason}

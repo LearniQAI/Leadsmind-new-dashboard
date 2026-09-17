@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useDebounce } from 'react-use';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import { KanbanColumn } from './KanbanColumn';
 import { TasksToolbar } from './TasksToolbar';
@@ -27,15 +28,19 @@ export function TasksBoard() {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'kanban' | 'list' | 'calendar'>('list');
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // Filters
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Filters — applied server-side in getTasks() (real .eq()/.ilike() query
+  // filters, not a client-side .filter() over an already-fetched list), so
+  // every filter combination here re-queries instead of re-slicing local
+  // state.
   const [myTasksOnly, setMyTasksOnly] = useState(false);
   const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
   const [dueTodayOnly, setDueTodayOnly] = useState(false);
   const [highPriorityOnly, setHighPriorityOnly] = useState(false);
-  
+
   const [sortBy, setSortBy] = useState<'newest' | 'priority' | 'due_date'>('newest');
-  
+
   // Drawer & Modal State
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -43,8 +48,19 @@ export function TasksBoard() {
   const [createInitialStatus, setCreateInitialStatus] = useState('todo');
   const [createInitialDate, setCreateInitialDate] = useState<Date | undefined>();
 
+  useDebounce(() => setDebouncedSearch(searchQuery), 300, [searchQuery]);
+
+  const effectiveAssigneeIds = React.useMemo(() => {
+    if (myTasksOnly && user?.id) return Array.from(new Set([...selectedAssignees, user.id]));
+    return selectedAssignees;
+  }, [myTasksOnly, selectedAssignees, user?.id]);
+
   useEffect(() => {
     loadTasks();
+  }, [debouncedSearch, effectiveAssigneeIds, dueTodayOnly, highPriorityOnly, sortBy]);
+
+  useEffect(() => {
+    getUserRole().then((r) => { if (r) setRole(r); });
 
     // Subscribe to Realtime changes
     const supabase = (require('@/lib/supabase/client')).createClient();
@@ -69,12 +85,14 @@ export function TasksBoard() {
 
   async function loadTasks() {
     setLoading(true);
-    const [tasksRes, roleRes] = await Promise.all([
-      getTasks(),
-      getUserRole()
-    ]);
-    if (tasksRes.data) setTasks(tasksRes.data);
-    if (roleRes) setRole(roleRes);
+    const res = await getTasks({
+      search: debouncedSearch || undefined,
+      assigneeIds: effectiveAssigneeIds.length > 0 ? effectiveAssigneeIds : undefined,
+      dueToday: dueTodayOnly || undefined,
+      highPriorityOnly: highPriorityOnly || undefined,
+      sortBy,
+    });
+    if (res.data) setTasks(res.data);
     setLoading(false);
   }
 
@@ -111,53 +129,15 @@ export function TasksBoard() {
   };
 
   const toggleAssigneeFilter = (userId: string) => {
-    setSelectedAssignees(prev => 
+    setSelectedAssignees(prev =>
       prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
     );
   };
 
-  // Processing Pipeline: Filter -> Sort
-  const processedTasks = React.useMemo(() => {
-    let result = tasks.filter(t => {
-      const query = searchQuery.toLowerCase();
-      const matchesSearch = t.title.toLowerCase().includes(query) ||
-                          t.description?.toLowerCase().includes(query) ||
-                          t.assignees?.some((a: any) => 
-                            (a.user?.first_name || '').toLowerCase().includes(query) ||
-                            (a.user?.last_name || '').toLowerCase().includes(query)
-                          );
-      
-      const matchesMyTasks = !myTasksOnly || t.assignees?.some((a: any) => a.user_id === user?.id);
-      
-      const matchesAssignees = selectedAssignees.length === 0 || 
-                              t.assignees?.some((a: any) => selectedAssignees.includes(a.user_id));
-
-      const matchesDueToday = !dueTodayOnly || (
-        t.due_date && new Date(t.due_date).toDateString() === new Date().toDateString()
-      );
-
-      const matchesHighPriority = !highPriorityOnly || t.priority === 'high';
-
-      return matchesSearch && matchesMyTasks && matchesAssignees && matchesDueToday && matchesHighPriority;
-    });
-
-    // Sort
-    return result.sort((a, b) => {
-      if (sortBy === 'newest') {
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      }
-      if (sortBy === 'priority') {
-        const order: Record<string, number> = { high: 3, medium: 2, low: 1 };
-        return order[b.priority] - order[a.priority];
-      }
-      if (sortBy === 'due_date') {
-        if (!a.due_date) return 1;
-        if (!b.due_date) return -1;
-        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
-      }
-      return 0;
-    });
-  }, [tasks, searchQuery, myTasksOnly, selectedAssignees, dueTodayOnly, highPriorityOnly, sortBy, user]);
+  // tasks is already filtered/sorted server-side by getTasks(); views below
+  // read it directly (Kanban still splits by status locally, but over this
+  // already-correct, bounded result set — not an unbounded raw list).
+  const processedTasks = tasks;
 
   if (loading && tasks.length === 0) {
     return <TasksBoardSkeleton />;

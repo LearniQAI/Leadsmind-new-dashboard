@@ -136,33 +136,6 @@ export async function getProducts(_workspaceId?: string) {
  return data || [];
 }
 
-export async function getQuotes(_workspaceId?: string, contactId?: string) {
- let workspaceId: string;
- try {
-  ({ workspaceId } = await requireWorkspaceAccess());
- } catch {
-  return [];
- }
-
- const supabase = await createServerClient();
- let query = supabase
-  .from('quotes')
-  .select('*, contact:contacts(*)')
-  .eq('workspace_id', workspaceId);
-
- if (contactId) {
-  query = query.eq('contact_id', contactId);
- }
-
- const { data, error } = await query.order('created_at', { ascending: false });
-
- if (error) {
-  logger.error({ err: error, workspaceId }, 'finance.quotes.fetch.failed');
-  return [];
- }
- return data || [];
-}
-
 // Columns that actually exist on public.invoices. The invoice form used to
 // spread its raw form state (including a `custom_field_values` key with no
 // matching column) straight into `.insert(data)` — PostgREST rejects any
@@ -322,89 +295,6 @@ export async function updateInvoice(id: string, data: any) {
 
  safeRevalidatePath('/invoices');
  return { success: true, data: invoice };
-}
-
-export async function saveQuote(data: any) {
- const { workspaceId } = await requireWorkspaceAccess();
- const supabase = await createServerClient();
-
- // workspace_id is never trusted from the caller — always the verified one.
- const { workspace_id: _ignoredWorkspaceId, ...rest } = data ?? {};
-
- const { data: quote, error } = await supabase
-  .from('quotes')
-  .insert({ ...rest, workspace_id: workspaceId })
-  .select()
-  .single();
-
- if (error) {
-  logger.error({ err: error, workspaceId }, 'finance.quote.save.failed');
-  const clientError = toClientError(error);
-  return { success: false, error: clientError.error };
- }
- return { success: true, data: quote };
-}
-
-export async function updateQuote(id: string, data: any) {
- const { workspaceId } = await requireWorkspaceAccess();
- const supabase = await createServerClient();
-
- // Never let the caller move a quote into a different workspace.
- const { workspace_id: _ignoredWorkspaceId, ...validData } = data ?? {};
-
- const { data: quote, error } = await supabase
-  .from('quotes')
-  .update(validData)
-  .eq('id', id)
-  .eq('workspace_id', workspaceId)
-  .select()
-  .maybeSingle();
-
- if (error) {
-  logger.error({ err: error, quoteId: id, workspaceId }, 'finance.quote.update.failed');
-  const clientError = toClientError(error);
-  return { success: false, error: clientError.error };
- }
- if (!quote) return { success: false, error: 'Quote not found.' };
- return { success: true, data: quote };
-}
-
-export async function convertToInvoice(quoteId: string) {
- const { workspaceId } = await requireWorkspaceAccess();
- const supabase = await createServerClient();
-
- const { data, error } = await supabase.rpc('convert_quote_to_invoice', {
-  p_quote_id: quoteId,
-  p_workspace_id: workspaceId,
- });
-
- if (error) {
-  logger.error({ err: error, quoteId, workspaceId }, 'finance.quote_to_invoice.rpc.failed');
-  return { success: false, error: error.message || 'Failed to convert quote to invoice.' };
- }
-
- const result = Array.isArray(data) ? data[0] : data;
- if (!result?.success) {
-  return { success: false, error: result?.error_message || 'Failed to convert quote to invoice.' };
- }
-
- if (!result.already_converted) {
-  try {
-   const { data: invoice } = await supabase.from('invoices').select('*').eq('id', result.invoice_id).single();
-   if (invoice) {
-    const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
-    dispatchWebhook(invoice.workspace_id, 'invoice.created', {
-     invoice: { id: invoice.id, number: invoice.invoice_number, amount: invoice.total_amount ?? invoice.amount, currency: invoice.currency || 'ZAR', status: invoice.status, contact_id: invoice.contact_id },
-    }).catch(() => {});
-   }
-  } catch (e) {
-   logger.error({ err: e, invoiceId: result.invoice_id }, 'finance.quote_to_invoice.webhook_dispatch.failed');
-  }
- }
-
- safeRevalidatePath('/invoices');
- safeRevalidatePath('/quotes');
- return { success: true, data: { id: result.invoice_id } };
 }
 
 export async function deleteInvoice(id: string) {
@@ -651,38 +541,6 @@ export async function markInvoicePaidManually(id: string, reason: string) {
   await runInvoicePaidSideEffects(id, data);
 
   safeRevalidatePath('/invoices');
-  return { success: true, data };
-}
-
-export async function deleteQuote(id: string) {
- const { workspaceId } = await requireWorkspaceAccess();
- const supabase = await createServerClient();
- const { data, error } = await supabase.from('quotes').delete().eq('id', id).eq('workspace_id', workspaceId).select('id').maybeSingle();
- if (error) {
-  logger.error({ err: error, workspaceId, quoteId: id }, 'finance.quote.delete.failed');
-  return { success: false, error: 'Failed to delete quote.' };
- }
-  if (!data) return { success: false, error: 'Quote not found.' };
-  safeRevalidatePath('/quotes');
-  return { success: true };
-}
-
-export async function updateQuoteStatus(id: string, status: string) {
- const { workspaceId } = await requireWorkspaceAccess();
- const supabase = await createServerClient();
- const { data, error } = await supabase
-  .from('quotes')
-  .update({ status, updated_at: new Date().toISOString() })
-  .eq('id', id)
-  .eq('workspace_id', workspaceId)
-  .select()
-  .maybeSingle();
- if (error) {
-  logger.error({ err: error, quoteId: id, workspaceId }, 'finance.quote_status.update.failed');
-  return { success: false, error: 'Failed to update quote status.' };
- }
-  if (!data) return { success: false, error: 'Quote not found.' };
-  safeRevalidatePath('/quotes');
   return { success: true, data };
 }
 

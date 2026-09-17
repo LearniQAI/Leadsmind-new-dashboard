@@ -25,15 +25,17 @@ export default async function PortalDocumentsPage() {
 
   const docs = dbDocs || [];
 
-  // 2. Fetch proposals linked to this contact that are pending signature
-  const { data: dbProposals } = await supabase
-    .from('proposals')
+  // 2. Fetch quotes linked to this contact that are pending signature — a
+  // quote is signable once it has been sent, up until the client signs it
+  // (which moves it to 'accepted').
+  const { data: dbSignableQuotes } = await supabase
+    .from('quotes')
     .select('*')
     .eq('contact_id', contact.id)
-    .neq('status', 'signed')
+    .eq('status', 'sent')
     .order('created_at', { ascending: false });
 
-  const proposals = dbProposals || [];
+  const signableQuotes = dbSignableQuotes || [];
 
   return (
     <MetaData pageTitle="My Documents">
@@ -49,11 +51,11 @@ export default async function PortalDocumentsPage() {
         </div>
 
         {/* Unified Documents & E-Sign Client Dashboard */}
-        <DocumentsClient 
-          initialDocs={docs} 
-          initialProposals={proposals} 
-          contactId={contact.id} 
-          workspaceId={workspace.id} 
+        <DocumentsClient
+          initialDocs={docs}
+          initialQuotes={signableQuotes}
+          contactId={contact.id}
+          workspaceId={workspace.id}
         />
       </div>
     </MetaData>

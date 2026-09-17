@@ -22,14 +22,14 @@ export default async function QuotesPage() {
                 Quotes <span className="text-dash-accent">Ledger</span>
               </h1>
               <p className="text-[12px] !text-dash-textMuted font-medium mt-1">
-                Proposal tracking & conversion pipeline
+                Quote tracking & conversion pipeline
               </p>
             </div>
             <div className="flex gap-3">
               <Link href="/quotes/new">
                 <DashButton variant="primary">
                   <Plus className="h-4 w-4" />
-                  <span>Create Proposal</span>
+                  <span>Create Quote</span>
                 </DashButton>
               </Link>
             </div>
@@ -51,7 +51,7 @@ export default async function QuotesPage() {
                 ))}
              </div>
 
-             <QuoteMasterLedger quotes={quotes} />
+             <QuoteMasterLedger quotes={quotes} workspaceId={workspaceId!} />
           </div>
         </div>
       </Wrapper>

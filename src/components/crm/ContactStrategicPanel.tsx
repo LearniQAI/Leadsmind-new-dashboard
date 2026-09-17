@@ -55,7 +55,7 @@ export function ContactStrategicPanel({ contact }: ContactStrategicPanelProps) {
           <div className="space-y-2">
             <Button variant="ghost" className="w-full justify-start gap-3 h-10 bg-dash-bg border border-dash-border text-dash-text hover:bg-dash-border/40 text-[12px] font-semibold font-dm-sans rounded-[8px]">
               <i className="fa-solid fa-file-contract text-dash-accent text-[13px]"></i>
-              Send Proposal
+              Send Quote
             </Button>
             <Button variant="ghost" className="w-full justify-start gap-3 h-10 bg-dash-bg border border-dash-border text-dash-text hover:bg-dash-border/40 text-[12px] font-semibold font-dm-sans rounded-[8px]">
               <i className="fa-solid fa-calendar-check text-dash-accent text-[13px]"></i>

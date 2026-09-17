@@ -34,6 +34,21 @@ interface TasksToolbarProps {
   onHighPriorityToggle: (active: boolean) => void;
 }
 
+// Disambiguates workspace members who share the same first name (confirmed
+// live: two real, distinct members can both be "Zain") — falls back to a
+// last initial, then email, only when a real collision exists so the common
+// case still shows a plain first name.
+function getMemberLabel(member: any, members: any[]) {
+  const firstName = member.user?.first_name || 'Unknown';
+  const collides = members.filter((m) => (m.user?.first_name || 'Unknown') === firstName).length > 1;
+  if (!collides) return firstName;
+
+  const lastInitial = member.user?.last_name?.[0];
+  if (lastInitial) return `${firstName} ${lastInitial}.`;
+
+  return member.user?.email ? `${firstName} (${member.user.email})` : firstName;
+}
+
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest first' },
   { value: 'priority', label: 'Highest priority' },
@@ -220,7 +235,7 @@ export function TasksToolbar({
                       <AvatarImage src={member.user?.avatar_url} />
                       <AvatarFallback className="text-[7px] bg-dash-border/60">{member.user?.first_name?.[0]}</AvatarFallback>
                     </Avatar>
-                    <span className="text-[11px] font-bold">{member.user?.first_name}</span>
+                    <span className="text-[11px] font-bold">{getMemberLabel(member, members)}</span>
                   </button>
                 );
               })}

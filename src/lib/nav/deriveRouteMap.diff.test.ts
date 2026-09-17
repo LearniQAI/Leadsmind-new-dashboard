@@ -47,8 +47,12 @@ function oldRequiredPermission(pathname: string): string | undefined {
 describe("deriveRouteMap vs. old hardcoded routeMap", () => {
   // /hr excluded: dead entry, DefaultWrapper's earlier /hr branch returns before routeMap
   // is consulted. /blog and /community are prefix-only keys with no page at the bare path —
-  // tested via their real routes (/blog/manage, /community/forums) instead.
-  const oldMapKeys = Object.keys(OLD_ROUTE_MAP).filter((k) => !["/hr", "/blog", "/community"].includes(k));
+  // tested via their real routes (/blog/manage, /community/forums) instead. /proposals
+  // excluded: the Proposals feature was removed entirely (consolidated into Quotes, which
+  // was a drifted duplicate of the same `quotes` table) — dashboard-nav.ts no longer has a
+  // /proposals entry, so getRequiredPermission() correctly returns undefined for it now,
+  // unlike this frozen OLD_ROUTE_MAP snapshot which still reflects pre-removal reality.
+  const oldMapKeys = Object.keys(OLD_ROUTE_MAP).filter((k) => !["/hr", "/blog", "/community", "/proposals"].includes(k));
 
   it.each(oldMapKeys)("agrees with the old routeMap for %s", (path) => {
     expect(getRequiredPermission(path)).toBe(oldRequiredPermission(path));

@@ -152,11 +152,11 @@ of the deployable app, and both are gitignored.
 
 ### Finance
 - **Invoices** (`src/app/invoices`), **Quotes** (`src/app/(dashboard)/quotes`,
-  `src/app/actions/quotes.ts`, with a customer-facing view at
-  `src/app/portal/quotes`), **Credit Notes**, **Retainers**, and **Chart of
-  Accounts** each have a dedicated page/route and a dedicated server-action
-  file (`creditNotes.ts`, `retainers.ts`, `chartOfAccounts.ts`) — built, not
-  database placeholders.
+  `src/app/actions/quotes.ts`, with client e-signature via the portal's
+  Documents > E-Signature Pending Tray), **Credit Notes**, **Retainers**, and
+  **Chart of Accounts** each have a dedicated page/route and a dedicated
+  server-action file (`creditNotes.ts`, `retainers.ts`, `chartOfAccounts.ts`)
+  — built, not database placeholders.
 - Also present under `src/app/finance/`: expense tracking, connected
   accounts, reconciliation, reports, and transactions.
 
