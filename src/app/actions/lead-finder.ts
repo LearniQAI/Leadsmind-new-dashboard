@@ -144,6 +144,7 @@ export async function saveLeadSearchAndResults(
         address: r.address,
         phone: r.phone,
         website: r.website,
+        email: r.email || null,
         rating: r.rating,
         review_count: r.review_count,
         tags: r.tags,
@@ -171,6 +172,34 @@ export async function saveLeadSearchAndResults(
       if (resultsError) {
         logger.error({ err: resultsError, workspaceId, searchId: searchRecord.id }, 'lead_finder.results.save.failed');
         return { success: false, error: 'Failed to save results.' };
+      }
+
+      // Track scrape-only email hit rate per workspace — the real data
+      // needed to later decide whether a paid enrichment API is worth it.
+      // Never blocks the save on failure; it's a counter, not a source of
+      // truth for lead data.
+      const attemptedCount = resultsToInsert.filter((r) => r.website).length;
+      const foundCount = resultsToInsert.filter((r) => r.email).length;
+      if (attemptedCount > 0) {
+        try {
+          const { data: existingStats } = await supabase
+            .from('lead_finder_email_scrape_stats')
+            .select('attempted_count, found_count')
+            .eq('workspace_id', workspaceId)
+            .maybeSingle();
+
+          await supabase.from('lead_finder_email_scrape_stats').upsert(
+            {
+              workspace_id: workspaceId,
+              attempted_count: (existingStats?.attempted_count || 0) + attemptedCount,
+              found_count: (existingStats?.found_count || 0) + foundCount,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'workspace_id' }
+          );
+        } catch (statsError) {
+          logger.error({ err: statsError, workspaceId }, 'lead_finder.email_scrape_stats.update.failed');
+        }
       }
     }
 
@@ -241,7 +270,11 @@ export async function addLeadsToCRM(leads: any[], tags: string[]) {
       workspace_id: workspaceId,
       first_name: lead.business_name,
       last_name: '', // Lead Finder leads are businesses, not people; contacts.last_name is NOT NULL.
-      email: null, // Google Places does not provide email addresses.
+      // Google Places itself has no email field; this is whatever the
+      // website-scrape found (or null). Never pass '' here — contacts has
+      // a UNIQUE(workspace_id, email) constraint that '' would collide on
+      // across leads, while NULL does not (see commit 4b24fa37).
+      email: lead.email || null,
       phone: lead.phone,
       source: 'Lead Finder',
       tags: [...(lead.smart_tags || []), ...(lead.tags || []), ...tags, 'Lead Finder'],
@@ -288,6 +321,35 @@ export async function addLeadsToCRM(leads: any[], tags: string[]) {
     failedCount,
     error: errors[0],
     errors,
+  };
+}
+
+export async function getEmailScrapeStats() {
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) return { success: false, error: 'Unauthorized' };
+
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+    .from('lead_finder_email_scrape_stats')
+    .select('attempted_count, found_count, updated_at')
+    .eq('workspace_id', workspaceId)
+    .maybeSingle();
+
+  if (error) {
+    logger.error({ err: error, workspaceId }, 'lead_finder.email_scrape_stats.fetch.failed');
+    return { success: false, error: 'Failed to fetch email scrape stats.' };
+  }
+
+  const attempted = data?.attempted_count || 0;
+  const found = data?.found_count || 0;
+  return {
+    success: true,
+    data: {
+      attempted,
+      found,
+      hitRate: attempted > 0 ? found / attempted : 0,
+      updatedAt: data?.updated_at || null,
+    },
   };
 }
 

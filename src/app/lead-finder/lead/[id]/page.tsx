@@ -5,7 +5,7 @@ import { LeadQualificationPanel } from '@/components/lead-finder/LeadQualificati
 import { LeadTagManager } from '@/components/lead-finder/LeadTagManager';
 import { LeadCRMConnector } from '@/components/lead-finder/LeadCRMConnector';
 import { ContactDiscoveryPanel } from '@/components/lead-finder/ContactDiscoveryPanel';
-import { ArrowLeft, Building2, MapPin, Phone, Globe, Star, Users, Activity, Lightbulb } from 'lucide-react';
+import { ArrowLeft, Building2, MapPin, Phone, Mail, Globe, Star, Users, Activity, Lightbulb } from 'lucide-react';
 import { FaLinkedin as Linkedin, FaFacebook as Facebook } from 'react-icons/fa6';
 import Link from 'next/link';
 
@@ -80,6 +80,12 @@ export default async function LeadWorkspacePage({ params }: { params: { id: stri
                       <div className="flex items-center gap-3 !text-dash-textMuted text-sm">
                         <Phone className="text-dash-accent shrink-0" size={18} />
                         <span>{lead.phone}</span>
+                      </div>
+                    )}
+                    {lead.email && (
+                      <div className="flex items-center gap-3 !text-dash-textMuted text-sm">
+                        <Mail className="text-dash-accent shrink-0" size={18} />
+                        <a href={`mailto:${lead.email}`} className="hover:!text-dash-text transition-colors truncate">{lead.email}</a>
                       </div>
                     )}
                     {lead.website && (

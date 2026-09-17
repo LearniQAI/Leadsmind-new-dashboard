@@ -165,7 +165,7 @@ export function OpportunityModal({
                   {opportunity ? <PenSquare size={20} /> : <Rocket size={20} />}
                 </div>
                 <div>
-                  <DialogTitle className="text-[18px] font-bold font-display tracking-tight">
+                  <DialogTitle className="text-[18px] font-bold tracking-tight">
                     {opportunity ? 'Edit Strategic' : 'Launch New'} <span className="text-dash-accent">Deal</span>
                   </DialogTitle>
                   <p className="text-[10px] !text-dash-textMuted font-medium tracking-[0.8px] mt-0.5">
@@ -212,7 +212,7 @@ export function OpportunityModal({
                     value={formData.value}
                     onChange={(e) => setFormData(prev => ({ ...prev, value: e.target.value }))}
                     placeholder="0.00"
-                    className="w-full h-11 bg-dash-surface border border-dash-border rounded-[10px] pl-9 pr-3 text-[15px] !text-amber font-display font-bold focus:outline-none focus:border-amber/50 transition-all shadow-inner"
+                    className="w-full h-11 bg-dash-surface border border-dash-border rounded-[10px] pl-9 pr-3 text-[15px] !text-amber font-bold tabular-nums focus:outline-none focus:border-amber/50 transition-all shadow-inner"
                   />
                 </div>
               </div>

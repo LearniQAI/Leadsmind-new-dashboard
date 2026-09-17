@@ -134,7 +134,11 @@ export const Viewport = ({ children }: { children?: React.ReactNode }) => {
     // inline style still makes it fill the visible area when content is
     // short), so tall pages actually overflow here — where overflow-auto
     // can do its job — instead of being clipped one level too early.
-    "flex-1 min-h-0 overflow-auto w-full flex items-start justify-center p-3 md:p-6 transition-all duration-300 ease-in-out motion-reduce:transition-none light-scrollbar"
+    // scroll-smooth: this div (not .node-canvas-area, which is overflow-hidden for its
+    // rounded-corner frame) is the real scrolling ancestor for both the live editor canvas and
+    // in-app Preview — a Navbar/Footer link resolving to `#section-id` jumps here instantly
+    // without it, since native anchor scrolling has no smooth-scroll by default.
+    "flex-1 min-h-0 overflow-auto w-full flex items-start justify-center p-3 md:p-6 transition-all duration-300 ease-in-out motion-reduce:transition-none light-scrollbar scroll-smooth motion-reduce:scroll-auto"
    )}>
     <div
      className="node-canvas-area bg-[var(--theme-bg)] transition-all duration-300 ease-in-out motion-reduce:transition-none rounded-[20px] overflow-hidden shadow-[0_20px_60px_rgba(15,23,42,0.08)] ring-1 ring-black/5"

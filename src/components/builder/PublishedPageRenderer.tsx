@@ -38,13 +38,26 @@ export default function PublishedPageRenderer({
    --font-heading: '${headingFont}', sans-serif;
    --font-body: '${bodyFont}', sans-serif;
   }
-  
+
   h1, h2, h3, h4, h5, h6 {
    font-family: var(--font-heading) !important;
   }
-  
+
   p, span, a, button, input, textarea {
    font-family: var(--font-body) !important;
+  }
+
+  /* Navbar/Footer links resolve a section target to a plain #id anchor href (see
+     resolveLink's 'section' case) — native anchor navigation jumps instantly with no smooth
+     scroll unless the document itself opts in. Scoped to this published-page renderer only
+     (not the dashboard's own globals.css), since this component is the one place that owns
+     the real page scroll for a visitor. Gated behind prefers-reduced-motion like every other
+     animation in this codebase (motion-reduce:transition-none, used throughout the builder
+     components) — smooth scrolling is a motion effect too. */
+  @media (prefers-reduced-motion: no-preference) {
+   html {
+    scroll-behavior: smooth;
+   }
   }
  `;
 

@@ -79,6 +79,25 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       previous_stage_id: current.stage_id,
       new_stage_id: updates.stage_id,
     }))
+    // This route dispatched the webhook but never published the internal
+    // automation-trigger event — the same "one path fires, another
+    // silently doesn't" bug confirmed live in updateDealStage
+    // (src/app/actions/pipelines.ts). A stage move made through this
+    // public API silently never fired an "Opportunity stage changed"
+    // automation. current.contact_id may be null (contact is optional on
+    // a deal); publishEvent requires a real contact id, so this only
+    // fires when one is present — same guard the other stage-change paths use.
+    if (current.contact_id) {
+      events.push(
+        import('@/lib/events/EventBus').then(({ publishEvent }) =>
+          publishEvent(auth.workspaceId, 'opportunity_stage_changed', current.contact_id, {
+            dealId: params.id,
+            stageId: updates.stage_id,
+            previousStageId: current.stage_id,
+          })
+        )
+      )
+    }
   }
   if ('status' in updates && updates.status !== current.status) {
     if (updates.status === 'won') events.push(dispatchWebhook(auth.workspaceId, 'deal.won', { deal: updated }))

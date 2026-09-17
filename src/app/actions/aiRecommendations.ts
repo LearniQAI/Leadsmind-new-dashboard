@@ -64,10 +64,14 @@ export async function acceptAiRecommendation(id: string) {
           tag_type: 'ai_smart',
           visibility: 'team',
           confidence_score: rec.confidence_score,
+          created_by: userId,
         })
         .select('id')
         .single();
-      if (createErr) return { success: false, error: 'Failed to create suggested tag' };
+      if (createErr) {
+        logger.error({ err: createErr, workspaceId, recommendationId: id }, 'ai_recommendations.tag.create.failed');
+        return { success: false, error: 'Failed to create suggested tag' };
+      }
       tagId = createdTag.id;
     }
   }
@@ -75,8 +79,9 @@ export async function acceptAiRecommendation(id: string) {
 
   const { error: assignErr } = await supabase
     .from('tag_assignments')
-    .insert({ workspace_id: workspaceId, tag_id: tagId, entity_type: rec.entity_type, entity_id: rec.entity_id, assigned_by: null });
+    .insert({ workspace_id: workspaceId, tag_id: tagId, entity_type: rec.entity_type, entity_id: rec.entity_id, assigned_by: userId });
   if (assignErr && assignErr.code !== '23505') {
+    logger.error({ err: assignErr, workspaceId, recommendationId: id }, 'ai_recommendations.tag_assignment.create.failed');
     return { success: false, error: 'Failed to assign tag' };
   }
 

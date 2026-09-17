@@ -5,6 +5,7 @@ export interface LeadData {
   review_count?: number;
   website?: string;
   phone?: string;
+  email?: string | null;
   linkedin_url?: string;
   facebook_url?: string;
   employee_size?: string;

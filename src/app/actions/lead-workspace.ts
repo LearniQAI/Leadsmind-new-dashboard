@@ -5,6 +5,7 @@ import { getCurrentWorkspaceId } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/shared/logger';
 import { syncContactTagsToRelational } from '@/modules/tags/sync/syncContactTags';
+import { refreshPlacesDataIfStale } from '@/lib/lead-finder/PlacesRefreshService';
 
 export async function getLeadDetails(leadId: string) {
   const supabase = await createServerClient();
@@ -12,7 +13,7 @@ export async function getLeadDetails(leadId: string) {
   if (!workspaceId) return { success: false, error: 'Unauthorized' };
 
   // Get Lead
-  const { data: lead, error: leadError } = await supabase
+  const { data: leadRow, error: leadError } = await supabase
     .from('lead_finder_results')
     .select(`
       *,
@@ -25,6 +26,14 @@ export async function getLeadDetails(leadId: string) {
     logger.error({ err: leadError, leadId }, 'lead_workspace.lead_details.fetch.failed');
     return { success: false, error: 'Failed to fetch lead details.' };
   }
+
+  // Google's Places API policy doesn't allow storing name/address/phone/
+  // rating/website indefinitely — refresh via the stored place_id if this
+  // lead's cached data is past the compliant window. Only fires on this
+  // single-lead detail view (bounded to at most one billed call per lead
+  // per window), never on the results grid where dozens of leads render
+  // at once.
+  const lead = await refreshPlacesDataIfStale(supabase, leadRow);
 
   // Get Notes — no FK from lead_notes.user_id to a PostgREST-embeddable table
   // (it points at auth.users), so an `auth_user:user_id(email)` embed errors the
@@ -200,7 +209,10 @@ export async function pushLeadToPipeline(leadId: string, pipelineId: string, sta
       workspace_id: workspaceId,
       first_name: lead.business_name || 'Unknown Company',
       last_name: null,
-      email: null,
+      // Same null-not-empty-string rule as addLeadsToCRM in lead-finder.ts:
+      // contacts has UNIQUE(workspace_id, email), so '' would collide
+      // across leads while NULL does not.
+      email: lead.email || null,
       phone: lead.phone || null,
       source: 'Lead Finder',
       tags: newContactTags

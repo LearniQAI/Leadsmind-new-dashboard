@@ -50,7 +50,12 @@ export function resolveLink(link: any, context?: { basePath?: string, websiteId?
       const pathValue = value === 'home' ? '' : `/${value}`;
       return `${basePath}${pathValue}` || '/';
     case 'section':
-      return `#${value}`;
+      // LinkSelector's own section-type UI stores `value` WITH a leading `#` already
+      // (`'#' + e.target.value.replace('#', '')`) — blindly prepending another one here
+      // produced `href="##id"` for any section link actually created through that UI.
+      // Stripping first makes this correct regardless of whether `value` already has the
+      // leading `#` (LinkSelector-authored) or not (a template's own plain-string convention).
+      return `#${String(value || '').replace(/^#+/, '')}`;
     case 'action':
       if (value === 'submit') return 'javascript:void(0)'; // Handle via component logic
       if (value === 'next') return '/next-step'; // Mock for now

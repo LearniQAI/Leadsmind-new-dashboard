@@ -6,8 +6,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Opportunity } from '@/types/crm';
-import { cn } from '@/lib/utils';
-import { CurrencyValue } from '@/components/dashboard-ui';
+import { cn, formatCurrency } from '@/lib/utils';
 import UserAvatar from '@/components/ui/UserAvatar';
 import {
   DropdownMenu,
@@ -62,8 +61,8 @@ export function OpportunityCard({ opportunity, index, onClick, onSaved }: Opport
           {...provided.dragHandleProps}
           onClick={onClick}
           className={cn(
-            "group relative bg-white border border-dash-border rounded-xl p-3.5 mb-2.5 transition-all select-none cursor-pointer hover:border-dash-accent/40",
-            snapshot.isDragging ? "shadow-xl border-dash-accent/50 ring-1 ring-dash-accent/20 scale-[1.02]" : "hover:shadow-sm"
+            "group relative bg-white border border-dash-border rounded-2xl p-4 mb-3 transition-all select-none cursor-pointer hover:border-dash-accent/40",
+            snapshot.isDragging ? "shadow-xl border-dash-accent/50 ring-1 ring-dash-accent/20 scale-[1.02]" : "shadow-[0_1px_2px_rgba(15,23,42,0.04)] hover:shadow-[0_4px_12px_rgba(15,23,42,0.08)] hover:-translate-y-0.5 motion-reduce:hover:translate-y-0"
           )}
         >
           <DropdownMenu>
@@ -110,7 +109,7 @@ export function OpportunityCard({ opportunity, index, onClick, onSaved }: Opport
                   muted, both halves matched in size/weight so they read as
                   one cohesive metadata line rather than two competing ones. */}
               <div className="flex items-center gap-1.5 mt-1.5">
-                <CurrencyValue value={opportunity.value} className="text-[11px] font-medium !text-dash-textMuted" />
+                <span className="text-[11px] font-medium !text-dash-textMuted tabular-nums">{formatCurrency(opportunity.value)}</span>
                 <span className="text-[11px] font-medium !text-dash-textMuted">
                   · {formatDistanceToNow(new Date(opportunity.updated_at || opportunity.created_at), { addSuffix: true })}
                 </span>

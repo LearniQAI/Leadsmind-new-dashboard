@@ -1,5 +1,6 @@
 import { LinkedInEnrichmentService } from './LinkedInEnrichmentService';
 import { FacebookEnrichmentService } from './FacebookEnrichmentService';
+import { WebsiteEmailScraper } from './WebsiteEmailScraper';
 import { LeadScoringEngine, LeadData } from './LeadScoringEngine';
 
 export class EnrichmentEngine {
@@ -10,14 +11,16 @@ export class EnrichmentEngine {
   public static async enrichLead(baseLead: LeadData) {
     try {
       // Run enrichment in parallel
-      const [linkedinData, facebookData] = await Promise.all([
+      const [linkedinData, facebookData, scrapedEmail] = await Promise.all([
         LinkedInEnrichmentService.enrich(baseLead.business_name, baseLead.website),
-        FacebookEnrichmentService.enrich(baseLead.business_name, baseLead.category)
+        FacebookEnrichmentService.enrich(baseLead.business_name, baseLead.category),
+        WebsiteEmailScraper.scrape(baseLead.website)
       ]);
 
       // Safely merge, ensuring Google data takes precedence for core fields
       const enrichedLead = {
         ...baseLead,
+        email: scrapedEmail || null,
         linkedin_url: linkedinData?.linkedin_url || null,
         facebook_url: facebookData?.facebook_url || null,
         employee_size: linkedinData?.employee_size || 'Unknown',

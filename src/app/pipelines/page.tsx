@@ -43,23 +43,32 @@ export default async function PipelinesPage({
   const [stagesResult, opportunitiesResult, contactsRes, members] = await Promise.all([
     getPipelineStages(activePipelineId),
     getPipelineOpportunities(activePipelineId),
-    supabase.from('contacts').select('*').eq('workspace_id', workspaceId).order('first_name'),
+    // The "Associated Entity" field in OpportunityModal is a plain native
+    // <select>, not a search-as-you-type combobox — a hard cap here is the
+    // fix that actually matches that UI (there's no "load more" affordance
+    // a flat <select> could offer). A workspace with more than 500 contacts
+    // won't see the rest in this dropdown; making that complete would mean
+    // replacing the select with a real search combobox, a separate,
+    // larger UI change outside this fix's scope.
+    supabase.from('contacts').select('*').eq('workspace_id', workspaceId).order('first_name').limit(500),
     getWorkspaceMembers()
   ]);
 
   const stages = (stagesResult as any).success ? (stagesResult as any).data || [] : [];
   const opportunities = (opportunitiesResult as any).success ? (opportunitiesResult as any).data || [] : [];
+  const stageCounts: Record<string, number> = (opportunitiesResult as any).stageCounts || {};
   const contacts = contactsRes.data || [];
 
   return (
     <MetaData pageTitle={`Sales Pipeline | ${activePipeline.name}`}>
       <Wrapper>
         <div className="flex flex-col h-screen bg-white overflow-hidden">
-          <PipelinesClient 
+          <PipelinesClient
             pipelines={pipelines}
             activePipeline={activePipeline}
             initialStages={stages}
             initialOpportunities={opportunities}
+            initialStageCounts={stageCounts}
             contacts={contacts}
             members={members}
           />
