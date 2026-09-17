@@ -21,11 +21,11 @@ export function TasksCalendarView({ tasks, onTaskClick, onDateClick }: TasksCale
     return (
       <div className="flex items-center justify-between px-6 mb-8">
         <div className="flex flex-col">
-          <h2 className="text-2xl font-bold !text-dash-text">
+          <h2 className="text-2xl font-bold !text-dash-text tracking-tight">
             {format(currentMonth, 'MMMM yyyy')}
           </h2>
-          <span className="text-[10px] font-black tracking-[0.2em] !text-dash-textMuted">
-            Task Scheduling Matrix
+          <span className="text-[12px] font-medium !text-dash-textMuted">
+            Tasks by due date
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -37,7 +37,7 @@ export function TasksCalendarView({ tasks, onTaskClick, onDateClick }: TasksCale
           </button>
           <button
             onClick={() => setCurrentMonth(new Date())}
-            className="px-4 h-10 rounded-xl bg-dash-surface border border-dash-border text-[11px] font-black tracking-widest !text-dash-textMuted hover:!text-dash-text transition-all"
+            className="px-4 h-10 rounded-xl bg-dash-surface border border-dash-border text-[12px] font-semibold !text-dash-textMuted hover:!text-dash-text transition-all"
           >
             Today
           </button>
@@ -58,7 +58,7 @@ export function TasksCalendarView({ tasks, onTaskClick, onDateClick }: TasksCale
     for (let i = 0; i < 7; i++) {
       days.push(
         <div key={i} className="py-4 text-center">
-          <span className="text-[10px] font-black tracking-[0.2em] !text-dash-textMuted">
+          <span className="text-[11px] font-semibold tracking-wide !text-dash-textMuted">
             {date[i]}
           </span>
         </div>
@@ -147,7 +147,7 @@ export function TasksCalendarView({ tasks, onTaskClick, onDateClick }: TasksCale
 
   return (
     <div className="w-full px-6 pb-20 overflow-x-auto custom-scrollbar">
-      <div className="min-w-[1000px] bg-dash-surface border border-dash-border rounded-3xl overflow-hidden shadow-2xl">
+      <div className="min-w-[1000px] bg-dash-surface border border-dash-border rounded-3xl overflow-hidden shadow-sm">
         {renderHeader()}
         {renderDays()}
         {renderCells()}

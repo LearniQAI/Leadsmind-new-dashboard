@@ -100,7 +100,7 @@ export function TasksToolbar({
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 !text-dash-textMuted" />
             <input
               type="text"
-              placeholder="Search objectives, assets, or personnel..."
+              placeholder="Search tasks or people..."
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               className="w-full h-10 bg-white border border-dash-border rounded-xl py-2 pl-10 pr-4 text-[13px] font-semibold !text-dash-text placeholder:!text-dash-textMuted placeholder:font-medium focus:outline-none focus:border-dash-accent focus:ring-4 focus:ring-dash-accent/10 transition-all motion-reduce:transition-none"
@@ -179,7 +179,7 @@ export function TasksToolbar({
             )}
           >
             <Clock className="w-3 h-3" />
-            <span className="text-[11px] font-bold">Due today</span>
+            <span className="text-[11px] font-semibold">Due today</span>
           </button>
 
           <button
@@ -192,14 +192,14 @@ export function TasksToolbar({
             )}
           >
             <AlertCircle className="w-3 h-3" />
-            <span className="text-[11px] font-bold">High priority</span>
+            <span className="text-[11px] font-semibold">High priority</span>
           </button>
 
           <div className="w-[1px] h-4 bg-dash-border hidden md:block" />
 
-          {/* Personnel Hub */}
+          {/* People filter */}
           <div className="flex items-center gap-3">
-            <span className="text-[11px] font-bold !text-dash-textMuted">Personnel:</span>
+            <span className="text-[11px] font-semibold !text-dash-textMuted">People:</span>
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-[300px] xl:max-w-md py-1">
               <button
                 onClick={() => {
@@ -209,7 +209,7 @@ export function TasksToolbar({
                   });
                 }}
                 className={cn(
-                  "px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors motion-reduce:transition-none border",
+                  "px-3 py-1.5 rounded-full text-[11px] font-semibold transition-colors motion-reduce:transition-none border",
                   selectedAssignees.length === 0 && !myTasksActive
                     ? "bg-dash-accent/10 border-dash-accent/20 text-dash-accent"
                     : "bg-dash-surface border-dash-border !text-dash-textMuted hover:!text-dash-text"
@@ -235,7 +235,7 @@ export function TasksToolbar({
                       <AvatarImage src={member.user?.avatar_url} />
                       <AvatarFallback className="text-[7px] bg-dash-border/60">{member.user?.first_name?.[0]}</AvatarFallback>
                     </Avatar>
-                    <span className="text-[11px] font-bold">{getMemberLabel(member, members)}</span>
+                    <span className="text-[11px] font-semibold">{getMemberLabel(member, members)}</span>
                   </button>
                 );
               })}
@@ -244,12 +244,12 @@ export function TasksToolbar({
         </div>
 
         <div className="flex items-center gap-4">
-          <span className="text-[11px] font-semibold !text-dash-textMuted">
-            Showing {selectedAssignees.length > 0 || searchQuery ? 'Tactical' : 'Global'} view
+          <span className="text-[11px] font-medium !text-dash-textMuted">
+            {selectedAssignees.length > 0 || searchQuery ? 'Filtered results' : 'All tasks'}
           </span>
           <button className="flex items-center gap-2 !text-dash-textMuted hover:!text-dash-text transition-colors">
             <Filter className="w-3 h-3" />
-            <span className="text-[11px] font-bold">Filters</span>
+            <span className="text-[11px] font-semibold">Filters</span>
           </button>
         </div>
       </div>

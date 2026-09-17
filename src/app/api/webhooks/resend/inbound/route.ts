@@ -203,6 +203,9 @@ export async function POST(req: NextRequest) {
         if (!process.env.TWILIO_PHONE_NUMBER) {
            throw new Error('TWILIO_PHONE_NUMBER is missing from Vercel Environment Variables');
         }
+        // Deliberately omits `config` — this bridge relays an inbound email
+        // to a phone number, not a workspace-scoped CRM action, so it sends
+        // via the platform-level Twilio account (see src/lib/sms.ts).
         const smsResult = await sendSMS({ to: targetPhone, message: forcedMessage });
         smsSid = smsResult.sid;
       } catch (smsErr: any) {

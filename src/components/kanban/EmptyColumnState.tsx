@@ -20,10 +20,10 @@ export function EmptyColumnState({ onAddTask }: EmptyColumnStateProps) {
         variant="ghost"
         size="sm"
         onClick={onAddTask}
-        className="h-8 text-[10px] tracking-widest font-black !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface gap-2"
+        className="h-8 text-[12px] font-semibold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface gap-2"
       >
         <Plus className="w-3 h-3" />
-        Add Task
+        Add task
       </Button>
     </div>
   );

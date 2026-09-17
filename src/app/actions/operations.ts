@@ -55,7 +55,7 @@ export async function getOrders() {
 // remaining callers of this file's copy before deleting.
 
 // PROJECTS & SUPPORT
-export async function getProjects() {
+export async function getProjects(page: number = 0, pageSize: number = 30) {
  let workspaceId: string | null = null;
  try {
   // Previously read workspaceId straight off the caller-trusted
@@ -69,11 +69,14 @@ export async function getProjects() {
   workspaceId = access.workspaceId;
 
   const supabase = await createServerClient();
-  const { data, error } = await supabase
+  const from = page * pageSize;
+  const to = from + pageSize - 1;
+  const { data, error, count } = await supabase
    .from('projects')
-   .select('*')
+   .select('*', { count: 'exact' })
    .eq('workspace_id', workspaceId)
-   .order('created_at', { ascending: false });
+   .order('created_at', { ascending: false })
+   .range(from, to);
 
   if (error) throw error;
 
@@ -107,14 +110,14 @@ export async function getProjects() {
    return { ...p, progress, team_size: teamSize };
   });
 
-  return { data: enriched };
+  return { data: enriched, total: count ?? enriched.length, page, pageSize };
  } catch (error: any) {
   logger.error({ err: error, workspaceId }, 'operations.projects.fetch.failed');
   return { error: 'Failed to fetch projects.' };
  }
 }
 
-export async function createProject(name: string) {
+export async function createProject(name: string, contactId?: string | null) {
   let workspaceId: string | null = null;
   try {
     // Same requireWorkspaceAccess() hardening as getProjects above.
@@ -127,6 +130,7 @@ export async function createProject(name: string) {
       .insert({
         workspace_id: workspaceId,
         name,
+        contact_id: contactId || null,
         status: 'planning'
       })
       .select()
@@ -134,14 +138,37 @@ export async function createProject(name: string) {
 
     if (error) throw error;
 
-    // CRM Automation Hook
-    try {
-      const { triggerAutomation } = await import('./automation');
-      if (data.contact_id) {
-        await triggerAutomation(data.contact_id, 'project_started');
+    // 'project_started' automation trigger — previously this called a dead
+    // legacy tag-only triggerAutomation() import that was never registered
+    // in the workflow builder's trigger catalog (WorkflowEditorClient.tsx's
+    // TRIGGER_GROUPS) and, separately, could never fire anyway because
+    // nothing ever collected a contact_id at creation time. Both are fixed
+    // now: the create form collects a real contact, and this publishes
+    // through the same EventBus/publishEvent path every other real trigger
+    // (e.g. opportunity_stage_changed in pipelines.ts) uses, so a workflow
+    // built on "Project started" in the editor actually fires.
+    if (data.contact_id) {
+      try {
+        const { publishEvent } = await import('@/lib/events/EventBus');
+        await publishEvent(workspaceId, 'project_started', data.contact_id, { projectId: data.id });
+      } catch (autoErr) {
+        logger.error({ err: autoErr, workspaceId, contactId: data.contact_id }, 'operations.project.automation_hook.failed');
       }
-    } catch (autoErr) {
-      logger.error({ err: autoErr, workspaceId, contactId: data.contact_id }, 'operations.project.automation_hook.failed');
+    }
+
+    try {
+      const { UnifiedActivityEngine } = await import('@/lib/crm/UnifiedActivityEngine');
+      const entityType = data.contact_id ? 'contact' : 'opportunity'; // abstract representation when no contact is linked, matching EscalationHandler's convention for tasks
+      await UnifiedActivityEngine.logActivity(
+        workspaceId,
+        access.userId || null,
+        entityType,
+        data.contact_id || data.id,
+        'project_created',
+        `Project "${data.name}" created`
+      );
+    } catch (logErr) {
+      logger.error({ err: logErr, workspaceId, projectId: data.id }, 'operations.project.activity_log.failed');
     }
 
     return { data };

@@ -77,7 +77,11 @@ export async function POST(req: NextRequest) {
     const magicLinkUrl = `${appUrl}/portal/auth/verify?token=${token}`;
 
     if (channel === 'whatsapp' && contact.phone) {
-      // Send magic link via WhatsApp
+      // Send magic link via WhatsApp — deliberately omits `config`, which
+      // sends via the platform-level Twilio account (see src/lib/sms.ts).
+      // Portal auth isn't workspace-scoped the way CRM/automation sends
+      // are, so there's no per-workspace Twilio account to route this
+      // through.
       await sendSMS({
         to: 'whatsapp:' + contact.phone,
         message: `Your LeadsMind Client Portal Magic Access Link (expires in 15 mins): ${magicLinkUrl}`

@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Plus,
   Briefcase,
@@ -24,7 +24,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-import { createProject } from '@/app/actions/operations';
+import { getProjects } from '@/app/actions/operations';
 import { deleteProject as deleteProjectAction } from '@/app/actions/projects';
 import { useRouter } from 'next/navigation';
 import { DashCard } from '@/components/dashboard-ui/Card';
@@ -32,32 +32,66 @@ import { DashButton } from '@/components/dashboard-ui/Button';
 import { DashStatusPill } from '@/components/dashboard-ui/StatusPill';
 import { DashEmptyState } from '@/components/dashboard-ui/EmptyState';
 import { ManageProjectModal } from '@/components/projects/ManageProjectModal';
+import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
+import { createClient } from '@/lib/supabase/client';
 
-export default function ProjectsClient({ initialProjects }: { initialProjects: any[] }) {
+const PAGE_SIZE = 30;
+
+export default function ProjectsClient({ initialProjects, workspaceId, initialTotal }: { initialProjects: any[]; workspaceId: string | null; initialTotal: number }) {
   const router = useRouter();
-  const [isInitializing, setIsInitializing] = useState(false);
+  const [projects, setProjects] = useState<any[]>(initialProjects);
+  const [total, setTotal] = useState(initialTotal);
+  const [page, setPage] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [filterText, setFilterText] = useState('');
   const [managingProjectId, setManagingProjectId] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [supabase] = useState(() => createClient());
 
-  const handleCreate = async () => {
-    const name = window.prompt("Enter Project Name:");
-    if (!name) return;
+  useEffect(() => {
+    setProjects(initialProjects);
+    setTotal(initialTotal);
+    setPage(0);
+  }, [initialProjects, initialTotal]);
 
-    setIsInitializing(true);
-    try {
-      const res = await createProject(name);
-      if (res.error) {
-        toast.error(res.error);
-      } else {
-        toast.success("Project node initialized!");
-        router.refresh();
-      }
-    } catch (err) {
-      toast.error("Deployment failed");
-    } finally {
-      setIsInitializing(false);
+  const handleLoadMore = async () => {
+    setLoadingMore(true);
+    const nextPage = page + 1;
+    const res = await getProjects(nextPage, PAGE_SIZE);
+    if (!res.error) {
+      setProjects((prev) => [...prev, ...(res.data || [])]);
+      setTotal(res.total ?? total);
+      setPage(nextPage);
+    } else {
+      toast.error(res.error);
     }
+    setLoadingMore(false);
   };
+
+  // Realtime subscription — same workspace-scoped-channel + debounced-router.refresh() shape
+  // already established for Pipelines (PipelinesClient.tsx) and previously missing entirely
+  // for Projects (confirmed neither table was in the supabase_realtime publication until the
+  // migration accompanying this change).
+  const realtimeRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!workspaceId || typeof window === 'undefined') return;
+
+    const scheduleRefresh = () => {
+      if (realtimeRefreshTimer.current) clearTimeout(realtimeRefreshTimer.current);
+      realtimeRefreshTimer.current = setTimeout(() => router.refresh(), 300);
+    };
+
+    const channel = supabase
+      .channel(`projects:${workspaceId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects', filter: `workspace_id=eq.${workspaceId}` }, () => scheduleRefresh())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'project_tasks', filter: `workspace_id=eq.${workspaceId}` }, () => scheduleRefresh())
+      .subscribe();
+
+    return () => {
+      if (realtimeRefreshTimer.current) clearTimeout(realtimeRefreshTimer.current);
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, router, workspaceId]);
 
   const handleDelete = async (projectId: string) => {
     if (!window.confirm('Delete this project? This also removes its tasks. This cannot be undone.')) return;
@@ -72,12 +106,12 @@ export default function ProjectsClient({ initialProjects }: { initialProjects: a
 
   const filteredProjects = useMemo(() => {
     const query = filterText.trim().toLowerCase();
-    if (!query) return initialProjects;
-    return initialProjects.filter((project) => {
+    if (!query) return projects;
+    return projects.filter((project) => {
       const haystack = `${project.name || ''} ${project.description || ''} ${project.status || ''}`.toLowerCase();
       return haystack.includes(query);
     });
-  }, [initialProjects, filterText]);
+  }, [projects, filterText]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 motion-reduce:animate-none">
@@ -97,19 +131,19 @@ export default function ProjectsClient({ initialProjects }: { initialProjects: a
               className="bg-transparent border-none outline-none text-xs !text-dash-text placeholder:text-dash-textMuted w-40 font-bold"
             />
           </div>
-          <DashButton onClick={handleCreate} variant="primary" disabled={isInitializing}>
+          <DashButton onClick={() => setCreateOpen(true)} variant="primary">
             <Plus size={16} /> New Project
           </DashButton>
         </div>
       </div>
 
-      {initialProjects.length === 0 ? (
+      {projects.length === 0 ? (
         <DashEmptyState
           icon={Briefcase}
           title="Operational silence"
           description="No active project nodes found in this workspace."
           actionLabel="New Project"
-          onAction={handleCreate}
+          onAction={() => setCreateOpen(true)}
         />
       ) : filteredProjects.length === 0 ? (
         <DashEmptyState
@@ -120,17 +154,32 @@ export default function ProjectsClient({ initialProjects }: { initialProjects: a
           onAction={() => setFilterText('')}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredProjects.map((project) => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-              onManage={() => setManagingProjectId(project.id)}
-              onDelete={() => handleDelete(project.id)}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredProjects.map((project) => (
+              <ProjectCard
+                key={project.id}
+                project={project}
+                onManage={() => setManagingProjectId(project.id)}
+                onDelete={() => handleDelete(project.id)}
+              />
+            ))}
+          </div>
+          {!filterText && projects.length < total && (
+            <div className="flex justify-center">
+              <DashButton variant="secondary" onClick={handleLoadMore} disabled={loadingMore}>
+                {loadingMore ? 'Loading...' : `Load more (${projects.length} of ${total})`}
+              </DashButton>
+            </div>
+          )}
+        </>
       )}
+
+      <CreateProjectModal
+        isOpen={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={() => router.refresh()}
+      />
 
       {managingProjectId && (
         <ManageProjectModal

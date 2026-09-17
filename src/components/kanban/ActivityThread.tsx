@@ -118,7 +118,7 @@ export function ActivityThread({ activities, comments, onAddComment, members = [
         {showMentionPicker && filteredMembers.length > 0 && (
           <div className="absolute bottom-full left-0 mb-2 w-56 bg-white border border-dash-border rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-2">
             <div className="p-2 border-b border-dash-border bg-dash-surface">
-              <span className="text-[9px] font-black tracking-widest !text-dash-textMuted px-2">Tag Teammate</span>
+              <span className="text-[11px] font-semibold !text-dash-textMuted px-2">Mention a teammate</span>
             </div>
             <div className="max-h-48 overflow-y-auto py-1 custom-scrollbar">
               {filteredMembers.map((m) => (
@@ -235,7 +235,7 @@ export function ActivityThread({ activities, comments, onAddComment, members = [
         {timeline.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 opacity-20">
             <MessageSquare className="w-12 h-12 mb-2" />
-            <p className="text-xs font-bold tracking-widest">No activity yet</p>
+            <p className="text-xs font-medium">No activity yet</p>
           </div>
         )}
       </div>

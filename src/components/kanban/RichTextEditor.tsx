@@ -52,17 +52,17 @@ export function RichTextEditor({ value, onChange, placeholder, readOnly }: RichT
         value={localValue}
         onChange={(e) => setLocalValue(e.target.value)}
         readOnly={readOnly}
-        placeholder={placeholder || "Describe the task objectives..."}
+        placeholder={placeholder || "Add a description..."}
         className="min-h-[200px] p-4 bg-transparent text-[13.5px] !text-dash-text placeholder:!text-dash-textMuted outline-none resize-none  leading-relaxed disabled:opacity-50"
       />
 
       {/* Status Bar */}
       <div className="flex items-center justify-between px-4 py-2 border-t border-dash-border bg-dash-surface">
-        <span className="text-[10px] !text-dash-textMuted font-bold tracking-widest">
+        <span className="text-[11px] !text-dash-textMuted font-medium">
           {localValue.length} characters
         </span>
-        <span className="text-[10px] !text-dash-textMuted font-bold tracking-widest">
-          Auto-saving enabled
+        <span className="text-[11px] !text-dash-textMuted font-medium">
+          Saved automatically
         </span>
       </div>
     </div>

@@ -209,7 +209,7 @@ export async function createTask(taskData: {
         task_id: task.id,
         user_id: userId,
         type: 'assignment',
-        description: `Allocated ${assignees.length} personnel to new objective`,
+        description: `Assigned ${assignees.length} ${assignees.length === 1 ? 'person' : 'people'}`,
         metadata: { assignee_count: assignees.length }
       });
     }
@@ -295,7 +295,7 @@ export async function updateTask(taskId: string, updates: any) {
         task_id: taskId,
         user_id: profile.id,
         type: 'status_change',
-        description: `Escalated priority from ${oldTask.priority} to ${updates.priority}`,
+        description: `Priority changed from ${oldTask.priority} to ${updates.priority}`,
         metadata: { from: oldTask.priority, to: updates.priority }
       });
     }
@@ -304,7 +304,7 @@ export async function updateTask(taskId: string, updates: any) {
         task_id: taskId,
         user_id: profile.id,
         type: 'status_change',
-        description: `Shifted objective to ${newStatus.replace('_', ' ')}`,
+        description: `Status changed to ${newStatus.replace('_', ' ')}`,
         metadata: { from: oldTask.status, to: newStatus }
       });
     }
@@ -313,7 +313,7 @@ export async function updateTask(taskId: string, updates: any) {
         task_id: taskId,
         user_id: profile.id,
         type: 'status_change',
-        description: updates.due_date ? 'Recalibrated deadline' : 'Cleared objective deadline',
+        description: updates.due_date ? 'Due date updated' : 'Due date removed',
         metadata: { from: oldTask.due_date, to: updates.due_date }
       });
     }
@@ -364,7 +364,7 @@ export async function updateTaskStatus(taskId: string, status: string, index?: n
         task_id: taskId,
         user_id: profile.id,
         type: 'status_change',
-        description: `Shifted objective to ${status.replace('_', ' ')}`,
+        description: `Status changed to ${status.replace('_', ' ')}`,
         metadata: { from: oldTask.status, to: status }
       });
     }
@@ -431,7 +431,7 @@ export async function addTaskComment(taskId: string, content: string, mentions: 
 
       const mentionNotifications = safeMentions.map(userId => ({
         user_id: userId,
-        title: 'Tactical Mention',
+        title: 'You were mentioned',
         description: `${profile.firstName} mentioned you in: ${task?.title}`,
         type: 'comment_mentioned',
         link: `/tasks?taskId=${taskId}`
@@ -448,7 +448,7 @@ export async function addTaskComment(taskId: string, content: string, mentions: 
           if (targetProfile.email) {
             await sendEmail({
               to: targetProfile.email,
-              subject: `[MENTION] ${profile.firstName} tagged you in LeadsMind`,
+              subject: `${profile.firstName} mentioned you in LeadsMind`,
               html: `
                 <div style="font-family: sans-serif; padding: 20px; color: #333;">
                   <h3 style="color: #6c47ff;">You were mentioned in a task thread</h3>
@@ -487,7 +487,7 @@ export async function toggleTaskAssignee(taskId: string, userId: string) {
 
     // Editors (members) can only self-assign
     if (role === 'member' && profile.id !== userId) {
-      return { error: 'Tactical Restriction: Editors can only self-allocate' };
+      return { error: 'You can only assign tasks to yourself' };
     }
 
     const supabase = await createServerClient();
@@ -516,7 +516,7 @@ export async function toggleTaskAssignee(taskId: string, userId: string) {
         task_id: taskId,
         user_id: profile.id,
         type: 'assignment',
-        description: 'Deallocated personnel from objective',
+        description: 'Removed an assignee',
         metadata: { target_user_id: userId, action: 'removed' }
       });
     } else {
@@ -525,7 +525,7 @@ export async function toggleTaskAssignee(taskId: string, userId: string) {
         task_id: taskId,
         user_id: profile.id,
         type: 'assignment',
-        description: 'Allocated new personnel to objective',
+        description: 'Added an assignee',
         metadata: { target_user_id: userId, action: 'added' }
       });
     }
@@ -565,7 +565,7 @@ export async function deleteTask(taskId: string) {
 
     const role = await getUserRole();
     if (role !== 'admin' && role !== 'manager') {
-      return { error: 'Authorization Failure: Only Admins/Managers can decommission objectives' };
+      return { error: 'Only admins or managers can delete tasks' };
     }
 
     const { error } = await supabase.from('tasks').delete().eq('id', taskId).eq('workspace_id', workspaceId);
@@ -669,7 +669,7 @@ export async function uploadTaskAttachment(taskId: string, formData: FormData) {
       task_id: taskId,
       user_id: profile.id,
       type: 'assignment',
-      description: `Attached payload: ${file.name}`,
+      description: `Attached a file: ${file.name}`,
       metadata: { attachment_id: attachment.id }
     });
 
@@ -712,15 +712,15 @@ export async function sendDailyBriefing() {
         // 3. Dispatch Briefing
         await sendEmail({
           to: user.email,
-          subject: `📋 MISSION BRIEFING: ${tasks.length} Objectives for Today`,
+          subject: `📋 Your daily task summary: ${tasks.length} ${tasks.length === 1 ? 'task' : 'tasks'} for today`,
           html: `
             <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px;">
-              <h2 style="color: #6c47ff; margin-bottom: 5px;">Good Morning, ${user.first_name}</h2>
-              <p style="color: #666; font-size: 14px; margin-top: 0;">Here is your tactical overview for ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}.</p>
-              
+              <h2 style="color: #6c47ff; margin-bottom: 5px;">Good morning, ${user.first_name}</h2>
+              <p style="color: #666; font-size: 14px; margin-top: 0;">Here's your overview for ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}.</p>
+
               ${highPriority.length > 0 ? `
                 <div style="margin-top: 25px; padding: 15px; background: #fff5f5; border-left: 4px solid #f43f5e; border-radius: 4px;">
-                  <h4 style="color: #f43f5e; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 0.1em;">Critical Objectives</h4>
+                  <h4 style="color: #f43f5e; margin: 0 0 10px 0; letter-spacing: 0.02em;">High priority</h4>
                   <ul style="margin: 0; padding-left: 20px;">
                     ${highPriority.map(t => `<li style="margin-bottom: 5px;"><strong>${t.title}</strong></li>`).join('')}
                   </ul>
@@ -728,20 +728,20 @@ export async function sendDailyBriefing() {
               ` : ''}
 
               <div style="margin-top: 25px;">
-                <h4 style="color: #333; margin: 0 0 15px 0; text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 1px solid #eee; padding-bottom: 5px;">Today's Schedule</h4>
+                <h4 style="color: #333; margin: 0 0 15px 0; letter-spacing: 0.02em; border-bottom: 1px solid #eee; padding-bottom: 5px;">Due today</h4>
                 ${dueToday.length > 0 ? `
                   <ul style="margin: 0; padding-left: 20px;">
-                    ${dueToday.map(t => `<li style="margin-bottom: 8px;">${t.title} <span style="color: #999; font-size: 11px;">(Due Today)</span></li>`).join('')}
+                    ${dueToday.map(t => `<li style="margin-bottom: 8px;">${t.title} <span style="color: #999; font-size: 11px;">(Due today)</span></li>`).join('')}
                   </ul>
-                ` : '<p style="color: #999; font-style: italic;">No specific deadlines for today.</p>'}
+                ` : '<p style="color: #999; font-style: italic;">Nothing due today.</p>'}
               </div>
 
               <div style="margin-top: 35px; text-align: center;">
-                <a href="${process.env.NEXT_PUBLIC_APP_URL}/tasks" style="display: inline-block; background: #6c47ff; color: white; padding: 12px 25px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px;">OPEN COMMAND CENTER</a>
+                <a href="${process.env.NEXT_PUBLIC_APP_URL}/tasks" style="display: inline-block; background: #6c47ff; color: white; padding: 12px 25px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px;">Open tasks</a>
               </div>
 
               <p style="margin-top: 40px; font-size: 11px; color: #aaa; text-align: center; border-top: 1px solid #eee; padding-top: 20px;">
-                Strategic Intelligence by LeadsMind AI.
+                Sent by LeadsMind.
               </p>
             </div>
           `

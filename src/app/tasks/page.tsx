@@ -34,13 +34,13 @@ export default async function TasksPage() {
               <CheckSquare className="!text-dash-accent" size={22} />
             </div>
             <div>
-              <h1 className="text-2xl font-black !text-dash-text leading-tight">Revenue Tasks</h1>
-              <p className="!text-dash-textMuted text-sm mt-0.5">Operational followups, reminders, and execution tracking.</p>
+              <h1 className="text-2xl font-bold !text-dash-text leading-tight tracking-tight">Tasks</h1>
+              <p className="!text-dash-textMuted text-sm mt-0.5">Follow-ups, reminders, and progress tracking for your team.</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <Link href="/tasks/dashboard" className="px-4 py-2 bg-dash-surface hover:bg-dash-border/60 !text-dash-text rounded-xl text-xs font-bold tracking-wider transition-colors flex items-center gap-2">
+            <Link href="/tasks/dashboard" className="px-4 py-2 bg-dash-surface hover:bg-dash-border/60 !text-dash-text rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
               <LayoutDashboard size={14} /> Analytics
             </Link>
           </div>

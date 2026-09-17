@@ -81,7 +81,7 @@ export function CreateTaskModal({ open, onOpenChange, onTaskCreated, initialStat
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl bg-white border-dash-border p-0 overflow-hidden rounded-2xl shadow-2xl z-[2000]">
+      <DialogContent className="max-w-4xl bg-white border-dash-border p-0 overflow-hidden rounded-2xl shadow-xl z-[2000]">
         <div className="flex flex-col max-h-[90vh]">
           {/* Header Section */}
           <div className="px-6 py-4 border-b border-dash-border">

@@ -38,10 +38,10 @@ export default async function TaskAnalyticsDashboardPage() {
             <Link href="/tasks" className="inline-flex items-center gap-2 text-sm font-bold !text-dash-textMuted hover:!text-dash-text transition-colors mb-4">
               <CheckSquare size={16} /> Back to Task Board
             </Link>
-            <h1 className="text-3xl font-black !text-dash-text mb-2 flex items-center gap-3">
-              <LayoutDashboard className="text-accent" size={32} /> Execution Dashboard
+            <h1 className="text-3xl font-bold !text-dash-text mb-2 flex items-center gap-3 tracking-tight">
+              <LayoutDashboard className="text-accent" size={32} /> Analytics
             </h1>
-            <p className="!text-dash-textMuted">Workload summaries, completion rates, and team accountability metrics.</p>
+            <p className="!text-dash-textMuted">Workload summaries and completion rates for your team.</p>
           </div>
         </div>
 
@@ -51,17 +51,17 @@ export default async function TaskAnalyticsDashboardPage() {
             <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
               <TrendingUp size={80} className="text-accent" />
             </div>
-            <p className="text-xs font-bold !text-dash-textMuted tracking-widest mb-2">Completion Rate</p>
-            <h3 className="text-4xl font-black !text-dash-text">{completionRate}%</h3>
-            <p className="text-sm !text-dash-textMuted mt-2">Overall execution metric.</p>
+            <p className="text-xs font-semibold !text-dash-textMuted tracking-wide mb-2">Completion rate</p>
+            <h3 className="text-4xl font-bold !text-dash-text">{completionRate}%</h3>
+            <p className="text-sm !text-dash-textMuted mt-2">Overall completion rate.</p>
           </div>
-          
+
           <div className="bg-white border border-green/20 rounded-2xl p-6 relative overflow-hidden">
             <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
               <CheckCircle2 size={80} className="text-green" />
             </div>
-            <p className="text-xs font-bold text-green tracking-widest mb-2">Completed</p>
-            <h3 className="text-4xl font-black !text-dash-text">{completedCount}</h3>
+            <p className="text-xs font-semibold text-green tracking-wide mb-2">Completed</p>
+            <h3 className="text-4xl font-bold !text-dash-text">{completedCount}</h3>
             <p className="text-sm !text-dash-textMuted mt-2">Tasks finished.</p>
           </div>
 
@@ -69,40 +69,40 @@ export default async function TaskAnalyticsDashboardPage() {
             <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
               <Clock size={80} className="text-dash-accent" />
             </div>
-            <p className="text-xs font-bold text-dash-accent tracking-widest mb-2">Pending</p>
-            <h3 className="text-4xl font-black !text-dash-text">{pendingCount}</h3>
-            <p className="text-sm !text-dash-textMuted mt-2">Active tasks in queue.</p>
+            <p className="text-xs font-semibold text-dash-accent tracking-wide mb-2">Pending</p>
+            <h3 className="text-4xl font-bold !text-dash-text">{pendingCount}</h3>
+            <p className="text-sm !text-dash-textMuted mt-2">Active tasks.</p>
           </div>
 
           <div className={`bg-white border rounded-2xl p-6 relative overflow-hidden ${overdueCount > 0 ? 'border-red/30' : 'border-dash-border'}`}>
             <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
               <AlertTriangle size={80} className={overdueCount > 0 ? 'text-red' : '!text-dash-textMuted'} />
             </div>
-            <p className={`text-xs font-bold tracking-widest mb-2 ${overdueCount > 0 ?'text-red' :'!text-dash-textMuted'}`}>
+            <p className={`text-xs font-semibold tracking-wide mb-2 ${overdueCount > 0 ?'text-red' :'!text-dash-textMuted'}`}>
               Overdue
             </p>
-            <h3 className="text-4xl font-black !text-dash-text">{overdueCount}</h3>
-            <p className="text-sm !text-dash-textMuted mt-2">Requires immediate execution.</p>
+            <h3 className="text-4xl font-bold !text-dash-text">{overdueCount}</h3>
+            <p className="text-sm !text-dash-textMuted mt-2">Needs attention.</p>
           </div>
         </div>
 
         {/* Task Lists Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          
+
           <div className="bg-white border border-dash-border rounded-3xl p-6">
-            <h2 className="text-xl font-bold !text-dash-text mb-6 flex items-center gap-2">
-              <Clock className="text-dash-accent" /> Upcoming Tasks
+            <h2 className="text-xl font-bold !text-dash-text mb-6 flex items-center gap-2 tracking-tight">
+              <Clock className="text-dash-accent" /> Upcoming tasks
             </h2>
             <div className="space-y-3">
               {tasks.filter((t: any) => t.status !== 'done').slice(0, 8).map((task: any) => (
                 <div key={task.id} className="p-4 bg-white border border-dash-border rounded-2xl flex items-center justify-between">
                   <div>
-                    <h4 className="font-bold !text-dash-text text-sm">{task.title}</h4>
-                    <p className="text-xs !text-dash-textMuted mt-1 font-bold tracking-widest">
+                    <h4 className="font-semibold !text-dash-text text-sm">{task.title}</h4>
+                    <p className="text-xs !text-dash-textMuted mt-1 font-medium">
                       Due: {task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No date'}
                     </p>
                   </div>
-                  <span className="bg-dash-accent/20 text-dash-accent text-[10px] font-bold tracking-widest px-2 py-1 rounded">
+                  <span className="bg-dash-accent/10 text-dash-accent text-[11px] font-semibold px-2 py-1 rounded-md capitalize">
                     {task.priority}
                   </span>
                 </div>
@@ -111,8 +111,8 @@ export default async function TaskAnalyticsDashboardPage() {
           </div>
 
           <div className="bg-white border border-dash-border rounded-3xl p-6">
-            <h2 className="text-xl  font-bold text-red mb-6 flex items-center gap-2">
-              <AlertTriangle /> Accountability Escalations
+            <h2 className="text-xl font-bold text-red mb-6 flex items-center gap-2 tracking-tight">
+              <AlertTriangle /> Escalations
             </h2>
             <div className="space-y-3">
               {escalations.length === 0 ? (

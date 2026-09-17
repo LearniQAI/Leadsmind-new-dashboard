@@ -62,6 +62,10 @@ const TRIGGER_GROUPS: { label: string; options: { value: string; label: string }
     { value: 'funnel_subscribed', label: 'Funnel form subscribed' },
     { value: 'payfast_payment_course', label: 'PayFast course payment received' },
   ]},
+  { label: 'Projects', options: [
+    { value: 'project_started', label: 'Project started' },
+    { value: 'milestone_approved', label: 'Milestone approved' },
+  ]},
 ];
 
 interface EditorStep {
