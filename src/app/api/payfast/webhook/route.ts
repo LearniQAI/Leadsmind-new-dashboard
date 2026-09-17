@@ -256,6 +256,17 @@ export async function POST(req: NextRequest) {
           } catch (supportErr) {
             logger.error({ err: supportErr }, 'payfast_webhook.support_ticket.failed');
           }
+
+          // This webhook finalizes paid consultation bookings without ever
+          // firing appointment_booked, so any CRM automation built on that
+          // trigger silently never ran for a paid booking. Matches the
+          // internal path (src/app/actions/calendar/appointments.ts).
+          try {
+            const { publishEvent } = await import('@/lib/events/EventBus');
+            publishEvent(lease.workspace_id, 'appointment_booked', lease.contact_id, { appointmentId: appointment.id }).catch(() => {});
+          } catch (evtErr) {
+            logger.error({ err: evtErr, appointmentId: appointment.id }, 'payfast_webhook.automation_trigger.failed');
+          }
         }
       }
     }

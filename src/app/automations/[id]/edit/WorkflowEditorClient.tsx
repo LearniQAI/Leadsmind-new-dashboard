@@ -28,6 +28,21 @@ import { cn } from '@/lib/utils';
 // tag_confidence_changed needs a product decision on its shared-value
 // semantics before it's wired. Engine A only — no form_submitted/Engine-B
 // trigger.
+//
+// quiz_passed/quiz_failed/quiz_limit_reached/struggle_threshold_crossed were
+// removed 2026-09-17: despite this file's own claim above, they had NO real
+// EventBus.publishEvent producer — quiz_passed/quiz_failed are only ever
+// emitted via the separate LMS course-tab engine's emitLMSEvent(), never
+// EventBus.publishEvent(); quiz_limit_reached and struggle_threshold_crossed
+// have no producer under either engine at all (the real analogous LMS event
+// for the latter is struggling_detected, also emitLMSEvent()-only). A
+// workspace could select any of these and build a workflow that would never
+// fire. One pre-existing real workflow ("LMS Course Recoveries",
+// b1652e46-88b3-48eb-aac9-3b9ff32418b5, workspace b83f0966-837e-4952-9cd4-
+// 480be4ca3f16) is already built on quiz_failed — it was already
+// non-functional before this change (same reason), so removing the option
+// here doesn't newly break it, but it's flagged here since nothing else
+// deactivates or migrates that workflow.
 const TRIGGER_GROUPS: { label: string; options: { value: string; label: string }[] }[] = [
   { label: 'CRM / Contact', options: [
     { value: 'contact_created', label: 'Contact created' },
@@ -48,11 +63,7 @@ const TRIGGER_GROUPS: { label: string; options: { value: string; label: string }
     { value: 'course_completed', label: 'Course completed' },
     { value: 'module_completed', label: 'Module completed' },
     { value: 'lesson_completed', label: 'Lesson completed' },
-    { value: 'quiz_passed', label: 'Quiz passed' },
-    { value: 'quiz_failed', label: 'Quiz failed' },
-    { value: 'quiz_limit_reached', label: 'Quiz attempt limit reached' },
     { value: 'course_revoked', label: 'Course access revoked' },
-    { value: 'struggle_threshold_crossed', label: 'Struggle score threshold crossed' },
     { value: 'student_inactive', label: 'Student inactive (14+ days)' },
     { value: 'assignment_submitted', label: 'Assignment submitted' },
     { value: 'assignment_graded', label: 'Assignment graded' },

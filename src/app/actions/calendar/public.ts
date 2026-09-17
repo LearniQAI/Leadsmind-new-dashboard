@@ -192,6 +192,18 @@ export async function bookAppointment(
     logger.error({ err: supportErr, appointmentId: appointment.id }, 'calendar.public_booking.support_ticket.failed');
   }
 
+  // This is the actual public booking widget most real leads use — it was
+  // creating full appointment rows without ever firing appointment_booked,
+  // so any CRM automation built on that trigger silently never ran for a
+  // real-world booking, only for ones created from inside the dashboard.
+  // Matches the internal path (src/app/actions/calendar/appointments.ts).
+  try {
+    const { publishEvent } = await import('@/lib/events/EventBus');
+    publishEvent(calendar.workspace_id, 'appointment_booked', contact.id, { appointmentId: appointment.id }).catch(() => {});
+  } catch (evtErr) {
+    logger.error({ err: evtErr, appointmentId: appointment.id }, 'calendar.public_booking.automation_trigger.failed');
+  }
+
   // Real confirmation email to the booker + the assigned/host team member —
   // previously nothing was sent at all on this path (calendar.md Part B).
   // Best-effort: a notification failure must not fail a booking that already
@@ -357,6 +369,12 @@ export async function bookGroupSession(
     } catch (e) {
       logger.error({ err: e, appointmentId: created.id }, 'calendar.group_session.confirmation_email.failed');
     }
+    try {
+      const { publishEvent } = await import('@/lib/events/EventBus');
+      publishEvent(calendar.workspace_id, 'appointment_booked', contact.id, { appointmentId: created.id }).catch(() => {});
+    } catch (evtErr) {
+      logger.error({ err: evtErr, appointmentId: created.id }, 'calendar.group_session.automation_trigger.failed');
+    }
     return { success: true, mode: 'booked' as const, appointmentId: created.id };
   }
 
@@ -384,6 +402,12 @@ export async function bookGroupSession(
         attendeeRecordId: rpc.attendee_id,
       });
     } catch { /* best-effort */ }
+    try {
+      const { publishEvent } = await import('@/lib/events/EventBus');
+      publishEvent(calendar.workspace_id, 'appointment_booked', contact.id, { appointmentId: session.id }).catch(() => {});
+    } catch (evtErr) {
+      logger.error({ err: evtErr, appointmentId: session.id }, 'calendar.group_session.automation_trigger.failed');
+    }
     return { success: true, mode: 'booked' as const, appointmentId: session.id };
   }
 

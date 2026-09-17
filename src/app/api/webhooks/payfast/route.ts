@@ -273,6 +273,21 @@ export async function POST(req: NextRequest) {
         })
       } catch {}
 
+      // This webhook dispatched the outbound 'invoice.paid' webhook above but
+      // never published the internal automation-trigger event — the same
+      // "one path fires, another silently doesn't" bug already fixed on
+      // appointment_booked/contact_created this session. An invoice paid via
+      // this PayFast webhook silently never fired an "Invoice paid"
+      // automation, even though finance.ts's markInvoicePaidManually (via
+      // runInvoicePaidSideEffects) fires it correctly for a manual mark-paid.
+      if (matchedInvoice.contact_id) {
+        try {
+          await publishEvent(invoiceWorkspaceId, 'invoice_paid', matchedInvoice.contact_id, { invoiceId: matchedInvoice.id });
+        } catch (evtErr) {
+          logger.error({ err: evtErr, invoiceId: matchedInvoice.id }, 'webhook.payfast.automation_trigger.failed');
+        }
+      }
+
       logger.info(
         { invoiceId: matchedInvoice.id, amount: payload.amount_gross },
         'webhook.payfast.invoice.paid'

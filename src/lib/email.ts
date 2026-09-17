@@ -23,20 +23,39 @@ interface SendEmailProps {
   fromName?: string | null
   tags?: { name: string; value: string }[]
   headers?: Record<string, string>
+  /**
+   * Opt-in only. Same bug shape as the Twilio global-fallback issue
+   * (confirmed live 2026-09-17: an unconfigured workspace's automation/LMS/
+   * affiliate emails were silently sent — and billed — through the
+   * platform's own RESEND_API_KEY with no visibility that this was
+   * happening). Every workspace-scoped caller must pass `config` (even with
+   * `apiKey` left undefined) and must NOT set this flag, so an unconfigured
+   * workspace throws instead of silently substituting the shared account.
+   * The one legitimate exception is a deliberate platform-branded default
+   * (e.g. courier/emails.ts's `shipping@leadsmind.io` fallback for
+   * non-white-labelled workspaces) — that's a real product feature, not an
+   * accidental leak, so it opts in explicitly here.
+   */
+  allowPlatformFallback?: boolean
  }
 }
 
 export async function sendEmail({ to, subject, react, html, text, scheduledAt, replyTo, attachments, config }: SendEmailProps) {
- const apiKey = config?.apiKey || process.env.RESEND_API_KEY
+ const isPlatformLevelSend = config === undefined || config.allowPlatformFallback === true
+ const apiKey = isPlatformLevelSend ? (config?.apiKey || process.env.RESEND_API_KEY) : config?.apiKey
  const fromAddress = config?.fromEmail || process.env.RESEND_FROM_EMAIL || 'noreply@leadsmind.io'
  const fromName = config?.fromName || 'LeadsMind'
- 
+
  // Sending must be fail-closed. Returning a synthetic id here previously made
  // every caller report a successful delivery even though no provider request
  // was made. A provider credential is required for every email environment.
  const normalizedApiKey = apiKey?.trim();
  if (!normalizedApiKey || normalizedApiKey === 're_123' || normalizedApiKey.toUpperCase().includes('PLACEHOLDER')) {
-  const error = new Error('Email delivery is unavailable: a valid Resend API key is not configured.');
+  const error = new Error(
+   isPlatformLevelSend
+    ? 'Email delivery is unavailable: a valid Resend API key is not configured.'
+    : 'Email delivery is unavailable for this workspace — connect a Resend account before sending automated emails.'
+  );
   logger.error({ to, subject, scheduledAt, tags: config?.tags, attachmentCount: attachments?.length ?? 0 }, 'email.resend_config.invalid');
   throw error;
  }

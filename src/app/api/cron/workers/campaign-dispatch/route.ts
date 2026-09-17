@@ -99,7 +99,12 @@ export async function GET(req: Request) {
         continue;
       }
 
-      const apiKey = emailConfig?.apiKey || process.env.RESEND_API_KEY;
+      // Must not fall back to the platform's own RESEND_API_KEY — confirmed
+      // live (2026-09-17) that doing so silently sent (and billed) campaign
+      // emails through the shared platform Resend account for any workspace
+      // without its own key, the same bug shape as the Twilio global-fallback
+      // issue fixed the same day.
+      const apiKey = emailConfig?.apiKey;
       const fromEmail = campaign.from_email || emailConfig?.fromEmail || 'onboarding@resend.dev';
 
       // Predictive Scheduling Check
@@ -144,7 +149,7 @@ export async function GET(req: Request) {
         campaignSentIncrements[campaign.id] = (campaignSentIncrements[campaign.id] || 0) + 1;
         sentCount++;
       } catch (sendErr: any) {
-        const isHardFail = sendErr.message.includes('invalid') || sendErr.message.includes('auth');
+        const isHardFail = sendErr.message.includes('invalid') || sendErr.message.includes('auth') || sendErr.message.includes('not configured') || sendErr.message.includes('unavailable for this workspace');
         const nextRetryCount = job.retry_count + 1;
         
         if (isHardFail || nextRetryCount >= 3) {

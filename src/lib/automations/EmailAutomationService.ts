@@ -32,7 +32,13 @@ export const EmailAutomationService = {
     // 1. Fetch workspace custom email configs if they exist using getWorkspaceEmailConfig
     const providerConfig = await getWorkspaceEmailConfig(workspaceId);
 
-    const apiKey = providerConfig?.apiKey || process.env.RESEND_API_KEY;
+    // Must not fall back to the platform's own RESEND_API_KEY — confirmed live
+    // (2026-09-17) that doing so silently sent (and billed) workflow emails
+    // through the shared platform Resend account for any workspace that
+    // hadn't connected its own key, the same bug shape as the Twilio
+    // global-fallback issue fixed the same day. An unconfigured workspace
+    // must fail here instead.
+    const apiKey = providerConfig?.apiKey;
     const fromName = providerConfig?.fromName || config.fromName || 'LeadsMind';
     const fromEmail = providerConfig?.fromEmail || config.fromEmail || 'onboarding@resend.dev';
 
