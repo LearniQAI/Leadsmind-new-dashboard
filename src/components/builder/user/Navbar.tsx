@@ -9,12 +9,19 @@ import { resolveLink } from '@/lib/builder/utils';
 import { InlineTextEditor } from './InlineTextEditor';
 import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
 import { MediaVaultModal } from '../MediaVaultModal';
+import type { LinkObject } from '../LinkSelector';
 
 
 export interface NavbarProps {
  logo: string;
  brandName: string;
- links: { label: string, href: string }[];
+ // A link is stored as a plain '#id'/'/page'/'https://...' string by default (every built-in
+ // template's own links, since resolveLink's string branch handles that shape directly with
+ // no ambiguity), OR as a LinkSelector-authored LinkObject once a user edits a link via
+ // NavbarSettings' link editor (see addLink there — new links are created as LinkObjects).
+ // resolveLink already accepts both; this only makes the type match what actually flows
+ // through it at runtime.
+ links: { label: string, href: string | LinkObject }[];
  backgroundColor: string;
  textColor: string;
  sticky: boolean;
@@ -182,7 +189,7 @@ export const Navbar = ({
 
     {/* Desktop Links */}
     <div className={`${previewMobile ? 'hidden' : 'hidden md:flex'} items-center transition-all ${layoutType === 'split' ? 'gap-12 flex-1 justify-center' : 'gap-8'} ${layoutType === 'stacked' ? 'w-full justify-center' : ''}`}>
-     {displayLinks.map((link: { label: string, href: string }, i: number) => (
+     {displayLinks.map((link: { label: string, href: string | LinkObject }, i: number) => (
       enabled && isManualLinks ? (
        <span
         key={i}
@@ -251,7 +258,7 @@ export const Navbar = ({
      className="md:hidden absolute top-full left-0 w-full border-t border-white/5 py-8 px-6 flex flex-col gap-6 shadow-2xl animate-in slide-in-from-top duration-300"
      style={{ backgroundColor: mobileOverlayColor }}
     >
-     {displayLinks.map((link: { label: string, href: string }, i: number) => (
+     {displayLinks.map((link: { label: string, href: string | LinkObject }, i: number) => (
       enabled && isManualLinks ? (
        <span key={i} className="text-sm font-black uppercase tracking-widest outline-none cursor-text">
         <InlineTextEditor

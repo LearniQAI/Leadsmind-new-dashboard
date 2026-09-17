@@ -61,7 +61,10 @@ export async function POST(req: NextRequest) {
       throw new Error('Failed to record OTP token');
     }
 
-    // 4. Send WhatsApp message
+    // 4. Send WhatsApp message — deliberately omits `config`, which sends
+    // via the platform-level Twilio account (see src/lib/sms.ts). Portal
+    // auth isn't workspace-scoped the way CRM/automation sends are, so
+    // there's no per-workspace Twilio account to route this through.
     await sendSMS({
       to: 'whatsapp:' + cleanPhone,
       message: `Your LeadsMind Client Portal Verification PIN: ${code}. Valid for 5 minutes.`

@@ -84,7 +84,10 @@ export const Columns = ({
     }
    }}
    className={cn(
-      "w-full grid transition-all",
+      // scroll-mt-24: same reasoning as Section.tsx's own scroll-mt-24 — a Columns node can
+      // itself be a Navbar/Footer link's scroll target (e.g. a sub-anchor inside a larger
+      // Section, for a distinct nav entry that shouldn't just jump to the whole section's top).
+      "w-full grid transition-all scroll-mt-24",
       enabled && "outline-dashed outline-1 outline-transparent hover:outline-black/10",
       previewOverride || gridStyle,
       props.className

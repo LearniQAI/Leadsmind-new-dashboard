@@ -5,6 +5,37 @@ import { getPortalSession } from '@/lib/portal/session';
 import { getUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/shared/logger';
+import { UnifiedActivityEngine } from '@/lib/crm/UnifiedActivityEngine';
+
+/**
+ * Logs a project/task change to the unified activity engine. UnifiedActivityEngine has no
+ * dedicated 'project' entityType, so this follows the same convention EscalationHandler.ts
+ * already established for tasks: log against the linked contact when one exists (so it shows
+ * on that contact's real timeline), otherwise fall back to the 'opportunity' abstract
+ * representation keyed by the project id. logActivity always uses its own admin client
+ * internally, so this is safe to call from any context (session or portal).
+ */
+async function logProjectActivity(
+  workspaceId: string,
+  actorId: string | null,
+  project: { id: string; contact_id?: string | null },
+  activityType: string,
+  content: string
+) {
+  try {
+    const entityType = project.contact_id ? 'contact' : 'opportunity';
+    await UnifiedActivityEngine.logActivity(
+      workspaceId,
+      actorId,
+      entityType,
+      project.contact_id || project.id,
+      activityType,
+      content
+    );
+  } catch (err) {
+    logger.error({ err, workspaceId, projectId: project.id }, 'projects.activity_log.failed');
+  }
+}
 
 /**
  * Resolves a project's real workspace_id and verifies the current user is a
@@ -110,13 +141,19 @@ export async function approveProjectMilestone(taskId: string) {
       description: `Client approved project milestone: "${task.title}"`
     });
 
-    // 5. Trigger workflow engine on milestone approval
+    // 5. Trigger workflow engine on milestone approval — via publishEvent/EventBus, the same
+    // path every other real workflow-builder trigger uses (e.g. opportunity_stage_changed in
+    // pipelines.ts), so a workflow built on "Milestone approved" in the editor actually fires.
+    // The direct triggerWorkflows() call this replaced bypassed EVENT_TRIGGERS/TRIGGER_GROUPS
+    // entirely, so no workflow could ever be built against it from the UI.
     try {
-      const { triggerWorkflows } = await import('@/lib/automation/executor');
-      await triggerWorkflows(workspace.id, 'milestone_approved', contact.id);
+      const { publishEvent } = await import('@/lib/events/EventBus');
+      await publishEvent(workspace.id, 'milestone_approved', contact.id, { taskId, projectId: task.projects.id });
     } catch (triggerErr: any) {
       logger.error({ err: triggerErr, taskId }, 'projects.milestone.workflow_trigger.failed');
     }
+
+    await logProjectActivity(workspace.id, null, task.projects, 'milestone_approved', `Client approved project milestone: "${task.title}"`);
 
     revalidatePath('/portal/projects');
     return { success: true };
@@ -271,7 +308,7 @@ export async function getProjectDetail(projectId: string) {
 
     const { data: tasks, error: tasksErr } = await supabase
       .from('project_tasks')
-      .select('id, title, status, assigned_to, priority, due_date, created_at')
+      .select('id, title, status, assigned_to, priority, due_date, created_at, is_milestone, client_approved_at, position')
       .eq('project_id', projectId)
       .order('position', { ascending: true });
 
@@ -289,7 +326,13 @@ export async function getProjectDetail(projectId: string) {
     const progress = total > 0 ? Math.round((done / total) * 100) : 0;
     const teamSize = Math.max(assigneeIds.length, 1);
 
-    return { success: true, data: { project, tasks: tasksWithAssignee, progress, teamSize } };
+    const { data: deliverables } = await supabase
+      .from('media_files')
+      .select('id, name, size, mime_type, is_client_deliverable, created_at')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false });
+
+    return { success: true, data: { project, tasks: tasksWithAssignee, progress, teamSize, deliverables: deliverables || [] } };
   } catch (err: any) {
     logger.error({ err, projectId }, 'projects.detail.fetch.failed');
     return { success: false, error: 'Failed to load project details.' };
@@ -301,7 +344,7 @@ export async function updateProjectDetails(projectId: string, updates: { name?: 
   try {
     const access = await verifyProjectAccess(projectId);
     if ('error' in access) return { success: false, error: access.error };
-    const { supabase } = access;
+    const { supabase, project, user } = access;
 
     const payload: Record<string, any> = {};
     if (updates.name !== undefined) payload.name = updates.name;
@@ -310,6 +353,12 @@ export async function updateProjectDetails(projectId: string, updates: { name?: 
 
     const { error } = await supabase.from('projects').update(payload).eq('id', projectId);
     if (error) throw error;
+
+    if (updates.status !== undefined && updates.status !== project.status) {
+      await logProjectActivity(project.workspace_id, user.id, project, 'project_status_changed', `Project "${project.name}" moved to "${updates.status}"`);
+    } else if (updates.name !== undefined || updates.description !== undefined) {
+      await logProjectActivity(project.workspace_id, user.id, project, 'project_updated', `Project "${project.name}" details updated`);
+    }
 
     revalidatePath('/projects');
     return { success: true };
@@ -324,7 +373,9 @@ export async function deleteProject(projectId: string) {
   try {
     const access = await verifyProjectAccess(projectId);
     if ('error' in access) return { success: false, error: access.error };
-    const { supabase } = access;
+    const { supabase, project, user } = access;
+
+    await logProjectActivity(project.workspace_id, user.id, project, 'project_deleted', `Project "${project.name}" deleted`);
 
     const { error } = await supabase.from('projects').delete().eq('id', projectId);
     if (error) throw error;
@@ -338,23 +389,36 @@ export async function deleteProject(projectId: string) {
 }
 
 /** Adds a real task to a project's checklist — this is what "1 Team members"/"progress" are actually computed from. */
-export async function createProjectTask(projectId: string, input: { title: string; assignedTo?: string | null; priority?: string }) {
+export async function createProjectTask(projectId: string, input: { title: string; assignedTo?: string | null; priority?: string; isMilestone?: boolean }) {
   try {
     const access = await verifyProjectAccess(projectId);
     if ('error' in access) return { success: false, error: access.error };
-    const { supabase, project } = access;
+    const { supabase, project, user } = access;
 
     if (!input.title?.trim()) return { success: false, error: 'Task title is required.' };
 
-    const { error } = await supabase.from('project_tasks').insert({
+    // Appended to the end of the 'todo' column via a real count, not left at the position
+    // column's default of 0 for every task — matches Tasks' updateTask()/'append to end' RPC
+    // convention rather than reintroducing the client-computed-position collision bug.
+    const { count } = await supabase
+      .from('project_tasks')
+      .select('id', { count: 'exact', head: true })
+      .eq('project_id', projectId)
+      .eq('status', 'todo');
+
+    const { data: task, error } = await supabase.from('project_tasks').insert({
       project_id: projectId,
       workspace_id: project.workspace_id,
       title: input.title.trim(),
       assigned_to: input.assignedTo || null,
       priority: input.priority || 'normal',
       status: 'todo',
-    });
+      position: count ?? 0,
+      is_milestone: !!input.isMilestone,
+    }).select().single();
     if (error) throw error;
+
+    await logProjectActivity(project.workspace_id, user.id, project, 'project_task_created', `Task "${task.title}" added to project "${project.name}"${input.isMilestone ? ' as a milestone' : ''}`);
 
     revalidatePath('/projects');
     return { success: true };
@@ -369,14 +433,29 @@ export async function updateProjectTaskStatus(projectId: string, taskId: string,
   try {
     const access = await verifyProjectAccess(projectId);
     if ('error' in access) return { success: false, error: access.error };
-    const { supabase } = access;
+    const { supabase, project, user } = access;
 
-    const { error } = await supabase
+    const { data: task } = await supabase.from('project_tasks').select('title').eq('id', taskId).single();
+
+    // Append-to-end of the target status column, position math delegated entirely to the
+    // collision-safe RPC (same convention as Tasks' updateTask non-drag status changes) —
+    // never write status/position directly, which is what left project_tasks.position
+    // permanently dead (always 0) before this.
+    const { count } = await supabase
       .from('project_tasks')
-      .update({ status })
-      .eq('id', taskId)
-      .eq('project_id', projectId);
+      .select('id', { count: 'exact', head: true })
+      .eq('project_id', projectId)
+      .eq('status', status);
+
+    const { error } = await supabase.rpc('move_project_task_to_position', {
+      p_workspace_id: project.workspace_id,
+      p_task_id: taskId,
+      p_target_status: status,
+      p_target_index: count ?? 0,
+    });
     if (error) throw error;
+
+    await logProjectActivity(project.workspace_id, user.id, project, 'project_task_status_changed', `Task "${task?.title || taskId}" moved to "${status}"`);
 
     revalidatePath('/projects');
     return { success: true };
@@ -386,15 +465,114 @@ export async function updateProjectTaskStatus(projectId: string, taskId: string,
   }
 }
 
-/** Removes a task from a project's checklist. */
-export async function deleteProjectTask(projectId: string, taskId: string) {
+/** Drag-and-drop reorder within/across a project's Kanban columns — thin wrapper around the collision-safe RPC, mirroring Pipelines'/Tasks' updateDealStage()/updateTaskStatus() call sites. Never computes or writes position on the client. */
+export async function moveProjectTaskToPosition(projectId: string, taskId: string, targetStatus: 'todo' | 'in_progress' | 'review' | 'done', targetIndex: number) {
+  try {
+    const access = await verifyProjectAccess(projectId);
+    if ('error' in access) return { success: false, error: access.error };
+    const { supabase, project } = access;
+
+    const { error } = await supabase.rpc('move_project_task_to_position', {
+      p_workspace_id: project.workspace_id,
+      p_task_id: taskId,
+      p_target_status: targetStatus,
+      p_target_index: targetIndex,
+    });
+    if (error) throw error;
+
+    revalidatePath('/projects');
+    return { success: true };
+  } catch (err: any) {
+    logger.error({ err, projectId, taskId }, 'projects.task.move.failed');
+    return { success: false, error: 'Failed to move task.' };
+  }
+}
+
+/** Marks/unmarks an already-uploaded project media file as a client-facing deliverable — the field the portal's "Client-Facing Deliverables" section reads (ProjectTimeline.tsx) and which nothing anywhere previously wrote. */
+export async function setDeliverableVisibility(projectId: string, fileId: string, isDeliverable: boolean) {
   try {
     const access = await verifyProjectAccess(projectId);
     if ('error' in access) return { success: false, error: access.error };
     const { supabase } = access;
 
+    const { error } = await supabase
+      .from('media_files')
+      .update({ is_client_deliverable: isDeliverable })
+      .eq('id', fileId)
+      .eq('project_id', projectId);
+    if (error) throw error;
+
+    revalidatePath('/projects');
+    return { success: true };
+  } catch (err: any) {
+    logger.error({ err, projectId, fileId }, 'projects.deliverable.visibility.failed');
+    return { success: false, error: 'Failed to update deliverable visibility.' };
+  }
+}
+
+/** Uploads a file and attaches it to a project as a client deliverable — reuses the same bucket ('media') and workspace-verified-server-side path convention as documents.ts's uploadClientDocument / the KYC upload route, not new storage logic. */
+export async function uploadProjectDeliverable(projectId: string, formData: FormData) {
+  try {
+    const access = await verifyProjectAccess(projectId);
+    if ('error' in access) return { success: false, error: access.error };
+    const { supabase, project, user } = access;
+
+    const file = formData.get('file') as File;
+    if (!file || file.size === 0) return { success: false, error: 'No file provided.' };
+    if (file.size > 25 * 1024 * 1024) return { success: false, error: 'File exceeds 25MB limit.' };
+
+    const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const storagePath = `projects/${projectId}/${Date.now()}-${cleanFileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('media')
+      .upload(storagePath, file, { upsert: true, contentType: file.type });
+    if (uploadError) throw uploadError;
+
+    const { data: mediaFile, error: dbError } = await supabase
+      .from('media_files')
+      .insert({
+        workspace_id: project.workspace_id,
+        project_id: projectId,
+        name: file.name,
+        path: storagePath,
+        type: 'file',
+        mime_type: file.type,
+        size: file.size,
+        is_client_deliverable: true,
+        created_by: user.id,
+      })
+      .select()
+      .single();
+
+    if (dbError) {
+      await supabase.storage.from('media').remove([storagePath]);
+      throw dbError;
+    }
+
+    await logProjectActivity(project.workspace_id, user.id, project, 'project_deliverable_uploaded', `Deliverable "${file.name}" uploaded to project "${project.name}"`);
+
+    revalidatePath('/projects');
+    return { success: true, data: mediaFile };
+  } catch (err: any) {
+    logger.error({ err, projectId }, 'projects.deliverable.upload.failed');
+    return { success: false, error: 'Failed to upload deliverable.' };
+  }
+}
+
+/** Removes a task from a project's checklist. */
+export async function deleteProjectTask(projectId: string, taskId: string) {
+  try {
+    const access = await verifyProjectAccess(projectId);
+    if ('error' in access) return { success: false, error: access.error };
+    const { supabase, project, user } = access;
+
+    const { data: task } = await supabase.from('project_tasks').select('title').eq('id', taskId).single();
+
     const { error } = await supabase.from('project_tasks').delete().eq('id', taskId).eq('project_id', projectId);
     if (error) throw error;
+
+    await logProjectActivity(project.workspace_id, user.id, project, 'project_task_deleted', `Task "${task?.title || taskId}" removed from project "${project.name}"`);
 
     revalidatePath('/projects');
     return { success: true };

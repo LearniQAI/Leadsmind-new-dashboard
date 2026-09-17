@@ -76,10 +76,10 @@ export function KanbanColumn({ id, title, tasks, onAddTask, onCardClick }: Kanba
           </div>
           
           <div className="flex items-center gap-2.5">
-            <h3 className="text-sm font-black tracking-[0.1em] !text-dash-text">
+            <h3 className="text-sm font-semibold tracking-tight !text-dash-text">
               {title}
             </h3>
-            <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", theme.bg, theme.text)}>
+            <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full", theme.bg, theme.text)}>
               {tasks.length}
             </span>
           </div>

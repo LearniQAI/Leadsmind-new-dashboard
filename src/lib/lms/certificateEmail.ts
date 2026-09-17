@@ -103,13 +103,15 @@ Well done, and see you in the next course.
       subject,
       html,
       text,
-      config: emailConfig
-        ? {
-            apiKey: emailConfig.apiKey,
-            fromEmail: emailConfig.fromEmail,
-            fromName: emailConfig.fromName || brandName,
-          }
-        : undefined,
+      // Always pass an object, even with apiKey left undefined for an
+      // unconfigured workspace — collapsing to `undefined` here previously
+      // let sendEmail() silently substitute the platform's own
+      // RESEND_API_KEY (the Twilio-shaped bug fixed 2026-09-17).
+      config: {
+        apiKey: emailConfig?.apiKey,
+        fromEmail: emailConfig?.fromEmail,
+        fromName: emailConfig?.fromName || brandName,
+      },
     });
 
     logger.info({ courseId, contactId, workspaceId, validationId }, 'lms.certificate_email.sent');

@@ -341,7 +341,11 @@ export async function applyToProgramme(
           subject,
           html: htmlContent,
           scheduledAt: scheduledTime,
-          config: customConfig || undefined
+          // Always pass an object, even with apiKey left undefined for an
+          // unconfigured workspace — collapsing to `undefined` here
+          // previously let sendEmail() silently substitute the platform's
+          // own RESEND_API_KEY (the Twilio-shaped bug fixed 2026-09-17).
+          config: customConfig || {}
         });
       } catch (err) {
         logger.error({ err, daysOffset }, 'affiliates.welcome_email.schedule.failed');
@@ -472,7 +476,12 @@ export async function approveAffiliate(affiliateId: string) {
             </div>
           </div>
         `,
-        config: customConfig || undefined
+        // Only a genuinely workspace-less affiliate omits `config` (true
+        // platform-level send). A workspace-scoped affiliate must pass an
+        // object even when unconfigured — collapsing to `undefined` here
+        // previously let sendEmail() silently substitute the platform's own
+        // RESEND_API_KEY (the Twilio-shaped bug fixed 2026-09-17).
+        config: affiliate.workspace_id ? (customConfig || {}) : undefined
       });
     } catch (e) {
       logger.error({ err: e, affiliateId }, 'affiliates.approval_notification.failed');
@@ -517,7 +526,12 @@ export async function rejectAffiliate(affiliateId: string) {
             <p>If you have any questions, feel free to contact our support team.</p>
           </div>
         `,
-        config: customConfig || undefined
+        // Only a genuinely workspace-less affiliate omits `config` (true
+        // platform-level send). A workspace-scoped affiliate must pass an
+        // object even when unconfigured — collapsing to `undefined` here
+        // previously let sendEmail() silently substitute the platform's own
+        // RESEND_API_KEY (the Twilio-shaped bug fixed 2026-09-17).
+        config: affiliate.workspace_id ? (customConfig || {}) : undefined
       });
     } catch (e) {
       logger.error({ err: e, affiliateId }, 'affiliates.rejection_notification.failed');

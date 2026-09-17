@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Search, FileText, MoreVertical,
   CheckCircle2, XCircle, Send, Pencil, Trash2, ArrowRight, Download
@@ -11,18 +11,24 @@ import { toast } from 'sonner';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { convertQuoteToInvoice, deleteQuote, updateQuoteStatus } from '@/app/actions/quotes';
+import { convertQuoteToInvoice, deleteQuote, updateQuoteStatus, sendQuoteNow } from '@/app/actions/quotes';
 import { useRouter } from 'next/navigation';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { DashStatusPill } from '@/components/dashboard-ui/StatusPill';
+import { createClient } from '@/lib/supabase/client';
 
 interface QuoteMasterLedgerProps {
   quotes: any[];
+  workspaceId?: string;
 }
 
-export function QuoteMasterLedger({ quotes: initialQuotes }: QuoteMasterLedgerProps) {
+export function QuoteMasterLedger({ quotes: initialQuotes, workspaceId }: QuoteMasterLedgerProps) {
   const router = useRouter();
   const [quotes, setQuotes] = useState<any[]>(initialQuotes || []);
+  // Avoids re-creating the Supabase client (and tearing down/resubscribing the
+  // realtime channel below) on every render — same convention as
+  // PipelinesClient.tsx.
+  const [supabase] = useState(() => createClient());
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setBy] = useState('newest');
@@ -33,6 +39,36 @@ export function QuoteMasterLedger({ quotes: initialQuotes }: QuoteMasterLedgerPr
   useEffect(() => {
     setQuotes(initialQuotes || []);
   }, [initialQuotes]);
+
+  // Realtime: a quote created/edited/deleted in another tab (or signed by the
+  // client in their portal) reflects here without a manual refresh, same
+  // pattern as PipelinesClient.tsx's opportunities subscription. Debounced
+  // router.refresh() re-runs the page's getQuotes() rather than patching
+  // state manually — simplest correct option, matching the Pipelines
+  // convention for this exact tradeoff.
+  const realtimeRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!workspaceId || typeof window === 'undefined') return;
+
+    const scheduleRefresh = () => {
+      if (realtimeRefreshTimer.current) clearTimeout(realtimeRefreshTimer.current);
+      realtimeRefreshTimer.current = setTimeout(() => router.refresh(), 300);
+    };
+
+    const channel = supabase
+      .channel(`quotes:${workspaceId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'quotes', filter: `workspace_id=eq.${workspaceId}` },
+        () => scheduleRefresh()
+      )
+      .subscribe();
+
+    return () => {
+      if (realtimeRefreshTimer.current) clearTimeout(realtimeRefreshTimer.current);
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, router, workspaceId]);
 
   const filteredQuotes = (quotes || [])
     .filter(q => {
@@ -62,13 +98,13 @@ export function QuoteMasterLedger({ quotes: initialQuotes }: QuoteMasterLedgerPr
   const handleConvert = async (id: string) => {
     if (!id) return;
     toast.promise(convertQuoteToInvoice(id), {
-      loading: 'Converting proposal to invoice...',
+      loading: 'Converting quote to invoice...',
       success: (res) => {
         if (!res?.success) throw new Error(res?.error || 'Conversion failed');
         setQuotes(prev => prev.map(q => q?.id === id ? { ...q, status: 'converted' } : q));
-        return 'Proposal converted to invoice successfully';
+        return 'Quote converted to invoice successfully';
       },
-      error: (err) => err?.message || 'Failed to convert proposal'
+      error: (err) => err?.message || 'Failed to convert quote'
     });
   };
 
@@ -94,6 +130,19 @@ export function QuoteMasterLedger({ quotes: initialQuotes }: QuoteMasterLedgerPr
       }
     });
   };
+  const handleSendQuote = async (quote: any) => {
+    if (!quote?.id) return;
+    toast.promise(sendQuoteNow(quote.id), {
+      loading: 'Sending quote...',
+      success: (res) => {
+        if (!res?.success) throw new Error(res?.error || 'Send failed');
+        setQuotes(prev => prev.map(q => q?.id === quote.id ? { ...q, status: 'sent' } : q));
+        return 'Quote emailed to client';
+      },
+      error: (err) => err?.message || 'Failed to send quote'
+    });
+  };
+
   const handleDownloadPdf = async (quote: any) => {
     if (!quote?.id) return;
     setDownloadingId(quote.id);
@@ -170,7 +219,7 @@ export function QuoteMasterLedger({ quotes: initialQuotes }: QuoteMasterLedgerPr
     if (!deleteId) return;
 
     toast.promise(deleteQuote(deleteId), {
-      loading: 'Deleting proposal...',
+      loading: 'Deleting quote...',
       success: (res) => {
         if (!res?.success) throw new Error(res?.error || 'Delete failed');
         setQuotes(prev => prev.filter(q => q?.id !== deleteId));
@@ -190,7 +239,7 @@ export function QuoteMasterLedger({ quotes: initialQuotes }: QuoteMasterLedgerPr
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search proposals..."
+            placeholder="Search quotes..."
             className="w-full bg-white border border-dash-border rounded-lg pl-9 pr-3 py-2 text-xs !text-dash-text outline-none focus:border-dash-accent transition-colors"
           />
         </div>
@@ -240,16 +289,21 @@ export function QuoteMasterLedger({ quotes: initialQuotes }: QuoteMasterLedgerPr
               <tr>
                 <td colSpan={6} className="px-6 py-12 text-center">
                   <FileText className="h-8 w-8 !text-dash-textMuted mx-auto mb-2 opacity-30" />
-                  <p className="text-xs font-medium !text-dash-textMuted">No matching proposals found</p>
+                  <p className="text-xs font-medium !text-dash-textMuted">No matching quotes found</p>
                 </td>
               </tr>
             ) : (
               filteredQuotes.map((q) => (
                 <tr key={q?.id || Math.random().toString()} className="hover:bg-dash-surface/60 transition-colors motion-reduce:transition-none group">
                   <td className="px-6 py-4">
-                    <span className="text-[11px] font-bold text-dash-accent">
-                      {q?.quote_number || 'N/A'}
-                    </span>
+                    <div className="flex flex-col">
+                      <span className="text-[11px] font-bold text-dash-accent">
+                        {q?.quote_number || 'N/A'}
+                      </span>
+                      {q?.deal?.title && (
+                        <span className="text-[9.5px] !text-dash-textMuted">Deal: {q.deal.title}</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
@@ -297,7 +351,7 @@ export function QuoteMasterLedger({ quotes: initialQuotes }: QuoteMasterLedgerPr
                           onClick={() => q?.id && router.push(`/quotes/${q.id}/edit`)}
                           className="flex items-center gap-2 cursor-pointer text-xs py-2.5"
                         >
-                          <Pencil size={14} /> Edit Proposal
+                          <Pencil size={14} /> Edit Quote
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleDownloadPdf(q)}
@@ -312,8 +366,8 @@ export function QuoteMasterLedger({ quotes: initialQuotes }: QuoteMasterLedgerPr
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator className="bg-dash-border" />
-                        <DropdownMenuItem onClick={() => q?.id && handleStatusChange(q, 'sent')} className="flex items-center gap-2 cursor-pointer text-xs py-2.5">
-                          <Send size={14} /> Resend Quote
+                        <DropdownMenuItem onClick={() => handleSendQuote(q)} className="flex items-center gap-2 cursor-pointer text-xs py-2.5">
+                          <Send size={14} /> {q?.status === 'draft' ? 'Send Quote' : 'Resend Quote'}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => q?.id && handleStatusChange(q, 'accepted')} className="flex items-center gap-2 cursor-pointer text-green text-xs py-2.5">
                           <CheckCircle2 size={14} /> Mark as Accepted
@@ -340,7 +394,7 @@ export function QuoteMasterLedger({ quotes: initialQuotes }: QuoteMasterLedgerPr
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
         title="Confirm Deletion"
-        description="Are you sure you want to delete this proposal? This action cannot be undone."
+        description="Are you sure you want to delete this quote? This action cannot be undone."
         confirmLabel="Delete Permanently"
         variant="danger"
       />

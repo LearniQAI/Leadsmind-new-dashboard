@@ -250,6 +250,19 @@ const HELP_CENTER_MOVED_TO_TOPBAR = new Set([
   "/articles",
 ]);
 
+/**
+ * Proposals/Quotes consolidation: Proposals was a duplicate UI over the same
+ * `quotes` table (drifted CRUD, a "Create Proposal" button that was actually
+ * wired to /invoices/new and created real invoices instead of proposals or
+ * quotes). Removed entirely rather than fixed in place -- Quotes is now the
+ * single implementation. Same treatment as HELP_CENTER_MOVED_TO_TOPBAR: gone
+ * from the nav config entirely, not merely regrouped, so it can't appear in
+ * newLinks at all.
+ */
+const PROPOSALS_REMOVED = new Set([
+  "/proposals",
+]);
+
 describe("filterNavByPermissions matches the old inline filtering logic exactly", () => {
   const scenarios: Array<[label: string, role: string, permissions: string[]]> = [
     ["admin", "admin", []],
@@ -277,7 +290,8 @@ describe("filterNavByPermissions matches the old inline filtering logic exactly"
       (l) =>
         !HR_PAYROLL_NOW_OPEN_TO_ALL.has(l) &&
         !HR_OVERVIEW_LINK_REMOVED.has(l) &&
-        !HELP_CENTER_MOVED_TO_TOPBAR.has(l)
+        !HELP_CENTER_MOVED_TO_TOPBAR.has(l) &&
+        !PROPOSALS_REMOVED.has(l)
     );
     const newLinksExcludingAdditions = [...newLinks].filter(
       (l) =>

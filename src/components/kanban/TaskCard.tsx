@@ -39,10 +39,10 @@ export function TaskCard({ task, index, onClick }: TaskCardProps) {
           {...provided.dragHandleProps}
           onClick={onClick}
           className={cn(
-            "group relative flex flex-col gap-3 p-4 bg-white border border-dash-border rounded-xl shadow-lg transition-all duration-300",
+            "group relative flex flex-col gap-3 p-4 bg-white border border-dash-border rounded-xl shadow-sm transition-all duration-300",
             COLUMN_COLORS[task.status] || 'border-t-dash-border',
             "border-t-[3px]",
-            snapshot.isDragging ? "shadow-2xl ring-2 ring-dash-accent/20 rotate-1 z-50 scale-[1.02]" : "hover:translate-y-[-1px] hover:border-dash-border",
+            snapshot.isDragging ? "shadow-xl ring-2 ring-dash-accent/20 rotate-1 z-50 scale-[1.02]" : "hover:shadow-md hover:translate-y-[-1px] hover:border-dash-border",
             "hover:border-bdrh"
           )}
           style={{
@@ -54,7 +54,7 @@ export function TaskCard({ task, index, onClick }: TaskCardProps) {
             <Badge 
               variant="outline" 
               className={cn(
-                "text-[9px] tracking-tighter px-1.5 h-4 font-black border",
+                "text-[10px] px-1.5 h-4 font-semibold border capitalize",
                 PRIORITY_COLORS[task.priority as keyof typeof PRIORITY_COLORS]
               )}
             >

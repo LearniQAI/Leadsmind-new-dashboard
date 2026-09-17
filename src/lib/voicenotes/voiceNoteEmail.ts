@@ -266,6 +266,11 @@ export async function sendVoiceNoteEmail({
     // `config.headers` is silently dropped by Resend (was the cause of the
     // reply-bounce bug).
     replyTo: replyTo || undefined,
-    config: config || undefined,
+    // Always pass an object, even with apiKey left undefined — collapsing an
+    // unconfigured workspace's config to `undefined` here previously let
+    // sendEmail() silently substitute the platform's own RESEND_API_KEY
+    // (the Twilio-shaped bug fixed 2026-09-17); an unconfigured workspace
+    // must fail instead of silently sending through the shared account.
+    config: config || {},
   });
 }

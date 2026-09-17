@@ -3,7 +3,7 @@
 import React from 'react';
 import { DollarSign, Layers, Trophy } from 'lucide-react';
 import { Opportunity } from '@/types/crm';
-import { CurrencyValue, NumeralText } from '@/components/dashboard-ui';
+import { formatCurrency } from '@/lib/utils';
 
 // One shared class string for all three stat values (Total Pipeline Value /
 // Active Deals / Weighted Won) — a single source so the "matched treatment"
@@ -13,7 +13,15 @@ import { CurrencyValue, NumeralText } from '@/components/dashboard-ui';
 // (HomeDashboardClient.tsx's `text-[36px] font-bold !text-[#0F172A]
 // tracking-tight` — same idea, sized down for this page's more compact
 // single-row stat strip rather than full standalone cards).
-const STAT_VALUE_CLASS = 'text-[24px] font-bold !text-dash-text tracking-tight leading-none block';
+//
+// Plain text, not CurrencyValue/NumeralText: those render the numeral in a
+// system monospace stack to disambiguate 0/O, which reads as an out-of-place
+// "technical" typeface next to the rest of this DM Sans page — the user
+// flagged it directly. `tabular-nums` keeps digit widths aligned without
+// swapping the whole typeface; this trades back the theoretical 0/O
+// ambiguity CurrencyValue was built to fix, same tradeoff every other big
+// number on the main dashboard already makes.
+const STAT_VALUE_CLASS = 'text-[24px] font-bold !text-dash-text tracking-tight tabular-nums leading-none block';
 
 export function PipelineStats({ opportunities, members }: { opportunities: Opportunity[]; members: { id: string, name: string }[] }) {
   const totalValue = opportunities.reduce((acc, opp) => acc + (Number(opp.value) || 0), 0);
@@ -37,7 +45,7 @@ export function PipelineStats({ opportunities, members }: { opportunities: Oppor
             <p className="text-[9px] font-bold !text-dash-textMuted tracking-widest">
               Total Pipeline Value
             </p>
-            <CurrencyValue value={totalValue} className={STAT_VALUE_CLASS} />
+            <span className={STAT_VALUE_CLASS}>{formatCurrency(totalValue)}</span>
           </div>
         </div>
 
@@ -50,7 +58,7 @@ export function PipelineStats({ opportunities, members }: { opportunities: Oppor
             </div>
             <div>
               <p className="text-[9px] font-bold !text-dash-textMuted tracking-widest">Active Deals</p>
-              <NumeralText className={STAT_VALUE_CLASS}>{activeDeals}</NumeralText>
+              <span className={STAT_VALUE_CLASS}>{activeDeals}</span>
             </div>
           </div>
           <div className="flex items-center gap-2.5">
@@ -59,7 +67,7 @@ export function PipelineStats({ opportunities, members }: { opportunities: Oppor
             </div>
             <div>
               <p className="text-[9px] font-bold !text-dash-textMuted tracking-widest">Weighted Won</p>
-              <NumeralText className={STAT_VALUE_CLASS}>{wonDeals}</NumeralText>
+              <span className={STAT_VALUE_CLASS}>{wonDeals}</span>
             </div>
           </div>
         </div>

@@ -152,7 +152,7 @@ const HomeDashboardClient = ({
     { label: "Send Campaign", icon: <Send size={13} />, link: "/campaigns" },
     { label: "Book Appointment", icon: <CalendarDays size={13} />, link: "/calendar" },
     { label: "New Automation", icon: <Zap size={13} />, link: "/automations" },
-    { label: "New Proposal", icon: <FileSignature size={13} />, link: "/proposals" },
+    { label: "New Quote", icon: <FileSignature size={13} />, link: "/quotes/new" },
   ];
 
   // Revenue chart setup (Smooth line with custom month toggle options)

@@ -31,6 +31,8 @@ export const EVENT_TRIGGERS = {
   CONTACT_CREATED: 'contact_created',
   APPOINTMENT_BOOKED: 'appointment_booked',
   INVOICE_PAID: 'invoice_paid',
+  PROJECT_STARTED: 'project_started',
+  MILESTONE_APPROVED: 'milestone_approved',
 } as const;
 
 export type EventTriggerType = typeof EVENT_TRIGGERS[keyof typeof EVENT_TRIGGERS];

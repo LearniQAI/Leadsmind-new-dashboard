@@ -140,13 +140,15 @@ export async function sendCourseOnboardingEmail(opts: {
       subject,
       html,
       text,
-      config: emailConfig
-        ? {
-            apiKey: emailConfig.apiKey,
-            fromEmail: emailConfig.fromEmail,
-            fromName: emailConfig.fromName || (workspace as any)?.name || 'LeadsMind',
-          }
-        : undefined,
+      // Always pass an object, even with apiKey left undefined for an
+      // unconfigured workspace — collapsing to `undefined` here previously
+      // let sendEmail() silently substitute the platform's own
+      // RESEND_API_KEY (the Twilio-shaped bug fixed 2026-09-17).
+      config: {
+        apiKey: emailConfig?.apiKey,
+        fromEmail: emailConfig?.fromEmail,
+        fromName: emailConfig?.fromName || (workspace as any)?.name || 'LeadsMind',
+      },
     });
 
     logger.info({ courseId, contactId, workspaceId }, 'lms.onboarding_email.sent');

@@ -15,6 +15,8 @@ export type WebhookEvent =
   | 'invoice.paid'
   | 'invoice.overdue'
   | 'payment.received'
+  // Quotes
+  | 'quote.sent'
   // Bookings
   | 'booking.created'
   | 'booking.confirmed'

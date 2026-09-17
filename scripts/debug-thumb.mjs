@@ -1,0 +1,12 @@
+import { chromium } from 'playwright';
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+page.on('console', m => console.log('CONSOLE', m.type(), m.text().slice(0,200)));
+page.on('pageerror', e => console.log('PAGEERROR', String(e).slice(0,300)));
+page.on('requestfailed', r => console.log('REQFAIL', r.url(), r.failure()?.errorText));
+page.on('response', r => { if (r.status() >= 400) console.log('BAD', r.status(), r.url()); });
+await page.goto('http://localhost:3000/p/thumb-scratch?t=velocity', { waitUntil: 'networkidle', timeout: 60000 });
+await page.waitForTimeout(3000);
+const bodyLen = await page.evaluate(() => document.body.innerHTML.length);
+console.log('body length:', bodyLen);
+await browser.close();

@@ -18,7 +18,6 @@ const dashboardNav: NavModule[] = [
       { id: 51, label: "Lead Finder", icon: "fa-light fa-magnifying-glass-location", link: "/lead-finder", permission: "contacts" },
       { id: 155, label: "Territory Map", icon: "fa-light fa-map-location-dot", link: "/lead-finder/map", permission: "contacts" },
       { id: 6, label: "Pipelines", icon: "icon-projects", link: "/pipelines", permission: "pipelines" },
-      { id: 7, label: "Proposals", icon: "fa-light fa-file-signature", link: "/proposals", permission: "proposals" },
       { id: 81, label: "Quotes", icon: "fa-light fa-file-invoice", link: "/quotes", permission: "invoices" },
       { id: 2, label: "Tasks", icon: "fa-light fa-circle-check", link: "/tasks", permission: "dashboard" },
       { id: 21, label: "Projects", icon: "icon-projects", link: "/projects", permission: "business" },

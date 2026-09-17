@@ -107,8 +107,22 @@ export const archiste: BuilderTemplate = {
       // the same reason as hero-media — this needs to span hero-media's full width, not a
       // centered 1200px column within it.
       props: { className: 'absolute inset-0', backgroundColor: 'rgba(0,0,0,0.18)', layoutType: 'fluid', padding: 0 },
-      nodes: [],
+      // A real, previously-seen-live bug: a genuinely childless (`nodes: []`) isCanvas
+      // Container triggers Container.tsx's own "Empty Container" placeholder box (dashed
+      // border + label) whenever the editor is enabled — that check is unconditional on child
+      // count, it doesn't know or care that this particular Container is a deliberate,
+      // content-free decorative overlay. Invisible in Preview/the published page (enabled=false
+      // skips the placeholder entirely), but in the live Edit canvas it rendered as a large
+      // white block sitting on top of the hero, right over the wordmark. Fixed by giving it one
+      // trivial, `hidden` (display:none) child — real enough to make `children.length` nonzero
+      // and suppress the placeholder, invisible in both modes either way.
+      nodes: ['hero-scrim-noop'],
       parent: 'hero-media',
+    },
+    'hero-scrim-noop': {
+      type: { resolvedName: 'Paragraph' },
+      props: { text: '', className: 'hidden' },
+      parent: 'hero-scrim',
     },
     'hero-word': {
       type: { resolvedName: 'Heading' },
@@ -229,7 +243,7 @@ export const archiste: BuilderTemplate = {
     studio: {
       type: { resolvedName: 'Section' },
       isCanvas: true,
-      props: { backgroundColor: '#ffffff', paddingTop: 100, paddingBottom: 100, paddingTop_mobile: 56, paddingBottom_mobile: 56, id: 'studio' },
+      props: { backgroundColor: '#ffffff', paddingTop: 56, paddingBottom: 56, paddingTop_mobile: 32, paddingBottom_mobile: 32, id: 'studio' },
       nodes: ['studio-inner'],
       parent: 'ROOT',
     },
@@ -243,7 +257,7 @@ export const archiste: BuilderTemplate = {
     'studio-header': {
       type: { resolvedName: 'Columns' },
       isCanvas: true,
-      props: { layout: '1/3-2/3', gap: 40, className: 'items-start mb-14' },
+      props: { layout: '1/3-2/3', gap: 40, className: 'items-start mb-8' },
       nodes: ['studio-pill', 'studio-h'],
       parent: 'studio-inner',
     },
@@ -336,7 +350,7 @@ export const archiste: BuilderTemplate = {
     services: {
       type: { resolvedName: 'Section' },
       isCanvas: true,
-      props: { backgroundColor: '#ffffff', paddingTop: 60, paddingBottom: 100, paddingTop_mobile: 40, paddingBottom_mobile: 56, id: 'services' },
+      props: { backgroundColor: '#ffffff', paddingTop: 32, paddingBottom: 56, paddingTop_mobile: 24, paddingBottom_mobile: 32, id: 'services' },
       nodes: ['services-inner'],
       parent: 'ROOT',
     },
@@ -350,7 +364,7 @@ export const archiste: BuilderTemplate = {
     'services-header': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'flex items-center justify-between pb-6 border-b mb-14', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderColor: BORDER, borderWidth: 1, borderStyle: 'solid' },
+      props: { className: 'flex items-center justify-between pb-5 border-b mb-8', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderColor: BORDER, borderWidth: 1, borderStyle: 'solid' },
       nodes: ['services-pill', 'services-label'],
       parent: 'services-inner',
     },
@@ -377,7 +391,7 @@ export const archiste: BuilderTemplate = {
     'services-top': {
       type: { resolvedName: 'Columns' },
       isCanvas: true,
-      props: { layout: '2', gap: 40, className: 'items-end mb-16' },
+      props: { layout: '2', gap: 40, className: 'items-end mb-10' },
       nodes: ['services-h', 'services-sub'],
       parent: 'services-inner',
     },
@@ -401,7 +415,7 @@ export const archiste: BuilderTemplate = {
     'svc-row-1': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'py-10 border-b', borderColor: BORDER, borderWidth: 1, borderStyle: 'solid' },
+      props: { className: 'py-6 border-b', borderColor: BORDER, borderWidth: 1, borderStyle: 'solid' },
       nodes: ['svc-row-1-cols'],
       parent: 'services-list',
     },
@@ -442,7 +456,7 @@ export const archiste: BuilderTemplate = {
     'svc-row-2': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'py-10 border-b', borderColor: BORDER, borderWidth: 1, borderStyle: 'solid' },
+      props: { className: 'py-6 border-b', borderColor: BORDER, borderWidth: 1, borderStyle: 'solid' },
       nodes: ['svc-row-2-cols'],
       parent: 'services-list',
     },
@@ -483,7 +497,7 @@ export const archiste: BuilderTemplate = {
     'svc-row-3': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'py-10' },
+      props: { className: 'py-6' },
       nodes: ['svc-row-3-cols'],
       parent: 'services-list',
     },
@@ -525,7 +539,7 @@ export const archiste: BuilderTemplate = {
     process: {
       type: { resolvedName: 'Section' },
       isCanvas: true,
-      props: { backgroundColor: '#ffffff', paddingTop: 100, paddingBottom: 100, paddingTop_mobile: 56, paddingBottom_mobile: 56, id: 'process' },
+      props: { backgroundColor: '#ffffff', paddingTop: 56, paddingBottom: 56, paddingTop_mobile: 32, paddingBottom_mobile: 32, id: 'process' },
       nodes: ['process-inner'],
       parent: 'ROOT',
     },
@@ -663,7 +677,7 @@ export const archiste: BuilderTemplate = {
     materiality: {
       type: { resolvedName: 'Section' },
       isCanvas: true,
-      props: { backgroundColor: '#ffffff', paddingTop: 100, paddingBottom: 100, paddingTop_mobile: 56, paddingBottom_mobile: 56, id: 'materiality' },
+      props: { backgroundColor: '#ffffff', paddingTop: 56, paddingBottom: 56, paddingTop_mobile: 32, paddingBottom_mobile: 32, id: 'materiality' },
       nodes: ['materiality-inner'],
       parent: 'ROOT',
     },
@@ -677,7 +691,7 @@ export const archiste: BuilderTemplate = {
     'mat-header': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'flex items-center justify-between pb-6 border-b mb-14', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderColor: BORDER, borderWidth: 1, borderStyle: 'solid' },
+      props: { className: 'flex items-center justify-between pb-5 border-b mb-8', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderColor: BORDER, borderWidth: 1, borderStyle: 'solid' },
       nodes: ['mat-pill', 'mat-label'],
       parent: 'materiality-inner',
     },
@@ -704,7 +718,7 @@ export const archiste: BuilderTemplate = {
     'mat-top': {
       type: { resolvedName: 'Columns' },
       isCanvas: true,
-      props: { layout: '2', gap: 40, className: 'items-end mb-16' },
+      props: { layout: '2', gap: 40, className: 'items-end mb-10' },
       nodes: ['mat-h', 'mat-sub'],
       parent: 'materiality-inner',
     },
@@ -721,7 +735,7 @@ export const archiste: BuilderTemplate = {
     'mat-block-1': {
       type: { resolvedName: 'Columns' },
       isCanvas: true,
-      props: { layout: '1/3-2/3', gap: 48, className: 'items-center pb-16 mb-16 border-b', borderColor: BORDER, borderWidth: 1, borderStyle: 'solid' },
+      props: { layout: '1/3-2/3', gap: 48, className: 'items-center pb-10 mb-10 border-b', borderColor: BORDER, borderWidth: 1, borderStyle: 'solid' },
       nodes: ['mat-1-img', 'mat-1-text'],
       parent: 'materiality-inner',
     },

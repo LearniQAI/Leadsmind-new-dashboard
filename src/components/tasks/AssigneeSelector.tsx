@@ -34,16 +34,16 @@ export function AssigneeSelector({ members, selectedIds, onChange, currentUserId
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <label className="text-[12px] font-bold !text-dash-textMuted">
-          Assign personnel
+        <label className="text-[12px] font-semibold !text-dash-textMuted">
+          Assignees
         </label>
         {currentUserId && !selectedIds.includes(currentUserId) && (
-          <button 
+          <button
             onClick={selectMe}
-            className="text-[9px] font-black tracking-widest text-dash-accent hover:text-dash-accent/80 transition-colors flex items-center gap-1.5"
+            className="text-[11px] font-semibold text-dash-accent hover:text-dash-accent/80 transition-colors flex items-center gap-1.5"
           >
             <UserIcon className="w-3 h-3" />
-            Quick Select Me
+            Assign to me
           </button>
         )}
       </div>
@@ -56,7 +56,7 @@ export function AssigneeSelector({ members, selectedIds, onChange, currentUserId
             placeholder="Search team members..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-9 bg-dash-surface border-none text-[12px] font-bold !text-dash-text focus:ring-0 pl-10 placeholder:!text-dash-textMuted"
+            className="w-full h-9 bg-dash-surface border-none text-[12px] font-medium !text-dash-text focus:ring-0 pl-10 placeholder:!text-dash-textMuted"
           />
         </div>
 
@@ -79,7 +79,7 @@ export function AssigneeSelector({ members, selectedIds, onChange, currentUserId
                   <AvatarImage src={member.user?.avatar_url} />
                   <AvatarFallback className="text-[8px] bg-dash-border/60">{member.user?.first_name?.[0] || 'U'}</AvatarFallback>
                 </Avatar>
-                <span className="text-[10px] font-bold truncate leading-none">
+                <span className="text-[11px] font-medium truncate leading-none">
                   {member.user?.first_name || 'Member'}
                 </span>
                 {isSelected && <Check className="w-2.5 h-2.5 ml-auto text-dash-accent" />}
@@ -102,12 +102,12 @@ export function AssigneeSelector({ members, selectedIds, onChange, currentUserId
                 );
               })}
               {selectedIds.length > 5 && (
-                <div className="w-8 h-8 rounded-full bg-dash-surface border-2 border-white flex items-center justify-center text-[9px] font-black !text-dash-textMuted backdrop-blur-md">
+                <div className="w-8 h-8 rounded-full bg-dash-surface border-2 border-white flex items-center justify-center text-[10px] font-semibold !text-dash-textMuted backdrop-blur-md">
                   +{selectedIds.length - 5}
                 </div>
               )}
             </div>
-            <span className="text-[11px] font-bold !text-dash-textMuted">
+            <span className="text-[11px] font-medium !text-dash-textMuted">
               {selectedIds.length} assigned
             </span>
           </div>

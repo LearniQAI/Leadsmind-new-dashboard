@@ -1,6 +1,6 @@
 import { requireAuth, getCurrentWorkspaceId } from "@/lib/auth";
 import { getContactsForInvoicing } from "@/app/actions/finance";
-import { getQuoteById } from "@/app/actions/quotes";
+import { getQuoteById, getOpenDealsForQuoteLinking } from "@/app/actions/quotes";
 import QuoteClientWrapper from "@/components/quotes/QuoteClientWrapper";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -20,9 +20,10 @@ export default async function EditQuotePage({
   const workspaceId = await getCurrentWorkspaceId();
   const { id } = await params;
 
-  const [quote, contacts] = await Promise.all([
+  const [quote, contacts, deals] = await Promise.all([
     getQuoteById(id),
-    getContactsForInvoicing(workspaceId!)
+    getContactsForInvoicing(workspaceId!),
+    getOpenDealsForQuoteLinking(),
   ]);
 
   if (!quote) {
@@ -36,7 +37,7 @@ export default async function EditQuotePage({
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-6 py-6 shrink-0 bg-white border-b border-dash-border">
             <div>
               <h1 className="text-3xl font-bold !text-dash-text">
-                Edit <span className="text-dash-accent">Proposal</span>
+                Edit <span className="text-dash-accent">Quote</span>
               </h1>
               <p className="text-[12px] !text-dash-textMuted mt-2 font-medium">
                 Update details for {quote.quote_number}
@@ -53,9 +54,10 @@ export default async function EditQuotePage({
           </div>
 
           <div className="flex-1 bg-white pt-8 pb-12">
-            <QuoteClientWrapper 
+            <QuoteClientWrapper
               workspaceId={workspaceId!}
               contacts={contacts}
+              deals={deals}
               initialData={{
                 ...quote,
                 invoice_number: quote.quote_number,

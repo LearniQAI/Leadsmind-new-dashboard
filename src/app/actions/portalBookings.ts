@@ -155,6 +155,16 @@ export async function bookAppointmentFromPortal(payload: {
       logger.error({ err: supportErr, appointmentId: appointment.id }, 'portal_bookings.support_ticket.failed');
     }
 
+    // Client-portal self-service booking never fired appointment_booked, so
+    // any CRM automation built on that trigger silently never ran for it.
+    // Matches the internal path (src/app/actions/calendar/appointments.ts).
+    try {
+      const { publishEvent } = await import('@/lib/events/EventBus');
+      publishEvent(workspace.id, 'appointment_booked', contact.id, { appointmentId: appointment.id }).catch(() => {});
+    } catch (evtErr) {
+      logger.error({ err: evtErr, appointmentId: appointment.id }, 'portal_bookings.automation_trigger.failed');
+    }
+
     // Insert activity log
     await adminClient.from('contact_activities').insert({
       workspace_id: workspace.id,

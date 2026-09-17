@@ -39,12 +39,12 @@ export function TasksListView({ tasks, onTaskClick }: TasksListViewProps) {
         {/* Table Header */}
         <div className="grid grid-cols-12 gap-4 px-6 py-4 border-b border-dash-border bg-dash-surface rounded-t-2xl">
           <div className="col-span-5 flex items-center gap-2">
-            <span className="text-[10px] font-black tracking-widest !text-dash-textMuted">Task Name</span>
+            <span className="text-[11px] font-semibold tracking-wide !text-dash-textMuted">Task</span>
             <ArrowUpDown className="w-3 h-3 !text-dash-textMuted" />
           </div>
-          <div className="col-span-2 text-[10px] font-black tracking-widest !text-dash-textMuted">Status</div>
-          <div className="col-span-2 text-[10px] font-black tracking-widest !text-dash-textMuted">Assignees</div>
-          <div className="col-span-2 text-[10px] font-black tracking-widest !text-dash-textMuted">Due Date</div>
+          <div className="col-span-2 text-[11px] font-semibold tracking-wide !text-dash-textMuted">Status</div>
+          <div className="col-span-2 text-[11px] font-semibold tracking-wide !text-dash-textMuted">Assignees</div>
+          <div className="col-span-2 text-[11px] font-semibold tracking-wide !text-dash-textMuted">Due date</div>
           <div className="col-span-1"></div>
         </div>
 
@@ -68,8 +68,8 @@ export function TasksListView({ tasks, onTaskClick }: TasksListViewProps) {
                     {task.title}
                   </span>
                   <div className="flex items-center gap-3 mt-1">
-                    <span className="text-[10px] font-bold !text-dash-textMuted tracking-tighter">
-                      TASK-{task.id.slice(0, 4)}
+                    <span className="text-[11px] font-medium !text-dash-textMuted">
+                      #{task.id.slice(0, 4)}
                     </span>
                     <div className="flex items-center gap-1.5">
                       <MessageSquare className="w-3 h-3 !text-dash-textMuted" />
@@ -82,7 +82,7 @@ export function TasksListView({ tasks, onTaskClick }: TasksListViewProps) {
               {/* Status */}
               <div className="col-span-2">
                 <Badge variant="outline" className={cn(
-                  "border-dash-border text-[9px] font-black px-2 py-0.5",
+                  "border-dash-border text-[11px] font-semibold px-2 py-0.5 capitalize",
                   STATUS_COLORS[task.status]
                 )}>
                   {task.status.replace('_', ' ')}
@@ -115,10 +115,10 @@ export function TasksListView({ tasks, onTaskClick }: TasksListViewProps) {
                   task.due_date && new Date(task.due_date) < new Date() ? "text-red" : "!text-dash-textMuted"
                 )} />
                 <span className={cn(
-                  "text-[12px] font-bold",
+                  "text-[12px] font-medium",
                   task.due_date && new Date(task.due_date) < new Date() ? "text-red" : "!text-dash-textMuted"
                 )}>
-                  {task.due_date ? format(new Date(task.due_date), 'MMM d, yyyy') : 'No Date'}
+                  {task.due_date ? format(new Date(task.due_date), 'MMM d, yyyy') : 'No date'}
                 </span>
               </div>
 
@@ -135,7 +135,7 @@ export function TasksListView({ tasks, onTaskClick }: TasksListViewProps) {
             <DashEmptyState
               icon={ListFilter}
               title="No tasks matching your filters"
-              description="Try adjusting search, sort, or the personnel filter."
+              description="Try adjusting your search, sort, or the people filter."
             />
           )}
         </div>

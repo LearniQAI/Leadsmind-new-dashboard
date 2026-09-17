@@ -85,5 +85,17 @@ export async function POST(req: NextRequest) {
     return apiError('Internal server error', 500)
   }
 
+  // This public API created full appointment rows without ever firing
+  // appointment_booked, so any CRM automation built on that trigger silently
+  // never ran for an appointment booked this way. contact_id is optional on
+  // this endpoint; publishEvent requires a real contact id, so this only
+  // fires when one is present — same guard used on the deals PATCH endpoint's
+  // opportunity_stage_changed fix.
+  if (data.contact_id) {
+    import('@/lib/events/EventBus').then(({ publishEvent }) =>
+      publishEvent(auth.workspaceId, 'appointment_booked', data.contact_id, { appointmentId: data.id })
+    ).catch(() => {})
+  }
+
   return apiData(data, 201)
 }

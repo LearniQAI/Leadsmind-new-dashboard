@@ -2,21 +2,21 @@
 
 import React, { useState, useRef, useEffect, useTransition, useCallback } from 'react';
 import { FileText, Download, UploadCloud, AlertCircle, CheckCircle2, Lock, PenTool, Calendar, ShieldCheck, HelpCircle, Shield, Upload, Loader2, Camera, Scan, ShieldAlert } from 'lucide-react';
-import { generateSignedDocumentUrl, uploadClientDocument, signPortalProposal } from '@/app/actions/documents';
+import { generateSignedDocumentUrl, uploadClientDocument, signPortalQuote } from '@/app/actions/documents';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 interface DocumentsClientProps {
   initialDocs: any[];
-  initialProposals: any[];
+  initialQuotes: any[];
   contactId: string;
   workspaceId: string;
 }
 
-export default function DocumentsClient({ initialDocs, initialProposals, contactId, workspaceId }: DocumentsClientProps) {
+export default function DocumentsClient({ initialDocs, initialQuotes, contactId, workspaceId }: DocumentsClientProps) {
   const [docs, setDocs] = useState<any[]>(initialDocs);
-  const [proposals, setProposals] = useState<any[]>(initialProposals);
+  const [signableQuotes, setSignableQuotes] = useState<any[]>(initialQuotes);
   const [activeTab, setActiveTab] = useState<'vault' | 'esign'>('vault');
   
   // Upload States
@@ -66,7 +66,7 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
   }, [loadFicaDocs]);
 
   // E-Sign States
-  const [selectedProposal, setSelectedProposal] = useState<any | null>(null);
+  const [selectedQuote, setSelectedQuote] = useState<any | null>(null);
   const [isSigning, setIsSigning] = useState(false);
   const [signatureType, setSignatureType] = useState<'draw' | 'type'>('draw');
   const [typedName, setTypedName] = useState('');
@@ -167,7 +167,7 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
 
   // 3. E-Signature Drawing Logic
   useEffect(() => {
-    if (selectedProposal && signatureType === 'draw' && canvasRef.current) {
+    if (selectedQuote && signatureType === 'draw' && canvasRef.current) {
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
       if (ctx) {
@@ -180,7 +180,7 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
     }
-  }, [selectedProposal, signatureType]);
+  }, [selectedQuote, signatureType]);
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
@@ -244,10 +244,10 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
 
   // 4. Submit Signature Workflow
   const handleSignatureSubmit = async () => {
-    if (!selectedProposal) return;
-    
+    if (!selectedQuote) return;
+
     let signatureData = '';
-    
+
     if (signatureType === 'draw') {
       if (!canvasRef.current) return;
       // Convert drawn canvas to base64 image data
@@ -267,20 +267,20 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
       const ipData = ipRes ? await ipRes.json() : null;
       const ipAddress = ipData?.ip || '192.168.1.1';
 
-      const res = await signPortalProposal(selectedProposal.id, signatureData, ipAddress);
-      
+      const res = await signPortalQuote(selectedQuote.id, signatureData, ipAddress);
+
       if (res.success) {
-        toast.success(`Proposal "${selectedProposal.title}" signed successfully!`);
+        toast.success(`Quote "${selectedQuote.quote_number}" signed successfully!`);
         // Remove from pending tray
-        setProposals(proposals.filter(p => p.id !== selectedProposal.id));
-        setSelectedProposal(null);
+        setSignableQuotes(signableQuotes.filter(q => q.id !== selectedQuote.id));
+        setSelectedQuote(null);
         // Refresh page to load in documents vault
         window.location.reload();
       } else {
         toast.error(res.error || "Failed to record signature.");
       }
     } catch (err: any) {
-      toast.error("Error signing proposal: " + err.message);
+      toast.error("Error signing quote: " + err.message);
     } finally {
       setIsSigning(false);
     }
@@ -311,9 +311,9 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
           )}
         >
           E-Signature Pending Tray
-          {proposals.length > 0 && (
+          {signableQuotes.length > 0 && (
             <span className="absolute top-[-5px] right-[-12px] bg-red-500 text-white rounded-full text-[9px] w-4.5 h-4.5 flex items-center justify-center font-bold animate-pulse">
-              {proposals.length}
+              {signableQuotes.length}
             </span>
           )}
         </button>
@@ -627,7 +627,7 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
             <PenTool size={14} className="text-purple-500" /> Signature Requirements
           </h3>
 
-          {proposals.length === 0 ? (
+          {signableQuotes.length === 0 ? (
             <div className="bg-white border border-dash-border p-16 rounded-3xl flex flex-col items-center justify-center text-center space-y-4 shadow-xl">
               <div className="w-14 h-14 bg-dash-surface border border-dash-border rounded-2xl flex items-center justify-center text-emerald-400 opacity-55">
                 <ShieldCheck size={28} />
@@ -635,15 +635,15 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
               <div>
                 <h3 className="text-sm font-bold uppercase tracking-wider text-dash-text">All Contracts Sealed</h3>
                 <p className="text-xs text-dash-textMuted mt-1.5 max-w-xs leading-relaxed">
-                  There are no pending proposal agreements, SLAs, or NDAs requiring your electronic signature. Excellent!
+                  There are no pending quotes requiring your electronic signature. Excellent!
                 </p>
               </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {proposals.map((p, idx) => (
-                <div 
-                  key={idx} 
+              {signableQuotes.map((q, idx) => (
+                <div
+                  key={idx}
                   className="bg-white border border-dash-border rounded-[24px] p-6 shadow-xl flex flex-col justify-between hover:border-dash-accent/30 hover:translate-y-[-1px] transition-all relative overflow-hidden group"
                 >
                   <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl pointer-events-none" />
@@ -658,20 +658,20 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
 
                     <div>
                       <h4 className="text-sm font-bold text-dash-text line-clamp-1 font-space uppercase">
-                        {p.title}
+                        {q.quote_number}
                       </h4>
                       <div className="flex flex-wrap items-center gap-4 mt-2.5 text-[9.5px] text-dash-textMuted font-mono uppercase">
-                        {p.total_value && (
-                          <span>Contract Value: ${Number(p.total_value).toLocaleString()}</span>
+                        {q.total_amount && (
+                          <span>Contract Value: ${Number(q.total_amount).toLocaleString()}</span>
                         )}
-                        <span>Expires: {formatDate(p.expires_at || p.due_date)}</span>
+                        <span>Valid until: {formatDate(q.valid_until)}</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="pt-6 border-t border-dash-border mt-6 flex justify-end">
                     <button
-                      onClick={() => setSelectedProposal(p)}
+                      onClick={() => setSelectedQuote(q)}
                       className="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black uppercase tracking-wider transition-all shadow-lg shadow-amber-500/10 hover:shadow-amber-500/20 active:scale-95"
                     >
                       Sign Now <PenTool size={11} />
@@ -685,7 +685,7 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
       )}
 
       {/* Embedded Native E-Signature Modal Overlay */}
-      {selectedProposal && (
+      {selectedQuote && (
         <div className="fixed inset-0 bg-[#000000c1] backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
           <div className="bg-white border border-dash-border rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col h-[90vh] md:h-auto max-h-[85vh] animate-in zoom-in-95 duration-300">
             {/* Header */}
@@ -694,8 +694,8 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
                 <span className="text-[9px] font-black uppercase tracking-widest text-dash-textMuted">LeadsMind E-Sign Core</span>
                 <h4 className="text-base font-bold text-dash-text font-space uppercase mt-0.5">Execute Agreement</h4>
               </div>
-              <button 
-                onClick={() => setSelectedProposal(null)}
+              <button
+                onClick={() => setSelectedQuote(null)}
                 className="text-dash-textMuted hover:text-dash-text text-xs font-black uppercase tracking-wider bg-white border border-dash-border w-8 h-8 rounded-full flex items-center justify-center"
               >
                 ✕
@@ -706,14 +706,14 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
             <div className="p-6 overflow-y-auto space-y-6 flex-1 text-sm text-dash-textMuted leading-relaxed font-sans border-b border-dash-border bg-dash-bg">
               <div className="space-y-4">
                 <h5 className="text-md font-bold text-dash-text font-space uppercase border-b border-dash-border pb-2">
-                  {selectedProposal.title}
+                  {selectedQuote.quote_number}
                 </h5>
-                
+
                 {/* Simulated contract terms */}
                 <div className="bg-dash-surface p-5 rounded-2xl border border-dash-border space-y-4 text-xs select-none max-h-60 overflow-y-auto font-sans text-dash-textMuted">
                   <p className="font-bold text-dash-text uppercase text-[10px] tracking-wider mb-2">Terms and Conditions</p>
-                  <p>1. <strong>Scope of Service:</strong> LeadsMind agrees to deliver professional agency consultation and implementation services specified in the proposal briefing.</p>
-                  <p>2. <strong>Term & Value:</strong> This contract value totals ${Number(selectedProposal.total_value || 0).toLocaleString()} and remains binding until all milestones are completed.</p>
+                  <p>1. <strong>Scope of Service:</strong> LeadsMind agrees to deliver professional agency consultation and implementation services specified in the quote briefing.</p>
+                  <p>2. <strong>Term & Value:</strong> This contract value totals ${Number(selectedQuote.total_amount || 0).toLocaleString()} and remains binding until all milestones are completed.</p>
                   <p>3. <strong>POs & Payments:</strong> All invoices issued in connection with this agreement are subject to LeadsMind local payment processor protocols.</p>
                   <p>4. <strong>Cryptographic Seal:</strong> By signing electronically below, both parties confirm authorization, recording timestamps, hashed keys, and IP verification nodes.</p>
                 </div>
@@ -794,8 +794,8 @@ export default function DocumentsClient({ initialDocs, initialProposals, contact
 
             {/* Footer */}
             <div className="p-6 bg-dash-surface border-t border-dash-border flex justify-end gap-3">
-              <button 
-                onClick={() => setSelectedProposal(null)}
+              <button
+                onClick={() => setSelectedQuote(null)}
                 className="h-11 px-6 rounded-xl bg-white border border-dash-border hover:bg-dash-border/40 text-dash-text text-[10px] font-black uppercase tracking-wider transition-colors"
               >
                 Cancel

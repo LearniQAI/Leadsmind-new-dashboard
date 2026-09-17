@@ -18,8 +18,8 @@ const PRIORITIES = [
 export function PriorityToggleGroup({ value, onChange }: PriorityToggleGroupProps) {
   return (
     <div className="space-y-3">
-      <label className="text-[12px] font-bold !text-dash-textMuted">
-        Priority level
+      <label className="text-[12px] font-semibold !text-dash-textMuted">
+        Priority
       </label>
       <div className="grid grid-cols-3 gap-3">
         {PRIORITIES.map((p) => {

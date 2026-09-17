@@ -46,7 +46,7 @@ export function AssigneePicker({ currentAssignees, onToggle }: AssigneePickerPro
           <div className="w-8 h-8 rounded-full border-2 border-dashed border-dash-border flex items-center justify-center !text-dash-textMuted group-hover:text-dash-accent transition-colors">
             <UserPlus className="w-4 h-4" />
           </div>
-          <span className="text-xs font-bold !text-dash-textMuted group-hover:!text-dash-textMuted pr-2">Assign Team</span>
+          <span className="text-xs font-semibold !text-dash-textMuted group-hover:!text-dash-textMuted pr-2">Assign</span>
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[280px] p-0 bg-white border-dash-border shadow-2xl rounded-2xl overflow-hidden">
@@ -101,7 +101,7 @@ export function AssigneePicker({ currentAssignees, onToggle }: AssigneePickerPro
             </button>
           ))}
           {filteredMembers.length === 0 && (
-            <div className="p-8 text-center text-[11px] !text-dash-textMuted font-bold tracking-widest">
+            <div className="p-8 text-center text-[12px] !text-dash-textMuted font-medium">
               No members found
             </div>
           )}

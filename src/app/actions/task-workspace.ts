@@ -1,89 +1,41 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase/server';
-import { getCurrentWorkspaceId } from '@/lib/auth';
-import { revalidatePath } from 'next/cache';
-import { TaskPriorityEngine } from '@/lib/execution/TaskPriorityEngine';
-import { UnifiedActivityEngine } from '@/lib/crm/UnifiedActivityEngine';
+import { requireWorkspaceAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 
 export async function getTaskDashboardData() {
-  const supabase = await createServerClient();
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { success: false, error: 'Unauthorized' };
+  try {
+    const { userId, workspaceId } = await requireWorkspaceAccess();
 
-  const { data: userData } = await supabase.auth.getUser();
-  const userId = userData?.user?.id;
+    const supabase = await createServerClient();
 
-  // Fetch all tasks for the workspace
-  const { data: tasks } = await supabase
-    .from('crm_tasks')
-    .select('*, company:company_id(name), contact:contact_id(first_name, last_name, email), opportunity:opportunity_id(name)')
-    .eq('workspace_id', workspaceId)
-    .order('due_date', { ascending: true });
+    // Fetch all tasks for the workspace, from the canonical `tasks` table
+    // (shared with the List/Kanban/Calendar board — see
+    // 20260917060000_consolidate_crm_tasks_into_tasks.sql).
+    const { data: tasks } = await supabase
+      .from('tasks')
+      .select('*, company:company_id(name), contact:contact_id(first_name, last_name, email), opportunity:opportunity_id(name)')
+      .eq('workspace_id', workspaceId)
+      .order('due_date', { ascending: true });
 
-  // Fetch escalations
-  const { data: escalations } = await supabase
-    .from('overdue_escalations')
-    .select('*, crm_tasks!inner(title, owner_id)')
-    .eq('workspace_id', workspaceId)
-    .eq('status', 'Open');
+    // Fetch escalations
+    const { data: escalations } = await supabase
+      .from('overdue_escalations')
+      .select('*, tasks!inner(title)')
+      .eq('workspace_id', workspaceId)
+      .eq('status', 'Open');
 
-  return { 
-    success: true, 
-    data: { 
-      tasks: tasks || [],
-      escalations: escalations || [],
-      currentUserId: userId
-    } 
-  };
-}
-
-export async function createTask(taskData: any) {
-  const supabase = await createServerClient();
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { success: false, error: 'Unauthorized' };
-
-  const priority = TaskPriorityEngine.evaluatePriority(taskData.due_date, taskData.task_type || 'general');
-
-  const { data, error } = await supabase.from('crm_tasks').insert({
-    workspace_id: workspaceId,
-    priority,
-    ...taskData
-  }).select().single();
-
-  if (error) {
-    logger.error({ err: error, workspaceId }, 'task_workspace.task.create.failed');
-    return { success: false, error: 'Failed to create task.' };
+    return {
+      success: true,
+      data: {
+        tasks: tasks || [],
+        escalations: escalations || [],
+        currentUserId: userId
+      }
+    };
+  } catch (error: any) {
+    logger.error({ err: error }, 'task_workspace.dashboard.fetch.failed');
+    return { success: false, error: 'Unauthorized' };
   }
-
-  await UnifiedActivityEngine.logActivity(
-    workspaceId,
-    taskData.owner_id || null,
-    'opportunity', // abstract wrapper
-    data.id,
-    'note',
-    `Created task: ${data.title}`
-  );
-
-  revalidatePath('/tasks');
-  return { success: true, data };
-}
-
-export async function updateTaskStatus(taskId: string, status: string) {
-  const supabase = await createServerClient();
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { success: false, error: 'Unauthorized' };
-
-  const updates: any = { status, updated_at: new Date().toISOString() };
-  if (status === 'Completed') updates.completed_at = new Date().toISOString();
-
-  const { error } = await supabase.from('crm_tasks').update(updates).eq("id", taskId).eq("workspace_id", workspaceId);
-  if (error) {
-    logger.error({ err: error, workspaceId, taskId }, 'task_workspace.task_status.update.failed');
-    return { success: false, error: 'Failed to update task status.' };
-  }
-  
-  revalidatePath('/tasks');
-  return { success: true };
 }

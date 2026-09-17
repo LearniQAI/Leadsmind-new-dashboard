@@ -1,8 +1,18 @@
-import { createServerClient } from '@/lib/supabase/server';
+import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 
 export class UnifiedActivityEngine {
   /**
    * Logs an activity universally across the CRM, attaching it to the relevant entity.
+   *
+   * Uses the admin client, not createServerClient() — confirmed live (via
+   * the task-escalations cron) that the previous session/cookie-scoped
+   * client silently failed under RLS with no logged-in user, swallowing the
+   * error via console.error rather than throwing, so automation/cron-driven
+   * callers (EscalationHandler here, and WorkflowEngine/CRMActionHandler/
+   * actions_registry, which run the same way) never actually got a timeline
+   * entry. The insert is already trusted server-side — every caller passes
+   * an explicit workspaceId/entityId rather than trusting a client-supplied
+   * one — so admin-client here doesn't weaken anything RLS was enforcing.
    */
   public static async logActivity(
     workspaceId: string,
@@ -13,8 +23,8 @@ export class UnifiedActivityEngine {
     content: string,
     metadata: any = {}
   ) {
-    const supabase = await createServerClient();
-    
+    const supabase = createAdminClient();
+
     const { error } = await supabase.from('crm_activities').insert({
       workspace_id: workspaceId,
       actor_id: actorId,

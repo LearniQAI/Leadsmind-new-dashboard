@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Building2, MapPin, Phone, Globe, Star, Users, Plus, Check, Search, Activity } from 'lucide-react';
+import { Building2, MapPin, Phone, Mail, Globe, Star, Users, Plus, Check, Search, Activity } from 'lucide-react';
 import { FaLinkedin as Linkedin, FaFacebook as Facebook } from 'react-icons/fa6';
 import { addLeadsToCRM } from '@/app/actions/lead-finder';
 import { toast } from 'sonner';
@@ -103,6 +103,12 @@ export function LeadResultCard({ lead, selected, onSelect, onPreview }: LeadResu
             <div className="flex items-center gap-2">
               <Phone size={16} className="!text-dash-textMuted shrink-0" />
               <span>{lead.phone}</span>
+            </div>
+          )}
+          {lead.email && (
+            <div className="flex items-center gap-2">
+              <Mail size={16} className="!text-dash-textMuted shrink-0" />
+              <span className="truncate">{lead.email}</span>
             </div>
           )}
           {lead.employee_size && lead.employee_size !== 'Unknown' && (

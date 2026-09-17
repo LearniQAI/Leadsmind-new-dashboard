@@ -67,7 +67,19 @@ export async function POST(req: NextRequest) {
   if (!insertRes.error && insertRes.data) {
     await dispatchWebhook(auth.workspaceId, 'contact.created', { contact: insertRes.data })
     syncContactTagsToRelational(auth.workspaceId, insertRes.data.id, payload.tags).catch(() => {})
-    waitUntil(enqueueAutoSenderCampaigns(auth.workspaceId, insertRes.data.id).catch(() => {}))
+    // This route dispatched the webhook but never published the internal
+    // automation-trigger event — the same "one path fires, another silently
+    // doesn't" bug confirmed live on Pipelines' opportunity_stage_changed.
+    // A contact created through the public API silently never fired a
+    // "Contact created" automation. publishEvent's own CONTACT_CREATED
+    // branch also enrols auto-sender campaigns (idempotent via
+    // campaign_dispatch_queue's unique constraint), so the manual
+    // enqueueAutoSenderCampaigns call below is no longer needed here.
+    waitUntil(
+      import('@/lib/events/EventBus').then(({ publishEvent }) =>
+        publishEvent(auth.workspaceId, 'contact_created', insertRes.data.id)
+      ).catch(() => {})
+    )
     return apiData(insertRes.data, 201)
   }
 

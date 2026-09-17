@@ -115,7 +115,12 @@ export async function GET(request: Request) {
         to: affiliate.email,
         subject,
         html: htmlContent,
-        config: customConfig || undefined
+        // Only a genuinely workspace-less affiliate omits `config` (true
+        // platform-level send). A workspace-scoped affiliate must pass an
+        // object even when unconfigured — collapsing to `undefined` here
+        // previously let sendEmail() silently substitute the platform's own
+        // RESEND_API_KEY (the Twilio-shaped bug fixed 2026-09-17).
+        config: affiliate.workspace_id ? (customConfig || {}) : undefined
       });
 
       // Mark as sent

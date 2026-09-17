@@ -32,7 +32,11 @@ export async function sendShipmentRegistered(shipment: any) {
       </div>
     `
     const customConfig = await getWorkspaceEmailConfig(shipment.workspace_id)
-    const emailConfig = customConfig || { fromEmail, fromName }
+    // Deliberate platform-branded default (shipping@leadsmind.io) for a
+    // workspace that hasn't connected its own Resend key or white-labelled —
+    // an intentional product fallback, not the accidental credential leak
+    // guarded against in sendEmail() for automation/LMS/affiliate sends.
+    const emailConfig = customConfig || { fromEmail, fromName, allowPlatformFallback: true }
 
     await sendEmail({
       to: recipientEmail,
@@ -137,7 +141,11 @@ export async function sendStatusUpdate(
     `
 
     const customConfig = await getWorkspaceEmailConfig(shipment.workspace_id)
-    const emailConfig = customConfig || { fromEmail, fromName }
+    // Deliberate platform-branded default (shipping@leadsmind.io) for a
+    // workspace that hasn't connected its own Resend key or white-labelled —
+    // an intentional product fallback, not the accidental credential leak
+    // guarded against in sendEmail() for automation/LMS/affiliate sends.
+    const emailConfig = customConfig || { fromEmail, fromName, allowPlatformFallback: true }
 
     await sendEmail({
       to: recipientEmail,

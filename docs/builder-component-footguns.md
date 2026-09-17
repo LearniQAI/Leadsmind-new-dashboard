@@ -57,6 +57,21 @@ Known instances so far:
    them — `BUILDER_TEMPLATES` is `[inline blank-slate entry, ...ALL_TEMPLATES]`, not
    one-file-per-template all the way down.
 
+5. **Container: a genuinely childless (`nodes: []`) canvas Container shows an "Empty
+   Container" placeholder while editing.** `Container.tsx` renders a `min-h-[80px]` dashed-border
+   "Empty Container" placeholder box whenever `React.Children.count(children) === 0 && enabled` —
+   unconditionally, with no way to opt a specific node out, and it doesn't matter whether the
+   Container was meant to hold user content or is a deliberate, content-free decorative element
+   (e.g. a dark scrim overlay div that exists purely for its `backgroundColor`). Invisible on the
+   published page and in Preview (`enabled=false` skips the check entirely), but in the live Edit
+   canvas it renders as a real, visible white block. Found live in Archiste's `hero-scrim` (a
+   `rgba(0,0,0,0.18)` overlay with no children) — it rendered as a large white box sitting on top
+   of the hero, covering part of the wordmark, only in Edit mode; Preview and the published page
+   were unaffected. Fixed by giving it one trivial `hidden` (display:none) child so
+   `children.length` is nonzero — real enough to suppress the placeholder, invisible either way.
+   No template should ever author a Container with `nodes: []`; if one is needed purely for its
+   background/border/shadow with no real content, give it a hidden dummy child like this.
+
 ## RenderNode's per-node wrapper vs. cross-node absolute positioning (editor-only)
 
 Not the same bug shape as the four above (nothing here silently loses to a component default —

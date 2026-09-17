@@ -69,7 +69,12 @@ export const Section = (allProps: SectionProps & any) => {
     }
    }}
     className={cn(
-      "w-full relative",
+      // scroll-mt-24: when a Navbar/Footer link scrolls here via `#id` (resolveLink's
+      // 'section' case), landing exactly at this section's top edge tucks its own heading
+      // behind a sticky Navbar (every template here uses sticky:true) — this offsets the
+      // scroll target upward by the same amount, a generic value close enough to each
+      // template's actual navbar height (~70-90px) without needing a per-template constant.
+      "w-full relative scroll-mt-24",
       formatPseudoClasses(allProps.customClasses, allProps.hoverClasses, allProps.focusClasses)
     )}
    style={{

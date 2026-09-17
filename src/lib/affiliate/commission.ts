@@ -217,7 +217,11 @@ export async function recordConversion(opts: {
             </div>
           </div>
         `,
-        config: customConfig || undefined
+        // Always pass an object, even with apiKey left undefined for an
+        // unconfigured workspace — collapsing to `undefined` here previously
+        // let sendEmail() silently substitute the platform's own
+        // RESEND_API_KEY (the Twilio-shaped bug fixed 2026-09-17).
+        config: customConfig || {}
       })
     } catch (e) {
       console.error('[First Commission Email Error]', e)
