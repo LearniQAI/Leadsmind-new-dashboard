@@ -1,17 +1,36 @@
 import chromium from '@sparticuz/chromium';
-import puppeteer from 'puppeteer-core';
+import puppeteerCore, { type Browser } from 'puppeteer-core';
 
 // Shared Puppeteer/Chromium engine — the same one exposed over HTTP at
 // /api/pdf/route.ts (used by quotes/Content Studio browser downloads).
 // Extracted so server-side callers with no authenticated browser session
 // (e.g. automation step handlers in actions_registry.ts) can render a PDF
 // buffer directly, without a self-fetch through requireAuth().
+//
+// @sparticuz/chromium ships a precompiled binary built for AWS Lambda's
+// Amazon Linux runtime (which is what Vercel's serverless functions run
+// on) — it has nothing to launch on a local Windows/Mac dev machine
+// ("Failed to launch the browser process: spawn .../chromium ENOENT").
+// Locally, fall back to the full `puppeteer` package (devDependency
+// only — never installed in the production bundle), which downloads and
+// bundles a real Chromium for whatever OS it's installed on, so every
+// caller of htmlToPdfBuffer (quote/invoice send, PDF downloads,
+// payslips) can actually be exercised in `next dev`.
+async function launchBrowser(): Promise<Browser> {
+  if (process.env.NODE_ENV === 'production') {
+    return puppeteerCore.launch({
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: true,
+    });
+  }
+
+  const { default: puppeteer } = await import('puppeteer');
+  return puppeteer.launch({ headless: true }) as unknown as Promise<Browser>;
+}
+
 export async function htmlToPdfBuffer(html: string, title?: string): Promise<Buffer> {
-  const browser = await puppeteer.launch({
-    args: chromium.args,
-    executablePath: await chromium.executablePath(),
-    headless: true,
-  });
+  const browser = await launchBrowser();
 
   try {
     const page = await browser.newPage();

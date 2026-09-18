@@ -43,7 +43,12 @@ const nextConfig = {
         // the only blog-adjacent SERVER Component code path that touches this package
         // (src/app/blog/[slug]/page.tsx) — the /blog listing page doesn't call it and was
         // confirmed still working live, which is consistent with this being the crash site.
-        serverComponentsExternalPackages: ["puppeteer-core", "@sparticuz/chromium", "cheerio", "undici", "@resvg/resvg-js", "pdfjs-dist", "isomorphic-dompurify", "jsdom"],
+        // "puppeteer" (full, devDependency-only) is the local-dev-only fallback
+        // used by src/lib/pdf/htmlToPdf.ts when NODE_ENV !== 'production' — it's
+        // never installed in the production bundle and that code path never runs
+        // there, but marking it external keeps webpack from trying to statically
+        // bundle it at build time regardless.
+        serverComponentsExternalPackages: ["puppeteer-core", "puppeteer", "@sparticuz/chromium", "cheerio", "undici", "@resvg/resvg-js", "pdfjs-dist", "isomorphic-dompurify", "jsdom"],
         outputFileTracingExcludes: {
             '*': [
                 'node_modules/@swc/core-linux-x64-gnu',
@@ -85,6 +90,89 @@ const nextConfig = {
             '/blog/[slug]': [
                 './node_modules/jsdom/**/*',
                 './node_modules/isomorphic-dompurify/**/*',
+            ],
+            // src/lib/pdf/htmlToPdf.ts (htmlToPdfBuffer) is a SEPARATE chromium
+            // consumer from the certificate/bookkeeping-export generators above —
+            // it's the one shared by /api/pdf, the payslip download route, and
+            // (via sendQuoteEmail.ts / sendInvoiceEmail.ts) every quote/invoice
+            // "send" path. It was never added to this list when the pattern above
+            // was established, which is exactly why quotes' "Save & Send" failed
+            // in production with "@sparticuz/chromium/bin does not exist" — the
+            // same latent bug also affects every invoice "Save & Send"/auto-notify
+            // send below, not just quotes; it just hadn't been triggered yet.
+            // Every entry below was grepped as a real, direct call site of
+            // htmlToPdfBuffer (via sendQuoteEmail/sendInvoiceEmail), not guessed —
+            // same convention as the rest of this block.
+            '/api/pdf': [
+                './node_modules/@sparticuz/chromium/**/*',
+                './node_modules/puppeteer-core/**/*',
+            ],
+            '/api/hr/payslips/[id]/download': [
+                './node_modules/@sparticuz/chromium/**/*',
+                './node_modules/puppeteer-core/**/*',
+            ],
+            '/quotes': [
+                './node_modules/@sparticuz/chromium/**/*',
+                './node_modules/puppeteer-core/**/*',
+            ],
+            '/quotes/new': [
+                './node_modules/@sparticuz/chromium/**/*',
+                './node_modules/puppeteer-core/**/*',
+            ],
+            '/quotes/[id]/edit': [
+                './node_modules/@sparticuz/chromium/**/*',
+                './node_modules/puppeteer-core/**/*',
+            ],
+            '/invoices/new': [
+                './node_modules/@sparticuz/chromium/**/*',
+                './node_modules/puppeteer-core/**/*',
+            ],
+            '/invoices/[id]/edit': [
+                './node_modules/@sparticuz/chromium/**/*',
+                './node_modules/puppeteer-core/**/*',
+            ],
+            '/api/v1/invoices': [
+                './node_modules/@sparticuz/chromium/**/*',
+                './node_modules/puppeteer-core/**/*',
+            ],
+            '/api/webhooks/payfast': [
+                './node_modules/@sparticuz/chromium/**/*',
+                './node_modules/puppeteer-core/**/*',
+            ],
+            '/api/payfast/webhook': [
+                './node_modules/@sparticuz/chromium/**/*',
+                './node_modules/puppeteer-core/**/*',
+            ],
+            '/api/webhooks/paystack-gateway': [
+                './node_modules/@sparticuz/chromium/**/*',
+                './node_modules/puppeteer-core/**/*',
+            ],
+            '/api/webhooks/paypal': [
+                './node_modules/@sparticuz/chromium/**/*',
+                './node_modules/puppeteer-core/**/*',
+            ],
+            '/api/webhooks/ozow': [
+                './node_modules/@sparticuz/chromium/**/*',
+                './node_modules/puppeteer-core/**/*',
+            ],
+            '/api/webhooks/flutterwave': [
+                './node_modules/@sparticuz/chromium/**/*',
+                './node_modules/puppeteer-core/**/*',
+            ],
+            // Automation engine's "send_invoice" step, executed for deferred/
+            // multi-step workflows by the workflow-resume cron worker. NOTE: the
+            // SAME action can also fire synchronously inline from ANY route that
+            // calls EventBus.publishEvent() and happens to trigger a workflow
+            // whose first step is send_invoice (triggerWorkflows() -> processNextStep()
+            // runs the first step in the caller's own request, not just via this
+            // cron worker) — that fan-out is not statically enumerable, so this
+            // entry covers the deferred-step case only. See the architectural note
+            // left in the audit for this task: the durable fix is dispatching
+            // send_invoice through an Inngest event (like webhookDispatch.ts
+            // already does) instead of enumerating every possible trigger route.
+            '/api/cron/workers/workflow-resume': [
+                './node_modules/@sparticuz/chromium/**/*',
+                './node_modules/puppeteer-core/**/*',
             ],
         },
     },
