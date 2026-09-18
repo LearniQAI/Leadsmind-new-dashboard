@@ -5,6 +5,50 @@ import { revalidatePath } from 'next/cache';
 import { requireWorkspaceAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 
+// Columns that actually exist on public.quotes. InvoiceFormContainer is
+// shared with Invoices and always includes an `issue_date` field in its save
+// payload — quotes has no such column, so spreading the raw form payload
+// straight into .insert()/.update() made PostgREST reject the entire write
+// with a schema-cache error (PGRST204) before RLS is even evaluated, which
+// is why every quote save failed with a generic "Failed to save quote" toast
+// regardless of what was filled in. Same root cause invoices already hit and
+// fixed via INVOICE_COLUMNS/pickInvoiceColumns in finance.ts — quotes never
+// got the equivalent whitelist until now.
+const QUOTE_COLUMNS = [
+  'contact_id',
+  'quote_number',
+  'status',
+  'subtotal',
+  'tax_total',
+  'discount_total',
+  'shipping_amount',
+  'total_amount',
+  'currency',
+  'notes',
+  'terms',
+  'expiry_date',
+  'assigned_to',
+  'metadata',
+  'shipping_charges',
+  'adjustment',
+  'terms_and_conditions',
+  'salesperson_id',
+  'converted_invoice_id',
+  'items',
+  'valid_until',
+  'deal_id',
+  'signature_data',
+  'signed_at',
+] as const;
+
+function pickQuoteColumns(data: Record<string, any>) {
+  const picked: Record<string, any> = {};
+  for (const key of QUOTE_COLUMNS) {
+    if (data[key] !== undefined) picked[key] = data[key];
+  }
+  return picked;
+}
+
 export async function convertQuoteToInvoice(quoteId: string) {
   const { workspaceId } = await requireWorkspaceAccess();
   const supabase = await createServerClient();
@@ -136,12 +180,9 @@ export async function saveQuote(data: any) {
   const { workspaceId } = await requireWorkspaceAccess();
   const supabase = await createServerClient();
 
-  // workspace_id is never trusted from the caller — always the verified one.
-  const { workspace_id: _ignoredWorkspaceId, ...rest } = data ?? {};
-
   const { data: quote, error } = await supabase
     .from('quotes')
-    .insert({ ...rest, workspace_id: workspaceId })
+    .insert({ ...pickQuoteColumns(data ?? {}), workspace_id: workspaceId })
     .select()
     .single();
 
@@ -181,9 +222,13 @@ export async function updateQuote(id: string, data: any) {
   const { workspaceId } = await requireWorkspaceAccess();
   const supabase = await createServerClient();
 
-  // Filter out any potential invalid columns, and never let the caller move
-  // a quote into a different workspace.
-  const { amount_due, amount_paid, custom_field_values, invoice_number, due_date, workspace_id: _ignoredWorkspaceId, ...validData } = data;
+  // invoice_number/due_date come from the shared InvoiceFormContainer payload
+  // and have no matching quotes columns — they map onto quote_number/valid_until
+  // instead, computed here before the whitelist below drops everything else
+  // that isn't a real column (issue_date, amount_due, amount_paid,
+  // custom_field_values, etc.).
+  const { invoice_number, due_date } = data ?? {};
+  const validData = pickQuoteColumns(data ?? {});
 
   const { data: quote, error } = await supabase
     .from('quotes')
