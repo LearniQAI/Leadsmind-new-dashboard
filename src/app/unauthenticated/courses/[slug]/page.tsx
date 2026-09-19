@@ -1,4 +1,5 @@
 import React from 'react';
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 import { getCourseLandingData, getCourseLandingDataByDomain } from '@/app/actions/courseLanding';
@@ -15,6 +16,28 @@ interface PageProps {
   searchParams: {
     preview?: string;
   };
+}
+
+// On a connected custom domain the tab title is the course + the owning workspace's name, so a
+// visitor never sees the platform's generic title (and the root layout's "| LeadsMind" template
+// is bypassed with title.absolute). Default-domain requests keep the inherited platform title.
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
+  const domainConfigId = headers().get('x-domain-config-id');
+  if (!domainConfigId) return {};
+
+  const result = await getCourseLandingDataByDomain(domainConfigId, params.slug, searchParams.preview === 'true');
+  if ('error' in result && result.error) return {};
+  const course = (result as { course: any }).course;
+  if (!course?.title) return {};
+
+  const { data: workspace } = await createAdminClient()
+    .from('workspaces')
+    .select('name')
+    .eq('id', course.workspace_id)
+    .maybeSingle();
+
+  const title = workspace?.name ? `${course.title} | ${workspace.name}` : course.title;
+  return { title: { absolute: title } };
 }
 
 export default async function PublicCourseLandingPage({ params, searchParams }: PageProps) {

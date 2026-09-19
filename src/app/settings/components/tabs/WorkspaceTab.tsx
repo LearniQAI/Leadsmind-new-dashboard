@@ -9,6 +9,7 @@ import { DashButton } from '@/components/dashboard-ui';
 
 interface WorkspaceTabProps {
   branding: any;
+  workspaceId: string | null | undefined;
   isSaving: boolean;
   onSave: (name: string) => void;
   onCopy: (text: string, id: string) => void;
@@ -30,6 +31,7 @@ interface WorkspaceTabProps {
 
 export default function WorkspaceTab({
   branding,
+  workspaceId,
   isSaving,
   onSave,
   onCopy,
@@ -75,11 +77,11 @@ export default function WorkspaceTab({
 
   React.useEffect(() => {
     async function loadSettings() {
-      if (!branding?.workspace_id) return;
+      if (!workspaceId) return;
       const { data, error } = await supabase
         .from('workspaces')
         .select('invoice_settings, project_settings, registered_name, company_reg_number, kyc_data_sharing_entities')
-        .eq('id', branding.workspace_id)
+        .eq('id', workspaceId)
         .single();
       if (!error) {
         if (data?.invoice_settings) {
@@ -106,15 +108,15 @@ export default function WorkspaceTab({
       setLoadingSettings(false);
     }
     loadSettings();
-  }, [branding?.workspace_id, supabase]);
+  }, [workspaceId, supabase]);
 
   const handleToggle = async (key: string, value: boolean) => {
-    if (!branding?.workspace_id) return;
+    if (!workspaceId) return;
     const updated = { ...settings, [key]: value };
     setSettings(updated);
 
     const { saveInvoiceSettings } = await import('@/app/actions/finance');
-    const res = await saveInvoiceSettings(branding.workspace_id, updated);
+    const res = await saveInvoiceSettings(workspaceId, updated);
     if (res.error) {
       toast.error(res.error);
       // rollback
@@ -125,12 +127,12 @@ export default function WorkspaceTab({
   };
 
   const handleProjectToggle = async (key: string, value: boolean) => {
-    if (!branding?.workspace_id) return;
+    if (!workspaceId) return;
     const updated = { ...projectSettings, [key]: value };
     setProjectSettings(updated);
 
     const { saveWorkspaceProjectSettings } = await import('@/app/actions/projects');
-    const res = await saveWorkspaceProjectSettings(branding.workspace_id, updated);
+    const res = await saveWorkspaceProjectSettings(workspaceId, updated);
     if (res.error) {
       toast.error(res.error);
       // rollback
@@ -141,7 +143,7 @@ export default function WorkspaceTab({
   };
 
   const handleSaveKycSettings = async () => {
-    if (!branding?.workspace_id) return;
+    if (!workspaceId) return;
     setIsKycSaving(true);
     try {
       const { saveWorkspaceKycSettings } = await import('@/app/actions/workspace');
@@ -150,7 +152,7 @@ export default function WorkspaceTab({
         .map(e => e.trim())
         .filter(Boolean);
 
-      const res = await saveWorkspaceKycSettings(branding.workspace_id, {
+      const res = await saveWorkspaceKycSettings(workspaceId, {
         registered_name: kycSettings.registered_name,
         company_reg_number: kycSettings.company_reg_number,
         kyc_data_sharing_entities: entities
@@ -198,10 +200,10 @@ export default function WorkspaceTab({
               <label className="text-[11px] font-bold !text-dash-textMuted">Permanent slug</label>
               <div className="flex gap-2">
                 <div className="flex-1 bg-dash-surface border border-dash-border rounded-xl px-4 py-3 !text-dash-textMuted font-mono text-[11px] flex items-center">
-                  leadsmind.io/w/{branding?.workspace_id || 'your-workspace-id'}
+                  leadsmind.io/w/{workspaceId || 'your-workspace-id'}
                 </div>
                 <button
-                  onClick={() => onCopy(`leadsmind.io/w/${branding?.workspace_id}`, 'slug')}
+                  onClick={() => onCopy(`leadsmind.io/w/${workspaceId}`, 'slug')}
                   className="px-4 bg-dash-surface border border-dash-border !text-dash-textMuted hover:!text-dash-text rounded-xl transition-colors motion-reduce:transition-none"
                 >
                   {copiedId === 'slug' ? <Check size={14} className="text-green" /> : <Copy size={14} />}

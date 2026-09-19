@@ -13,6 +13,7 @@ import BlogComments from '@/components/blog/public/BlogComments';
 import ExitIntentCapture from '@/components/blog/public/ExitIntentCapture';
 import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
 import { logger } from '@/shared/logger';
+import { resolveTenantSiteBrand } from '@/lib/blog/publicWorkspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,12 +27,21 @@ export async function generateMetadata({ params, searchParams }: PageProps) {
   const { data: post } = await getPublicBlogPost(params.slug, isPreview);
   if (!post) return { title: 'Article Not Found' };
 
+  // On a tenant's own domain: title/description/canonical use that workspace's name and origin
+  // instead of the platform's. Default-domain behaviour is unchanged.
+  const tenant = await resolveTenantSiteBrand();
+  const brandName = tenant?.workspaceName ?? null;
+
   const title = post.seo_title || post.title;
-  const desc = post.meta_description || post.summary || 'Discover insights and strategies from the LeadsMind team.';
-  const canonical = post.canonical_url || `https://www.leadsmind.io/blog/${post.slug}`;
+  const desc = post.meta_description || post.summary
+    || (tenant ? (brandName ? `Insights from ${brandName}.` : title) : 'Discover insights and strategies from the LeadsMind team.');
+  const canonical = post.canonical_url
+    || `${tenant ? tenant.origin : 'https://www.leadsmind.io'}/blog/${post.slug}`;
 
   return {
-    title: `${title} | LeadsMind Insights`,
+    title: tenant
+      ? { absolute: brandName ? `${title} | ${brandName}` : title }
+      : `${title} | LeadsMind Insights`,
     description: desc,
     alternates: { canonical },
     robots: isPreview ? { index: false, follow: false } : undefined,

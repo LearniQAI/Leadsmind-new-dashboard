@@ -1,5 +1,6 @@
 import { headers } from 'next/headers';
 import { resolveHost } from '@/lib/domains/resolve';
+import { createAdminClient } from '@/lib/supabase/server';
 
 /**
  * Public blogs are tenant-hosted: /blog and /blog/[slug] resolve on any active
@@ -31,4 +32,20 @@ export async function resolvePublicSiteContext(): Promise<{
   const resolved = host ? await resolveHost(host) : null;
   if (!resolved) return { workspaceId: null, origin: PLATFORM_PUBLIC_ORIGIN };
   return { workspaceId: resolved.workspaceId, origin: `https://${resolved.hostname}` };
+}
+
+/**
+ * Branding for a page served on a tenant's own domain: the owning workspace's name and the
+ * domain's origin. Null on the platform's default domain, where the platform titles/canonicals
+ * apply unchanged. Same host->workspace resolution (resolveHost) the blog data actions use.
+ */
+export async function resolveTenantSiteBrand(): Promise<{ workspaceName: string | null; origin: string } | null> {
+  const { workspaceId, origin } = await resolvePublicSiteContext();
+  if (!workspaceId) return null;
+  const { data } = await createAdminClient()
+    .from('workspaces')
+    .select('name')
+    .eq('id', workspaceId)
+    .maybeSingle();
+  return { workspaceName: data?.name ?? null, origin };
 }

@@ -2,15 +2,31 @@ import React from 'react';
 import type { Metadata } from 'next';
 import { getPublicBlogPosts, getPublicCategories, getBlogSettings } from '@/app/actions/publicBlog';
 import PublicBlogClient from './PublicBlogClient';
+import { resolveTenantSiteBrand } from '@/lib/blog/publicWorkspace';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
+const platformMetadata: Metadata = {
   title: 'Blog',
   description: 'Growth frameworks, CRM playbooks, and business tips for South African small and medium businesses, from the LeadsMind team.',
   alternates: { canonical: '/blog' },
   robots: { index: true, follow: true },
 };
+
+// On a tenant's own domain the blog hub is titled with that workspace's name (title.absolute
+// bypasses the root layout's "| LeadsMind" template) and canonicalises to the tenant's own
+// origin. The default platform domain keeps the metadata above unchanged.
+export async function generateMetadata(): Promise<Metadata> {
+  const tenant = await resolveTenantSiteBrand();
+  if (!tenant) return platformMetadata;
+  const name = tenant.workspaceName;
+  return {
+    ...platformMetadata,
+    title: { absolute: name ? `Blog | ${name}` : 'Blog' },
+    description: name ? `Articles and insights from ${name}.` : 'Articles and insights.',
+    alternates: { canonical: `${tenant.origin}/blog` },
+  };
+}
 
 export default async function PublicBlogHubPage() {
   // Query all published posts and categories in this workspace

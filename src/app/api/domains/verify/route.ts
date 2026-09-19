@@ -5,10 +5,6 @@ import { UnauthorizedError, ForbiddenError, NotFoundError, toClientError } from 
 import { logger } from '@/shared/logger'
 import { verifyDns } from '@/lib/domains/verify'
 
-// Domain verification triggers a real DNS/Vercel API call and toggles domain trust state —
-// restricted to admins/owners, same as API keys, integrations, and webhooks.
-const ALLOWED_DOMAIN_VERIFY_ROLES = ['admin', 'owner'];
-
 export async function POST(req: NextRequest) {
   try {
     const user = await getUser();
@@ -43,10 +39,6 @@ export async function POST(req: NextRequest) {
 
     if (!membership) {
       throw new ForbiddenError('You do not have access to this domain');
-    }
-
-    if (!ALLOWED_DOMAIN_VERIFY_ROLES.includes(membership.role)) {
-      throw new ForbiddenError('Only workspace admins or owners can verify domains');
     }
 
     const result = await verifyDns(domainId)

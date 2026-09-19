@@ -63,36 +63,58 @@ export default function CustomDomainsTab({ workspaceId }: { workspaceId?: string
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
 
   const load = async () => {
-    if (!workspaceId) { setLoading(false); return; }
+    if (!workspaceId) {
+      setLoading(false);
+      toast.error('Could not determine your workspace, so domains cannot be loaded. Please refresh the page.');
+      return;
+    }
     setLoading(true);
-    const res = await getDomains(workspaceId);
-    setLoading(false);
-    if ((res as any)?.error) toast.error((res as any).error);
-    else setDomains((res as any)?.data ?? []);
+    try {
+      const res = await getDomains(workspaceId);
+      if ((res as any)?.error) toast.error((res as any).error);
+      else setDomains((res as any)?.data ?? []);
+    } catch {
+      toast.error('Could not load your domains. Check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, [workspaceId]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!workspaceId || !hostname.trim()) return;
+    if (!hostname.trim()) return;
+    if (!workspaceId) {
+      toast.error('Could not determine your workspace, so the domain was not added. Please refresh the page.');
+      return;
+    }
     setAdding(true);
-    const res = await addDomain(workspaceId, hostname.trim());
-    setAdding(false);
-    if ((res as any)?.success === false) { toast.error((res as any).error); return; }
-    toast.success('Domain added. Add the DNS records to verify.');
-    setHostname('');
-    load();
+    try {
+      const res = await addDomain(workspaceId, hostname.trim());
+      if ((res as any)?.success === false) { toast.error((res as any).error || 'Could not add the domain.'); return; }
+      toast.success('Domain added. Add the DNS records to verify.');
+      setHostname('');
+      load();
+    } catch {
+      toast.error('Could not add the domain. Check your connection and try again.');
+    } finally {
+      setAdding(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
-    const res = await deleteDomain(id);
-    if ((res as any)?.success === false) { toast.error((res as any).error); return; }
-    const detached = (res as any)?.detachedCourses ?? 0;
-    toast.success(detached > 0
-      ? `Domain removed. ${detached} course${detached === 1 ? '' : 's'} now use the default LeadsMind domain.`
-      : 'Domain removed');
-    load();
+    try {
+      const res = await deleteDomain(id);
+      if ((res as any)?.success === false) { toast.error((res as any).error || 'Could not remove the domain.'); return; }
+      const detached = (res as any)?.detachedCourses ?? 0;
+      toast.success(detached > 0
+        ? `Domain removed. ${detached} course${detached === 1 ? '' : 's'} now use the default LeadsMind domain.`
+        : 'Domain removed');
+      load();
+    } catch {
+      toast.error('Could not remove the domain. Check your connection and try again.');
+    }
   };
 
   const handleVerify = async (domain: { id: string; hostname: string }) => {
