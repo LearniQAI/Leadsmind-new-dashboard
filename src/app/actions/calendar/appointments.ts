@@ -286,7 +286,7 @@ export async function deleteAppointment(id: string) {
   });
 }
 
-// getAppointmentById/logParticipantJoin/logParticipantLeave are the /meet/[id]
+// getMeetingRoomDetails/logParticipantJoin/logParticipantLeave are the /meet/[id]
 // surface: a genuinely public, unauthenticated meeting-room page — any real
 // participant (including guests with no account) needs to load it and log
 // join/leave. There's no second caller-supplied value to bind these against;
@@ -298,16 +298,16 @@ export async function deleteAppointment(id: string) {
 // verified live that the previous session-based queries returned nothing for
 // a true anonymous caller, which would have broken this page for real guests
 // regardless of this security pass.
-export async function getAppointmentById(id: string) {
+export async function getMeetingRoomDetails(id: string) {
   try {
     const supabase = createAdminClient();
+    // This is served to ANYONE holding the link, so it returns only what the room shows: the
+    // title, when it is, and the meeting mode. Deliberately NOT the contact (name/email), the
+    // stored meeting_link, deal/user ids, metadata or anything else on the appointment row —
+    // the UUID in the URL is a capability, not a secret, and links get forwarded.
     const { data, error } = await supabase
       .from('appointments')
-      .select(`
-        *,
-        contact:contacts(first_name, last_name, email),
-        calendar:booking_calendars(name, meeting_mode)
-      `)
+      .select('id, title, start_time, end_time, meeting_mode')
       .eq('id', id)
       .single();
 
@@ -325,18 +325,25 @@ export async function getAppointmentById(id: string) {
  */
 export async function logParticipantJoin(
   appointmentId: string,
-  participantName: string,
-  participantEmail: string
+  participantName: string
 ) {
   try {
     const supabase = createAdminClient();
     const { data: apt } = await supabase
       .from('appointments')
-      .select('workspace_id')
+      .select('workspace_id, contact:contacts(email)')
       .eq('id', appointmentId)
       .single();
 
     if (!apt) throw new NotFoundError('Appointment');
+
+    // The attendee's email is resolved HERE, from the appointment's own contact, and is never
+    // sent to (or accepted from) the browser: the room page no longer receives the contact's
+    // details, and a client-supplied email would let anyone tag any CRM contact as "attended"
+    // (logParticipantLeave matches the log's email to a contact).
+    const contact: any = Array.isArray((apt as any).contact) ? (apt as any).contact[0] : (apt as any).contact;
+    const participantEmail: string = contact?.email || 'attendee@leadsmind.com';
+    const displayName = participantName.trim().slice(0, 100) || 'Workspace Attendee';
 
     const { data: log, error } = await supabase
       .from('meet_attendance_logs')
@@ -344,7 +351,7 @@ export async function logParticipantJoin(
 
         workspace_id: apt.workspace_id,
         appointment_id: appointmentId,
-        participant_name: participantName,
+        participant_name: displayName,
         participant_email: participantEmail,
         joined_at: new Date().toISOString()
       })

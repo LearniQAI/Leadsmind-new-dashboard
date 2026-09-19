@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 240" role="img" aria-label="Product image placeholder">
+  <rect width="480" height="240" fill="#eef2ff"/>
+  <g fill="none" stroke="#4338ca" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" opacity="0.85">
+    <path d="M240 64 l46 24 v50 l-46 24 l-46 -24 v-50 z"/>
+    <path d="M194 88 l46 24 l46 -24"/>
+    <path d="M240 112 v48"/>
+  </g>
+  <text x="240" y="200" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" fill="#5548d6">Replace with your product image</text>
+</svg>

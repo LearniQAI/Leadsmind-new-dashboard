@@ -6,18 +6,16 @@ export async function updateSession(request: NextRequest) {
  const pathname = request.nextUrl.pathname
 
  const isBookSubdomain = host.toLowerCase().startsWith('book.leadsmind.io')
- const mainDomains = ['localhost', 'leadsmind.com', 'leadsmind.vercel.app', 'www.leadsmind.io', 'leadsmind.io', 'leadsmind-new-ui']
- const isCustomDomain = !mainDomains.some(domain => host.toLowerCase().includes(domain))
 
- // Subdomain & Custom Domain routing for public booking pages
- if ((isBookSubdomain || isCustomDomain) && !pathname.startsWith('/api') && !pathname.startsWith('/_next') && pathname !== '/favicon.ico') {
+ // book.leadsmind.io/{slug} -> /book/{slug}. This is the ONLY booking rewrite. There used to be a
+ // second, catch-all branch for every custom domain (-> /book/domain/{host}/...); it was removed
+ // because it swallowed every path on those domains, and its target page resolved workspaces via
+ // workspaces.custom_domain, which nothing has ever written (0 rows). Booking links are always
+ // {origin}/book/{slug}, and /book/* passes through untouched on every host.
+ if (isBookSubdomain && !pathname.startsWith('/api') && !pathname.startsWith('/_next') && pathname !== '/favicon.ico') {
   if (!pathname.startsWith('/book')) {
    const url = request.nextUrl.clone()
-   if (isCustomDomain) {
-    url.pathname = `/book/domain/${host}${pathname}`
-   } else {
-    url.pathname = `/book${pathname}`
-   }
+   url.pathname = `/book${pathname}`
    return NextResponse.rewrite(url)
   }
  }
@@ -143,6 +141,18 @@ export async function updateSession(request: NextRequest) {
    request.nextUrl.pathname.startsWith('/public/events') ||
    request.nextUrl.pathname.startsWith('/public/unsubscribe') ||
    request.nextUrl.pathname.startsWith('/p/') ||
+   // Crawler files and feeds: robots.txt (src/app/robots.ts), the sitemaps it advertises and the
+   // blog RSS feed. Behind the login gate a crawler is redirected to sign-in and can never index
+   // anything — on the platform domain and on every custom domain alike.
+   request.nextUrl.pathname === '/robots.txt' ||
+   request.nextUrl.pathname === '/sitemap.xml' ||
+   request.nextUrl.pathname === '/sitemap-articles.xml' ||
+   request.nextUrl.pathname === '/sitemap-marketing.xml' ||
+   request.nextUrl.pathname === '/rss.xml' ||
+   // Meeting rooms are joined by guests holding the link (src/app/meet/[id]) and the reviews
+   // widget is embedded on customers' own sites (src/app/widget/reviews) — both are anonymous by design.
+   request.nextUrl.pathname.startsWith('/meet/') ||
+   request.nextUrl.pathname === '/widget/reviews' ||
    request.nextUrl.pathname.startsWith('/book') ||
    request.nextUrl.pathname.startsWith('/solutions') ||
    request.nextUrl.pathname.startsWith('/careers') ||

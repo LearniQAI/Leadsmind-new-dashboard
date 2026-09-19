@@ -401,15 +401,16 @@ export async function seedHelpArticles() {
         slug: 'custom-domain-connection',
         category: 'Getting Started',
         title: 'Connecting a Custom Domain',
-        body_plain: 'LeadsMind supports two separate custom-domain flows. A general workspace domain is added from Settings then Custom Domains with a CNAME to domains.leadsmind.com plus a TXT verification record, moving through pending, verifying, and ssl_provisioning states to active. A second, separate flow lets you set a CNAME to cname.leadsmind.io specifically to white-label the client portal your customers log into.',
+        body_plain: 'A custom domain is added from Settings then Custom Domains. Add the domain, then create a CNAME record pointing to domains.leadsmind.io plus a TXT verification record (_leadsmind-verify) at your DNS provider, and click Verify. Use a subdomain such as app.yourdomain.com; many DNS providers do not allow a CNAME on a bare root domain. A root domain and its www version (yourdomain.com and www.yourdomain.com) are treated as two separate entries: each needs its own DNS records and its own Verify, and neither automatically redirects to the other. DNS changes usually take effect within minutes but can take up to 48 hours; LeadsMind re-checks pending domains automatically every 15 minutes, and you can also click Verify at any time. The status moves from waiting for DNS records, to verifying DNS (ownership confirmed, waiting for the CNAME), to issuing the SSL certificate, to active.',
         content_json: [
-          { step: 1, title: 'Choose the Right Domain Flow', description: 'Decide whether you are connecting a general workspace domain or the client-portal white-label domain.' },
-          { step: 2, title: 'Add DNS Records', description: 'Add the CNAME (and TXT verification record for the general domain flow) at your DNS provider.' },
+          { step: 1, title: 'Add the Domain', description: 'Enter the domain in Settings then Custom Domains. A subdomain such as app.yourdomain.com is recommended.' },
+          { step: 2, title: 'Add DNS Records', description: 'Add the CNAME (pointing to domains.leadsmind.io) and the TXT verification record at your DNS provider, then click Verify.' },
           { step: 3, title: 'Check Status', description: 'Watch the domain status move from pending or verifying to active on its settings page.' }
         ],
         faq_json: [
           { q: 'Is SSL fully automatic?', a: 'The domain has an ssl_provisioning status step visible on its settings page; check that status for your specific domain rather than assuming SSL is instant.' },
-          { q: 'Are the two domain flows the same setting?', a: 'No, they are separate settings for different purposes: one for your general workspace domain, one for the client portal specifically.' }
+          { q: 'If I add yourdomain.com, does www.yourdomain.com work too?', a: 'No. yourdomain.com and www.yourdomain.com are independent entries. Add each one separately, set up its own DNS records, and Verify it. Neither redirects to the other. This applies to both Custom Domains settings and the website builder.' },
+          { q: 'Can I use my bare root domain (yourdomain.com)?', a: 'Only if your DNS provider supports a CNAME (or ALIAS/ANAME) at the root; many do not. Using a subdomain like app.yourdomain.com works everywhere.' }
         ]
       },
       {

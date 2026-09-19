@@ -86,9 +86,14 @@ export async function getDomainStatus(hostname: string) {
     // A domain is ready when verified is true on the project and not misconfigured config-wise
     const verified = !!projectDomainData.verified && !domainConfigData.misconfigured;
 
+    // DNS already points at us (config not misconfigured) even if the project hasn't finished
+    // verifying/issuing the certificate yet — lets callers tell "waiting on DNS" from "waiting on SSL".
+    const dnsPointed = domainConfigRes.ok && domainConfigData.misconfigured === false;
+
     return {
       success: true,
       verified,
+      dnsPointed,
       projectDomainData,
       domainConfigData,
     };
@@ -112,7 +117,12 @@ export async function removeDomainFromProject(hostname: string) {
       headers: getHeaders(),
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 404) {
+      // Already not on the project (never attached, or a previous delete got this far) —
+      // the goal state is reached, so a retry after a partial failure must not get stuck.
+      return { success: true, alreadyRemoved: true, data };
+    }
     if (!res.ok) {
       return { success: false, error: data.error?.message || 'Failed to remove domain from project', data };
     }

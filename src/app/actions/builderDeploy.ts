@@ -1,11 +1,14 @@
 'use server';
 
-import { createServerClient } from '@/lib/supabase/server';
+import { randomBytes } from 'crypto';
+import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { requireWorkspaceAccess } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { renderCraftToHtml } from '@/lib/builder/renderer';
 import { logger } from '@/shared/logger';
-import { NotFoundError, toClientError } from '@/shared/errors/AppError';
+import { NotFoundError, ValidationError, toClientError } from '@/shared/errors/AppError';
+import { releaseHostFromVercel, verifyWebsiteDomainById } from '@/lib/domains/verify';
+import { describeDns, normalizeHostnameInput } from '@/lib/domains/hostname';
 
 async function executeAction<T>(action: (supabase: any, workspaceId: string) => Promise<T>) {
   try {
@@ -108,8 +111,35 @@ export async function publishPageStatic(pageId: string) {
  */
 export async function addCustomDomain(websiteId: string, domainName: string) {
   return executeAction(async (supabase, workspaceId) => {
-    const cleanDomain = domainName.trim().toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, '');
-    const verificationToken = `lm_verify_${Math.random().toString(36).substr(2, 16)}`;
+    const cleanDomain = normalizeHostnameInput(domainName);
+    if (!cleanDomain) throw new ValidationError('Domain is required.');
+    if (!describeDns(cleanDomain)) {
+      throw new ValidationError('Enter a valid domain, like app.yourdomain.com.');
+    }
+    const verificationToken = randomBytes(32).toString('hex');
+
+    // Only a PROVEN claim blocks a new one — an unproven entry never locks a hostname (the first
+    // workspace to pass its own TXT check wins). A hostname proven through Settings > Custom
+    // Domains serves that system's content (courses/blog), so it can't also be a website domain.
+    const admin = createAdminClient();
+    const { data: provenCustom } = await admin
+      .from('domain_configurations')
+      .select('id')
+      .eq('hostname', cleanDomain)
+      .not('ownership_verified_at', 'is', null)
+      .limit(1);
+    if (provenCustom && provenCustom.length > 0) {
+      throw new ValidationError('This domain is already connected through Custom Domains settings.');
+    }
+    const { data: provenSite } = await admin
+      .from('builder_published_domains')
+      .select('id')
+      .eq('domain_name', cleanDomain)
+      .not('ownership_verified_at', 'is', null)
+      .limit(1);
+    if (provenSite && provenSite.length > 0) {
+      throw new ValidationError('This domain is already registered to another workspace.');
+    }
 
     const { data, error } = await supabase
       .from('builder_published_domains')
@@ -124,13 +154,29 @@ export async function addCustomDomain(websiteId: string, domainName: string) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === '23505') throw new ValidationError('This domain is already added to this workspace.');
+      throw error;
+    }
     return { domain: data };
   });
 }
 
 export async function removeCustomDomain(domainId: string) {
   return executeAction(async (supabase, workspaceId) => {
+    const { data: domain, error: fetchError } = await supabase
+      .from('builder_published_domains')
+      .select('id, domain_name, ownership_verified_at')
+      .eq('id', domainId)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+    if (fetchError) throw fetchError;
+    if (!domain) throw new NotFoundError('Domain');
+
+    // Detach from Vercel first; if that fails the row is kept (see releaseHostFromVercel).
+    const released = await releaseHostFromVercel(domain.domain_name, domain.ownership_verified_at);
+    if (!released.ok) throw new ValidationError(released.error || 'Could not disconnect the domain.');
+
     const { error } = await supabase
       .from('builder_published_domains')
       .delete()
@@ -144,34 +190,45 @@ export async function removeCustomDomain(domainId: string) {
 
 export async function verifyDomainSSL(domainId: string) {
   return executeAction(async (supabase, workspaceId) => {
-    // Query domain config from db
+    // Ownership of the row is checked here (RLS-scoped client + workspace filter); the check
+    // itself is shared with the background cron.
     const { data: domain, error: fetchError } = await supabase
+      .from('builder_published_domains')
+      .select('id')
+      .eq('id', domainId)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+    if (fetchError) throw fetchError;
+    if (!domain) throw new NotFoundError('Domain');
+
+    // Real check, the same one Settings > Custom Domains uses: TXT ownership token, then the
+    // ownership claim, then Vercel attach + verified/not-misconfigured. It can genuinely fail,
+    // and nothing is attached to Vercel until ownership is proven.
+    const check = await verifyWebsiteDomainById(domainId);
+    if (!check.ready) throw new ValidationError(check.error || 'Domain DNS is not verified yet.');
+
+    const { data: updatedDomain, error: updateError } = await supabase
       .from('builder_published_domains')
       .select('*')
       .eq('id', domainId)
       .eq('workspace_id', workspaceId)
       .single();
-
-    if (fetchError || !domain) throw fetchError || new Error('Domain record not found');
-
-    // Simulate Cloudflare SaaS hostname / SSL proxy routing check logic
-    const isDnsAligned = true; // Simulating valid CNAME setup
-    const sslStatus = isDnsAligned ? 'active' : 'error';
-    const verified = isDnsAligned;
-
-    const { data: updatedDomain, error: updateError } = await supabase
-      .from('builder_published_domains')
-      .update({
-        ssl_status: sslStatus,
-        verified,
-        updated_at: new Date().toISOString()
-      })
-      .eq("id", domainId).eq("workspace_id", workspaceId)
-      .select()
-      .single();
-
     if (updateError) throw updateError;
     return { domain: updatedDomain };
+  });
+}
+
+/** A website's connected domains, each with the DNS records to enter at the registrar. */
+export async function getWebsiteDomains(websiteId: string) {
+  return executeAction(async (supabase, workspaceId) => {
+    const { data, error } = await supabase
+      .from('builder_published_domains')
+      .select('*')
+      .eq('website_id', websiteId)
+      .eq('workspace_id', workspaceId)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return { domains: (data ?? []).map((d: any) => ({ ...d, dns: describeDns(d.domain_name) })) };
   });
 }
 

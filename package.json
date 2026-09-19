@@ -130,6 +130,7 @@
     "svix": "^2.2.0",
     "swiper": "^9.4.1",
     "tailwind-merge": "^3.5.0",
+    "tldts": "^7.4.13",
     "twilio": "^6.1.0",
     "unzipper": "^0.12.5",
     "zod": "^4.5.4"

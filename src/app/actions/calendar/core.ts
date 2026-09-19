@@ -1,7 +1,9 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/server';
 import { logger } from '@/shared/logger';
+import { resolveHost } from '@/lib/domains/resolve';
 
 // getCalendars/createCalendar/updateCalendar/deleteCalendar previously lived
 // here as one of three drifted copies of booking_calendars CRUD (alongside
@@ -18,18 +20,36 @@ import { logger } from '@/shared/logger';
  */
 export async function getPublicCalendarBySlug(slug: string) {
     const supabase = createAdminClient();
-    const { data, error } = await supabase
+
+    // booking_calendars is unique on (workspace_id, slug), NOT on slug alone. Served through a
+    // tenant's connected custom domain, scope the lookup to that domain's workspace so two
+    // workspaces sharing a slug (e.g. "discovery-call") never collide.
+    const requestHeaders = await headers();
+    const host = requestHeaders.get('x-forwarded-host') || requestHeaders.get('host');
+    const tenant = host ? await resolveHost(host) : null;
+
+    let query = supabase
         .from('booking_calendars')
         .select(`
           *,
           workspace:workspaces(name, slug, logo_url)
         `)
-        .eq('slug', slug)
-        .single();
+        .eq('slug', slug);
+    if (tenant) query = query.eq('workspace_id', tenant.workspaceId);
+
+    const { data: rows, error } = await query.limit(2);
 
     if (error) {
         logger.error({ err: error, slug }, 'calendar.public_calendar.fetch.failed');
         return null;
     }
-    return data;
+    if (!rows || rows.length === 0) return null;
+    if (rows.length > 1) {
+        // Only reachable on the platform's own domain, where a bare slug can't say which
+        // workspace is meant. Refuse rather than guess (never show one tenant's calendar for
+        // another's link).
+        logger.warn({ slug }, 'calendar.public_calendar.ambiguous_slug');
+        return null;
+    }
+    return rows[0];
 }

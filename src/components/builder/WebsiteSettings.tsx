@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Globe, Shield, Rocket, Info, Plus, Trash2, CheckCircle2, XCircle, RefreshCw, Webhook, Edit2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { CUSTOM_DOMAIN_CNAME_TARGET } from '@/lib/domains/config';
 import { ColorPicker } from './ColorPicker';
 import { createClient } from '@/lib/supabase/client';
 import { useBuilder } from './BuilderContext';
@@ -13,6 +14,7 @@ import {
   addCustomDomain, 
   removeCustomDomain, 
   verifyDomainSSL,
+  getWebsiteDomains,
   createSubdirectoryPage,
   deleteSubdirectoryPage,
   renameSubdirectoryPage 
@@ -21,9 +23,12 @@ import {
 interface WebsiteSettingsProps {
   website: any;
   onUpdate: (updates: any) => void;
+  /** Editor type; funnels share this panel but have no custom-domain flow. */
+  type?: 'website' | 'funnel';
 }
 
-export const WebsiteSettings = ({ website, onUpdate }: WebsiteSettingsProps) => {
+export const WebsiteSettings = ({ website, onUpdate, type }: WebsiteSettingsProps) => {
+  const isFunnel = type === 'funnel';
   const { pages: contextPages, websiteData } = useBuilder();
   const [localSettings, setLocalSettings] = useState({
     name: website?.name || '',
@@ -45,13 +50,10 @@ export const WebsiteSettings = ({ website, onUpdate }: WebsiteSettingsProps) => 
   const supabase = createClient();
 
   const fetchDomains = useCallback(async () => {
-    if (!website?.id) return;
-    const { data } = await supabase
-      .from('builder_published_domains')
-      .select('*')
-      .eq('website_id', website.id);
-    if (data) setDomains(data);
-  }, [website?.id, supabase]);
+    if (!website?.id || isFunnel) return;
+    const res = await getWebsiteDomains(website.id);
+    if (res.success) setDomains(res.domains);
+  }, [website?.id, isFunnel]);
 
   const fetchWebhooks = useCallback(async () => {
     if (!website?.workspace_id) return;
@@ -92,7 +94,7 @@ export const WebsiteSettings = ({ website, onUpdate }: WebsiteSettingsProps) => 
   };
 
   const handleVerifySSL = async (domainId: string) => {
-    const toastId = toast.loading('Querying Cloudflare domain verification proxy...');
+    const toastId = toast.loading('Checking DNS and SSL status...');
     const res = await verifyDomainSSL(domainId);
     if (res.success) {
       toast.success('SSL credentials verified active!', { id: toastId });
@@ -109,7 +111,7 @@ export const WebsiteSettings = ({ website, onUpdate }: WebsiteSettingsProps) => 
       toast.success('Domain disconnected');
       fetchDomains();
     } else {
-      toast.error('Failed to disconnect domain');
+      toast.error(res.error || 'Failed to disconnect domain');
     }
   };
 
@@ -249,7 +251,10 @@ export const WebsiteSettings = ({ website, onUpdate }: WebsiteSettingsProps) => 
           </div>
         </section>
 
-        {/* Custom SSL Domains Manager */}
+        {/* Custom SSL Domains Manager — websites only: builder_published_domains.website_id is an FK to
+            websites, and funnels have no working custom-domain flow (funnels.custom_domain is never
+            read or written anywhere), so offering this panel for a funnel could only fail. */}
+        {!isFunnel && (
         <section className="mb-7">
           <h3 className="text-[13px] font-bold text-slate-900 mb-3 flex items-center gap-2">
             <Rocket className="w-3.5 h-3.5 text-slate-500" /> SSL custom domains
@@ -259,13 +264,17 @@ export const WebsiteSettings = ({ website, onUpdate }: WebsiteSettingsProps) => 
               <Input
                 value={newDomain}
                 onChange={(e) => setNewDomain(e.target.value)}
-                placeholder="example.com"
+                placeholder="www.yourdomain.com"
                 className="h-9 bg-white border-slate-200 rounded-xl text-slate-700 text-xs placeholder:text-slate-400 focus-visible:border-slate-300"
               />
               <Button onClick={handleAddDomain} disabled={loadingDomain} size="sm" className="bg-slate-900 hover:bg-slate-800 text-white h-9 px-3 text-[10px] font-bold">
                 Add
               </Button>
             </div>
+
+            <p className="text-[10px] font-semibold text-slate-500">
+              Recommended: use a subdomain such as www.yourdomain.com. Subdomains work with every domain provider; a bare root domain only works with providers that support ALIAS/ANAME or CNAME flattening (many, like GoDaddy, don&apos;t). Add yourdomain.com and www.yourdomain.com separately if you want both. DNS changes can take up to 48 hours, and we re-check automatically every 15 minutes.
+            </p>
 
             <div className="space-y-2">
               {domains.map((dom) => (
@@ -280,8 +289,21 @@ export const WebsiteSettings = ({ website, onUpdate }: WebsiteSettingsProps) => 
                       )}
                     </div>
                     <div className="text-[10px] font-semibold text-slate-500">
-                      CNAME target: proxy.leadsmind.com | Status: {dom.ssl_status}
+                      {dom.dns?.domainType === 'apex' ? 'ALIAS/ANAME (or CNAME if flattened)' : 'CNAME'} {dom.dns?.recordHost ?? '@'} → {CUSTOM_DOMAIN_CNAME_TARGET} | Status: {dom.ssl_status}
                     </div>
+                    {!dom.verified && dom.verification_token && (
+                      <div className="text-[10px] font-semibold text-slate-500 break-all">
+                        TXT {dom.dns?.txtHost ?? '_leadsmind-verify'} → {dom.verification_token}
+                      </div>
+                    )}
+                    {!dom.verified && dom.dns?.domainType === 'apex' && (
+                      <div className="text-[10px] font-semibold text-amber-700">
+                        Root domain: only works if your provider supports ALIAS/ANAME or CNAME flattening. A subdomain like www.{dom.domain_name} works everywhere.
+                      </div>
+                    )}
+                    {!dom.verified && dom.last_check_error && (
+                      <div className="text-[10px] font-semibold text-amber-700">{dom.last_check_error}</div>
+                    )}
                   </div>
                   <div className="flex gap-1.5">
                     <Button onClick={() => handleVerifySSL(dom.id)} size="icon" variant="ghost" className="h-7 w-7 text-slate-500 hover:text-slate-700 bg-white hover:bg-slate-200">
@@ -296,6 +318,7 @@ export const WebsiteSettings = ({ website, onUpdate }: WebsiteSettingsProps) => 
             </div>
           </div>
         </section>
+        )}
 
         {/* Subdirectories Pages Setup */}
         <section className="mb-7">

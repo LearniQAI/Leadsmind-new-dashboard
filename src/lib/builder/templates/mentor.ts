@@ -90,7 +90,7 @@ export const mentor: BuilderTemplate = {
     'hero-badge': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'inline-flex items-center gap-2 rounded-full px-4 py-2 mb-6 w-fit', display: 'inline-flex', alignItems: 'center', backgroundColor: '#f0fdfa' },
+      props: { className: 'inline-flex items-center gap-2 rounded-full px-4 py-2 mb-6 w-fit', display: 'inline-flex', flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0fdfa' },
       nodes: ['hero-badge-dot', 'hero-badge-text'],
       parent: 'hero-left',
     },
@@ -351,7 +351,7 @@ export const mentor: BuilderTemplate = {
     'about-bullet-1': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'flex items-start gap-3', display: 'flex', alignItems: 'flex-start' },
+      props: { className: 'flex items-start gap-3', display: 'flex', flexDirection: 'row', alignItems: 'flex-start' },
       nodes: ['about-bullet-1-icon', 'about-bullet-1-text'],
       parent: 'about-bullets',
     },
@@ -380,7 +380,7 @@ export const mentor: BuilderTemplate = {
     'about-bullet-2': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'flex items-start gap-3', display: 'flex', alignItems: 'flex-start' },
+      props: { className: 'flex items-start gap-3', display: 'flex', flexDirection: 'row', alignItems: 'flex-start' },
       nodes: ['about-bullet-2-icon', 'about-bullet-2-text'],
       parent: 'about-bullets',
     },
@@ -409,7 +409,7 @@ export const mentor: BuilderTemplate = {
     'about-bullet-3': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'flex items-start gap-3', display: 'flex', alignItems: 'flex-start' },
+      props: { className: 'flex items-start gap-3', display: 'flex', flexDirection: 'row', alignItems: 'flex-start' },
       nodes: ['about-bullet-3-icon', 'about-bullet-3-text'],
       parent: 'about-bullets',
     },
@@ -534,7 +534,7 @@ export const mentor: BuilderTemplate = {
     'process-step-1': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'flex items-start gap-5', display: 'flex', alignItems: 'flex-start' },
+      props: { className: 'flex items-start gap-5', display: 'flex', flexDirection: 'row', alignItems: 'flex-start' },
       nodes: ['process-step-1-num', 'process-step-1-text'],
       parent: 'process-right',
     },
@@ -563,7 +563,7 @@ export const mentor: BuilderTemplate = {
     'process-step-2': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'flex items-start gap-5', display: 'flex', alignItems: 'flex-start' },
+      props: { className: 'flex items-start gap-5', display: 'flex', flexDirection: 'row', alignItems: 'flex-start' },
       nodes: ['process-step-2-num', 'process-step-2-text'],
       parent: 'process-right',
     },
@@ -592,7 +592,7 @@ export const mentor: BuilderTemplate = {
     'process-step-3': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'flex items-start gap-5', display: 'flex', alignItems: 'flex-start' },
+      props: { className: 'flex items-start gap-5', display: 'flex', flexDirection: 'row', alignItems: 'flex-start' },
       nodes: ['process-step-3-num', 'process-step-3-text'],
       parent: 'process-right',
     },

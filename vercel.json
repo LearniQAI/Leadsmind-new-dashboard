@@ -98,6 +98,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/workers/domain-verification",
+      "schedule": "*/15 * * * *"
+    },
+    {
       "path": "/api/cron/waitlist-offers",
       "schedule": "10 * * * *"
     }
