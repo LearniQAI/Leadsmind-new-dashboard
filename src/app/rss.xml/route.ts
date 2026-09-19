@@ -1,4 +1,5 @@
-import { createServerClient } from '@/lib/supabase/server';
+import { createServerClient, createAdminClient } from '@/lib/supabase/server';
+import { resolvePublicSiteContext } from '@/lib/blog/publicWorkspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,13 +8,23 @@ export async function GET() {
     const supabase = await createServerClient();
     
     // Fetch all published posts with author resolution
-    const { data: posts } = await supabase
+    // On a tenant's custom domain this is THAT workspace's feed at its own origin; on the platform
+    // domain it stays the platform-wide feed. Never list another tenant's posts on a tenant domain.
+    const { workspaceId, origin: baseUrl } = await resolvePublicSiteContext();
+    let postsQuery = supabase
       .from('blog_posts')
       .select('title, slug, summary, published_at, author:users(first_name, last_name)')
-      .eq('status', 'published')
-      .order('published_at', { ascending: false });
+      .eq('status', 'published');
+    if (workspaceId) postsQuery = postsQuery.eq('workspace_id', workspaceId);
+    const { data: posts } = await postsQuery.order('published_at', { ascending: false });
 
-    const baseUrl = 'https://www.leadsmind.io';
+    let channelTitle = 'LeadsMind Corporate Insights';
+    let channelDescription = 'Curated growth frameworks, conversion blueprints, and marketing technology insights.';
+    if (workspaceId) {
+      const { data: workspace } = await createAdminClient().from('workspaces').select('name').eq('id', workspaceId).maybeSingle();
+      channelTitle = workspace?.name ? `${workspace.name} Blog` : 'Blog';
+      channelDescription = `Latest posts from ${workspace?.name || 'our blog'}.`;
+    }
 
     const itemsXml = (posts || [])
       .map((post) => {
@@ -36,9 +47,9 @@ export async function GET() {
     const rss = `<?xml version="1.0" encoding="UTF-8" ?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>LeadsMind Corporate Insights</title>
+    <title><![CDATA[${channelTitle}]]></title>
     <link>${baseUrl}/blog</link>
-    <description>Curated growth frameworks, conversion blueprints, and marketing technology insights.</description>
+    <description><![CDATA[${channelDescription}]]></description>
     <language>en-us</language>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
     <atom:link href="${baseUrl}/rss.xml" rel="self" type="application/rss+xml" />

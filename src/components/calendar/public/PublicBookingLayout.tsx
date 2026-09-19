@@ -4,8 +4,8 @@ import { ShieldCheck, Clock, Globe, Users } from 'lucide-react';
 import { isGroupSessionType, getGroupSessionNoun } from '@/lib/calendar/calendarTypes';
 
 /**
- * Shared shell for the public booking pages (/book/[slug] and the custom-domain
- * variant). Light premium theme — see docs/calendar-redesign-spec.md.
+ * Shared shell for the public booking page (/book/[slug], which is also what a tenant's
+ * custom domain serves). Light premium theme — see docs/calendar-redesign-spec.md.
  */
 export default function PublicBookingLayout({ calendar }: { calendar: any }) {
   const isGroupSession = isGroupSessionType(calendar.calendar_type);

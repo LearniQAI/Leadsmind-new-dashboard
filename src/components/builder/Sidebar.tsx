@@ -552,6 +552,7 @@ export const Sidebar = ({
           <WebsiteSettings
             website={website || { name: '', subdomain: '' }}
             onUpdate={onUpdateWebsite || (() => { })}
+            type={type}
           />
         </div>
       )}

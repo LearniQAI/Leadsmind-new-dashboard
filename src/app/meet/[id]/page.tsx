@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Loader2, ShieldCheck, PhoneOff, Settings, Users, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
-import { getAppointmentById, logParticipantJoin, logParticipantLeave } from '@/app/actions/calendar/appointments';
+import { getMeetingRoomDetails, logParticipantJoin, logParticipantLeave } from '@/app/actions/calendar/appointments';
 import PreJoinLobby from '@/components/calendar/meet/PreJoinLobby';
 import { Button } from '@/components/ui/button';
 
@@ -16,6 +16,9 @@ export default function MeetingPage() {
   const [isCamOn, setIsCamOn] = useState(true);
   const [isJoined, setIsJoined] = useState(false);
   const [appointment, setAppointment] = useState<any>(null);
+  // The participant's own display name. Nothing about the appointment's contact is sent to this
+  // page (the room is reachable by anyone holding the link), so the person joining says who they are.
+  const [displayName, setDisplayName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [logId, setLogId] = useState<string | null>(null);
   
@@ -25,7 +28,7 @@ export default function MeetingPage() {
   useEffect(() => {
     async function loadMeeting() {
       if (!id) return;
-      const res = await getAppointmentById(id as string);
+      const res = await getMeetingRoomDetails(id as string);
       if (res.success && res.data) {
         setAppointment(res.data);
       } else {
@@ -63,13 +66,10 @@ export default function MeetingPage() {
     setIsJoined(true);
     toast.success('Establishing secure Jitsi room connection...');
 
-    // Log arrival to database
-    const participantName = appointment?.contact
-      ? `${appointment.contact.first_name} ${appointment.contact.last_name || ''}`
-      : 'Workspace Attendee';
-    const participantEmail = appointment?.contact?.email || 'attendee@leadsmind.com';
+    // Log arrival to database (the attendee's email is resolved server-side, never sent here)
+    const participantName = displayName.trim() || 'Guest';
 
-    const joinLog = await logParticipantJoin(id as string, participantName, participantEmail);
+    const joinLog = await logParticipantJoin(id as string, participantName);
     if (joinLog.success && joinLog.logId) {
       setLogId(joinLog.logId);
     }
@@ -98,7 +98,6 @@ export default function MeetingPage() {
         },
         userInfo: {
           displayName: participantName,
-          email: participantEmail,
         },
       };
 
@@ -152,6 +151,8 @@ export default function MeetingPage() {
     return (
       <PreJoinLobby
         appointment={appointment}
+        displayName={displayName}
+        onDisplayNameChange={setDisplayName}
         isMicOn={isMicOn}
         isCamOn={isCamOn}
         onToggleMic={() => setIsMicOn(!isMicOn)}

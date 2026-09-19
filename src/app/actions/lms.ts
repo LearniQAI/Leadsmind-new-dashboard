@@ -3,6 +3,7 @@
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId, getUser } from '@/lib/auth';
 import { sanitizeSlug } from '@/lib/slug';
+import { isReservedCoursePath } from '@/lib/domains/customDomainRoutes';
 import { logger } from '@/shared/logger';
 
 export async function getCourses() {
@@ -160,6 +161,11 @@ export async function createCourseWithDomain(title: string, domainId?: string | 
 
    const cleanSlug = sanitizeSlug(urlPath || '');
    if (!cleanSlug) return { error: 'A URL path is required when a domain is selected' };
+   // /{url_path} is served on the domain itself, so it must not equal a path the domain serves
+   // for something else (blog, student, portal, auth, checkout, ...) — see customDomainRoutes.ts.
+   if (isReservedCoursePath(cleanSlug)) {
+    return { error: `"${cleanSlug}" is reserved for another part of your site. Choose a different URL path.` };
+   }
 
    resolvedDomainId = domainId;
    resolvedUrlPath = cleanSlug;

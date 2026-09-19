@@ -1,30 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
-import { resolveHost } from '@/lib/domains/resolve'
+import { resolveHost, resolveWebsiteHost, isTrackingDomain } from '@/lib/domains/resolve'
 import { createAdminClient } from '@/lib/supabase/server'
 import { PLATFORM_HOSTS } from '@/lib/domains/platformHosts'
+import { isCustomDomainPassthrough } from '@/lib/domains/customDomainRoutes'
 
-// Never rewritten to course-serving on a custom domain, even though they're a single path
-// segment — real app-internal paths that could in principle be requested against a custom
-// domain host (e.g. a same-origin fetch that didn't get proxied correctly) must never be
-// swallowed by the course lookup.
+// Website-builder custom domains rewrite every path to the site's own /p/... route; only these
+// stay reachable so forms/assets keep working. (Course/blog/portal domains use the explicit
+// allowlist in lib/domains/customDomainRoutes.ts instead.)
 const RESERVED_ROOT_PATHS = new Set(['api', '_next', 'favicon.ico', 'book'])
+
+// Real 404 (an actual 404 status, not the app's soft-404 page which answers 200) for a path a
+// custom domain does not serve — never guessed into another feature. Self-contained HTML so it
+// carries no platform chrome or staff links onto a customer's domain.
+function customDomainNotFound() {
+  const html =
+    '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>Page not found</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;' +
+    'font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f8fafc;color:#0f172a;text-align:center}' +
+    'h1{font-size:64px;margin:0}p{color:#64748b;margin:8px 0 20px}a{color:#4f46e5}</style></head>' +
+    '<body><main><h1>404</h1><p>This page could not be found.</p><a href="/">Go to the home page</a></main></body></html>'
+  return new NextResponse(html, {
+    status: 404,
+    headers: { 'content-type': 'text/html; charset=utf-8', 'x-robots-tag': 'noindex' },
+  })
+}
 
 export async function middleware(request: NextRequest) {
   const host = (request.headers.get('host') || '').split(':')[0].toLowerCase()
 
-  // 1. Custom tracking domains rewrite (e.g. track.leadsmind.io/uuid -> /track/uuid)
+  // 1. Tracking-number pages (e.g. track.leadsmind.io/uuid -> /track/uuid). Fires only on the
+  // platform's own track.* hosts or on a tracking domain a workspace has actually registered
+  // (courier_brand_settings.custom_track_domain) — never on an ordinary tenant domain, where an
+  // 8+ letter path such as /services or /photography is a page or course, not a tracking number.
   const isTrackHost = host === 'track.leadsmind.io' || host === 'track.leadsmind.com' || host.startsWith('track.')
   const path = request.nextUrl.pathname
   const segments = path.split('/').filter(Boolean)
-  
+
   if (segments.length === 1) {
     const segment = segments[0]
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segment)
     const isTrackingNumber = /^[A-Z0-9]{8,25}$/i.test(segment)
 
     if (isUuid || isTrackingNumber) {
-      if (isTrackHost || !PLATFORM_HOSTS.has(host)) {
+      if (isTrackHost || (!PLATFORM_HOSTS.has(host) && await isTrackingDomain(host))) {
         const url = request.nextUrl.clone()
         url.pathname = `/track/${segment}`
         return NextResponse.rewrite(url)
@@ -68,17 +87,22 @@ export async function middleware(request: NextRequest) {
   // Custom/sub domain: resolve to a workspace, inject context, then continue normal auth.
   const resolved = await resolveHost(host)
   if (resolved) {
-    // Custom-Domain Course Serving — only a real, verified (status='active') domain reaches
-    // here at all: resolveHost() already returns null for 'pending'/'verifying' hostnames, so
-    // there is no path to reach any of this without real DNS/SSL verification. domainConfigId
-    // is null for the free {slug}.leadsmind.com subdomain case (no course-domain concept
-    // there yet), so this whole block is skipped for that and it keeps its prior behavior.
-    if (resolved.domainConfigId && !RESERVED_ROOT_PATHS.has(segments[0] || '')) {
+    // Only a real, verified (status='active') domain reaches here: resolveHost() returns null
+    // for 'pending'/'verifying' hostnames. domainConfigId is null for the free
+    // {slug}.leadsmind.com subdomain case, which keeps its prior pass-through behavior.
+    //
+    // On a connected domain the served surfaces are an EXPLICIT ALLOWLIST (see
+    // lib/domains/customDomainRoutes.ts): the allowlisted roots pass through untouched, the root
+    // path shows the domain's course(s), and a single other segment is served only if it is a
+    // real course url_path on THIS domain. Anything else — including staff tooling such as
+    // /dashboard or /settings, which intentionally stays on the platform's own domain — is a
+    // genuine 404. Nothing is guessed into a course, a tracking number or a booking page.
+    if (resolved.domainConfigId && !isCustomDomainPassthrough(path)) {
       const domainConfigId = resolved.domainConfigId
       const adminClient = createAdminClient()
 
       if (segments.length === 0) {
-        // Root path: redirect straight to the domain's one course if it only has one, or a
+        // Root path: rewrite straight to the domain's one course if it only has one, or a
         // real portal listing every course otherwise — never a blank/broken root.
         const { data: courses } = await adminClient
           .from('courses')
@@ -99,21 +123,57 @@ export async function middleware(request: NextRequest) {
       }
 
       if (segments.length === 1) {
-        // /{url_path} -> the same real course landing page the default-domain path uses,
-        // scoped to this exact domain via the x-domain-config-id request header (read by
-        // /unauthenticated/courses/[slug]/page.tsx) — never a global slug lookup here.
+        // /{url_path} -> the real course landing page, but only on a POSITIVE match: a course
+        // on this exact domain (courses.domain_id + url_path). The page itself still decides
+        // published-vs-preview; the domain scope travels in the x-domain-config-id header.
+        const { data: course } = await adminClient
+          .from('courses')
+          .select('url_path')
+          .eq('domain_id', domainConfigId)
+          .eq('url_path', segments[0].toLowerCase())
+          .maybeSingle()
+        if (!course?.url_path) return customDomainNotFound()
+
         const url = request.nextUrl.clone()
-        url.pathname = `/unauthenticated/courses/${segments[0]}`
+        url.pathname = `/unauthenticated/courses/${course.url_path}`
         const headers = new Headers(request.headers)
         headers.set('x-domain-config-id', domainConfigId)
         return NextResponse.rewrite(url, { request: { headers } })
       }
+
+      return customDomainNotFound()
     }
 
     const res = await updateSession(request)
     res.headers.set('x-workspace-id', resolved.workspaceId)
     res.headers.set('x-tenant-host', resolved.hostname)
     return res
+  }
+
+  // Website-builder custom domain (builder_published_domains): a verified domain on a published
+  // website serves that site through the same /p/{workspaceSlug}/{subdomain}[/{page}] route the
+  // default leadsmind URL uses. Checked only after resolveHost() (courses/blog) found nothing.
+  if (!RESERVED_ROOT_PATHS.has(segments[0] || '')) {
+    const site = await resolveWebsiteHost(host)
+    if (site) {
+      const ownPrefix = `/p/${site.workspaceSlug}/${site.subdomain}`
+      const url = request.nextUrl.clone()
+
+      // The renderer builds internal links as /p/{workspaceSlug}/{subdomain}/{page}. On the
+      // site's own domain, strip that prefix (redirect to the clean URL) instead of
+      // double-prefixing it; any other /p/... path is another site's content and is never
+      // served on this host.
+      if (path === ownPrefix || path.startsWith(`${ownPrefix}/`)) {
+        url.pathname = path.slice(ownPrefix.length) || '/'
+        return NextResponse.redirect(url, 308)
+      }
+      if (path === '/p' || path.startsWith('/p/')) {
+        return new NextResponse('Not found', { status: 404 })
+      }
+
+      url.pathname = `${ownPrefix}${path === '/' ? '' : path}`
+      return NextResponse.rewrite(url)
+    }
   }
 
   // Unknown host -> behave as platform (no tenant context).

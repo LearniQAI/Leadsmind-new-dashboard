@@ -3,6 +3,8 @@
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
 import { getCurrentWorkspaceId } from '@/lib/auth';
+import { releaseHostFromVercel } from '@/lib/domains/verify';
+import { describeDns, normalizeHostnameInput } from '@/lib/domains/hostname';
 import { revalidatePath } from 'next/cache';
 import dns from 'dns';
 import { randomBytes } from 'crypto';
@@ -263,8 +265,7 @@ async function checkPlanGateForCustomDomain(workspaceId: string) {
 
 export async function addDomain(
   workspaceId: string,
-  hostname: string,
-  domainType: 'apex' | 'subdomain' | 'wildcard' = 'subdomain'
+  hostname: string
 ) {
   try {
     const supabaseAuth = await createServerClient();
@@ -281,25 +282,46 @@ export async function addDomain(
 
     await checkPlanGateForCustomDomain(workspaceId);
 
-    const cleanHostname = hostname.trim().toLowerCase();
+    const cleanHostname = normalizeHostnameInput(hostname);
     if (!cleanHostname) {
       return { success: false, error: 'Hostname is required.' };
     }
+    // Classified server-side with the Public Suffix List (never trusted from the client), so
+    // example.co.uk is correctly an apex domain and the right DNS records are shown.
+    const dnsGuidance = describeDns(cleanHostname);
+    if (!dnsGuidance) {
+      return { success: false, error: 'Enter a valid domain, like app.yourdomain.com.' };
+    }
+    const domainType = dnsGuidance.domainType;
 
     const adminClient = createAdminClient();
 
-    const { data: existingDomain } = await adminClient
+    // Only a PROVEN claim (TXT token passed) makes a hostname exclusive. An unproven entry from
+    // another workspace never blocks this one — whichever workspace proves ownership first wins
+    // at Verify time (see claimHostOwnership in lib/domains/verify.ts).
+    const { data: existingDomains } = await adminClient
       .from('domain_configurations')
-      .select('id, workspace_id')
-      .eq('hostname', cleanHostname)
-      .maybeSingle();
+      .select('id, workspace_id, ownership_verified_at')
+      .eq('hostname', cleanHostname);
 
-    if (existingDomain) {
-      if (existingDomain.workspace_id === workspaceId) {
+    for (const existing of existingDomains ?? []) {
+      if (existing.workspace_id === workspaceId) {
         return { success: false, error: 'This domain is already added to this workspace.' };
-      } else {
+      }
+      if (existing.ownership_verified_at) {
         return { success: false, error: 'This domain is already registered to another workspace.' };
       }
+    }
+
+    // Same one-host-one-content-type rule as the website builder's own domains.
+    const { data: websiteDomain } = await adminClient
+      .from('builder_published_domains')
+      .select('id')
+      .eq('domain_name', cleanHostname)
+      .not('ownership_verified_at', 'is', null)
+      .limit(1);
+    if (websiteDomain && websiteDomain.length > 0) {
+      return { success: false, error: 'This domain is already connected to a website.' };
     }
 
     const verificationToken = randomBytes(32).toString('hex');
@@ -318,7 +340,10 @@ export async function addDomain(
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === '23505') return { success: false, error: 'This domain is already added to this workspace.' };
+      throw error;
+    }
     revalidatePath('/settings/domains');
     return { success: true, data: domainConfig };
   } catch (err: any) {
@@ -358,7 +383,9 @@ export async function getDomains(workspaceId: string) {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return { success: true, data };
+    // Attach the records to enter at the registrar (computed with the Public Suffix List, which
+    // the client can't do), so the UI never guesses the CNAME/TXT host from the label count.
+    return { success: true, data: (data ?? []).map((d) => ({ ...d, dns: describeDns(d.hostname) })) };
   } catch (err: any) {
     logger.error({ err, workspaceId }, 'domains.custom_domains.fetch.failed');
     return { success: false, error: 'Failed to fetch domains.' };
@@ -403,6 +430,27 @@ export async function deleteDomain(domainId: string) {
       return { success: false, error: 'Unauthorized' };
     }
 
+    const adminClient = createAdminClient();
+    const { data: domain } = await adminClient
+      .from('domain_configurations')
+      .select('id, hostname, ownership_verified_at')
+      .eq('id', domainId)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+    if (!domain) return { success: false, error: 'Domain not found.' };
+
+    // Courses pointing at this domain are nulled by the courses_domain_id_fkey ON DELETE SET
+    // NULL and fall back to the default domain; count them first so the user is told.
+    const { count: detachedCourses } = await adminClient
+      .from('courses')
+      .select('id', { count: 'exact', head: true })
+      .eq('domain_id', domainId);
+
+    // Detach from Vercel FIRST. If that fails the row is kept: deleting it anyway would leave
+    // the hostname attached to the project with no record left to find or retry it by.
+    const released = await releaseHostFromVercel(domain.hostname, domain.ownership_verified_at);
+    if (!released.ok) return { success: false, error: released.error };
+
     const { error } = await supabase
       .from('domain_configurations')
       .delete()
@@ -410,7 +458,7 @@ export async function deleteDomain(domainId: string) {
 
     if (error) throw error;
     revalidatePath('/settings/domains');
-    return { success: true };
+    return { success: true, detachedCourses: detachedCourses ?? 0 };
   } catch (err: any) {
     logger.error({ err, domainId }, 'domains.custom_domain.delete.failed');
     return { success: false, error: 'Failed to delete domain.' };

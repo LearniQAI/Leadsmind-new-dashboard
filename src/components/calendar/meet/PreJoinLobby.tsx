@@ -7,6 +7,8 @@ import { DashButton } from '@/components/dashboard-ui';
 
 interface PreJoinLobbyProps {
   appointment: any;
+  displayName: string;
+  onDisplayNameChange: (name: string) => void;
   isMicOn: boolean;
   isCamOn: boolean;
   onToggleMic: () => void;
@@ -16,6 +18,8 @@ interface PreJoinLobbyProps {
 
 export default function PreJoinLobby({
   appointment,
+  displayName,
+  onDisplayNameChange,
   isMicOn,
   isCamOn,
   onToggleMic,
@@ -64,7 +68,7 @@ export default function PreJoinLobby({
               <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
             ) : (
               <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center text-white text-2xl font-bold font-space">
-                {appointment?.contact?.first_name?.[0] || 'U'}
+                {displayName.trim()[0]?.toUpperCase() || 'U'}
               </div>
             )}
             <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2.5 p-1.5 bg-black/50 backdrop-blur-md rounded-full border border-white/10">
@@ -93,10 +97,7 @@ export default function PreJoinLobby({
           <div className="space-y-1.5">
             <h1 className="text-3xl font-bold font-space text-dash-text">Ready to join?</h1>
             <p className="text-[15px] text-dash-textMuted">
-              {appointment?.title || 'Meeting'} with{' '}
-              <span className="font-semibold text-dash-text">
-                {appointment?.contact?.first_name || 'the host'} {appointment?.contact?.last_name || ''}
-              </span>
+              {appointment?.title || 'Meeting'}
             </p>
           </div>
 
@@ -111,7 +112,20 @@ export default function PreJoinLobby({
               </div>
             </div>
 
-            <DashButton onClick={onJoin} variant="primary" size="lg" className="w-full">
+            <div className="space-y-1.5">
+              <label htmlFor="meet-display-name" className="block text-[12px] font-semibold text-dash-text">Your name</label>
+              <input
+                id="meet-display-name"
+                value={displayName}
+                onChange={(e) => onDisplayNameChange(e.target.value)}
+                maxLength={100}
+                autoComplete="name"
+                placeholder="How should others see you?"
+                className="w-full px-3 py-2 rounded-lg border border-dash-border bg-white text-dash-text text-sm focus:outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none"
+              />
+            </div>
+
+            <DashButton onClick={onJoin} disabled={!displayName.trim()} variant="primary" size="lg" className="w-full">
               Join meeting
             </DashButton>
           </div>
