@@ -98,7 +98,7 @@ export const ascent: BuilderTemplate = {
       // backgroundColor as a real prop, not the `bg-white` className — Container.craft.props
       // defaults backgroundColor to 'transparent', which silently wins over a bg-* className
       // via an injected per-node CSS rule (see scripts/validate-container-flex-props.js).
-      props: { className: 'inline-flex items-center gap-2 border rounded-full px-4 py-2 mb-6 w-fit', display: 'inline-flex', alignItems: 'center', backgroundColor: '#ffffff' },
+      props: { className: 'inline-flex items-center gap-2 border rounded-full px-4 py-2 mb-6 w-fit', display: 'inline-flex', flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffffff' },
       nodes: ['hero-badge-dot', 'hero-badge-text'],
       parent: 'hero-left',
     },
@@ -149,7 +149,7 @@ export const ascent: BuilderTemplate = {
     'hero-right-chrome': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'flex items-center gap-2 px-4 py-3', display: 'flex', alignItems: 'center', backgroundColor: INK },
+      props: { className: 'flex items-center gap-2 px-4 py-3', display: 'flex', flexDirection: 'row', alignItems: 'center', backgroundColor: INK },
       nodes: ['hero-chrome-dot-1', 'hero-chrome-dot-2', 'hero-chrome-dot-3'],
       parent: 'hero-right',
     },
@@ -296,7 +296,7 @@ export const ascent: BuilderTemplate = {
     'ladder-1': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'flex items-baseline gap-4 p-6 border-r', display: 'flex', alignItems: 'baseline' },
+      props: { className: 'flex items-baseline gap-4 p-6 border-r', display: 'flex', flexDirection: 'row', alignItems: 'baseline' },
       nodes: ['ladder-1-num', 'ladder-1-text'],
       parent: 'role-ladder',
     },
@@ -325,7 +325,7 @@ export const ascent: BuilderTemplate = {
     'ladder-2': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'flex items-baseline gap-4 p-6 border-r', display: 'flex', alignItems: 'baseline' },
+      props: { className: 'flex items-baseline gap-4 p-6 border-r', display: 'flex', flexDirection: 'row', alignItems: 'baseline' },
       nodes: ['ladder-2-num', 'ladder-2-text'],
       parent: 'role-ladder',
     },
@@ -354,7 +354,7 @@ export const ascent: BuilderTemplate = {
     'ladder-3': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'flex items-baseline gap-4 p-6', display: 'flex', alignItems: 'baseline' },
+      props: { className: 'flex items-baseline gap-4 p-6', display: 'flex', flexDirection: 'row', alignItems: 'baseline' },
       nodes: ['ladder-3-num', 'ladder-3-text'],
       parent: 'role-ladder',
     },
@@ -486,7 +486,7 @@ export const ascent: BuilderTemplate = {
     'role-tags': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'flex flex-wrap gap-2', display: 'flex' },
+      props: { className: 'flex flex-wrap gap-2', display: 'flex', flexDirection: 'row' },
       nodes: ['tag-1', 'tag-2', 'tag-3', 'tag-4'],
       parent: 'role-looking',
     },

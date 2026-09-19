@@ -154,7 +154,7 @@ export const archiste: BuilderTemplate = {
       // hero-card below when applied there for no real reason; default layoutType (implicit
       // 'fixed', maxWidth 1200px) was already fine here since 1200px never constrains
       // content this small anyway.
-      props: { className: 'absolute left-4 md:left-10 bottom-8 flex gap-3', display: 'flex', alignItems: 'center' },
+      props: { className: 'absolute left-4 md:left-10 bottom-8 flex gap-3', display: 'flex', flexDirection: 'row', alignItems: 'center' },
       nodes: ['hero-social-1', 'hero-social-2', 'hero-social-3'],
       parent: 'hero-media',
     },
@@ -201,7 +201,7 @@ export const archiste: BuilderTemplate = {
       // "structured prop beats className" bug class validate-container-flex-props.js already
       // guards for display/flex props — just for backgroundColor, which that script doesn't
       // check yet.
-      props: { className: 'absolute right-4 md:right-10 bottom-6 md:bottom-10 rounded-xl p-4 flex items-center gap-4 shadow-2xl', display: 'flex', alignItems: 'center', maxWidth: '300px', backgroundColor: '#ffffff' },
+      props: { className: 'absolute right-4 md:right-10 bottom-6 md:bottom-10 rounded-xl p-4 flex items-center gap-4 shadow-2xl', display: 'flex', flexDirection: 'row', alignItems: 'center', maxWidth: '300px', backgroundColor: '#ffffff' },
       nodes: ['hero-card-img', 'hero-card-text'],
       parent: 'hero-media',
     },
@@ -225,7 +225,7 @@ export const archiste: BuilderTemplate = {
     'hero-card-cta': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'flex items-center gap-2', display: 'flex', alignItems: 'center' },
+      props: { className: 'flex items-center gap-2', display: 'flex', flexDirection: 'row', alignItems: 'center' },
       nodes: ['hero-card-cta-label', 'hero-card-cta-icon'],
       parent: 'hero-card-text',
     },
@@ -308,14 +308,14 @@ export const archiste: BuilderTemplate = {
     'studio-contact': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'flex flex-wrap items-center gap-8', display: 'flex', alignItems: 'center' },
+      props: { className: 'flex flex-wrap items-center gap-8', display: 'flex', flexDirection: 'row', alignItems: 'center' },
       nodes: ['studio-contact-email', 'studio-contact-phone'],
       parent: 'studio-text',
     },
     'studio-contact-email': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'flex items-center gap-3', display: 'flex', alignItems: 'center' },
+      props: { className: 'flex items-center gap-3', display: 'flex', flexDirection: 'row', alignItems: 'center' },
       nodes: ['studio-contact-email-icon', 'studio-contact-email-text'],
       parent: 'studio-contact',
     },
@@ -332,7 +332,7 @@ export const archiste: BuilderTemplate = {
     'studio-contact-phone': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'flex items-center gap-3', display: 'flex', alignItems: 'center' },
+      props: { className: 'flex items-center gap-3', display: 'flex', flexDirection: 'row', alignItems: 'center' },
       nodes: ['studio-contact-phone-icon', 'studio-contact-phone-text'],
       parent: 'studio-contact',
     },
@@ -364,7 +364,7 @@ export const archiste: BuilderTemplate = {
     'services-header': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'flex items-center justify-between pb-5 border-b mb-8', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderColor: BORDER, borderWidth: 1, borderStyle: 'solid' },
+      props: { className: 'flex items-center justify-between pb-5 border-b mb-8', display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderColor: BORDER, borderWidth: 1, borderStyle: 'solid' },
       nodes: ['services-pill', 'services-label'],
       parent: 'services-inner',
     },
@@ -691,7 +691,7 @@ export const archiste: BuilderTemplate = {
     'mat-header': {
       type: { resolvedName: 'Container' },
       isCanvas: true,
-      props: { className: 'flex items-center justify-between pb-5 border-b mb-8', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderColor: BORDER, borderWidth: 1, borderStyle: 'solid' },
+      props: { className: 'flex items-center justify-between pb-5 border-b mb-8', display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderColor: BORDER, borderWidth: 1, borderStyle: 'solid' },
       nodes: ['mat-pill', 'mat-label'],
       parent: 'materiality-inner',
     },

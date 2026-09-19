@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Presenter photo placeholder">
+  <rect width="200" height="200" fill="#eef2ff"/>
+  <g fill="none" stroke="#4338ca" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity="0.85">
+    <circle cx="100" cy="78" r="30"/>
+    <path d="M42 170 C46 132 72 118 100 118 C128 118 154 132 158 170"/>
+  </g>
+</svg>

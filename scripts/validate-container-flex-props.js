@@ -96,8 +96,35 @@ async function loadTemplateContent(filePath) {
   return JSON.parse(tpl.content);
 }
 
+// A flex Container with 2+ children and no explicit flexDirection silently lays them out in a ROW:
+// Container.craft.props defaults flexDirection to 'row' and Craft merges that default in for any
+// node that doesn't set it, so getResponsiveStyles() emits `flex-direction: row`. Found live in the
+// funnel-step utility templates (heading and card rendered side by side). Distinct from the
+// className-vs-prop rules below: these nodes had no direction class at all, so nothing else fired.
+const FLEX_CLASS = /\b(?:flex|inline-flex)\b(?!-)/;
+const DIRECTION_PROPS = ["flexDirection", "flexDirection_tablet", "flexDirection_mobile"];
+
+function checkMultiChildFlexDirection(fileLabel, nodeId, node, violations) {
+  const props = node.props || {};
+  const isFlex =
+    ["display", "display_tablet", "display_mobile"].some((k) => /^(?:inline-)?flex$/.test(props[k] ?? "")) ||
+    (typeof props.className === "string" && FLEX_CLASS.test(props.className));
+  if (!isFlex) return;
+  if (!Array.isArray(node.nodes) || node.nodes.length < 2) return;
+  if (DIRECTION_PROPS.some((k) => props[k] !== undefined)) return;
+  violations.push({
+    file: fileLabel,
+    nodeId,
+    className: props.className ?? "",
+    missingProp: "flexDirection",
+    matchedToken: `display:flex with ${node.nodes.length} children`,
+    hint: "a flex Container with 2+ children and no flexDirection lays them out in a ROW (Container.craft default). Set flexDirection: 'column' (or 'row' if intended).",
+  });
+}
+
 function checkNode(fileLabel, nodeId, node, violations) {
   if (node?.type?.resolvedName !== "Container") return;
+  checkMultiChildFlexDirection(fileLabel, nodeId, node, violations);
   const className = node.props?.className;
   if (typeof className !== "string" || className.trim() === "") return;
 
@@ -189,7 +216,7 @@ async function main() {
         `  ${v.file}\n` +
           `    node "${v.nodeId}" — className has "${v.matchedToken}" but no explicit \`${v.missingProp}\` prop is set.\n` +
           `    className: "${v.className}"\n` +
-          `    Fix: add \`${v.missingProp}\` (matching what the class already intends) to this node's props.\n`
+          `    Fix: ${v.hint ?? `add \`${v.missingProp}\` (matching what the class already intends) to this node's props.`}\n`
       );
     }
     console.error(
