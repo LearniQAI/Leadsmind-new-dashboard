@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/email';
 import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
 import { logger } from '@/shared/logger';
+import { getCoursePublicBase } from '@/lib/domains/coursePublicUrl.server';
 
 const DEFAULT_SUBJECT = 'Welcome to {{course_name}}!';
 const DEFAULT_BODY = `Hello {{student_first_name}},
@@ -26,14 +27,6 @@ const ACCESS_DESCRIPTIONS: Record<string, string> = {
   preview: 'preview',
   trial: 'trial',
 };
-
-function appUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    'http://localhost:3000'
-  ).replace(/\/$/, '');
-}
 
 function escapeHtml(s: string): string {
   return s
@@ -113,7 +106,7 @@ export async function sendCourseOnboardingEmail(opts: {
       student_first_name: contact.first_name || 'there',
       student_email: contact.email,
       course_name: course.title || 'your course',
-      portal_url: `${appUrl()}/student/courses/${courseId}`,
+      portal_url: `${(await getCoursePublicBase(courseId)).origin}/student/courses/${courseId}`,
       access_type_description:
         ACCESS_DESCRIPTIONS[(accessType || 'full') as string] || accessType || 'full',
       admin_support_email:

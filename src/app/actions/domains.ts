@@ -13,8 +13,10 @@ import { logger } from '@/shared/logger';
 import { ValidationError, toClientError } from '@/shared/errors/AppError';
 
 // Sender/custom domain management touches DNS/DKIM/DMARC verification state and white-label
-// routing config — restricted to admins/owners, same tier as settings/integrations and
-// settings/webhooks (Milestone 1, Task 15 re-verification follow-up).
+// routing config. Sender (email) domains are restricted to admins/owners; custom domains are
+// open to every workspace member because a hostname only goes live after the real TXT ownership
+// check.
+// Sender (email) domains only. Custom-domain actions are open to every workspace member.
 const ALLOWED_DOMAIN_ROLES = ['admin', 'owner'];
 
 // --- Promisified DNS TXT Resolver helper ---
@@ -278,7 +280,9 @@ export async function addDomain(
       .eq('workspace_id', workspaceId)
       .eq('user_id', user.id)
       .maybeSingle();
-    if (!member || !ALLOWED_DOMAIN_ROLES.includes(member.role)) return { success: false, error: 'Forbidden' };
+    // Any workspace member may manage custom domains: a domain only goes live after the real DNS
+    // TXT ownership check, so a role gate adds nothing. (Sender/email domains stay admin/owner.)
+    if (!member) return { success: false, error: 'You are not a member of this workspace.' };
 
     await checkPlanGateForCustomDomain(workspaceId);
 
@@ -374,7 +378,9 @@ export async function getDomains(workspaceId: string) {
       .eq('workspace_id', workspaceId)
       .eq('user_id', user.id)
       .maybeSingle();
-    if (!member || !ALLOWED_DOMAIN_ROLES.includes(member.role)) return { success: false, error: 'Forbidden' };
+    // Any workspace member may manage custom domains: a domain only goes live after the real DNS
+    // TXT ownership check, so a role gate adds nothing. (Sender/email domains stay admin/owner.)
+    if (!member) return { success: false, error: 'You are not a member of this workspace.' };
 
     const { data, error } = await supabase
       .from('domain_configurations')
@@ -397,7 +403,7 @@ export async function updateDomainRouting(domainId: string, routingConfig: any) 
     const supabase = await createServerClient();
     let workspaceId: string;
     try {
-      ({ workspaceId } = await requireWorkspaceRole(ALLOWED_DOMAIN_ROLES));
+      ({ workspaceId } = await requireWorkspaceRole());
     } catch {
       return { success: false, error: 'Unauthorized' };
     }
@@ -425,7 +431,7 @@ export async function deleteDomain(domainId: string) {
     const supabase = await createServerClient();
     let workspaceId: string;
     try {
-      ({ workspaceId } = await requireWorkspaceRole(ALLOWED_DOMAIN_ROLES));
+      ({ workspaceId } = await requireWorkspaceRole());
     } catch {
       return { success: false, error: 'Unauthorized' };
     }

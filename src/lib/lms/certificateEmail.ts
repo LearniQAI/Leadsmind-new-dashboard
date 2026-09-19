@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/email';
 import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
 import { logger } from '@/shared/logger';
+import { getCoursePublicBase } from '@/lib/domains/coursePublicUrl.server';
 
 /**
  * Batch 4 (G7) — the "certificate earned" notification email.
@@ -48,11 +49,9 @@ export async function sendCertificateEarnedEmail(opts: {
 
     const emailConfig = await getWorkspaceEmailConfig(workspaceId);
 
-    const appUrl = (
-      process.env.NEXT_PUBLIC_APP_URL ||
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      'http://localhost:3000'
-    ).replace(/\/$/, '');
+    // The student's course lives on the course's own connected domain when it has one, so the
+    // download/verify links keep them there instead of bouncing to the platform domain.
+    const appUrl = (await getCoursePublicBase(courseId)).origin;
 
     const studentFirstName = contact.first_name || 'there';
     const courseName = course.title || 'your course';

@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/security/rateLimit';
 import { logger } from '@/shared/logger';
 import { stripeForWorkspace } from '@/lib/paymentGateways/stripeForWorkspace';
+import { getCoursePublicBase } from '@/lib/domains/coursePublicUrl.server';
 import {
   findOrCreateContactByEmail,
   insertEnrollmentIfAbsent,
@@ -35,14 +36,6 @@ function clientIp(): string {
     h.get('x-real-ip') ||
     'unknown'
   );
-}
-
-function appUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    'http://localhost:3000'
-  ).replace(/\/$/, '');
 }
 
 type GuestFreeInput = {
@@ -204,7 +197,7 @@ export async function createGuestCourseCheckoutSession(input: GuestPaidInput) {
   if (input.hp && input.hp.trim().length > 0) {
     logger.warn({ ip: clientIp() }, 'guest_checkout.paid.honeypot_tripped');
     // Send the bot somewhere harmless; never create a session.
-    return { url: `${appUrl()}/checkout/${courseId}?status=pending` };
+    return { url: `${(await getCoursePublicBase(courseId)).origin}/checkout/${courseId}?status=pending` };
   }
 
   const ip = clientIp();
@@ -248,6 +241,8 @@ export async function createGuestCourseCheckoutSession(input: GuestPaidInput) {
     const isSubscription = course.pricing_model === 'subscription';
     const stripeClient = await stripeForWorkspace(workspaceId);
 
+    // Redirect back to the course's own domain when it has one (never bounce a branded student).
+    const { origin: courseOrigin } = await getCoursePublicBase(course.id);
     const session = await stripeClient.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: isSubscription ? 'subscription' : 'payment',
@@ -288,8 +283,8 @@ export async function createGuestCourseCheckoutSession(input: GuestPaidInput) {
       // independently re-fetches this exact session FROM STRIPE'S API before trusting
       // anything about it. The id is a long, cryptographically random Stripe-generated
       // value; carrying it in the URL does not let anyone guess another buyer's session.
-      success_url: `${appUrl()}/checkout/${course.id}?status=pending&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl()}/checkout/${course.id}?status=canceled`,
+      success_url: `${courseOrigin}/checkout/${course.id}?status=pending&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${courseOrigin}/checkout/${course.id}?status=canceled`,
     });
 
     return { url: session.url };

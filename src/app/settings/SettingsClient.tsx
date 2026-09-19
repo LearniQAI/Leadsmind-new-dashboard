@@ -46,6 +46,7 @@ import { IntegrationsList } from '@/components/settings/IntegrationsList';
 
 
 interface SettingsClientProps {
+  workspaceId: string | null;
   branding: any;
   members: any[];
   invitations: any[];
@@ -55,6 +56,7 @@ interface SettingsClientProps {
 }
 
 export default function SettingsClient({
+  workspaceId,
   branding,
   members,
   invitations = [],
@@ -317,7 +319,6 @@ export default function SettingsClient({
   };
 
   const handleNewWebhook = async () => {
-    const workspaceId = branding?.workspace_id || 'default';
     const url = `${window.location.origin}/api/webhooks/incoming?workspace_id=${workspaceId}`;
 
     try {
@@ -449,6 +450,7 @@ export default function SettingsClient({
           {activeTab === 'workspace' && (
             <WorkspaceTab
               branding={branding}
+              workspaceId={workspaceId}
               isSaving={isSaving}
               onSave={handleSaveWorkspace}
               onCopy={copyToClipboard}
@@ -518,10 +520,10 @@ export default function SettingsClient({
           )}
 
           {activeTab === 'seo' && <SeoTab />}
-          {activeTab === 'ai' && <AiTab workspaceId={branding?.workspace_id} />}
+          {activeTab === 'ai' && <AiTab workspaceId={workspaceId ?? undefined} />}
           {activeTab === 'ai-credits' && (
             <AiCreditsTab
-              workspaceId={branding?.workspace_id}
+              workspaceId={workspaceId ?? undefined}
               onUpgradeTier={() => setActiveTab('pricing')}
             />
           )}
@@ -532,7 +534,7 @@ export default function SettingsClient({
               onRegenerateKey={handleRegenerateKey}
               onCopy={copyToClipboard}
               copiedId={copied}
-              workspaceId={branding?.workspace_id || ''}
+              workspaceId={workspaceId || ''}
               webhooks={webhooks}
               onNewWebhook={handleNewWebhook}
               onDeleteWebhook={handleDeleteWebhook}
@@ -545,8 +547,8 @@ export default function SettingsClient({
           {activeTab === 'audit' && <SecurityTab auditData={auditData} />}
 
           {activeTab === 'domains' && <DomainsTab />}
-          {activeTab === 'custom-domains' && <CustomDomainsTab workspaceId={branding?.workspace_id} />}
-          {activeTab === 'email-provider' && <EmailProviderTab workspaceId={branding?.workspace_id} />}
+          {activeTab === 'custom-domains' && <CustomDomainsTab workspaceId={workspaceId ?? undefined} />}
+          {activeTab === 'email-provider' && <EmailProviderTab workspaceId={workspaceId ?? undefined} />}
           {activeTab === 'phone' && <PhoneTab />}
         </div>
       </div>
