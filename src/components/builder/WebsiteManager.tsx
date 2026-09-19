@@ -30,6 +30,7 @@ import {
   getTemplates
 } from '@/app/actions/builder';
 import { createClient } from '@/lib/supabase/client';
+import { websiteLiveUrl } from '@/lib/domains/websiteUrl';
 import { useRouter } from 'next/navigation';
 import { useDashboardContext } from "@/components/layouts/DashboardProvider";
 import {
@@ -94,6 +95,17 @@ export default function WebsiteManager() {
     }
   };
 
+  // The site's real working address (verified custom domain, else /p/{workspace}/{subdomain}),
+  // shown without the scheme. Never the non-existent {subdomain}.leadsmind.io form.
+  const siteAddress = (site: any): string =>
+    (websiteLiveUrl({
+      subdomain: site.subdomain,
+      workspaceSlug: site.workspace?.slug,
+      isPublished: site.is_published,
+      domains: site.builder_published_domains,
+      platformOrigin: typeof window !== 'undefined' ? window.location.origin : '',
+    }) || '').replace(/^https?:\/\//, '');
+
   const fetchWebsites = useCallback(async () => {
     if (!workspace?.id) return;
 
@@ -103,6 +115,7 @@ export default function WebsiteManager() {
         .select(`
           *,
           workspace:workspaces!inner(slug, id),
+          builder_published_domains(domain_name, verified, ownership_verified_at),
           website_pages(id, pages(id))
         `)
         .eq('workspace_id', workspace.id)
@@ -457,7 +470,7 @@ export default function WebsiteManager() {
                     </h4>
                     <div className="flex items-center gap-1.5 overflow-hidden">
                       <span className="text-[10px] font-bold !text-dash-textMuted shrink-0">Domain:</span>
-                      <span className="text-[11px] font-medium text-dash-accent/70 lowercase truncate">{site.subdomain}.leadsmind.io</span>
+                      <span className="text-[11px] font-medium text-dash-accent/70 lowercase truncate">{siteAddress(site)}</span>
                     </div>
                   </div>
 
@@ -533,7 +546,7 @@ export default function WebsiteManager() {
                     </div>
                     <div>
                       <h4 className="text-[13px] font-bold !text-dash-text leading-tight">{site.name}</h4>
-                      <p className="text-[10px] !text-dash-textMuted font-medium">{site.subdomain}.leadsmind.io</p>
+                      <p className="text-[10px] !text-dash-textMuted font-medium">{siteAddress(site)}</p>
                     </div>
                   </div>
                   <div>

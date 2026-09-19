@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { Loader2, Save, ImagePlus, UserRound, Eye, Copy, Check, ExternalLink } from "lucide-react";
 import { updateCourseLandingSettings, updateCourseSlug } from "@/app/actions/courseLanding";
 import { sanitizeSlug } from "@/lib/slug";
+import { getCourseDomainBinding } from "@/app/actions/coursePublicUrl";
+import { courseLandingUrl } from "@/lib/domains/coursePublicUrl";
 import { createClient } from "@/lib/supabase/client";
 import LandingOutcomesEditor from "./LandingOutcomesEditor";
 import LandingRequirementsEditor from "./LandingRequirementsEditor";
@@ -222,16 +224,29 @@ export default function CourseLandingForm({ course, onSaved }: CourseLandingForm
     }
   };
 
-  // Real public URL for the live description page (src/middleware.ts rewrites
-  // leadsmind.io/courses/{slug} -> /unauthenticated/courses/{slug}). Falls back to the
-  // browser's own origin so this is correct in every environment (local/staging/prod)
-  // without needing NEXT_PUBLIC_APP_URL to be kept in sync everywhere.
-  const siteOrigin =
-    (process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "")).replace(
-      /\/$/,
-      ""
-    );
-  const publicUrl = slug ? `${siteOrigin}/courses/${slug}` : "";
+  // Real public URL for the live description page. A course bound to a connected custom
+  // domain lives at https://{domain}/{url_path}; otherwise on the platform at
+  // {origin}/courses/{slug} (src/middleware.ts rewrites that to /unauthenticated/courses/{slug}).
+  // Logic is the shared courseLandingUrl() helper; the browser origin stays the platform fallback
+  // so it is right in every environment without NEXT_PUBLIC_APP_URL.
+  const [binding, setBinding] = useState<{ hostname: string | null; urlPath: string | null }>({
+    hostname: null,
+    urlPath: course.url_path ?? null,
+  });
+  useEffect(() => {
+    let cancelled = false;
+    getCourseDomainBinding(course.id).then((b) => { if (!cancelled) setBinding(b); });
+    return () => { cancelled = true; };
+  }, [course.id]);
+
+  const publicUrl =
+    courseLandingUrl({
+      hostname: binding.hostname,
+      urlPath: binding.urlPath,
+      slug,
+      platformOrigin:
+        process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : ""),
+    }) || "";
 
   const handleCopyUrl = async () => {
     if (!publicUrl) return;

@@ -9,6 +9,7 @@ import { getPortalSession } from '@/lib/portal/session';
 import { getGatewayCredentials } from '@/lib/paymentGateways/credentials';
 import { logger } from '@/shared/logger';
 import { toClientError } from '@/shared/errors/AppError';
+import { getCoursePublicBase } from '@/lib/domains/coursePublicUrl.server';
 
 /**
  * Saves/updates course pricing settings in public.courses.
@@ -197,6 +198,8 @@ export async function createDirectCourseCheckoutSession(courseId: string, opts?:
       quantity: 1,
     };
 
+    // Redirect back to the course's own domain when it has one (never bounce a branded student).
+    const { origin: courseOrigin } = await getCoursePublicBase(course.id);
     const session = await stripeClient.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: isSubscription ? 'subscription' : 'payment',
@@ -209,8 +212,8 @@ export async function createDirectCourseCheckoutSession(courseId: string, opts?:
         subscriptionInterval: course.subscription_interval || null,
         ...(opts?.cohortId ? { cohortId: opts.cohortId } : {}), // Cohorts, Part 1
       },
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/courses/${course.id}?payment=success`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/checkout/${course.id}?payment=canceled`,
+      success_url: `${courseOrigin}/student/courses/${course.id}?payment=success`,
+      cancel_url: `${courseOrigin}/student/checkout/${course.id}?payment=canceled`,
       customer_email: user.email || undefined,
     });
 
@@ -278,6 +281,8 @@ export async function createCourseInstallmentCheckoutSession(courseId: string, o
 
     const interval: 'month' | 'year' = course.subscription_interval === 'year' ? 'year' : 'month';
 
+    // Redirect back to the course's own domain when it has one (never bounce a branded student).
+    const { origin: courseOrigin } = await getCoursePublicBase(course.id);
     const session = await stripeClient.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'subscription',
@@ -308,8 +313,8 @@ export async function createCourseInstallmentCheckoutSession(courseId: string, o
         subscriptionInterval: interval,
         ...(opts?.cohortId ? { cohortId: opts.cohortId } : {}), // Cohorts, Part 1
       },
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/courses/${course.id}?payment=success`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/checkout/${course.id}?payment=canceled`,
+      success_url: `${courseOrigin}/student/courses/${course.id}?payment=success`,
+      cancel_url: `${courseOrigin}/student/checkout/${course.id}?payment=canceled`,
       customer_email: user.email || undefined,
     });
 
@@ -451,8 +456,11 @@ export async function createCoursePayFastCheckout(courseId: string) {
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const notifyUrl = `${appUrl}/api/webhooks/payfast`;
-    const returnUrl = `${appUrl}/portal/courses?payment=success`;
-    const cancelUrl = `${appUrl}/portal/courses?payment=canceled`;
+    // notifyUrl is PayFast's server-to-server webhook and stays on the platform; only the
+    // browser return/cancel redirects follow the course's own domain.
+    const { origin: courseOrigin } = await getCoursePublicBase(courseId);
+    const returnUrl = `${courseOrigin}/portal/courses?payment=success`;
+    const cancelUrl = `${courseOrigin}/portal/courses?payment=canceled`;
 
     const { generatePayFastCheckoutUrl } = await import('@/lib/calendar/payfast');
 

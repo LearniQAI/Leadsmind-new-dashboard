@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { sendCourseOnboardingEmail } from '@/lib/lms/onboardingEmail';
 import { logger } from '@/shared/logger';
+import { getCoursePublicBase } from '@/lib/domains/coursePublicUrl.server';
 
 /**
  * Guest (anonymous / logged-out) course enrollment primitives.
@@ -235,8 +236,8 @@ export async function insertEnrollmentIfAbsent(
  * Fail-soft: on any error returns the plain student-login page URL so the onboarding email
  * still has a usable call to action.
  */
-export async function provisionAccountLink(email: string): Promise<string> {
-  const fallback = `${appUrl()}/auth/student/login`;
+export async function provisionAccountLink(email: string, origin: string = appUrl()): Promise<string> {
+  const fallback = `${origin}/auth/student/login`;
   try {
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -254,7 +255,7 @@ export async function provisionAccountLink(email: string): Promise<string> {
       // cookie-setting path above is unavailable for some reason.
       return data?.properties?.action_link || fallback;
     }
-    return `${appUrl()}/auth/callback?token_hash=${encodeURIComponent(tokenHash)}&type=magiclink&next=${encodeURIComponent('/student')}`;
+    return `${origin}/auth/callback?token_hash=${encodeURIComponent(tokenHash)}&type=magiclink&next=${encodeURIComponent('/student')}`;
   } catch (err) {
     logger.warn({ err }, 'guest_enrollment.account_link.generate.threw');
     return fallback;
@@ -272,7 +273,10 @@ export async function welcomeGuestStudent(params: {
   email: string;
   accessType?: string | null;
 }): Promise<{ emailSent: boolean; emailReason?: string }> {
-  const accountSetupUrl = await provisionAccountLink(params.email);
+  // Sign the student in on the course's own domain (/auth/callback is served there), not the
+  // platform's, so a branded-domain student is never bounced to leadsmind.io.
+  const { origin } = await getCoursePublicBase(params.courseId);
+  const accountSetupUrl = await provisionAccountLink(params.email, origin);
   const res = await sendCourseOnboardingEmail({
     courseId: params.courseId,
     contactId: params.contactId,

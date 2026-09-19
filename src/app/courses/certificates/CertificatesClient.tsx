@@ -137,7 +137,7 @@ export default function CertificatesClient({ certificates, workspaceConfig }: Ce
   }, [certificates, query]);
 
   const copyVerify = (c: any) => {
-    const url = `${window.location.origin}/verify/${codeOf(c)}`;
+    const url = `${window.location.origin}/certificates/verify/${encodeURIComponent(codeOf(c))}`;
     navigator.clipboard?.writeText(url).then(
       () => toast.success("Verification link copied"),
       () => toast.error("Couldn't copy link")

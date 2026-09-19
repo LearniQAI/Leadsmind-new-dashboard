@@ -4,6 +4,7 @@ import { stripeForWorkspace } from '@/lib/paymentGateways/stripeForWorkspace';
 import { checkRateLimit } from '@/lib/security/rateLimit';
 import { findContactByEmail, provisionAccountLink } from '@/lib/lms/guestEnrollment';
 import { logger } from '@/shared/logger';
+import { getCoursePublicBase } from '@/lib/domains/coursePublicUrl.server';
 
 export const dynamic = 'force-dynamic';
 
@@ -113,7 +114,9 @@ export async function GET(req: NextRequest) {
 
     // Real enrollment row confirmed — safe to hand back a real login link. Same mechanism
     // /auth/student/verify already uses; this route doesn't set any cookie/session itself.
-    const redirectUrl = await provisionAccountLink(email);
+    // Log the buyer in on the course's own domain, not the platform's.
+    const { origin } = await getCoursePublicBase(courseId);
+    const redirectUrl = await provisionAccountLink(email, origin);
     return NextResponse.json({ status: 'ready', redirectUrl });
   } catch (err) {
     logger.error({ err, courseId, sessionId }, 'guest_checkout.status.unexpected_error');

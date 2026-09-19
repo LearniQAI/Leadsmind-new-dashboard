@@ -7,6 +7,7 @@ import { Loader2, Link as LinkIcon, Check, ArrowRight } from "lucide-react";
 import { DashModal, DashModalContent } from "@/components/dashboard-ui/Modal";
 import { createCourseWithDomain } from "@/app/actions/lms";
 import { getDomainsForCurrentWorkspace } from "@/app/actions/domains";
+import { courseLandingUrl } from "@/lib/domains/coursePublicUrl";
 import { updateCourseLandingSettings } from "@/app/actions/courseLanding";
 import { COURSE_THEME_LIST } from "@/lib/courses/courseThemeTokens";
 import { sanitizeSlug } from "@/lib/slug";
@@ -81,7 +82,18 @@ export default function CreateCourseWizard({ open, onOpenChange, onCreated }: Cr
   // domain's hostname otherwise.
   const baseHost = domainId === "default" ? "leadsmind.io" : selectedDomain?.hostname;
   const slugPreview = sanitizeSlug(urlPath || title) || "your-course-slug";
-  const previewUrl = baseHost ? `${baseHost}/courses/${slugPreview}` : null;
+  // A course on a connected domain is served at https://{domain}/{url_path}; only the default
+  // domain uses /courses/{slug}. Same shared helper the live share link uses.
+  const isCustomDomain = domainId !== "default";
+  const pathPrefix = isCustomDomain ? "/" : "/courses/";
+  const previewUrl = baseHost
+    ? courseLandingUrl({
+        hostname: isCustomDomain ? baseHost : null,
+        urlPath: slugPreview,
+        slug: slugPreview,
+        platformOrigin: `https://${baseHost}`,
+      })
+    : null;
 
   // Auto-suggest from the course name (mirrors the same pattern the Landing Page settings'
   // own slug field already uses) — only while the admin hasn't typed into URL path themselves,
@@ -242,7 +254,7 @@ export default function CreateCourseWizard({ open, onOpenChange, onCreated }: Cr
                 </label>
                 <div className="flex items-stretch overflow-hidden rounded-lg border border-dash-border focus-within:border-sky-500 focus-within:ring-4 focus-within:ring-sky-500/12">
                   <span className="flex max-w-[45%] shrink-0 items-center truncate bg-dash-surface px-3 font-mono text-[11px] text-dash-textMuted">
-                    {baseHost || "…"}/courses/
+                    {baseHost || "…"}{pathPrefix}
                   </span>
                   <input
                     id="cc-slug"
@@ -263,7 +275,7 @@ export default function CreateCourseWizard({ open, onOpenChange, onCreated }: Cr
 
               {previewUrl && (
                 <div className="rounded-lg border border-dash-border bg-dash-surface px-3 py-2 font-mono text-[11px] text-dash-textMuted">
-                  https://{previewUrl}
+                  {previewUrl}
                 </div>
               )}
             </div>

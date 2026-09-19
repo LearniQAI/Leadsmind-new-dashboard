@@ -5,6 +5,7 @@ import { getUser, getCurrentWorkspaceId, getUserRole } from '@/lib/auth';
 import { stripe } from '@/lib/stripe';
 import { logger } from '@/shared/logger';
 import { isEnrolmentActive } from '@/lib/lms/enrolment';
+import { getCoursePublicBase } from '@/lib/domains/coursePublicUrl.server';
 
 /**
  * Every `contacts.id` matching the logged-in user's email, across all workspaces — the same
@@ -563,6 +564,8 @@ export async function createCourseCheckoutSession(courseId: string) {
     }
 
     // Create Stripe checkout session
+    // Redirect back to the course's own domain when it has one (never bounce a branded student).
+    const { origin: courseOrigin } = await getCoursePublicBase(course.id);
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'payment',
@@ -585,8 +588,8 @@ export async function createCourseCheckoutSession(courseId: string) {
         contactId: contactId,
         workspaceId: workspaceId,
       },
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/courses/${course.id}?payment=success`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/checkout/${course.id}?payment=canceled`,
+      success_url: `${courseOrigin}/student/courses/${course.id}?payment=success`,
+      cancel_url: `${courseOrigin}/student/checkout/${course.id}?payment=canceled`,
       customer_email: user.email || undefined,
     });
 
