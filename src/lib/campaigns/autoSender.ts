@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { SegmentationCompiler, type RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
 import { inngest } from '@/lib/inngest';
 import { logger } from '@/shared/logger';
+import { filterEmailableContactIds } from '@/lib/campaigns/emailSuppression';
 
 type Campaign = { id: string; segment: any };
 
@@ -77,6 +78,10 @@ export async function enqueueAutoSenderCampaigns(workspaceId: string, contactId:
   }
 
   if (!matchingIds.length) return { enrolled: 0, matched: 0 };
+
+  // Same enqueue-time gate as updateCampaign: never enrol an unsubscribed/invalid contact.
+  const { eligible } = await filterEmailableContactIds(supabase, workspaceId, [contactId]);
+  if (eligible.length === 0) return { enrolled: 0, matched: matchingIds.length };
   const { data: inserted, error: queueError } = await supabase
     .from('campaign_dispatch_queue')
     .upsert(

@@ -7,6 +7,8 @@ import { decrypt } from '@/lib/encryption';
 import { PredictiveIntelligence } from '@/lib/intelligence/PredictiveIntelligence';
 import { Observability } from '@/lib/observability';
 import { logger } from '@/shared/logger';
+import { loadSuppressedEmails, suppressionReason } from '@/lib/campaigns/emailSuppression';
+import { resolveCampaignFromEmail } from '@/lib/campaigns/fromEmail';
 import crypto from 'crypto';
 
 const supabaseAdmin = createClient(
@@ -85,6 +87,21 @@ export async function GET(req: Request) {
       
     const contactsMap = new Map(contacts?.map((c: any) => [c.id, c]));
 
+    // Final send-time gate (defense in depth vs enqueue-time filtering): a
+    // contact may have unsubscribed/bounced since the queue row was created.
+    // Fail closed — on a lookup error the locked rows are released untouched
+    // (not stranded in 'processing') and the batch aborts.
+    let suppressed: Set<string>;
+    try {
+      suppressed = await loadSuppressedEmails(supabaseAdmin as any, jobs.map((j: any) => j.workspace_id));
+    } catch (suppressErr) {
+      await supabaseAdmin
+        .from('campaign_dispatch_queue')
+        .update({ status: 'pending', locked_by: null, locked_at: null })
+        .in('id', jobs.map((j: any) => j.id));
+      throw suppressErr;
+    }
+
     const updates = [];
     const campaignSentIncrements: Record<string, number> = {};
 
@@ -99,13 +116,25 @@ export async function GET(req: Request) {
         continue;
       }
 
+      const blockedReason = suppressionReason(contact, job.workspace_id, suppressed);
+      if (blockedReason) {
+        updates.push({ id: job.id, status: 'skipped_suppressed', error_log: blockedReason, locked_by: null });
+        continue;
+      }
+
       // Must not fall back to the platform's own RESEND_API_KEY — confirmed
       // live (2026-09-17) that doing so silently sent (and billed) campaign
       // emails through the shared platform Resend account for any workspace
       // without its own key, the same bug shape as the Twilio global-fallback
       // issue fixed the same day.
       const apiKey = emailConfig?.apiKey;
-      const fromEmail = campaign.from_email || emailConfig?.fromEmail || 'onboarding@resend.dev';
+      // Never substitute a platform address: campaign From, else the workspace
+      // provider's From, else fail the row with a clear reason.
+      const fromEmail = resolveCampaignFromEmail(campaign.from_email, emailConfig?.fromEmail);
+      if (!fromEmail) {
+        updates.push({ id: job.id, status: 'failed', error_log: 'No usable From email: set one on a domain verified with your Resend account', locked_by: null });
+        continue;
+      }
 
       // Predictive Scheduling Check
       const optimizedTime = await PredictiveIntelligence.getOptimizedSendTime(contact, now);

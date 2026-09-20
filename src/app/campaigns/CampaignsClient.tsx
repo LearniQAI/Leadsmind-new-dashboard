@@ -25,6 +25,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select';
 import type { RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
+import { buildCampaignEditPayload, type EditInitial } from '@/lib/campaigns/editPayload';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
 const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
@@ -63,6 +64,9 @@ export default function CampaignsClient({
   const [editSegmentId, setEditSegmentId] = useState<string | null>(null);
   const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Snapshot of what the dialog opened with, so Save only writes fields the
+  // user actually changed (a name-only edit must not touch body/segment).
+  const [editInitial, setEditInitial] = useState<EditInitial | null>(null);
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteCampaign, setDeleteCampaign] = useState<any>(null);
@@ -152,6 +156,13 @@ export default function CampaignsClient({
     setEditSegmentId((campaign.segment && typeof campaign.segment === 'object' && campaign.segment.segmentId) || null);
     setAdvancedFiltersOpen(!!ruleGroup && ruleGroup.rules.length > 0);
 
+    setEditInitial({
+      body: campaign.preview_text || '',
+      tagNames: names,
+      ruleKey: JSON.stringify(ruleGroup),
+      segmentId: (campaign.segment && typeof campaign.segment === 'object' && campaign.segment.segmentId) || null,
+      combine: (campaign.segment?.combineMode as string) || 'AND',
+    });
     setEditOpen(true);
   };
 
@@ -174,36 +185,18 @@ export default function CampaignsClient({
         }
       } catch (e) { /* fall back to the tags already in state */ }
 
-      const tagIds = editTagNames
-        .map((name) => currentTags.find((t) => t.name.toLowerCase() === name.toLowerCase())?.id)
-        .filter((id): id is string => !!id);
-      const hasRuleGroup = !!editRuleGroup && editRuleGroup.rules.length > 0;
-      // A saved segment and the ad-hoc rule builder are mutually exclusive —
-      // picking one clears the other (see the Select's onValueChange below).
-      const hasSegmentId = !!editSegmentId && !hasRuleGroup;
-      const segmentData = (tagIds.length > 0 || hasRuleGroup || hasSegmentId)
-        ? {
-            tags: tagIds.length > 0 ? tagIds : undefined,
-            ruleGroup: hasRuleGroup ? editRuleGroup : undefined,
-            segmentId: hasSegmentId ? editSegmentId : undefined,
-            // Only meaningful when both tags and ruleGroup/segmentId are set —
-            // harmless to include otherwise, since the resolver ignores it
-            // when only one of the two is present.
-            combineMode: (tagIds.length > 0 && (hasRuleGroup || hasSegmentId)) ? editCombineMode : undefined,
-          }
-        : null;
+      const payload = buildCampaignEditPayload(
+        editCampaign,
+        editInitial,
+        { name: editName, subject: editSubject, body: editBody, tagNames: editTagNames, ruleGroup: editRuleGroup, segmentId: editSegmentId, combine: editCombineMode },
+        (name) => currentTags.find((t) => t.name.toLowerCase() === name.toLowerCase())?.id,
+      );
 
-      const res = await updateCampaign(editCampaign.id, {
-        name: editName,
-        subject: editSubject,
-        preview_text: editBody,
-        body_html: editBody,
-        segment: segmentData
-      });
+      const res = await updateCampaign(editCampaign.id, payload);
       if (res.error) { toast.error(res.error); }
       else {
         toast.success('Campaign updated!');
-        setCampaigns(prev => prev.map(c => c.id === editCampaign.id ? { ...c, name: editName, subject: editSubject } : c));
+        setCampaigns(prev => prev.map(c => c.id === editCampaign.id ? { ...c, ...(res.data ?? { name: editName, subject: editSubject }) } : c));
         setEditOpen(false);
       }
     } catch { toast.error('Update failed'); }
@@ -371,7 +364,7 @@ export default function CampaignsClient({
             <DashFormField label="Subject">
               <DashInput value={editSubject} onChange={e => setEditSubject(e.target.value)} />
             </DashFormField>
-            <DashFormField label="Target audience tags" hint="Leave blank to send to all contacts.">
+            <DashFormField label="Target audience tags" hint="A campaign needs an audience: pick at least one tag, a saved segment or a filter before sending.">
               <TagMultiSelect availableTags={tags} value={editTagNames} onChange={setEditTagNames} />
             </DashFormField>
 
