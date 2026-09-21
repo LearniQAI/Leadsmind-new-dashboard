@@ -15,6 +15,11 @@ import { resolveWinningBranch } from "./condition_evaluator";
 import { cyrb53 } from "@/lib/utils";
 import { logger } from "@/shared/logger";
 import { userSafeMessage } from "@/shared/errors/userSafe";
+import { SEQUENCE_SOURCE } from "./sequenceConstants";
+import { matchesTriggerConfig } from "./triggerFilter";
+import { EmailSuppressedError, isPermanentEmailError } from "./automationEmail";
+import { randomUUID } from "crypto";
+import { checkEmailSuppression } from "@/lib/campaigns/emailSuppression";
 
 // Logging is observability, not business logic — a broken log transport
 // (e.g. pino's worker-thread transport dying) must never be able to abort
@@ -29,7 +34,7 @@ function safeLog(fn: () => void) {
  * Trigger point for all automations.
  * Fetches all active workflows for the given trigger type.
  */
-export async function triggerWorkflows(workspaceId: string, triggerType: string, contactId: string) {
+export async function triggerWorkflows(workspaceId: string, triggerType: string, contactId: string, payload: Record<string, any> = {}) {
  const supabase = createAdminClient();
 
  const { data: workflows } = await supabase
@@ -42,6 +47,42 @@ export async function triggerWorkflows(workspaceId: string, triggerType: string,
  if (!workflows || workflows.length === 0) return;
 
  for (const workflow of workflows) {
+  const isSequence = workflow.source === SEQUENCE_SOURCE;
+
+  // The trigger's configured tag/course/funnel must match THIS event; the
+  // trigger type alone is not enough (otherwise "Tag added" fires for any tag).
+  if (!matchesTriggerConfig(triggerType, workflow.trigger_config, payload, { requireFilter: isSequence })) continue;
+
+  // A sequence is email-only, so a contact who can't be emailed is never
+  // enrolled. (Generic workflows can have non-email steps, so they enroll
+  // and the send_email step gates itself.) Fail closed on lookup errors.
+  if (isSequence) {
+   try {
+    const { data: contact } = await supabase
+     .from("contacts")
+     .select("id, email, is_invalid_email")
+     .eq("id", contactId)
+     .eq("workspace_id", workspaceId)
+     .maybeSingle();
+    const blocked = contact ? await checkEmailSuppression(supabase as any, workspaceId, contact) : 'no_email';
+    if (blocked) {
+     await supabase.from("workflow_executions").insert({
+      workspace_id: workspaceId,
+      workflow_id: workflow.id,
+      contact_id: contactId,
+      status: 'skipped_suppressed',
+      started_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+      error_message: `Declined: contact cannot be emailed (${blocked})`,
+     });
+     continue;
+    }
+   } catch (err) {
+    safeLog(() => logger.error({ err, workflowId: workflow.id, contactId }, "executor.enrollment_suppression_check.failed"));
+    continue;
+   }
+  }
+
   await startWorkflowExecution(workflow, contactId);
  }
 }
@@ -79,10 +120,75 @@ async function startWorkflowExecution(workflow: any, contactId: string) {
 // inside one serverless invocation until it crashes on stack/time limits.
 const MAX_WORKFLOW_STEP_DEPTH = 15;
 
+// Per-step retry budget for a transiently failing email, and the backoff before each retry
+// (minutes, indexed by failures so far). Same shape as the campaign queues' retry policy.
+const MAX_EMAIL_STEP_ATTEMPTS = 3;
+const emailRetryBackoffMinutes = (failures: number) => Math.pow(4, failures) * 15 / 4; // 15m, 60m
+
+/**
+ * Entry point for running an execution. Claims it first (acquire_workflow_executions:
+ * FOR UPDATE SKIP LOCKED, stale locks reclaimed), so two overlapping callers -- two cron
+ * runs, or a cron run and the request that just enrolled the contact -- can never both run
+ * the same step. A caller that loses the claim just returns. Internal chained steps
+ * (depth > 0) run under the claim already held by the top-level call.
+ */
+export async function processNextStep(executionId: string, depth = 0) {
+ if (depth > 0) return runStep(executionId, depth);
+
+ const supabase = createAdminClient();
+ const workerId = `wf_${randomUUID()}`;
+ const { data: claimed, error } = await supabase.rpc('acquire_workflow_executions', {
+  worker_id: workerId,
+  batch_size: 1,
+  target_execution_id: executionId,
+ });
+ if (error) {
+  safeLog(() => logger.error({ err: error, executionId }, 'executor.claim.failed'));
+  return;
+ }
+ if (!claimed || claimed.length === 0) {
+  safeLog(() => logger.info({ executionId }, 'executor.claim.not_acquired'));
+  return;
+ }
+ await runClaimedExecution(executionId, workerId);
+}
+
+/** Runs an execution the caller has ALREADY claimed for `workerId`, then releases the lock. */
+export async function runClaimedExecution(executionId: string, workerId: string) {
+ const supabase = createAdminClient();
+ try {
+  await runStep(executionId, 0);
+ } finally {
+  // Release only our own lock: if it went stale and another worker reclaimed it, leave theirs.
+  await supabase.from('workflow_executions')
+   .update({ locked_at: null, locked_by: null })
+   .eq('id', executionId)
+   .eq('locked_by', workerId);
+ }
+}
+
+// Moves an execution to the step after `step` (or completes it), then keeps going.
+async function advanceFrom(step: any, executionId: string, depth: number, contextPatch: Record<string, unknown> = {}, execution?: any) {
+ const supabase = createAdminClient();
+ const { data: nextEdge } = await supabase
+  .from('workflow_edges')
+  .select('target_step_id')
+  .eq('source_step_id', step.id)
+  .limit(1)
+  .single();
+ const context = { ...(execution?.context ?? {}), ...contextPatch };
+ if (nextEdge?.target_step_id) {
+  await supabase.from("workflow_executions").update({ current_step_id: nextEdge.target_step_id, next_attempt_at: null, context }).eq("id", executionId);
+  await processNextStep(executionId, depth + 1);
+ } else {
+  await supabase.from("workflow_executions").update({ status: 'completed', completed_at: new Date().toISOString(), context }).eq("id", executionId);
+ }
+}
+
 /**
  * Core loop: Fetches current step, executes it, and decides whether to continue.
  */
-export async function processNextStep(executionId: string, depth = 0) {
+async function runStep(executionId: string, depth = 0) {
  const supabase = createAdminClient();
 
  if (depth > MAX_WORKFLOW_STEP_DEPTH) {
@@ -116,28 +222,39 @@ export async function processNextStep(executionId: string, depth = 0) {
   return;
  }
 
+ // A step that failed transiently is retried only once its backoff has elapsed.
+ if (execution.next_attempt_at && new Date(execution.next_attempt_at) > new Date()) return;
+
  const currentStepId = execution.current_step_id;
- 
+
+ // A RUNNING execution always has a position (a finished one is marked completed at the
+ // moment it runs out of steps). Reaching here without one means its step was lost --
+ // that used to be reported as a normal "completed"; it is an error and must say so.
  if (!currentStepId) {
-  // If no current_step_id, the workflow is finished
-  await supabase.from("workflow_executions").update({ 
-   status: 'completed', 
-   completed_at: new Date().toISOString() 
+  await supabase.from("workflow_executions").update({
+   status: 'failed',
+   completed_at: new Date().toISOString(),
+   error_message: 'Run lost its position in the workflow (its step no longer exists).',
   }).eq("id", executionId);
   return;
  }
 
- const { data: step } = await supabase
+ const { data: step, error: stepError } = await supabase
   .from("workflow_steps")
   .select("*")
   .eq("id", currentStepId)
-  .single();
+  .maybeSingle();
 
- // If node doesn't exist, terminate
+ if (stepError) {
+  // Transient lookup failure, not a missing step: leave the run as-is; the sweep retries it.
+  safeLog(() => logger.error({ err: stepError, executionId }, 'executor.step_lookup.failed'));
+  return;
+ }
  if (!step) {
-  await supabase.from("workflow_executions").update({ 
-   status: 'completed', 
-   completed_at: new Date().toISOString() 
+  await supabase.from("workflow_executions").update({
+   status: 'failed',
+   completed_at: new Date().toISOString(),
+   error_message: 'The step this run was on no longer exists (the workflow was edited).',
   }).eq("id", executionId);
   return;
  }
@@ -200,6 +317,10 @@ export async function processNextStep(executionId: string, depth = 0) {
  const logId: string | null = log?.id ?? null;
  const updateLog = (patch: Record<string, unknown>) =>
   logId ? supabase.from("workflow_step_logs").update(patch).eq("id", logId) : Promise.resolve();
+
+ // Failure bookkeeping for send_email retries (see the catch block).
+ let priorFailures = 0;
+ let handlerDone = false;
 
  try {
   // ── BUSINESS HOURS CHECK (send_email / send_sms only) ────────────────────
@@ -347,10 +468,46 @@ export async function processNextStep(executionId: string, depth = 0) {
    // as a real failed step, same as any other action throwing.
    throw new Error(`Unknown action type '${step.type}' — no handler registered in AutomationActions`);
   }
-  await handler(execution.workspace_id, execution.contact_id, step.config);
+  let suppressedReason: string | null = null;
+  try {
+   // Earlier logged failures of THIS step for THIS run: a genuine retry sends under a new
+   // idempotency key, while a crash-redelivery (nothing logged) reuses the old one.
+   if (step.type === 'send_email') {
+    const { count } = await supabase
+     .from('workflow_step_logs')
+     .select('id', { count: 'exact', head: true })
+     .eq('execution_id', executionId)
+     .eq('step_id', step.id)
+     .eq('status', 'failed');
+    priorFailures = count ?? 0;
+   }
+   await handler(execution.workspace_id, execution.contact_id, step.config, {
+    workflowId: execution.workflow_id,
+    executionId,
+    stepId: step.id,
+    attempt: priorFailures,
+   });
+   handlerDone = true;
+  } catch (handlerErr) {
+   if (!(handlerErr instanceof EmailSuppressedError)) throw handlerErr;
+   if (execution.workflow?.source === SEQUENCE_SOURCE) {
+    // Unsubscribed/bounced mid-sequence: stop the whole run, no further emails.
+    await updateLog({ status: 'skipped', error_message: handlerErr.message, completed_at: new Date().toISOString() });
+    await supabase.from("workflow_executions").update({
+     status: 'cancelled',
+     completed_at: new Date().toISOString(),
+     context: { ...execution.context, termination_reason: `email_${handlerErr.reason}` },
+    }).eq("id", executionId);
+    return;
+   }
+   // Generic workflow: skip only this email step; its other steps still run.
+   suppressedReason = handlerErr.message;
+  }
 
   // ── PROGRESSION ──────────────────────────────────────────────────────────
-  await updateLog({ status: 'completed', completed_at: new Date().toISOString() });
+  await updateLog(suppressedReason
+   ? { status: 'skipped', error_message: suppressedReason, completed_at: new Date().toISOString() }
+   : { status: 'completed', completed_at: new Date().toISOString() });
 
   const { data: nextEdge } = await supabase
    .from('workflow_edges')
@@ -373,9 +530,38 @@ export async function processNextStep(executionId: string, depth = 0) {
   const safeMessage = userSafeMessage(err, 'The step failed unexpectedly.');
   await updateLog({ status: 'failed', error_message: safeMessage, completed_at: new Date().toISOString() });
 
-  await supabase.from("workflow_executions").update({ 
-   status: 'failed', 
-   error_message: `Step ${step?.type || 'unknown'} failed: ${safeMessage}` 
+  // A failed email SEND (not a failed progression after a successful send, which must never
+  // be re-sent) no longer kills the whole run:
+  //  * transient failure  -> retry this step after a backoff, up to MAX_EMAIL_STEP_ATTEMPTS;
+  //  * permanent / out of attempts -> in a sequence, give up on THIS email only and carry on
+  //    with the rest (recorded on the run, not hidden); generic workflows keep fail-stop.
+  if (step.type === 'send_email' && !handlerDone) {
+   const failures = priorFailures + 1;
+   if (!isPermanentEmailError(err) && failures < MAX_EMAIL_STEP_ATTEMPTS) {
+    const retryAt = new Date(Date.now() + emailRetryBackoffMinutes(failures) * 60_000);
+    await supabase.from("workflow_executions").update({
+     next_attempt_at: retryAt.toISOString(),
+     error_message: `Email step failed (attempt ${failures} of ${MAX_EMAIL_STEP_ATTEMPTS}), will retry: ${safeMessage}`,
+    }).eq("id", executionId);
+    return;
+   }
+   if (execution.workflow?.source === SEQUENCE_SOURCE) {
+    const failedSteps = [
+     ...(execution.context?.failed_steps ?? []),
+     { step_id: step.id, error: safeMessage, attempts: failures, at: new Date().toISOString() },
+    ];
+    // error_message stays on the run so it is not reported as a clean success.
+    await supabase.from("workflow_executions").update({
+     error_message: `${failedSteps.length} email(s) could not be sent and were skipped. Last: ${safeMessage}`,
+    }).eq("id", executionId);
+    await advanceFrom(step, executionId, depth, { failed_steps: failedSteps }, execution);
+    return;
+   }
+  }
+
+  await supabase.from("workflow_executions").update({
+   status: 'failed',
+   error_message: `Step ${step?.type || 'unknown'} failed: ${safeMessage}`
   }).eq("id", executionId);
  }
 }
@@ -445,14 +631,34 @@ export async function checkActiveWorkflowGoals(workspaceId: string, contactId: s
    completed_at: new Date().toISOString()
   }).eq("id", execution.id);
 
-  // Log the termination in step logs for visibility
-  await supabase.from("workflow_step_logs").insert({
+  // Log the termination in step logs for visibility. workflow_step_logs.step_id is
+  // NOT NULL, so the row must name a step: the one the run was on, else the workflow's
+  // first step. (It was previously inserted with no step_id, so the insert was rejected
+  // and -- the error being ignored -- the audit row silently never existed.)
+  let stepId: string | null = execution.current_step_id ?? null;
+  if (!stepId) {
+   const { data: first } = await supabase
+    .from("workflow_steps")
+    .select("id")
+    .eq("workflow_id", execution.workflow_id)
+    .order("position", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+   stepId = first?.id ?? null;
+  }
+  if (!stepId) {
+   safeLog(() => logger.warn({ executionId: execution.id }, "executor.goal_termination.no_step_to_log_against"));
+   continue;
+  }
+  const { error: logError } = await supabase.from("workflow_step_logs").insert({
    execution_id: execution.id,
    workspace_id: workspaceId,
+   step_id: stepId,
    status: "skipped",
    error_message: `Workflow terminated: Goal '${eventType}' met.`,
    started_at: new Date().toISOString(),
    completed_at: new Date().toISOString()
   });
+  if (logError) safeLog(() => logger.error({ err: logError, executionId: execution.id }, "executor.goal_termination.log_insert.failed"));
  }
 }

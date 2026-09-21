@@ -462,8 +462,20 @@ export async function handlePageFormSubmission(pageId: string, _workspaceId: str
       });
 
       // Trigger automation event
+      // Resolve the page's funnel (pages -> funnel_steps -> funnels; website
+      // pages have no funnel step) so sequences can filter on a specific funnel.
+      let funnelId: string | null = null;
+      const { data: pageRow } = await supabase
+        .from('pages')
+        .select('funnel_step:funnel_steps(funnel_id)')
+        .eq('id', pageId)
+        .eq('workspace_id', workspaceId)
+        .maybeSingle();
+      const step = (pageRow as any)?.funnel_step;
+      funnelId = (Array.isArray(step) ? step[0]?.funnel_id : step?.funnel_id) ?? null;
+
       const { publishEvent } = await import('@/lib/events/EventBus');
-      await publishEvent(workspaceId, 'funnel_subscribed', contactId, { pageId, payload });
+      await publishEvent(workspaceId, 'funnel_subscribed', contactId, { pageId, funnelId, payload });
     }
 
     return { success: true, workspaceId };

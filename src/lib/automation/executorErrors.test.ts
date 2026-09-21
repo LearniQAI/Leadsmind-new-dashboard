@@ -8,6 +8,8 @@ vi.mock('@/shared/logger', () => ({ logger: { error: (...a: any[]) => logErr(...
 vi.mock('@/lib/automation/actions_registry', () => ({ AutomationActions: {} }));
 vi.mock('@/lib/supabase/server', () => ({
   createAdminClient: () => ({
+    // processNextStep claims the execution first (acquire_workflow_executions); grant the claim.
+    rpc: () => Promise.resolve({ data: [{ id: 'e1' }], error: null }),
     from(table: string) {
       // The route step fetches the contact — simulate the DB failing there.
       if (table === 'contacts') throw new Error(SENSITIVE);
@@ -20,6 +22,7 @@ vi.mock('@/lib/supabase/server', () => ({
         select: () => q, insert: () => q, eq: () => q, limit: () => q,
         update: (p: any) => { updates.push({ table, p }); return q; },
         single: () => Promise.resolve({ data: rows[table] ?? null }),
+        maybeSingle: () => Promise.resolve({ data: rows[table] ?? null, error: null }),
         then: (r: any) => r({ data: rows[table] ?? null, error: null }),
       };
       return q;

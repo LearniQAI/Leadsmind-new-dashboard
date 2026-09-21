@@ -59,6 +59,35 @@ export function suppressionReason(
   return null;
 }
 
+/** Escapes LIKE/ILIKE wildcards so an address is matched literally ('_' is common in emails). */
+export function escapeLikePattern(value: string): string {
+  return value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+}
+
+/**
+ * Single-recipient version of the send-time gate, for automation/sequence
+ * emails that go out one contact at a time (loading a workspace's whole
+ * suppression list per send, as the campaign worker does per batch, would be
+ * wasteful here). Case-insensitive, workspace-scoped, and fails closed: a
+ * lookup error throws rather than reporting the contact as sendable.
+ */
+export async function checkEmailSuppression(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  contact: SuppressionContact,
+): Promise<'no_email' | 'invalid_email' | 'suppressed' | null> {
+  if (!contact.email) return 'no_email';
+  if (contact.is_invalid_email) return 'invalid_email';
+  const { data, error } = await supabase
+    .from('global_suppression_list')
+    .select('email')
+    .eq('workspace_id', workspaceId)
+    .ilike('email', escapeLikePattern(contact.email.trim()))
+    .limit(1);
+  if (error) throw new Error(`suppression lookup failed: ${error.message}`);
+  return data && data.length > 0 ? 'suppressed' : null;
+}
+
 /**
  * Enqueue-time filter: returns only contact ids that are emailable right now.
  * Throws (fail closed) on lookup errors rather than silently queuing everyone.

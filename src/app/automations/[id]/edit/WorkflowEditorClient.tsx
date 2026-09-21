@@ -80,6 +80,7 @@ const TRIGGER_GROUPS: { label: string; options: { value: string; label: string }
 ];
 
 interface EditorStep {
+  id?: string; // existing workflow_steps.id; undefined for steps added in this session
   position: number;
   type: string;
   config: Record<string, any>;
@@ -100,14 +101,14 @@ function workflowStepsToEditorSteps(steps: any[], edges: any[]): EditorStep[] {
       for (const e of stepEdges) {
         targets[e.source_handle || 'default'] = idToPosition(e.target_step_id);
       }
-      return { position: s.position, type: s.type, config: s.config || {}, branches, targets };
+      return { id: s.id, position: s.position, type: s.type, config: s.config || {}, branches, targets };
     }
     if (s.type === 'split') {
       const targetA = idToPosition(stepEdges.find((e) => e.source_handle === 'A')?.target_step_id ?? null);
       const targetB = idToPosition(stepEdges.find((e) => e.source_handle === 'B')?.target_step_id ?? null);
-      return { position: s.position, type: s.type, config: s.config || {}, splitPercentage: s.config?.splitPercentage ?? 50, targetA, targetB };
+      return { id: s.id, position: s.position, type: s.type, config: s.config || {}, splitPercentage: s.config?.splitPercentage ?? 50, targetA, targetB };
     }
-    return { position: s.position, type: s.type, config: s.config || {} };
+    return { id: s.id, position: s.position, type: s.type, config: s.config || {} };
   });
 }
 
@@ -159,6 +160,7 @@ export function WorkflowEditorClient({
           const branches = s.branches || [];
           const targets = s.targets || {};
           return {
+            id: s.id,
             position: s.position,
             type: s.type,
             config: { branches: branches.map((b) => ({ name: b.name, is_default: !!b.is_default, conditions: b.conditions })) },
@@ -167,6 +169,7 @@ export function WorkflowEditorClient({
         }
         if (s.type === 'split') {
           return {
+            id: s.id,
             position: s.position,
             type: s.type,
             config: { splitPercentage: s.splitPercentage ?? 50 },
@@ -176,7 +179,7 @@ export function WorkflowEditorClient({
             ],
           };
         }
-        return { position: s.position, type: s.type, config: s.config };
+        return { id: s.id, position: s.position, type: s.type, config: s.config };
       });
 
       const res = await saveWorkflowEditor({

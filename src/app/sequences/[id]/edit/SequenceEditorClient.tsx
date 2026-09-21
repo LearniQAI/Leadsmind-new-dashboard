@@ -12,11 +12,29 @@ import {
 } from '@/components/ui/select';
 import { saveSequence, type SequenceEmailStep } from '@/app/actions/email_sequences';
 import { SEQUENCE_TRIGGERS } from '@/lib/automation/sequenceConstants';
+import { filterKindForTrigger } from '@/lib/automation/triggerFilter';
 
-export function SequenceEditorClient({ sequence }: { sequence: any }) {
+type FilterOption = { id: string; name: string };
+
+const FILTER_LABELS = {
+  tag: { label: 'Which tag?', placeholder: 'Choose a tag', empty: 'No tags yet — create one first.' },
+  course: { label: 'Which course?', placeholder: 'Choose a course', empty: 'No courses yet — create one first.' },
+  funnel: { label: 'Which funnel?', placeholder: 'Choose a funnel', empty: 'No funnels yet — create one first.' },
+} as const;
+
+export function SequenceEditorClient({
+  sequence,
+  filterOptions,
+}: {
+  sequence: any;
+  filterOptions: { tags: FilterOption[]; courses: FilterOption[]; funnels: FilterOption[] };
+}) {
   const router = useRouter();
   const [name, setName] = useState(sequence.name || '');
   const [triggerType, setTriggerType] = useState(sequence.trigger_type || SEQUENCE_TRIGGERS[0].value);
+  const [filterId, setFilterId] = useState<string>(sequence.trigger_filter_id || '');
+  const filterKind = filterKindForTrigger(triggerType);
+  const options = filterKind === 'tag' ? filterOptions.tags : filterKind === 'course' ? filterOptions.courses : filterKind === 'funnel' ? filterOptions.funnels : [];
   const [isActive, setIsActive] = useState(!!sequence.is_active);
   const [emails, setEmails] = useState<SequenceEmailStep[]>(
     sequence.emails?.length ? sequence.emails : [{ subject: '', body: '', isHtml: false, delayValue: 3, delayUnit: 'days' }]
@@ -38,9 +56,10 @@ export function SequenceEditorClient({ sequence }: { sequence: any }) {
       toast.error('Every email needs a subject and body');
       return;
     }
+    if (filterKind && !filterId) { toast.error(`Choose which ${filterKind} starts this sequence`); return; }
     setSaving(true);
     try {
-      const res = await saveSequence({ id: sequence.id, name, trigger_type: triggerType, is_active: isActive, emails });
+      const res = await saveSequence({ id: sequence.id, name, trigger_type: triggerType, trigger_filter_id: filterKind ? filterId : null, is_active: isActive, emails });
       if (!res.success) { toast.error(res.error); return; }
       toast.success('Sequence saved');
       router.push('/sequences');
@@ -67,13 +86,27 @@ export function SequenceEditorClient({ sequence }: { sequence: any }) {
           <DashInput value={name} onChange={(e) => setName(e.target.value)} className="h-11" placeholder="e.g. New lead nurture" />
         </DashFormField>
         <DashFormField label="Start this sequence when..." required hint="A curated subset of trigger events relevant to marketing sequences. For any other trigger, use the full Workflow Builder.">
-          <Select value={triggerType} onValueChange={setTriggerType}>
+          <Select value={triggerType} onValueChange={(v) => { setTriggerType(v); setFilterId(''); }}>
             <SelectTrigger className="h-11 border-dash-border rounded-xl"><SelectValue /></SelectTrigger>
             <SelectContent className="bg-white border border-dash-border rounded-xl shadow-xl">
               {SEQUENCE_TRIGGERS.map((o) => <SelectItem key={o.value} value={o.value} className="text-[13px]">{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </DashFormField>
+        {filterKind && (
+          <DashFormField label={FILTER_LABELS[filterKind].label} required hint="The sequence only starts for this one — other tags, courses or funnels won't enroll anyone.">
+            {options.length === 0 ? (
+              <p className="text-[12px] !text-dash-textMuted">{FILTER_LABELS[filterKind].empty}</p>
+            ) : (
+              <Select value={filterId} onValueChange={setFilterId}>
+                <SelectTrigger className="h-11 border-dash-border rounded-xl"><SelectValue placeholder={FILTER_LABELS[filterKind].placeholder} /></SelectTrigger>
+                <SelectContent className="bg-white border border-dash-border rounded-xl shadow-xl">
+                  {options.map((o) => <SelectItem key={o.id} value={o.id} className="text-[13px]">{o.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
+          </DashFormField>
+        )}
         <label className="flex items-center gap-2 text-[12px] font-bold !text-dash-text">
           <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
           Active
@@ -119,7 +152,7 @@ export function SequenceEditorClient({ sequence }: { sequence: any }) {
               <DashFormField label="Subject" required>
                 <DashInput value={email.subject} onChange={(e) => updateEmail(idx, { subject: e.target.value })} className="h-10" placeholder="Welcome to the team!" />
               </DashFormField>
-              <DashFormField label="Body" required hint="Plain text or HTML.">
+              <DashFormField label="Body" required hint="Plain text or HTML. Merge tags: {{first_name}}, {{last_name}}, {{company}}. An unsubscribe link is added automatically (or place {{unsubscribe_link}} yourself).">
                 <DashTextarea value={email.body} onChange={(e) => updateEmail(idx, { body: e.target.value })} rows={6} placeholder="Hi {{contact.first_name}}, ..." />
               </DashFormField>
               <label className="flex items-center gap-2 text-[11px] font-bold !text-dash-textMuted">

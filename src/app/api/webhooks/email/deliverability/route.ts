@@ -41,6 +41,9 @@ export async function POST(req: NextRequest) {
 
     let eventType: 'open' | 'click' | 'reply' | 'bounce' | 'complaint' | null = null;
     let campaignId: string | null = null;
+    // Set on sequence / automation emails (see send_email in actions_registry.ts) instead of
+    // campaign_id, so their bounces, complaints and opens can be attributed too.
+    let workflowId: string | null = null;
     let contactId: string | null = null;
     let linkUrl: string | null = null;
     let userAgent: string | null = null;
@@ -58,11 +61,14 @@ export async function POST(req: NextRequest) {
       if (tags) {
         if (typeof tags === 'object' && !Array.isArray(tags)) {
           campaignId = tags.campaign_id;
+          workflowId = tags.workflow_id ?? null;
           contactId = tags.contact_id;
         } else if (Array.isArray(tags)) {
           const cTag = tags.find((t: any) => t.name === 'campaign_id');
+          const wTag = tags.find((t: any) => t.name === 'workflow_id');
           const ctTag = tags.find((t: any) => t.name === 'contact_id');
           if (cTag) campaignId = cTag.value;
+          if (wTag) workflowId = wTag.value;
           if (ctTag) contactId = ctTag.value;
         }
       }
@@ -86,6 +92,7 @@ export async function POST(req: NextRequest) {
       const tags = body.mail?.tags;
       if (tags) {
         campaignId = Array.isArray(tags.campaign_id) ? tags.campaign_id[0] : tags.campaign_id;
+        workflowId = (Array.isArray(tags.workflow_id) ? tags.workflow_id[0] : tags.workflow_id) ?? null;
         contactId = Array.isArray(tags.contact_id) ? tags.contact_id[0] : tags.contact_id;
       }
       
@@ -101,6 +108,7 @@ export async function POST(req: NextRequest) {
     else {
       eventType = body.event_type;
       campaignId = body.campaign_id;
+      workflowId = body.workflow_id ?? null;
       contactId = body.contact_id;
       linkUrl = body.link_url;
       userAgent = body.user_agent;
@@ -117,11 +125,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Validation
-    if (!eventType || !campaignId) {
+    if (!eventType || (!campaignId && !workflowId)) {
       logger.warn({}, 'webhook.email_deliverability.payload.invalid');
       try {
         await supabaseAdmin.from('webhook_dead_letters').insert({
-           provider: 'email_deliverability', payload: body, error: 'Missing eventType or campaignId', error_type: 'validation_failed', retry_state: 'dropped'
+           provider: 'email_deliverability', payload: body, error: 'Missing eventType or campaignId/workflowId', error_type: 'validation_failed', retry_state: 'dropped'
         });
       } catch (dbErr: any) {
         logger.error({ err: dbErr, provider: 'email_deliverability' }, 'webhook.email_deliverability.dead_letter_insert.failed');
@@ -129,23 +137,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true, status: 'ignored' });
     }
 
-    // 2. Lookup Campaign Workspace to satisfy foreign key RLS constraints
-    const { data: campaign, error: campaignError } = await supabaseAdmin
-      .from('email_campaigns')
-      .select('workspace_id')
-      .eq('id', campaignId)
-      .single();
+    // 2. Resolve the workspace from OUR OWN row (campaign, else workflow) -- never from a
+    // payload field. The event is signature-verified above, and the tag values are ones we set.
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const { data: campaign, error: campaignError } = campaignId
+      ? await supabaseAdmin.from('email_campaigns').select('workspace_id').eq('id', campaignId).single()
+      : workflowId && UUID_RE.test(workflowId)
+        ? await supabaseAdmin.from('workflows').select('workspace_id').eq('id', workflowId).single()
+        : { data: null, error: { message: 'invalid workflow reference' } as any };
 
     if (campaignError || !campaign) {
       logger.error({ err: campaignError, campaignId }, 'webhook.email_deliverability.campaign_lookup.failed');
       try {
         await supabaseAdmin.from('webhook_dead_letters').insert({
-           provider: 'email_deliverability', payload: body, error: `Campaign not found: ${campaignId}`, error_type: 'validation_failed', retry_state: 'dropped'
+           provider: 'email_deliverability', payload: body, error: `Campaign/workflow not found: ${campaignId ?? workflowId}`, error_type: 'validation_failed', retry_state: 'dropped'
         });
       } catch (dbErr: any) {
         logger.error({ err: dbErr, campaignId, provider: 'email_deliverability' }, 'webhook.email_deliverability.dead_letter_insert.failed');
       }
-      return NextResponse.json({ received: true, error: 'Campaign reference not found.' }, { status: 200 });
+      return NextResponse.json({ received: true, error: 'Campaign or workflow reference not found.' }, { status: 200 });
     }
 
     // 3. Log event trace in email_tracking_logs
@@ -153,7 +163,8 @@ export async function POST(req: NextRequest) {
       .from('email_tracking_logs')
       .insert({
         workspace_id: campaign.workspace_id,
-        campaign_id: campaignId,
+        campaign_id: campaignId || null,
+        workflow_id: campaignId ? null : workflowId,
         contact_id: contactId || null,
         event_type: eventType,
         link_url: linkUrl || null,
@@ -171,15 +182,15 @@ export async function POST(req: NextRequest) {
       const { LeadScoringEngine } = await import('@/lib/intelligence/LeadScoringEngine');
       LeadScoringEngine.trackScoringEvent(contactId, eventType, {
         linkUrl: linkUrl || undefined,
-        campaignId: campaignId
+        campaignId: campaignId ?? undefined
       }).catch(err => logger.error({ err, contactId }, 'webhook.email_deliverability.scoring_trigger.failed'));
     }
 
     // 4. Atomically increment stats counter in email_campaigns via postgres RPC
-    const { error: rpcError } = await supabaseAdmin.rpc('increment_campaign_metric', {
-      c_id: campaignId,
-      metric_name: eventType
-    });
+    // (campaign events only: a workflow email has no campaign row to count against).
+    const { error: rpcError } = campaignId
+      ? await supabaseAdmin.rpc('increment_campaign_metric', { c_id: campaignId, metric_name: eventType })
+      : { error: null };
 
     if (rpcError) {
       logger.error({ err: rpcError, campaignId }, 'webhook.email_deliverability.metric_increment.failed');
@@ -216,7 +227,9 @@ export async function POST(req: NextRequest) {
         const genericType = body.bounce_type || body.sub_type || '';
 
         if (typeStr === 'email.bounced') {
-          const bounceType = body.data?.bounceType || body.data?.type || '';
+          // Resend nests it as data.bounce.type ('Permanent' | 'Transient' | 'Undetermined');
+          // the older flat spellings are kept for other senders/tests.
+          const bounceType = body.data?.bounce?.type || body.data?.bounceType || body.data?.type || '';
           if (bounceType.toLowerCase().includes('permanent') || bounceType.toLowerCase() === 'hard') {
             isHardBounce = true;
           } else {
