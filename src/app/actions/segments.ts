@@ -6,6 +6,7 @@ import { requireWorkspaceAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 import { SegmentationCompiler, RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
 import { validateRuleGroup } from '@/lib/segments/ruleValidation';
+import { findSegmentDependents } from '@/lib/segments/dependents';
 
 export async function listSegments() {
   try {
@@ -107,10 +108,35 @@ export async function updateSegment(id: string, payload: Partial<{ name: string;
   }
 }
 
-export async function deleteSegment(id: string) {
+export async function getSegmentDependents(id: string) {
   try {
     const { workspaceId } = await requireWorkspaceAccess();
     const supabase = await createServerClient();
+    return { success: true, data: await findSegmentDependents(supabase, workspaceId, id) };
+  } catch (error: any) {
+    logger.error({ err: error }, 'segment.dependents.failed');
+    return { success: false, error: 'Could not check what uses this segment. Please try again.' };
+  }
+}
+
+/**
+ * Deletes a segment. If campaigns / auto-senders / broadcasts still reference it, the delete is
+ * NOT silently blocked and NOT silently done: the caller gets `requiresConfirmation` with the
+ * dependents, and must call again with `acknowledgeDependents: true`. Enforced here (not only in
+ * the UI) so any caller sees the consequence.
+ */
+export async function deleteSegment(id: string, opts: { acknowledgeDependents?: boolean } = {}) {
+  try {
+    const { workspaceId } = await requireWorkspaceAccess();
+    const supabase = await createServerClient();
+
+    if (!opts.acknowledgeDependents) {
+      const dependents = await findSegmentDependents(supabase, workspaceId, id);
+      if (dependents.length > 0) {
+        return { success: false, requiresConfirmation: true as const, dependents, error: 'This segment is still in use.' };
+      }
+    }
+
     const { error } = await supabase
       .from('segments')
       .delete()

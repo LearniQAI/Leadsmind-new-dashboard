@@ -17,7 +17,8 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { SegmentRuleBuilder } from '@/components/crm/SegmentRuleBuilder';
 import type { RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
 import { validateRuleGroup } from '@/lib/segments/ruleValidation';
-import { createSegment, updateSegment, deleteSegment } from '@/app/actions/segments';
+import { createSegment, updateSegment, deleteSegment, getSegmentDependents } from '@/app/actions/segments';
+import { DEPENDENT_KIND_LABEL, type SegmentDependent } from '@/lib/segments/dependents';
 
 interface SegmentRow {
   id: string;
@@ -38,6 +39,15 @@ export default function SegmentsClient({ initialSegments }: { initialSegments: S
 
   const [deleteTarget, setDeleteTarget] = useState<SegmentRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [dependents, setDependents] = useState<SegmentDependent[]>([]);
+
+  const requestDelete = async (segment: SegmentRow) => {
+    // Look up what depends on the segment BEFORE opening the dialog, so the warning is in it.
+    const res = await getSegmentDependents(segment.id);
+    if (!res.success) { toast.error(res.error || 'Could not check what uses this segment'); return; }
+    setDependents(res.data ?? []);
+    setDeleteTarget(segment);
+  };
 
   const openCreate = () => {
     setEditingSegment(null);
@@ -85,7 +95,7 @@ export default function SegmentsClient({ initialSegments }: { initialSegments: S
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      const res = await deleteSegment(deleteTarget.id);
+      const res = await deleteSegment(deleteTarget.id, { acknowledgeDependents: dependents.length > 0 });
       if (!res.success) { toast.error(res.error || 'Failed to delete segment'); return; }
       toast.success('Segment deleted');
       setSegments((prev) => prev.filter((s) => s.id !== deleteTarget.id));
@@ -140,7 +150,7 @@ export default function SegmentsClient({ initialSegments }: { initialSegments: S
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer flex items-center gap-2 hover:bg-red/10 rounded-lg p-2 font-bold text-red"
-                      onClick={() => setDeleteTarget(segment)}
+                      onClick={() => requestDelete(segment)}
                     >
                       <Trash2 size={14} /> Delete
                     </DropdownMenuItem>
@@ -191,8 +201,28 @@ export default function SegmentsClient({ initialSegments }: { initialSegments: S
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
         title="Delete Segment?"
-        description={`Are you sure you want to delete "${deleteTarget?.name}"? Campaigns using it will no longer resolve this audience.`}
-        confirmLabel="Delete"
+        description={
+          dependents.length > 0 ? (
+            <div className="text-left" data-testid="segment-dependents">
+              <p className="mb-2">
+                &quot;{deleteTarget?.name}&quot; is still used by {dependents.length} {dependents.length === 1 ? 'item' : 'items'}.
+                If you delete it, they will fail to send until you pick a different audience:
+              </p>
+              <ul className="mb-2 space-y-1">
+                {dependents.map((d) => (
+                  <li key={d.kind + d.id} className="text-dash-text">
+                    <span className="font-semibold">{d.name}</span>{' '}
+                    <span className="text-dash-textMuted">— {DEPENDENT_KIND_LABEL[d.kind]}, {d.status}</span>
+                  </li>
+                ))}
+              </ul>
+              <p>Delete anyway?</p>
+            </div>
+          ) : (
+            `Are you sure you want to delete "${deleteTarget?.name}"?`
+          )
+        }
+        confirmLabel={dependents.length > 0 ? 'Delete anyway' : 'Delete'}
       />
     </div>
   );

@@ -14,6 +14,32 @@ export interface RuleGroup {
   rules: FilterRule[];
 }
 
+// contact id -> lower-cased names of the tags currently assigned to it (tag_assignments truth).
+// Paginated: PostgREST caps a plain select at 1000 rows, which would silently truncate this.
+async function loadContactTagNames(supabase: any, workspaceId: string): Promise<Map<string, Set<string>>> {
+  const PAGE = 1000;
+  const pageAll = async (table: string, cols: string, extra: (q: any) => any): Promise<any[]> => {
+    const rows: any[] = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await extra(supabase.from(table).select(cols)).order('id', { ascending: true }).range(from, from + PAGE - 1);
+      if (error) throw new Error(`tag lookup failed (${table}): ${error.message}`);
+      rows.push(...(data ?? []));
+      if (!data || data.length < PAGE) break;
+    }
+    return rows;
+  };
+  const tags = await pageAll('tags', 'id, name', (q) => q.eq('workspace_id', workspaceId));
+  const nameById = new Map<string, string>(tags.map((t: any) => [t.id, String(t.name).toLowerCase()]));
+  const assignments = await pageAll('tag_assignments', 'id, entity_id, tag_id', (q) => q.eq('workspace_id', workspaceId).eq('entity_type', 'contact'));
+  const byContact = new Map<string, Set<string>>();
+  for (const a of assignments) {
+    const name = nameById.get(a.tag_id);
+    if (!name) continue;
+    (byContact.get(a.entity_id) ?? byContact.set(a.entity_id, new Set()).get(a.entity_id)!).add(name);
+  }
+  return byContact;
+}
+
 export const SegmentationCompiler = {
   /**
    * Compiles structured rule groups into secure parameterized PostgreSQL query strings.
@@ -61,9 +87,19 @@ export const SegmentationCompiler = {
       if (['first_name', 'last_name', 'email', 'phone', 'source', 'timezone'].includes(rule.field)) {
         sqlCond = formatOp(`c.${rule.field}`);
       }
-      // 2. Tag Rule Check
+      // 2. Tag Rule Check — tag_assignments is the SOURCE OF TRUTH (Smart Tags, system/auto tags
+      // and the Tag Manager write only there). The legacy contacts.tags array is a one-way
+      // mirror that missed 115 of 169 real links and still holds tags that were removed in the
+      // Tag Manager, so it must not be consulted at all. Matched case-insensitively: tag names are
+      // case-insensitively unique per workspace (ensureTag uses ilike).
       else if (rule.field === 'tags') {
-        sqlCond = `c.tags @> ARRAY[${getPlaceholder()}]::TEXT[]`;
+        sqlCond = `EXISTS (
+          SELECT 1 FROM public.tag_assignments ta
+          JOIN public.tags tg ON tg.id = ta.tag_id
+          WHERE ta.entity_type = 'contact' AND ta.entity_id = c.id
+            AND ta.workspace_id = c.workspace_id AND tg.workspace_id = c.workspace_id
+            AND lower(tg.name) = lower(${getPlaceholder()})
+        )`;
       }
       // 3. Invoice Status Rule
       else if (rule.field === 'invoice_status') {
@@ -186,6 +222,11 @@ export const SegmentationCompiler = {
         supabase.from('email_tracking_logs').select('*').eq('workspace_id', workspaceId)
       ]);
 
+      // Only load tag data when a rule needs it.
+      const tagNamesByContact = ruleGroup.rules.some((r) => r.field === 'tags')
+        ? await loadContactTagNames(supabase, workspaceId)
+        : new Map<string, Set<string>>();
+
       const invoices = invoicesRes.data || [];
       const enrollments = enrollmentsRes.data || [];
       const logs = logsRes.data || [];
@@ -216,7 +257,8 @@ export const SegmentationCompiler = {
           }
 
           if (rule.field === 'tags') {
-            return Array.isArray(contact.tags) && contact.tags.includes(val);
+            // same semantics as the SQL EXISTS: assignment-backed, case-insensitive
+            return tagNamesByContact.get(contact.id)?.has(String(val).toLowerCase()) ?? false;
           }
 
           if (rule.field === 'invoice_status') {
