@@ -11,8 +11,8 @@ import {
   ChevronDown, ChevronUp
 } from 'lucide-react';
 import AISparkDrawer from '@/components/common/AISparkDrawer';
-import { dispatchCampaignNow, updateCampaign } from '@/app/actions/marketing';
-import { renderEmailLayout, EmailBlock, BrandKit } from '@/lib/builder/emailRenderer';
+import { dispatchCampaignNow, updateCampaign, sendTestEmailAction } from '@/app/actions/marketing';
+import { renderEmailLayout, compileCampaignHtml, EmailBlock, BrandKit } from '@/lib/builder/emailRenderer';
 import { DashModal, DashModalContent, DashModalHeader, DashModalTitle, DashModalFooter } from '@/components/dashboard-ui/Modal';
 import { DashFormField, DashInput } from '@/components/dashboard-ui/FormField';
 import { DashButton } from '@/components/dashboard-ui/Button';
@@ -31,6 +31,7 @@ interface EmailBuilderClientProps {
   initialCampaign: any;
   brandKit: BrandKit;
   availableSegments?: SegmentOption[];
+  userEmail?: string;
 }
 
 const BLOCK_TYPES = [
@@ -42,7 +43,7 @@ const BLOCK_TYPES = [
   { type: 'text', name: 'Rich Text Paragraph', desc: 'Standard narrative copy blocks', icon: AlignLeft },
 ] as const;
 
-export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: initialBrandKit, availableSegments = [] }: EmailBuilderClientProps) {
+export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: initialBrandKit, availableSegments = [], userEmail = '' }: EmailBuilderClientProps) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
@@ -66,6 +67,11 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
   const [darkModeSim, setDarkModeSim] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'add' | 'inspector' | 'brand' | 'warnings'>('add');
+
+  // Test send
+  const [testModalOpen, setTestModalOpen] = useState(false);
+  const [testEmail, setTestEmail] = useState(userEmail);
+  const [testSending, setTestSending] = useState(false);
 
   // Deploy / Automate State
   const [deployModalOpen, setDeployModalOpen] = useState(false);
@@ -217,7 +223,7 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
       // {{first_name}}/{{unsubscribe_link}}/etc. tokens intact in the stored
       // body_html. They're resolved per-recipient by the dispatch worker at
       // actual send time, not baked in once here against no real contact.
-      const compiledHtml = renderEmailLayout(blocks, brandKit, {}, {}, preheaderText, true);
+      const compiledHtml = compileCampaignHtml(blocks, brandKit, preheaderText);
 
       // 2. Generate preview text from text blocks or defaults
       const textBlock = blocks.find(b => b.type === 'text');
@@ -244,12 +250,31 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
     }
   };
 
+  // Sends the CURRENT (even unsaved) design to one address via the workspace's
+  // own Resend account, so the real rendering/deliverability can be checked
+  // before deploying. Tokens resolve exactly as in a real send.
+  const handleSendTest = async () => {
+    if (!testEmail.trim()) { toast.error('Enter an email address.'); return; }
+    setTestSending(true);
+    try {
+      const res = await sendTestEmailAction(campaignId, testEmail.trim(), compileCampaignHtml(blocks, brandKit, preheaderText));
+      if (res.error) toast.error(res.error);
+      else { toast.success(`Test email sent to ${testEmail.trim()}`); setTestModalOpen(false); }
+    } catch {
+      toast.error('Failed to send test email.');
+    } finally {
+      setTestSending(false);
+    }
+  };
+
   // Launch / Automate Action
   const handleDeploy = async (mode: 'now' | 'schedule') => {
     setSaving(true);
     try {
       // 1. Compile final HTML
-      const compiledHtml = renderEmailLayout(blocks, brandKit, {}, {}, preheaderText);
+      // Same compile as handleSave (tokens intact). Resolving here bakes an empty
+      // unsubscribe href and "Valued Customer" into every email.
+      const compiledHtml = compileCampaignHtml(blocks, brandKit, preheaderText);
       const textBlock = blocks.find(b => b.type === 'text');
       const plainTextPreview = textBlock?.content.body?.slice(0, 100) || 'Your LeadsMind Email Broadcast';
 
@@ -260,6 +285,11 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
       // A saved segment and the ad-hoc rule builder are mutually exclusive —
       // picking a segment clears the ad-hoc rules (see the Select below).
       const hasSegmentId = !!deploySegmentId && !hasRuleGroup;
+
+      if (tagTokens.length === 0 && emailTokens.length === 0 && !hasRuleGroup && !hasSegmentId) {
+        toast.error('Choose who this campaign is for: add a tag, a saved segment, a filter, or direct email addresses.');
+        return;
+      }
 
       if (mode === 'schedule') {
         if (!scheduledFor || Number.isNaN(new Date(scheduledFor).getTime()) || new Date(scheduledFor).getTime() <= Date.now()) {
@@ -297,14 +327,21 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
       if (result.error) {
         toast.error(result.error);
       } else {
-        if (mode === 'now' && !isAutomated) {
+        if (mode === 'now' && !isAutomated && (result.matchedContactsCount || 0) > 0) {
           const dispatchResult = await dispatchCampaignNow(campaignId);
           if (dispatchResult.error) {
             toast.error(dispatchResult.error);
             return;
           }
         }
-        const totalRecipients = (result.matchedContactsCount || 0) + emailTokens.length;
+        const directSent = result.directSent?.length ?? 0;
+        if (result.directFailed?.length) {
+          toast.warning(`${result.directFailed.length} direct address(es) failed to send: ${result.directFailed.map((f: { email: string }) => f.email).join(', ')}`);
+        }
+        if (result.directSkipped?.length) {
+          toast.info(`Skipped ${result.directSkipped.length} unsubscribed/invalid address(es): ${result.directSkipped.join(', ')}`);
+        }
+        const totalRecipients = (result.matchedContactsCount || 0) + directSent;
         const countMsg = `(Targeting ${totalRecipients} recipients)`;
         toast.success(
           isAutomated
@@ -553,6 +590,10 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
                 Save design
               </>
             )}
+          </DashButton>
+
+          <DashButton onClick={() => setTestModalOpen(true)} disabled={saving || blocks.length === 0} size="sm" variant="secondary">
+            Send test email
           </DashButton>
 
           <button
@@ -1223,6 +1264,22 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
           updateBlockContent({ body: content });
         }}
       />
+
+      {/* Send test email Modal */}
+      <DashModal open={testModalOpen} onOpenChange={setTestModalOpen}>
+        <DashModalContent className="max-w-sm">
+          <DashModalHeader>
+            <DashModalTitle>Send <span className="text-dash-accent">test email</span></DashModalTitle>
+          </DashModalHeader>
+          <DashFormField label="Send to" hint="Sent through your connected Resend account using the current design (unsaved changes included).">
+            <DashInput type="email" value={testEmail} onChange={e => setTestEmail(e.target.value)} placeholder="you@example.com" />
+          </DashFormField>
+          <DashModalFooter>
+            <DashButton variant="secondary" onClick={() => setTestModalOpen(false)}>Cancel</DashButton>
+            <DashButton onClick={handleSendTest} disabled={testSending}>{testSending ? 'Sending...' : 'Send test'}</DashButton>
+          </DashModalFooter>
+        </DashModalContent>
+      </DashModal>
 
       {/* Send / Automate Modal */}
       <DashModal open={deployModalOpen} onOpenChange={setDeployModalOpen}>

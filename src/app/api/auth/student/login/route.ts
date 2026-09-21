@@ -4,6 +4,7 @@ import { SignJWT } from 'jose';
 import crypto from 'crypto';
 import { sendEmail } from '@/lib/email';
 import { checkRateLimit } from '@/lib/security/rateLimit';
+import { logger } from '@/shared/logger';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -100,7 +101,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
-    console.error('[Magic Link Login Error]:', err.message);
-    return NextResponse.json({ error: err.message || 'Verification flow failed' }, { status: 500 });
+    // Unauthenticated endpoint — fixed generic message always (see portal/magic-link).
+    // This try block also throws '[FATAL] JWT_SECRET is not configured' and DB errors.
+    logger.error({ err }, 'student.magic_link_login.failed');
+    return NextResponse.json({ error: 'We could not send your sign-in link. Please try again.' }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 // RecoveryManager — handles generating recovery links and triggering recovery emails
 import { sendEmail } from '@/lib/email';
 import { generateRecoveryLink } from '@/lib/persistence/recoveryLink';
+import { logger } from '@/shared/logger';
 
 export const RecoveryManager = {
   /**
@@ -42,8 +43,10 @@ export const RecoveryManager = {
 
       return { success: true };
     } catch (err: any) {
-      console.error('[RecoveryManager] Send recovery email error:', err);
-      return { success: false, error: err?.message || 'Email delivery failed' };
+      // The result reaches an unauthenticated form visitor via the recovery-link
+      // route: log the real error, return a fixed generic message ALWAYS.
+      logger.error({ err }, 'recovery_manager.send_recovery_email.failed');
+      return { success: false, error: 'Failed to send recovery email. Please try again.' };
     }
   }
 };

@@ -11,7 +11,7 @@ interface ConfirmDialogProps {
   onClose: () => void;
   onConfirm: () => void;
   title: string;
-  description: string;
+  description: React.ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: 'danger' | 'warning' | 'info';
@@ -49,8 +49,8 @@ export function ConfirmDialog({
               {title}
             </Dialog.Title>
 
-            <Dialog.Description className="text-[13.5px] !text-dash-textMuted mb-5 leading-relaxed max-w-[320px]">
-              {description}
+            <Dialog.Description asChild>
+              <div className="text-[13.5px] !text-dash-textMuted mb-5 leading-relaxed max-w-[320px]">{description}</div>
             </Dialog.Description>
 
             <div className="flex w-full gap-3">

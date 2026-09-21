@@ -1,4 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { assertValidRuleGroup, escapeLikePattern, InvalidRuleGroupError } from '@/lib/segments/ruleValidation';
+
+export { InvalidRuleGroupError };
 
 export interface FilterRule {
   field: string;
@@ -11,12 +14,42 @@ export interface RuleGroup {
   rules: FilterRule[];
 }
 
+// contact id -> lower-cased names of the tags currently assigned to it (tag_assignments truth).
+// Paginated: PostgREST caps a plain select at 1000 rows, which would silently truncate this.
+async function loadContactTagNames(supabase: any, workspaceId: string): Promise<Map<string, Set<string>>> {
+  const PAGE = 1000;
+  const pageAll = async (table: string, cols: string, extra: (q: any) => any): Promise<any[]> => {
+    const rows: any[] = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await extra(supabase.from(table).select(cols)).order('id', { ascending: true }).range(from, from + PAGE - 1);
+      if (error) throw new Error(`tag lookup failed (${table}): ${error.message}`);
+      rows.push(...(data ?? []));
+      if (!data || data.length < PAGE) break;
+    }
+    return rows;
+  };
+  const tags = await pageAll('tags', 'id, name', (q) => q.eq('workspace_id', workspaceId));
+  const nameById = new Map<string, string>(tags.map((t: any) => [t.id, String(t.name).toLowerCase()]));
+  const assignments = await pageAll('tag_assignments', 'id, entity_id, tag_id', (q) => q.eq('workspace_id', workspaceId).eq('entity_type', 'contact'));
+  const byContact = new Map<string, Set<string>>();
+  for (const a of assignments) {
+    const name = nameById.get(a.tag_id);
+    if (!name) continue;
+    (byContact.get(a.entity_id) ?? byContact.set(a.entity_id, new Set()).get(a.entity_id)!).add(name);
+  }
+  return byContact;
+}
+
 export const SegmentationCompiler = {
   /**
    * Compiles structured rule groups into secure parameterized PostgreSQL query strings.
    * Parameter placeholders ($1, $2, etc.) are used to prevent SQL injection.
    */
   compileToSql(workspaceId: string, ruleGroup: RuleGroup): { sql: string; params: any[] } {
+    // Reject unknown fields/operators and blank values up front. Previously a rule the
+    // compiler didn't recognise was silently DROPPED here, so a group made only of such
+    // rules compiled to "all contacts in the workspace" while the JS fallback matched none.
+    assertValidRuleGroup(ruleGroup);
     const params: any[] = [workspaceId];
     let paramIndex = 2;
 
@@ -35,10 +68,14 @@ export const SegmentationCompiler = {
 
       const formatOp = (fieldExpr: string) => {
         if (op === 'equals') return `${fieldExpr} = ${getPlaceholder()}`;
-        if (op === 'not_equals') return `${fieldExpr} != ${getPlaceholder()}`;
+        // IS DISTINCT FROM (not !=): "is not X" must INCLUDE contacts whose value is NULL/empty,
+        // exactly like the JS path (dbVal !== val). `!=` yields NULL for a NULL column and
+        // silently dropped those contacts.
+        if (op === 'not_equals') return `${fieldExpr} IS DISTINCT FROM ${getPlaceholder()}`;
         if (op === 'greater_than') return `${fieldExpr} > ${getPlaceholder()}`;
         if (op === 'less_than') return `${fieldExpr} < ${getPlaceholder()}`;
-        if (op === 'contains') return `${fieldExpr} ILIKE '%' || ${getPlaceholder()} || '%'`;
+        // Literal substring, like the JS path: % _ \ in the value must not act as LIKE wildcards.
+        if (op === 'contains') return `${fieldExpr} ILIKE '%' || ${getPlaceholder(escapeLikePattern(String(val)))} || '%'`;
         if (op === 'in') {
           // If value is an array, map to Postgres array format
           const arr = Array.isArray(v => v) ? val : [val];
@@ -51,9 +88,19 @@ export const SegmentationCompiler = {
       if (['first_name', 'last_name', 'email', 'phone', 'source', 'timezone'].includes(rule.field)) {
         sqlCond = formatOp(`c.${rule.field}`);
       }
-      // 2. Tag Rule Check
+      // 2. Tag Rule Check — tag_assignments is the SOURCE OF TRUTH (Smart Tags, system/auto tags
+      // and the Tag Manager write only there). The legacy contacts.tags array is a one-way
+      // mirror that missed 115 of 169 real links and still holds tags that were removed in the
+      // Tag Manager, so it must not be consulted at all. Matched case-insensitively: tag names are
+      // case-insensitively unique per workspace (ensureTag uses ilike).
       else if (rule.field === 'tags') {
-        sqlCond = `c.tags @> ARRAY[${getPlaceholder()}]::TEXT[]`;
+        sqlCond = `EXISTS (
+          SELECT 1 FROM public.tag_assignments ta
+          JOIN public.tags tg ON tg.id = ta.tag_id
+          WHERE ta.entity_type = 'contact' AND ta.entity_id = c.id
+            AND ta.workspace_id = c.workspace_id AND tg.workspace_id = c.workspace_id
+            AND lower(tg.name) = lower(${getPlaceholder()})
+        )`;
       }
       // 3. Invoice Status Rule
       else if (rule.field === 'invoice_status') {
@@ -109,9 +156,12 @@ export const SegmentationCompiler = {
         ), 0) ${compareSign} ${getPlaceholder(countThreshold)}::numeric`;
       }
 
-      if (sqlCond) {
-        conditions.push(sqlCond);
+      // Every rule was validated above, so an empty condition here is a compiler bug — fail
+      // loudly rather than silently widening the audience.
+      if (!sqlCond) {
+        throw new InvalidRuleGroupError(`Unsupported segment rule for field "${rule.field}"`);
       }
+      conditions.push(sqlCond);
     }
 
     const whereClause = conditions.length > 0 ? `AND (${conditions.join(logicOperator)})` : '';
@@ -121,14 +171,50 @@ export const SegmentationCompiler = {
   },
 
   /**
+   * COUNT-ONLY evaluation: how many contacts match, and how many of those are reachable by email
+   * and by SMS/WhatsApp, computed in the database (fn_count_segment_sql) without returning any
+   * rows. Use this wherever only a number is displayed; executeSegment() is for callers that need
+   * the matched contacts. Same validation and the same compiled SQL as executeSegment(), so the
+   * numbers agree with it — and unlike executeSegment() it is not capped at PostgREST's 1000 rows.
+   *
+   * Returns null when the RPC is unavailable/fails (the caller falls back to executeSegment()).
+   * Throws InvalidRuleGroupError for a malformed group, exactly like executeSegment().
+   */
+  async countSegment(workspaceId: string, ruleGroup: RuleGroup): Promise<{ total: number; emailReach: number; smsReach: number } | null> {
+    assertValidRuleGroup(ruleGroup);
+    const compiled = this.compileToSql(workspaceId, ruleGroup);
+    try {
+      const { data, error } = await createAdminClient().rpc('fn_count_segment_sql', {
+        p_sql: compiled.sql,
+        p_params: compiled.params,
+      });
+      const row = Array.isArray(data) ? data[0] : data;
+      if (error || !row) {
+        console.warn(`[SegmentationCompiler] count RPC failed: ${error?.message ?? 'no row'}. Caller should fall back.`);
+        return null;
+      }
+      return { total: Number(row.total), emailReach: Number(row.email_reach), smsReach: Number(row.sms_reach) };
+    } catch (err: any) {
+      console.warn(`[SegmentationCompiler] count RPC call failed: ${err.message}. Caller should fall back.`);
+      return null;
+    }
+  },
+
+  /**
    * Resolves contact list by executing compiled SQL via DB RPC, or falling back
    * to programmatic client-side intersections to ensure remote environment compatibility.
    */
   async executeSegment(workspaceId: string, ruleGroup: RuleGroup): Promise<any[]> {
+    // Validate once, before either path runs, so the SQL RPC and the JS fallback can never
+    // disagree about a malformed rule (they previously did, in opposite directions).
+    assertValidRuleGroup(ruleGroup);
     const supabase = createAdminClient();
     const compiled = this.compileToSql(workspaceId, ruleGroup);
 
-    // 1. Attempt DB RPC invocation (For local environments with applied SQL functions)
+    // 1. Attempt the DB RPC. BACKEND-ONLY: fn_execute_segment_sql is SECURITY DEFINER and
+    // granted to service_role alone (see 20260921000001_lockdown_fn_execute_segment_sql.sql),
+    // which is why this MUST run through createAdminClient() — never a user-session client.
+    // It is the production hot path (campaigns, auto-senders, Segments counts), not optional.
     try {
       const { data, error } = await supabase.rpc('fn_execute_segment_sql', {
         p_sql: compiled.sql,
@@ -167,6 +253,11 @@ export const SegmentationCompiler = {
         supabase.from('email_tracking_logs').select('*').eq('workspace_id', workspaceId)
       ]);
 
+      // Only load tag data when a rule needs it.
+      const tagNamesByContact = ruleGroup.rules.some((r) => r.field === 'tags')
+        ? await loadContactTagNames(supabase, workspaceId)
+        : new Map<string, Set<string>>();
+
       const invoices = invoicesRes.data || [];
       const enrollments = enrollmentsRes.data || [];
       const logs = logsRes.data || [];
@@ -197,7 +288,8 @@ export const SegmentationCompiler = {
           }
 
           if (rule.field === 'tags') {
-            return Array.isArray(contact.tags) && contact.tags.includes(val);
+            // same semantics as the SQL EXISTS: assignment-backed, case-insensitive
+            return tagNamesByContact.get(contact.id)?.has(String(val).toLowerCase()) ?? false;
           }
 
           if (rule.field === 'invoice_status') {
@@ -239,7 +331,8 @@ export const SegmentationCompiler = {
             return count >= threshold;
           }
 
-          return false;
+          // unreachable: assertValidRuleGroup() rejected unknown fields before this ran
+          throw new InvalidRuleGroupError(`Unsupported segment rule for field "${rule.field}"`);
         });
 
         if (ruleGroup.logic === 'OR') {
@@ -249,6 +342,7 @@ export const SegmentationCompiler = {
         }
       });
     } catch (fallbackErr: any) {
+      if (fallbackErr instanceof InvalidRuleGroupError) throw fallbackErr;
       console.error(`[SegmentationCompiler] Fallback filtration failed: ${fallbackErr.message}`);
       return [];
     }

@@ -8,6 +8,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select';
 import type { FilterRule, RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
+import { validateRule, isNotHint } from '@/lib/segments/ruleValidation';
 
 // Mirrors exactly the 8 rule.field branches SegmentationCompiler.compileToSql()
 // implements — adding a field here without a matching branch there (or vice
@@ -101,8 +102,12 @@ export function SegmentRuleBuilder({ value, onChange }: SegmentRuleBuilderProps)
       <div className="space-y-2">
         {ruleGroup.rules.map((rule, index) => {
           const def = fieldDef(rule.field);
+          // Only flag a blank/invalid VALUE inline (field/operator are constrained by the selects).
+          const problem = validateRule(rule, index);
+          const valueProblem = problem ? (String(rule.value ?? '').trim() === '' ? 'Enter a value' : 'Check this value') : null;
           return (
-            <div key={index} className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <div key={index} className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
               <Select
                 value={rule.field}
                 onValueChange={(field) => {
@@ -149,6 +154,11 @@ export function SegmentRuleBuilder({ value, onChange }: SegmentRuleBuilderProps)
               >
                 <Trash2 size={14} />
               </button>
+            </div>
+            {isNotHint(rule.field, rule.operator) && (
+              <p className="text-[10px] font-semibold !text-dash-textMuted pl-1" data-testid="is-not-hint">{isNotHint(rule.field, rule.operator)}</p>
+            )}
+            {valueProblem && <p className="text-[10px] font-semibold text-red pl-1">{valueProblem} — a condition without a value can't be saved.</p>}
             </div>
           );
         })}

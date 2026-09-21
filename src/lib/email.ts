@@ -1,6 +1,22 @@
 import { Resend } from 'resend'
 import { logger } from '@/shared/logger'
 
+/**
+ * An email failure whose message is safe to show an end user as-is: the provider
+ * (Resend) rejected the request with a reason it chose (invalid recipient, rate
+ * limit, unverified domain...), or our own config guard fired (no provider key).
+ * Anything else thrown out of sendEmail (network failure, SDK/runtime exception)
+ * is a plain Error and must NOT be echoed to users — it can carry internal
+ * detail. Callers that surface errors check `userSafe`.
+ */
+export class EmailSendError extends Error {
+ readonly userSafe = true as const
+ constructor(message: string) {
+  super(message)
+  this.name = 'EmailSendError'
+ }
+}
+
 interface SendEmailProps {
  to: string | string[]
  subject: string
@@ -51,7 +67,7 @@ export async function sendEmail({ to, subject, react, html, text, scheduledAt, r
  // was made. A provider credential is required for every email environment.
  const normalizedApiKey = apiKey?.trim();
  if (!normalizedApiKey || normalizedApiKey === 're_123' || normalizedApiKey.toUpperCase().includes('PLACEHOLDER')) {
-  const error = new Error(
+  const error = new EmailSendError(
    isPlatformLevelSend
     ? 'Email delivery is unavailable: a valid Resend API key is not configured.'
     : 'Email delivery is unavailable for this workspace — connect a Resend account before sending automated emails.'
@@ -89,12 +105,15 @@ export async function sendEmail({ to, subject, react, html, text, scheduledAt, r
 
   if (error) {
    logger.error({ err: error }, 'email.resend_api.failed');
-   throw new Error(error.message || 'Failed to send email via Resend');
+   throw new EmailSendError(error.message || 'Failed to send email via Resend');
   }
 
   return data;
  } catch (error: any) {
   logger.error({ err: error }, 'email.service.exception');
+  // Provider rejections keep their class (safe to show); anything else is an
+  // internal/transport failure — re-wrap as a plain Error, not user-safe.
+  if (error instanceof EmailSendError) throw error;
   throw new Error(error.message || 'Email service error');
  }
 }

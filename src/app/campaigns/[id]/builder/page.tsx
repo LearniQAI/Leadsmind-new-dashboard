@@ -45,6 +45,8 @@ export default async function EmailBuilderPage({ params }: PageProps) {
     brandFontDefault: workspace?.brand_font_default || 'Inter'
   };
 
+  const { data: { user } } = await supabase.auth.getUser();
+
   const segmentsRes = await listSegments();
   const availableSegments = segmentsRes.success ? segmentsRes.data : [];
 
@@ -55,6 +57,7 @@ export default async function EmailBuilderPage({ params }: PageProps) {
         initialCampaign={campaign}
         brandKit={brandKit}
         availableSegments={availableSegments}
+        userEmail={user?.email ?? ''}
       />
     </MetaData>
   );

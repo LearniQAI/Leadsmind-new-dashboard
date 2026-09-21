@@ -5,6 +5,12 @@ import { requireWorkspaceAccess, requireFormAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 import { getTemplateById } from '@/lib/builder/templates';
 import { inngest } from '@/lib/inngest';
+import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
+import { userSafeMessage } from '@/shared/errors/userSafe';
+import { validateRuleGroup } from '@/lib/segments/ruleValidation';
+import { loadSegmentRuleGroup, SegmentUnavailableError } from '@/lib/segments/resolveSegment';
+import type { RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
+import { resolveCampaignFromEmail, isUsableCampaignFromEmail, isPlatformSenderDomain, FROM_EMAIL_REQUIRED_MESSAGE } from '@/lib/campaigns/fromEmail';
 
 // FUNNELS
 export async function getFunnels() {
@@ -1011,7 +1017,15 @@ export async function deleteFunnelAction(id: string) {
  }
 }
 
+// Errors whose message is safe and useful to show the user verbatim (config /
+// validation problems). Everything else still collapses to the generic message.
+class CampaignUserError extends Error {}
+
 export async function updateCampaign(id: string, updates: any) {
+ let previousState: { status: string; scheduled_for: string | null } | null = null;
+ let directEmailConfig: Awaited<ReturnType<typeof getWorkspaceEmailConfig>> = null;
+ let audienceLookupFailed = false;
+ let resolvedSegmentRuleGroup: RuleGroup | null = null;
  try {
   const supabase = await createServerClient();
   let workspaceId: string;
@@ -1021,12 +1035,47 @@ export async function updateCampaign(id: string, updates: any) {
    return { error: 'Unauthorized' };
   }
 
+  // Ad-hoc segment rules are validated whenever they are saved (not only at send): an unknown
+  // field or a blank value used to be stored silently and later matched the WRONG audience.
+  if (Array.isArray(updates.segment?.ruleGroup?.rules) && updates.segment.ruleGroup.rules.length > 0) {
+   const ruleProblem = validateRuleGroup(updates.segment.ruleGroup);
+   if (ruleProblem) throw new CampaignUserError(ruleProblem);
+  }
+
   // If moving status to sent or scheduled, enforce Domain Verification rules
   if (updates.status === 'sent' || updates.status === 'scheduled') {
    if (updates.status === 'scheduled' && updates.scheduled_for) {
     const scheduledAt = new Date(updates.scheduled_for);
     if (Number.isNaN(scheduledAt.getTime()) || scheduledAt.getTime() <= Date.now()) {
-     throw new Error('Campaign scheduled time must be in the future.');
+     throw new CampaignUserError('Campaign scheduled time must be in the future.');
+    }
+   }
+   // A campaign must be aimed at someone. An empty audience used to queue zero
+   // rows and still report success, leaving the campaign 'scheduled' forever.
+   // We require an explicit audience (like SMS/WhatsApp) rather than treating
+   // "blank" as "every contact" — an accidental all-CRM blast is the worse failure.
+   if (updates.status === 'scheduled') {
+    const seg = updates.segment;
+    const hasAudience =
+     (Array.isArray(seg?.tags) && seg.tags.length > 0) ||
+     (Array.isArray(seg?.ruleGroup?.rules) && seg.ruleGroup.rules.length > 0) ||
+     !!seg?.segmentId ||
+     (Array.isArray(seg?.emails) && seg.emails.length > 0);
+    if (!hasAudience) {
+     throw new CampaignUserError('Choose who this campaign is for: select at least one tag, a saved segment, a filter, or enter direct email addresses.');
+    }
+
+    // A saved segment is resolved NOW, before anything is mutated, and the campaign FAILS
+    // CLOSED if it is gone. Previously a deleted segment was silently dropped, turning
+    // "tag AND segment" into "tag alone" and sending to everyone with that tag.
+    const usesAdHocRules = Array.isArray(seg?.ruleGroup?.rules) && seg.ruleGroup.rules.length > 0;
+    if (!usesAdHocRules && seg?.segmentId) {
+     try {
+      resolvedSegmentRuleGroup = await loadSegmentRuleGroup(supabase, workspaceId, seg.segmentId);
+     } catch (segErr) {
+      if (segErr instanceof SegmentUnavailableError) throw new CampaignUserError(segErr.message);
+      throw segErr;
+     }
     }
    }
    // Scoped to the caller's own verified workspace — previously this looked
@@ -1041,7 +1090,7 @@ export async function updateCampaign(id: string, updates: any) {
    // silently succeeding against someone else's data.
    const { data: campaign, error: campaignError } = await supabase
     .from('email_campaigns')
-    .select('from_email, workspace_id')
+    .select('from_email, workspace_id, status, scheduled_for')
     .eq('id', id)
     .eq('workspace_id', workspaceId)
     .single();
@@ -1050,24 +1099,37 @@ export async function updateCampaign(id: string, updates: any) {
     throw new Error('Email campaign not found.');
    }
 
-  let fromEmail = updates.from_email || campaign.from_email;
+   previousState = { status: campaign.status, scheduled_for: campaign.scheduled_for };
 
-   // Default to Leadsmind address if not set
-   if (!fromEmail) {
-    fromEmail = 'hello@leadsmind.io';
-    updates.from_email = fromEmail;
+   // Preflight BEFORE any state is mutated: sending needs the workspace's own
+   // Resend account (queue worker and direct path alike), so an unconfigured
+   // workspace must fail here with a clear message, not after the campaign has
+   // been flipped to scheduled/sent and every queued row hard-fails later.
+   const emailConfig = await getWorkspaceEmailConfig(workspaceId);
+   if (!emailConfig?.apiKey) {
+    throw new CampaignUserError('Connect your Resend account in Settings before scheduling or sending campaigns.');
+   }
+   if (updates.segment?.emails?.length > 0 && updates.body_html && !updates.scheduled_for) {
+    directEmailConfig = emailConfig;
    }
 
-   const emailParts = fromEmail.split('@');
-   if (emailParts.length < 2) {
-    throw new Error('Invalid "From Email" address format.');
+   // From address: the campaign's own, else the one saved with the workspace's
+   // Resend provider. Never a platform address (leadsmind.io / resend.dev) —
+   // the customer's Resend account can't send from those, so substituting one
+   // just moves the failure to Resend, after the campaign is already queued.
+   if (updates.from_email && !isUsableCampaignFromEmail(updates.from_email, emailConfig.fromEmail)) {
+    throw new CampaignUserError(FROM_EMAIL_REQUIRED_MESSAGE);
    }
-   const domainName = emailParts[1].toLowerCase().trim();
+   const fromEmail = resolveCampaignFromEmail(updates.from_email || campaign.from_email, emailConfig.fromEmail);
+   if (!fromEmail) throw new CampaignUserError(FROM_EMAIL_REQUIRED_MESSAGE);
+   updates.from_email = fromEmail;
 
-   // Skip checks for the sandbox domain if desired, but throw warning otherwise
-   const isDefaultSandbox = domainName === 'resend.dev' || domainName === 'leadsmind.io';
+   const domainName = fromEmail.split('@')[1].toLowerCase().trim();
 
-   if (!isDefaultSandbox) {
+   // A platform-domain From only gets here if it matches the workspace's own
+   // provider From (see fromEmail.ts) — that provider is the proof of ownership,
+   // so the DNS-registration check applies to customer domains only.
+   if (!isPlatformSenderDomain(domainName)) {
     const { data: domainRecord, error: domainError } = await supabase
      .from('sender_domains')
      .select('spf_status, dkim_status')
@@ -1076,11 +1138,11 @@ export async function updateCampaign(id: string, updates: any) {
      .single();
 
     if (domainError || !domainRecord) {
-     throw new Error(`Hard Block: Domain '${domainName}' is not registered. Please register and authenticate this domain in Settings > Domains first.`);
+     throw new CampaignUserError(`Hard Block: Domain '${domainName}' is not registered. Please register and authenticate this domain in Settings > Domains first.`);
     }
 
     if (!domainRecord.spf_status || !domainRecord.dkim_status) {
-     throw new Error(`Hard Block: Domain '${domainName}' has unverified SPF/DKIM records. You must complete verification in Settings > Domains before scheduling or sending campaigns.`);
+     throw new CampaignUserError(`Hard Block: Domain '${domainName}' has unverified SPF/DKIM records. You must complete verification in Settings > Domains before scheduling or sending campaigns.`);
     }
    }
   }
@@ -1102,17 +1164,9 @@ export async function updateCampaign(id: string, updates: any) {
    // snapshot), so an edit to the segment after this campaign was configured
    // is picked up automatically. Mutually exclusive with an ad-hoc ruleGroup
    // in the UI, but if both were somehow set the ad-hoc one wins above.
-   const segmentId: string | null = updates.segment?.segmentId || null;
-   if (!ruleGroup && segmentId && data.workspace_id) {
-    const { data: savedSegment } = await supabase
-     .from('segments')
-     .select('rule_group')
-     .eq('id', segmentId)
-     .eq('workspace_id', data.workspace_id)
-     .maybeSingle();
-    if (savedSegment?.rule_group && Array.isArray(savedSegment.rule_group.rules) && savedSegment.rule_group.rules.length > 0) {
-     ruleGroup = savedSegment.rule_group;
-    }
+   // (already resolved and validated in the preflight above; a missing segment never reaches here)
+   if (!ruleGroup && resolvedSegmentRuleGroup) {
+    ruleGroup = resolvedSegmentRuleGroup;
    }
 
    const combineMode: 'AND' | 'OR' = updates.segment?.combineMode === 'OR' ? 'OR' : 'AND';
@@ -1195,12 +1249,20 @@ export async function updateCampaign(id: string, updates: any) {
 
     if (matchError) {
      logger.error({ err: matchError, campaignId: id }, 'update.campaign.tag_match.failed');
+     audienceLookupFailed = true;
     } else if (matchedContactIds.size > 0) {
      // Dedupe defensively — a contact must only ever get one queue row per
      // campaign even if future matching logic can return the same contact
      // via more than one path.
-     const uniqueContactIds = Array.from(matchedContactIds);
+     const { filterEmailableContactIds } = await import('@/lib/campaigns/emailSuppression');
+     // Enqueue-time gate: drop unsubscribed / invalid / email-less contacts. The
+     // dispatch worker re-checks at send time (state can change before then).
+     // Admin client: the caller may lack RLS read on the suppression list.
+     const { eligible: uniqueContactIds, excluded: suppressedCount } = await filterEmailableContactIds(
+      createAdminClient(), data.workspace_id, Array.from(matchedContactIds));
+     if (suppressedCount > 0) logger.info({ campaignId: id, suppressedCount }, 'update.campaign.enqueue.suppressed_excluded');
 
+     if (uniqueContactIds.length > 0) {
      const queueScheduledFor = updates.scheduled_for || new Date().toISOString();
      const queueRows = uniqueContactIds.map(contactId => ({
      campaign_id: id,
@@ -1230,52 +1292,109 @@ export async function updateCampaign(id: string, updates: any) {
       .eq('campaign_id', id)
       .in('status', ['pending', 'deferred']);
      if (rescheduleError) throw rescheduleError;
-
+     }
      matchedContactsCount = uniqueContactIds.length;
     }
+   }
+
+   // Nothing was queued and there are no direct addresses to send to: this is
+   // not a send. Restore the previous state and say why instead of returning
+   // success with the campaign stranded 'scheduled'. (An auto-sender may
+   // legitimately match nobody yet — it targets future contacts — unless the
+   // audience lookup itself failed.)
+   const hasDirectRecipients = updates.segment?.emails?.length > 0 && !updates.scheduled_for;
+   if (updates.status === 'scheduled' && matchedContactsCount === 0 && !hasDirectRecipients
+     && (audienceLookupFailed || !updates.segment?.is_automated) && previousState) {
+    await supabase
+     .from('email_campaigns')
+     .update({ status: previousState.status, scheduled_for: previousState.scheduled_for })
+     .eq('id', id)
+     .eq('workspace_id', workspaceId);
+    throw new CampaignUserError(audienceLookupFailed
+     ? 'Could not resolve the campaign audience. Please try again.'
+     : 'No eligible recipients matched this audience (contacts may be unsubscribed, have invalid emails, or none carry these tags). The campaign was not scheduled.');
    }
 
    // If specific emails were provided, instantly dispatch to them! This path
    // never goes through the dispatch worker, so it must do its own
    // per-recipient personalization here — updates.body_html is stored with
    // {{tokens}} intact (see EmailBuilderClient's skipPersonalization).
-   if (updates.segment?.emails?.length > 0 && updates.body_html && !updates.scheduled_for) {
+   if (directEmailConfig?.apiKey && updates.segment?.emails?.length > 0 && updates.body_html && !updates.scheduled_for) {
     const { sendEmail } = await import('@/lib/email');
     const { parsePersonalTokens } = await import('@/lib/builder/emailRenderer');
     const { buildUnsubscribeLink } = await import('@/lib/email/unsubscribeLink');
+    const { loadSuppressedEmails, suppressionReason } = await import('@/lib/campaigns/emailSuppression');
 
     // Direct-list addresses aren't necessarily existing CRM contacts — look
     // up whichever ones are, for real first_name/last_name/company; the rest
     // fall back to parsePersonalTokens's own generic defaults.
     const { data: matchingContacts } = await supabase
      .from('contacts')
-     .select('email, first_name, last_name, company')
+     .select('id, email, first_name, last_name, company, is_invalid_email')
      .eq('workspace_id', workspaceId)
      .in('email', updates.segment.emails);
     const contactsByEmail = new Map((matchingContacts || []).map((c: any) => [c.email.toLowerCase(), c]));
 
-    for (const email of updates.segment.emails) {
-     const contact = contactsByEmail.get(email.toLowerCase());
-     const personalizedHtml = parsePersonalTokens(updates.body_html, contact, {
-      unsubscribe_link: buildUnsubscribeLink(email, workspaceId)
-     });
+    // Same compliance gate as the queue path: unsubscribed / invalid
+    // addresses are never emailed, even when typed in directly.
+    const suppressed = await loadSuppressedEmails(createAdminClient(), [workspaceId]);
 
-     await sendEmail({
-      to: email,
-      subject: updates.subject || data.subject || 'LeadsMind Campaign',
-      html: personalizedHtml,
-      config: {
-       fromEmail: updates.from_email || data.from_email || 'hello@leadsmind.io',
-       fromName: data.from_name || 'LeadsMind'
-      }
-     });
+    const directSent: string[] = [];
+    const directSkipped: string[] = [];
+    const directFailed: { email: string; reason: string }[] = [];
+    for (const email of updates.segment.emails as string[]) {
+     const contact = contactsByEmail.get(email.toLowerCase());
+     if (suppressionReason({ email, is_invalid_email: contact?.is_invalid_email }, workspaceId, suppressed)) {
+      directSkipped.push(email);
+      continue;
+     }
+     try {
+      await sendEmail({
+       to: email,
+       subject: updates.subject || data.subject || 'LeadsMind Campaign',
+       html: parsePersonalTokens(updates.body_html, contact, {
+        unsubscribe_link: buildUnsubscribeLink(email, workspaceId)
+       }),
+       // Workspace's own key, same as the queue worker — sendEmail fails
+       // closed without one (no platform-account fallback).
+       config: {
+        apiKey: directEmailConfig.apiKey,
+        fromEmail: updates.from_email,
+        fromName: data.from_name || directEmailConfig.fromName || 'LeadsMind',
+        tags: [
+         { name: 'campaign_id', value: id },
+         ...(contact?.id ? [{ name: 'contact_id', value: contact.id }] : []),
+        ],
+       }
+      });
+      directSent.push(email);
+     } catch (sendErr: any) {
+      logger.error({ err: sendErr, campaignId: id }, 'update.campaign.direct_send.failed');
+      // The full error is logged above; `reason` is returned to the client and
+      // embedded in the rollback error, so only provider/config reasons may pass.
+      directFailed.push({ email, reason: userSafeMessage(sendErr, 'an unexpected error occurred') });
+     }
     }
+
+    // Nothing went out and nothing else is queued: don't leave the campaign
+    // silently flipped to scheduled/sent — restore what it was and say why.
+    if (directSent.length === 0 && directFailed.length > 0 && matchedContactsCount === 0 && previousState) {
+     await supabase
+      .from('email_campaigns')
+      .update({ status: previousState.status, scheduled_for: previousState.scheduled_for })
+      .eq('id', id)
+      .eq('workspace_id', workspaceId);
+     throw new CampaignUserError(`Email could not be sent: ${directFailed[0].reason}. The campaign was not scheduled.`);
+    }
+
+    return { data, matchedContactsCount, directSent, directSkipped, directFailed };
    }
   }
 
   return { data, matchedContactsCount };
  } catch (error: any) {
    logger.error({ err: error }, 'update.campaign.failed');
+   if (error instanceof CampaignUserError) return { error: error.message };
    return { error: 'Operation failed. Please try again.' };
  }
 }
@@ -1299,7 +1418,7 @@ export async function dispatchCampaignNow(campaignId: string) {
    .eq('campaign_id', campaignId)
    .in('status', ['pending', 'processing', 'deferred']);
   if (queueError) throw queueError;
-  if ((count ?? 0) === 0) return { success: true, queued: 0, message: 'No queued CRM recipients to dispatch.' };
+  if ((count ?? 0) === 0) return { error: 'No recipients are queued for this campaign, so nothing was sent.' };
 
   await inngest.send({ name: 'campaign/dispatch', data: { campaignId } });
   return { success: true, queued: count ?? 0 };
@@ -1512,23 +1631,73 @@ export async function sendTestEmailAction(campaignId: string, testEmail: string,
    .eq('workspace_id', workspaceId)
    .single();
 
-  if (error || !campaign) throw new Error('Campaign not found');
+  if (error || !campaign) return { error: 'Campaign not found.' };
+
+  // Workspace's own Resend key — sendEmail fails closed without one (no
+  // platform-account fallback), so an unconfigured workspace gets a clear
+  // actionable message instead of a generic failure.
+  const emailConfig = await getWorkspaceEmailConfig(workspaceId);
+  if (!emailConfig?.apiKey) {
+   return { error: 'Connect your Resend account in Settings before sending a test email.' };
+  }
+
+  const testFrom = resolveCampaignFromEmail(campaign.from_email, emailConfig.fromEmail);
+  if (!testFrom) return { error: FROM_EMAIL_REQUIRED_MESSAGE };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(testEmail || '')) return { error: 'Enter a valid email address.' };
+
+  // Same compliance gate as real sends: never email an unsubscribed/invalid
+  // address through the workspace's key — except the signed-in user's own
+  // address (they're the account holder; otherwise clicking the unsubscribe
+  // link in a test email would lock them out of testing forever).
+  const { data: authData } = await supabase.auth.getUser();
+  const authEmail = authData?.user?.email?.trim().toLowerCase() ?? null;
+  const authUserId = authData?.user?.id ?? null;
+  if (testEmail.trim().toLowerCase() !== authEmail) {
+   const { loadSuppressedEmails, suppressionReason } = await import('@/lib/campaigns/emailSuppression');
+   const admin = createAdminClient();
+   const suppressed = await loadSuppressedEmails(admin, [workspaceId]);
+   const { data: known } = await admin
+    .from('contacts')
+    .select('is_invalid_email')
+    .eq('workspace_id', workspaceId)
+    .ilike('email', testEmail.trim());
+   const invalid = (known ?? []).some((c: any) => c.is_invalid_email);
+   if (suppressionReason({ email: testEmail, is_invalid_email: invalid }, workspaceId, suppressed)) {
+    return { error: `${testEmail.trim()} has unsubscribed or is marked invalid, so a test email can't be sent to it.` };
+   }
+  }
+
+  // Cap test sends (per workspace and per recipient, per hour) so this can't be
+  // used to mass-email arbitrary addresses through the workspace's Resend key.
+  const { claimTestSendSlot } = await import('@/lib/campaigns/testSendLimit');
+  const slot = await claimTestSendSlot(createAdminClient(), workspaceId, authUserId, testEmail);
+  if (slot.ok === false) return { error: slot.error };
 
   const { sendEmail } = await import('@/lib/email');
-  
+  const { parsePersonalTokens } = await import('@/lib/builder/emailRenderer');
+  const { buildUnsubscribeLink } = await import('@/lib/email/unsubscribeLink');
+
   await sendEmail({
    to: testEmail,
    subject: `[TEST] ${campaign.subject || 'Test Campaign'}`,
-   html: compiledHtml,
+   // compiledHtml keeps {{tokens}}; resolve them like the real send does.
+   html: parsePersonalTokens(compiledHtml, undefined, { unsubscribe_link: buildUnsubscribeLink(testEmail, workspaceId) }),
    config: {
-    fromEmail: campaign.from_email || 'hello@leadsmind.io',
-    fromName: campaign.from_name || 'LeadsMind Test'
+    apiKey: emailConfig.apiKey,
+    fromEmail: testFrom,
+    fromName: campaign.from_name || emailConfig.fromName || 'LeadsMind Test'
    }
   });
 
   return { success: true };
  } catch (error: any) {
+  // Full detail always goes to the server log...
   logger.error({ err: error }, 'send.test.email.action.failed');
-  return { error: 'Operation failed. Please try again.' };
+  // ...but only errors explicitly marked user-safe (a provider rejection or our
+  // own config guard, both raised by sendEmail as EmailSendError) reach the
+  // user. Anything else — DB/auth errors, network failures, unexpected
+  // exceptions — can carry internal detail, so the user gets a generic message.
+  if (error?.userSafe === true) return { error: `Test email failed: ${error.message}` };
+  return { error: 'Something went wrong sending the test email. Please try again.' };
  }
 }

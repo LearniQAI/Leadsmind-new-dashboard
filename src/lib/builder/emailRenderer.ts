@@ -413,3 +413,13 @@ export function renderEmailLayout(
   }
   return parsePersonalTokens(fullHtml, contact, additionalVars);
 }
+
+/**
+ * The single way a campaign's stored body_html is compiled. Used by both
+ * "Save design" and "Send/Schedule" so they can never diverge: tokens (incl.
+ * {{unsubscribe_link}}) are left intact for per-recipient resolution by the
+ * dispatch worker.
+ */
+export function compileCampaignHtml(blocks: EmailBlock[], brandKit: BrandKit, preheaderText?: string): string {
+  return renderEmailLayout(blocks, brandKit, {}, {}, preheaderText, true);
+}

@@ -9,6 +9,7 @@ import { requireWorkspaceAccess, getUser, getCurrentWorkspaceId } from '@/lib/au
 import { UnauthorizedError, ForbiddenError } from '@/lib/errors';
 import { logger } from '@/shared/logger';
 import { toClientError, ValidationError } from '@/shared/errors/AppError';
+import { userSafeMessage } from '@/shared/errors/userSafe';
 
 function safeRevalidatePath(path: string) {
   try {
@@ -259,8 +260,11 @@ export async function sendInvoiceNow(invoiceId: string) {
   }
  } catch (e) {
   logger.error({ err: e, invoiceId, workspaceId }, 'finance.invoice.send_now.failed');
-  const message = e instanceof Error ? e.message : 'Failed to send invoice';
-  return { success: false, error: message };
+  // sendInvoiceEmail can throw from PDF generation (Chromium), the email
+  // provider, or the DB. Only a provider/config rejection (EmailSendError) is
+  // safe to show; PDF and DB failures never are — generic message, full detail
+  // already logged above.
+  return { success: false, error: userSafeMessage(e, 'Failed to send invoice. Please try again.') };
  }
 
  safeRevalidatePath('/invoices');

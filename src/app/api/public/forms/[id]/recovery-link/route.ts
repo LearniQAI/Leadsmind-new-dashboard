@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { RecoveryTokenHandler } from '@/lib/persistence/RecoveryTokenHandler';
 import { RecoveryManager } from '@/lib/persistence/RecoveryManager';
+import { logger } from '@/shared/logger';
 import { createHash, timingSafeEqual } from 'crypto';
 
 // Basic IP rate limiting — this is a public, unauthenticated endpoint that dispatches a real
@@ -113,16 +114,18 @@ export async function POST(
 
     if (!emailRes.success) {
       return NextResponse.json(
-        { error: emailRes.error || 'Failed to send recovery email' },
+        // Fixed message regardless of what the manager returned — public endpoint.
+        { error: 'Failed to send recovery email. Please try again.' },
         { status: 500 }
       );
     }
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
-    console.error('[RecoveryLinkAPI] Unhandled error:', err);
+    // Public endpoint: log everything, return a fixed generic message ALWAYS.
+    logger.error({ err }, 'recovery_link.unhandled');
     return NextResponse.json(
-      { error: err.message || 'Internal server error' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
