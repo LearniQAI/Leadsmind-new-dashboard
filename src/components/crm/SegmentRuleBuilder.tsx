@@ -8,7 +8,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select';
 import type { FilterRule, RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
-import { validateRule } from '@/lib/segments/ruleValidation';
+import { validateRule, isNotHint } from '@/lib/segments/ruleValidation';
 
 // Mirrors exactly the 8 rule.field branches SegmentationCompiler.compileToSql()
 // implements — adding a field here without a matching branch there (or vice
@@ -155,6 +155,9 @@ export function SegmentRuleBuilder({ value, onChange }: SegmentRuleBuilderProps)
                 <Trash2 size={14} />
               </button>
             </div>
+            {isNotHint(rule.field, rule.operator) && (
+              <p className="text-[10px] font-semibold !text-dash-textMuted pl-1" data-testid="is-not-hint">{isNotHint(rule.field, rule.operator)}</p>
+            )}
             {valueProblem && <p className="text-[10px] font-semibold text-red pl-1">{valueProblem} — a condition without a value can't be saved.</p>}
             </div>
           );

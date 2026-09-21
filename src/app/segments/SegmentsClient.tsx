@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Plus, Users, Pencil, Trash2, MoreVertical } from 'lucide-react';
+import { Plus, Users, Pencil, Trash2, MoreVertical, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
@@ -17,7 +17,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { SegmentRuleBuilder } from '@/components/crm/SegmentRuleBuilder';
 import type { RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
 import { validateRuleGroup } from '@/lib/segments/ruleValidation';
-import { createSegment, updateSegment, deleteSegment, getSegmentDependents } from '@/app/actions/segments';
+import { createSegment, updateSegment, deleteSegment, duplicateSegment, getSegmentDependents } from '@/app/actions/segments';
 import { DEPENDENT_KIND_LABEL, type SegmentDependent } from '@/lib/segments/dependents';
 
 interface SegmentRow {
@@ -25,6 +25,7 @@ interface SegmentRow {
   name: string;
   rule_group: RuleGroup;
   memberCount: number | null;
+  reach?: { email: number; sms: number; whatsapp: number } | null;
   created_at: string;
 }
 
@@ -40,6 +41,13 @@ export default function SegmentsClient({ initialSegments }: { initialSegments: S
   const [deleteTarget, setDeleteTarget] = useState<SegmentRow | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [dependents, setDependents] = useState<SegmentDependent[]>([]);
+
+  const handleDuplicate = async (segment: SegmentRow) => {
+    const res = await duplicateSegment(segment.id);
+    if (!res.success) { toast.error(res.error || 'Failed to duplicate segment'); return; }
+    toast.success('Segment duplicated');
+    setSegments((prev) => [res.data, ...prev]);
+  };
 
   const requestDelete = async (segment: SegmentRow) => {
     // Look up what depends on the segment BEFORE opening the dialog, so the warning is in it.
@@ -81,9 +89,9 @@ export default function SegmentsClient({ initialSegments }: { initialSegments: S
       toast.success(editingSegment ? 'Segment updated!' : 'Segment created!');
       setSegments((prev) => {
         if (editingSegment) {
-          return prev.map((s) => (s.id === editingSegment.id ? { ...s, ...res.data, memberCount: null } : s));
+          return prev.map((s) => (s.id === editingSegment.id ? { ...s, ...res.data } : s));
         }
-        return [{ ...res.data, memberCount: null }, ...prev];
+        return [res.data, ...prev];
       });
       setFormOpen(false);
     } finally {
@@ -149,6 +157,12 @@ export default function SegmentsClient({ initialSegments }: { initialSegments: S
                       <Pencil size={14} /> Edit
                     </DropdownMenuItem>
                     <DropdownMenuItem
+                      className="cursor-pointer flex items-center gap-2 hover:bg-dash-surface rounded-lg p-2 font-bold"
+                      onClick={() => handleDuplicate(segment)}
+                    >
+                      <Copy size={14} /> Duplicate
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
                       className="cursor-pointer flex items-center gap-2 hover:bg-red/10 rounded-lg p-2 font-bold text-red"
                       onClick={() => requestDelete(segment)}
                     >
@@ -160,8 +174,13 @@ export default function SegmentsClient({ initialSegments }: { initialSegments: S
 
               <p className="text-sm font-bold !text-dash-text mb-1">{segment.name}</p>
               <p className="text-[11px] !text-dash-textMuted font-semibold">
-                {segment.memberCount === null ? 'Count unavailable' : `${segment.memberCount} contact${segment.memberCount === 1 ? '' : 's'}`}
+                {segment.memberCount === null ? 'Count unavailable' : `${segment.memberCount} matching contact${segment.memberCount === 1 ? '' : 's'}`}
               </p>
+              {segment.reach && (
+                <p className="text-[11px] !text-dash-textMuted mt-1" data-testid="segment-reach" title="Contacts a campaign can actually reach: unsubscribed, invalid-email, no-phone and opted-out contacts are skipped at send time.">
+                  Reachable: {segment.reach.email} email · {segment.reach.sms} SMS · {segment.reach.whatsapp} WhatsApp
+                </p>
+              )}
               <p className="text-[11px] !text-dash-textMuted mt-1">
                 {segment.rule_group.rules.length} condition{segment.rule_group.rules.length === 1 ? '' : 's'} ({segment.rule_group.logic})
               </p>

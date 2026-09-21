@@ -59,11 +59,20 @@ describe('deleteSegment', () => {
 
   it('deletes when acknowledged, and when nothing depends on it', async () => {
     reset();
-    h.rows = { email_campaigns: [{ id: '1', name: 'Spring push', status: 'draft', segment: {} }] };
+    h.rows = { email_campaigns: [{ id: '1', name: 'Spring push', status: 'draft', segment: {} }], segments: [{ id: 's' }] };
     expect((await deleteSegment('s', { acknowledgeDependents: true })).success).toBe(true);
     reset();
+    h.rows = { segments: [{ id: 's' }] };
     expect((await deleteSegment('s')).success).toBe(true);
     expect(h.deleted).toBe(1);
+  });
+
+  it('reports FAILURE when the delete removed 0 rows (RLS-blocked / already gone), never a silent success', async () => {
+    reset();
+    h.rows = { segments: [] }; // DELETE ... RETURNING id came back empty
+    const res: any = await deleteSegment('s');
+    expect(res.success).toBe(false);
+    expect(res.error).toMatch(/wasn't deleted/);
   });
 
   it('fails (does not delete) if the dependents check errors', async () => {

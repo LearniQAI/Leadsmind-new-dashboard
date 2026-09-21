@@ -78,3 +78,25 @@ export function assertValidRuleGroup(ruleGroup: any): void {
   const err = validateRuleGroup(ruleGroup);
   if (err) throw new InvalidRuleGroupError(err);
 }
+
+/**
+ * "contains" is a LITERAL substring match on both evaluation paths. The JS fallback already
+ * treats every character literally; the SQL path builds an ILIKE pattern, where % and _ are
+ * wildcards (and \ is the escape character). Escape them here — the one shared place — so the
+ * same value can never match different contacts depending on which path runs.
+ */
+export function escapeLikePattern(value: string): string {
+  return value.replace(/[\\%_]/g, '\\$&');
+}
+
+/** Rule fields where "is not" means "has at least one such record that is not X" (see hint). */
+const IS_NOT_ANY_RECORD_HINTS: Record<string, string> = {
+  invoice_status: 'Matches contacts with at least one invoice whose status is not this value — not contacts with none. Contacts with no invoices are not matched.',
+  lms_course_id: 'Matches contacts enrolled in at least one course other than this one — not contacts who are not enrolled in it. Contacts with no enrollments are not matched.',
+  lms_course_status: 'Matches contacts with at least one enrollment whose status is not this value — not contacts with none. Contacts with no enrollments are not matched.',
+};
+
+/** Explanatory text for surprising "is not" semantics, or null when the operator is plain. */
+export function isNotHint(field: string, operator: string): string | null {
+  return operator === 'not_equals' ? IS_NOT_ANY_RECORD_HINTS[field] ?? null : null;
+}

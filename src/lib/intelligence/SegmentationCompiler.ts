@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server';
-import { assertValidRuleGroup, InvalidRuleGroupError } from '@/lib/segments/ruleValidation';
+import { assertValidRuleGroup, escapeLikePattern, InvalidRuleGroupError } from '@/lib/segments/ruleValidation';
 
 export { InvalidRuleGroupError };
 
@@ -74,7 +74,8 @@ export const SegmentationCompiler = {
         if (op === 'not_equals') return `${fieldExpr} IS DISTINCT FROM ${getPlaceholder()}`;
         if (op === 'greater_than') return `${fieldExpr} > ${getPlaceholder()}`;
         if (op === 'less_than') return `${fieldExpr} < ${getPlaceholder()}`;
-        if (op === 'contains') return `${fieldExpr} ILIKE '%' || ${getPlaceholder()} || '%'`;
+        // Literal substring, like the JS path: % _ \ in the value must not act as LIKE wildcards.
+        if (op === 'contains') return `${fieldExpr} ILIKE '%' || ${getPlaceholder(escapeLikePattern(String(val)))} || '%'`;
         if (op === 'in') {
           // If value is an array, map to Postgres array format
           const arr = Array.isArray(v => v) ? val : [val];
@@ -167,6 +168,36 @@ export const SegmentationCompiler = {
     const sql = `SELECT DISTINCT c.* FROM public.contacts c WHERE c.workspace_id = $1 ${whereClause}`;
 
     return { sql, params };
+  },
+
+  /**
+   * COUNT-ONLY evaluation: how many contacts match, and how many of those are reachable by email
+   * and by SMS/WhatsApp, computed in the database (fn_count_segment_sql) without returning any
+   * rows. Use this wherever only a number is displayed; executeSegment() is for callers that need
+   * the matched contacts. Same validation and the same compiled SQL as executeSegment(), so the
+   * numbers agree with it — and unlike executeSegment() it is not capped at PostgREST's 1000 rows.
+   *
+   * Returns null when the RPC is unavailable/fails (the caller falls back to executeSegment()).
+   * Throws InvalidRuleGroupError for a malformed group, exactly like executeSegment().
+   */
+  async countSegment(workspaceId: string, ruleGroup: RuleGroup): Promise<{ total: number; emailReach: number; smsReach: number } | null> {
+    assertValidRuleGroup(ruleGroup);
+    const compiled = this.compileToSql(workspaceId, ruleGroup);
+    try {
+      const { data, error } = await createAdminClient().rpc('fn_count_segment_sql', {
+        p_sql: compiled.sql,
+        p_params: compiled.params,
+      });
+      const row = Array.isArray(data) ? data[0] : data;
+      if (error || !row) {
+        console.warn(`[SegmentationCompiler] count RPC failed: ${error?.message ?? 'no row'}. Caller should fall back.`);
+        return null;
+      }
+      return { total: Number(row.total), emailReach: Number(row.email_reach), smsReach: Number(row.sms_reach) };
+    } catch (err: any) {
+      console.warn(`[SegmentationCompiler] count RPC call failed: ${err.message}. Caller should fall back.`);
+      return null;
+    }
   },
 
   /**
