@@ -128,7 +128,10 @@ export const SegmentationCompiler = {
     const supabase = createAdminClient();
     const compiled = this.compileToSql(workspaceId, ruleGroup);
 
-    // 1. Attempt DB RPC invocation (For local environments with applied SQL functions)
+    // 1. Attempt the DB RPC. BACKEND-ONLY: fn_execute_segment_sql is SECURITY DEFINER and
+    // granted to service_role alone (see 20260921000001_lockdown_fn_execute_segment_sql.sql),
+    // which is why this MUST run through createAdminClient() — never a user-session client.
+    // It is the production hot path (campaigns, auto-senders, Segments counts), not optional.
     try {
       const { data, error } = await supabase.rpc('fn_execute_segment_sql', {
         p_sql: compiled.sql,

@@ -1,10 +1,16 @@
 -- Adds fn_execute_segment_sql, called from
--- src/lib/intelligence/SegmentationCompiler.ts's executeSegment(). This RPC
--- was never authored (confirmed via live pg_proc introspection during the
--- automation-consolidation sibling sweep); executeSegment() already has a
--- complete, correct JS-side fallback, so this is a DB-side performance
--- optimization, not a live-bug fix -- nothing currently calls
--- executeSegment() from the UI.
+-- src/lib/intelligence/SegmentationCompiler.ts's executeSegment().
+--
+-- CORRECTION (2026-09-21): an earlier version of this comment said the function
+-- was "not deployed" and that "nothing currently calls executeSegment() from the
+-- UI". BOTH CLAIMS ARE FALSE. The function IS deployed and IS on the hot path:
+-- executeSegment() is what email/SMS/WhatsApp campaigns, auto-senders and the
+-- Segments page counts all use to resolve an audience. That wrong comment is why
+-- this function shipped with default PUBLIC execute and sat callable by the
+-- anonymous role (cross-tenant contact read). It is locked down in
+-- 20260921000001_lockdown_fn_execute_segment_sql.sql: service_role-only, an
+-- in-function role check, and a result filter pinned to the workspace in $1.
+-- Never assume a SECURITY DEFINER function is unreachable — check its ACL.
 --
 -- SECURITY: this function is SECURITY DEFINER and receives a dynamically
 -- assembled SQL string (p_sql) built by SegmentationCompiler.compileToSql().
