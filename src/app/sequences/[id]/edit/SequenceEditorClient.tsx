@@ -13,6 +13,7 @@ import {
 import { saveSequence, type SequenceEmailStep } from '@/app/actions/email_sequences';
 import { SEQUENCE_TRIGGERS } from '@/lib/automation/sequenceConstants';
 import { filterKindForTrigger } from '@/lib/automation/triggerFilter';
+import { GOAL_KIND_LABELS, MAX_SEQUENCE_GOALS, type SequenceGoal, type SequenceGoalKind } from '@/lib/automation/sequenceGoals';
 
 type FilterOption = { id: string; name: string };
 
@@ -33,6 +34,9 @@ export function SequenceEditorClient({
   const [name, setName] = useState(sequence.name || '');
   const [triggerType, setTriggerType] = useState(sequence.trigger_type || SEQUENCE_TRIGGERS[0].value);
   const [filterId, setFilterId] = useState<string>(sequence.trigger_filter_id || '');
+  const [goals, setGoals] = useState<SequenceGoal[]>(sequence.goals ?? []);
+  const updateGoal = (idx: number, patch: Partial<SequenceGoal>) =>
+    setGoals((prev) => prev.map((g, i) => (i === idx ? { ...g, ...patch } : g)));
   const filterKind = filterKindForTrigger(triggerType);
   const options = filterKind === 'tag' ? filterOptions.tags : filterKind === 'course' ? filterOptions.courses : filterKind === 'funnel' ? filterOptions.funnels : [];
   const [isActive, setIsActive] = useState(!!sequence.is_active);
@@ -57,9 +61,10 @@ export function SequenceEditorClient({
       return;
     }
     if (filterKind && !filterId) { toast.error(`Choose which ${filterKind} starts this sequence`); return; }
+    if (goals.some((g) => g.kind === 'tag' && !g.tagId)) { toast.error('Choose a tag for each "Gets a tag" goal'); return; }
     setSaving(true);
     try {
-      const res = await saveSequence({ id: sequence.id, name, trigger_type: triggerType, trigger_filter_id: filterKind ? filterId : null, is_active: isActive, emails });
+      const res = await saveSequence({ id: sequence.id, name, trigger_type: triggerType, trigger_filter_id: filterKind ? filterId : null, goals, is_active: isActive, emails });
       if (!res.success) { toast.error(res.error); return; }
       toast.success('Sequence saved');
       router.push('/sequences');
@@ -111,6 +116,45 @@ export function SequenceEditorClient({
           <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
           Active
         </label>
+      </DashCard>
+
+      <DashCard padding="default" className="space-y-3">
+        <div>
+          <p className="text-sm font-bold !text-dash-text">Stop when the contact...</p>
+          <p className="text-[11px] !text-dash-textMuted mt-1">
+            Once any of these happens, the sequence ends for that contact and their remaining emails are not sent. Checked before every email, including the first.
+          </p>
+        </div>
+        {goals.map((goal, idx) => (
+          <div key={idx} className="flex items-center gap-2">
+            <Select value={goal.kind} onValueChange={(v) => updateGoal(idx, { kind: v as SequenceGoalKind, tagId: v === 'tag' ? goal.tagId : undefined })}>
+              <SelectTrigger className="h-10 w-56 border-dash-border rounded-xl text-[13px]"><SelectValue /></SelectTrigger>
+              <SelectContent className="bg-white border border-dash-border rounded-xl shadow-xl">
+                {(Object.keys(GOAL_KIND_LABELS) as SequenceGoalKind[]).map((k) => (
+                  <SelectItem key={k} value={k} className="text-[13px]">{GOAL_KIND_LABELS[k]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {goal.kind === 'tag' && (
+              filterOptions.tags.length === 0 ? (
+                <span className="text-[12px] !text-dash-textMuted">No tags yet — create one first.</span>
+              ) : (
+                <Select value={goal.tagId ?? ''} onValueChange={(v) => updateGoal(idx, { tagId: v })}>
+                  <SelectTrigger className="h-10 w-56 border-dash-border rounded-xl text-[13px]"><SelectValue placeholder="Choose a tag" /></SelectTrigger>
+                  <SelectContent className="bg-white border border-dash-border rounded-xl shadow-xl">
+                    {filterOptions.tags.map((t) => <SelectItem key={t.id} value={t.id} className="text-[13px]">{t.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )
+            )}
+            <button type="button" aria-label="Remove goal" onClick={() => setGoals((prev) => prev.filter((_, i) => i !== idx))} className="p-2 rounded-lg hover:bg-red/10 text-red">
+              <Trash2 size={14} />
+            </button>
+          </div>
+        ))}
+        {goals.length < MAX_SEQUENCE_GOALS && (
+          <DashButton variant="secondary" onClick={() => setGoals((prev) => [...prev, { kind: 'appointment' }])}><Plus size={14} /> Add goal</DashButton>
+        )}
       </DashCard>
 
       <div className="space-y-3">

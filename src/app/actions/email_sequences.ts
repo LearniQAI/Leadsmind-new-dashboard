@@ -17,6 +17,7 @@ import { revalidatePath } from 'next/cache';
 import { saveWorkflowEditor, getWorkflowForEdit, type EditorStepInput } from './automation_editor';
 import { SEQUENCE_SOURCE, SEQUENCE_TRIGGERS } from '@/lib/automation/sequenceConstants';
 import { filterKindForTrigger } from '@/lib/automation/triggerFilter';
+import { goalsToRules, rulesToGoals, MAX_SEQUENCE_GOALS, type SequenceGoal } from '@/lib/automation/sequenceGoals';
 
 export interface SequenceEmailStep {
   subject: string;
@@ -41,6 +42,9 @@ export interface SavesequencePayload {
   // Id of the specific tag / course / funnel the trigger is limited to. Required
   // for tag_added, student_enrolled_course, course_completed, funnel_subscribed.
   trigger_filter_id?: string | null;
+  // "Stop when the contact converts": the run ends before its next email as soon as any goal is
+  // met. Omit to leave the sequence's existing goals untouched; [] clears them.
+  goals?: SequenceGoal[];
   is_active: boolean;
   emails: SequenceEmailStep[];
 }
@@ -171,6 +175,7 @@ export async function getSequenceForEdit(id: string) {
     success: true as const,
     data: {
       id: workflow.id, name: workflow.name, trigger_type: workflow.trigger_type, is_active: workflow.is_active, emails,
+      goals: rulesToGoals(workflow.goal_rules),
       trigger_filter_id: workflow.trigger_config?.tag_id ?? workflow.trigger_config?.course_id ?? workflow.trigger_config?.funnel_id ?? null,
     },
   };
@@ -184,12 +189,29 @@ export async function saveSequence(payload: SavesequencePayload) {
   const { workspaceId } = await requireWorkspaceAccess();
   const supabase = await createServerClient();
 
-  const { data: owned } = await supabase.from('workflows').select('id, source').eq('id', payload.id).eq('workspace_id', workspaceId).maybeSingle();
+  const { data: owned } = await supabase.from('workflows').select('id, source, goal_rules').eq('id', payload.id).eq('workspace_id', workspaceId).maybeSingle();
   if (!owned) return { success: false as const, error: 'Sequence not found' };
   if (owned.source !== SEQUENCE_SOURCE) return { success: false as const, error: 'Not an email sequence' };
 
   if (payload.emails.length === 0) return { success: false as const, error: 'Add at least one email' };
   if (!SEQUENCE_TRIGGERS.some((t) => t.value === payload.trigger_type)) return { success: false as const, error: 'Unsupported trigger' };
+
+  // Goals: validated against this workspace's tags, then stored as goal_rules (existing rules the
+  // editor can't represent are preserved).
+  let goalRules: unknown[] | undefined;
+  if (payload.goals !== undefined) {
+    if (!Array.isArray(payload.goals) || payload.goals.length > MAX_SEQUENCE_GOALS) return { success: false as const, error: 'Too many goals' };
+    if (payload.goals.some((g) => !['appointment', 'invoice', 'tag'].includes(g?.kind))) return { success: false as const, error: 'Unsupported goal' };
+    const tagIds = [...new Set(payload.goals.filter((g) => g.kind === 'tag').map((g) => g.tagId).filter((t): t is string => !!t))];
+    if (payload.goals.some((g) => g.kind === 'tag' && !g.tagId)) return { success: false as const, error: 'Choose a tag for the tag goal' };
+    const tagNames = new Map<string, string>();
+    if (tagIds.length > 0) {
+      const { data: tagRows } = await supabase.from('tags').select('id, name').eq('workspace_id', workspaceId).in('id', tagIds);
+      for (const t of tagRows ?? []) tagNames.set(t.id, t.name);
+      if (tagIds.some((id) => !tagNames.has(id))) return { success: false as const, error: 'A goal tag no longer exists' };
+    }
+    goalRules = goalsToRules(payload.goals, tagNames, owned.goal_rules ?? []);
+  }
 
   const triggerConfig = await resolveTriggerConfig(supabase, workspaceId, payload.trigger_type, payload.trigger_filter_id);
   if (triggerConfig.ok === false) return { success: false as const, error: triggerConfig.error };
@@ -218,6 +240,7 @@ export async function saveSequence(payload: SavesequencePayload) {
     name: payload.name,
     trigger_type: payload.trigger_type,
     trigger_config: triggerConfig.config,
+    ...(goalRules !== undefined ? { goal_rules: goalRules } : {}),
     is_active: payload.is_active,
     steps,
   });

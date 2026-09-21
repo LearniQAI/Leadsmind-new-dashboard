@@ -19,6 +19,7 @@ import { SEQUENCE_SOURCE } from "./sequenceConstants";
 import { matchesTriggerConfig } from "./triggerFilter";
 import { EmailSuppressedError, isPermanentEmailError } from "./automationEmail";
 import { randomUUID } from "crypto";
+import { findMetGoal, describeGoal } from "./goals";
 import { checkEmailSuppression } from "@/lib/campaigns/emailSuppression";
 
 // Logging is observability, not business logic — a broken log transport
@@ -209,17 +210,44 @@ async function runStep(executionId: string, depth = 0) {
 
  if (!execution || execution.status !== 'running') return;
 
- // 1.5 Goal Check: Stop sequence if contact conversion goal is met
- const isGoalAchieved = await checkGoalAchieved(execution.workflow, execution.contact_id);
- if (isGoalAchieved) {
-  await supabase.from("workflow_executions").update({ 
-   status: 'completed', 
-   completed_at: new Date().toISOString(),
-   context: { ...execution.context, termination_reason: 'goal_achieved' }
-  }).eq("id", executionId);
-  
-  safeLog(() => logger.info({ contactId: execution.contact_id, workflowId: execution.workflow_id }, "executor.termination.goal_met"));
-  return;
+ // 1.5 Exit on conversion: before ANY step runs (so before every email is sent, including
+ // the first, a resumed wait, and a retry), end the run if one of the workflow's goal_rules
+ // is already met. Recorded, not silent: termination_reason + which rule + a step-log row.
+ const goalRules = execution.workflow?.goal_rules;
+ if (Array.isArray(goalRules) && goalRules.length > 0) {
+  const metGoal = await findMetGoal(goalRules, execution.workspace_id, execution.contact_id, supabase);
+  if (metGoal) {
+   const now = new Date().toISOString();
+   await supabase.from("workflow_executions").update({
+    status: 'completed',
+    completed_at: now,
+    current_step_id: execution.current_step_id,
+    next_attempt_at: null,
+    context: {
+     ...execution.context,
+     resume_at: null,
+     held_until: null,
+     termination_reason: 'goal_achieved',
+     goal_met: { field: metGoal.field, operator: metGoal.operator ?? 'equals', value: metGoal.value ?? null, tag_id: metGoal.tag_id ?? null },
+    },
+   }).eq("id", executionId);
+
+   // workflow_step_logs.step_id is NOT NULL, so this is only written while the run still has a step.
+   if (execution.current_step_id) {
+    const { error: logError } = await supabase.from("workflow_step_logs").insert({
+     execution_id: executionId,
+     workspace_id: execution.workspace_id,
+     step_id: execution.current_step_id,
+     status: 'skipped',
+     error_message: `Ended early: contact converted (${describeGoal(metGoal)}).`,
+     started_at: now,
+     completed_at: now,
+    });
+    if (logError) safeLog(() => logger.error({ err: logError, executionId }, "executor.goal_termination.log_insert.failed"));
+   }
+   safeLog(() => logger.info({ contactId: execution.contact_id, workflowId: execution.workflow_id, goal: metGoal.field }, "executor.termination.goal_met"));
+   return;
+  }
  }
 
  // A step that failed transiently is retried only once its backoff has elapsed.
@@ -563,102 +591,5 @@ async function runStep(executionId: string, depth = 0) {
    status: 'failed',
    error_message: `Step ${step?.type || 'unknown'} failed: ${safeMessage}`
   }).eq("id", executionId);
- }
-}
-
-/**
- * Utility to check if a specific goal has been met by a contact.
- */
-export async function checkGoalAchieved(workflow: any, contactId: string): Promise<boolean> {
- if (!workflow?.goal_event_type || workflow.goal_event_type === 'none') return false;
-
- const supabase = createAdminClient();
-
- switch (workflow.goal_event_type) {
-  case 'appointment_booked':
-   const { data: appointments } = await supabase
-    .from('appointments')
-    .select('id')
-    .eq('contact_id', contactId)
-    .limit(1);
-   return (appointments?.length ?? 0) > 0;
-
-  case 'invoice_paid':
-   const { data: invoices } = await supabase
-    .from('invoices')
-    .select('id')
-    .eq('contact_id', contactId)
-    .eq('status', 'paid')
-    .limit(1);
-   return (invoices?.length ?? 0) > 0;
-
-  default:
-   return false;
- }
-}
-/**
- * Event-driven goal checker. 
- * Should be called whenever a "conversion" event happens in the system.
- * Terminates any active workflows for the contact that have this goal type.
- */
-export async function checkActiveWorkflowGoals(workspaceId: string, contactId: string, eventType: string) {
- const supabase = createAdminClient();
-
- // Find all ACTIVE executions for this contact in this workspace that have this goal type
- const { data: executions } = await supabase
-  .from("workflow_executions")
-  .select(`
-   *,
-   workflow:workflows!inner(*)
-  `)
-  .eq("workspace_id", workspaceId)
-  .eq("contact_id", contactId)
-  .eq("status", "running")
-  .eq("workflow.goal_event_type", eventType);
-
- if (!executions || executions.length === 0) return;
-
- for (const execution of executions) {
-  // Terminate the workflow
-  await supabase.from("workflow_executions").update({
-   status: "completed",
-   context: { 
-    ...execution.context, 
-    terminated_due_to_goal: true, 
-    goal_type: eventType,
-    terminated_at: new Date().toISOString()
-   },
-   completed_at: new Date().toISOString()
-  }).eq("id", execution.id);
-
-  // Log the termination in step logs for visibility. workflow_step_logs.step_id is
-  // NOT NULL, so the row must name a step: the one the run was on, else the workflow's
-  // first step. (It was previously inserted with no step_id, so the insert was rejected
-  // and -- the error being ignored -- the audit row silently never existed.)
-  let stepId: string | null = execution.current_step_id ?? null;
-  if (!stepId) {
-   const { data: first } = await supabase
-    .from("workflow_steps")
-    .select("id")
-    .eq("workflow_id", execution.workflow_id)
-    .order("position", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-   stepId = first?.id ?? null;
-  }
-  if (!stepId) {
-   safeLog(() => logger.warn({ executionId: execution.id }, "executor.goal_termination.no_step_to_log_against"));
-   continue;
-  }
-  const { error: logError } = await supabase.from("workflow_step_logs").insert({
-   execution_id: execution.id,
-   workspace_id: workspaceId,
-   step_id: stepId,
-   status: "skipped",
-   error_message: `Workflow terminated: Goal '${eventType}' met.`,
-   started_at: new Date().toISOString(),
-   completed_at: new Date().toISOString()
-  });
-  if (logError) safeLog(() => logger.error({ err: logError, executionId: execution.id }, "executor.goal_termination.log_insert.failed"));
  }
 }

@@ -11,6 +11,7 @@ import { UnifiedActivityEngine } from '@/lib/crm/UnifiedActivityEngine';
 import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 import { logger } from '@/shared/logger';
 import { userSafeMessage } from '@/shared/errors/userSafe';
+import { evaluateGoal as evaluateGoalShared } from '@/lib/automation/goals';
 
 export interface WorkflowStep {
   id: string;
@@ -178,6 +179,8 @@ export const WorkflowEngine = {
 
   /**
    * Evaluates if any goal rules are met for this contact in this workspace.
+   * Delegates to the shared implementation (src/lib/automation/goals.ts) that Engine A also
+   * uses, so there is exactly one place goal semantics live.
    */
   async evaluateGoal(
     goalRules: any[],
@@ -185,86 +188,7 @@ export const WorkflowEngine = {
     contactId: string | null,
     supabase: any
   ): Promise<boolean> {
-    if (!goalRules || goalRules.length === 0 || !contactId) return false;
-
-    for (const rule of goalRules) {
-      const field = rule.field;
-      const operator = rule.operator;
-      const targetVal = rule.value;
-
-      // 1. invoice_paid rule
-      if (field === 'invoice_paid') {
-        const { data: invoice, error } = await supabase
-          .from('invoices')
-          .select('status')
-          .eq('contact_id', contactId)
-          .eq('status', 'paid')
-          .limit(1);
-
-        if (!error && invoice && invoice.length > 0) {
-          const isPaid = targetVal === true || targetVal === 'true';
-          if (isPaid) return true;
-        }
-      }
-
-      // 2. meeting_booked rule
-      if (field === 'meeting_booked') {
-        const { data: appointment, error } = await supabase
-          .from('appointments')
-          .select('status')
-          .eq('contact_id', contactId)
-          .in('status', ['scheduled', 'showed_up'])
-          .limit(1);
-
-        if (!error && appointment && appointment.length > 0) {
-          const isBooked = targetVal === true || targetVal === 'true';
-          if (isBooked) return true;
-        }
-      }
-
-      // 3. passed_quiz rule
-      if (field === 'passed_quiz') {
-        const { data: contact } = await supabase
-          .from('contacts')
-          .select('tags, metadata')
-          .eq('id', contactId)
-          .single();
-
-        if (contact) {
-          const hasPassedTag = contact.tags?.includes('Passed Quiz') || contact.tags?.includes('passed_quiz');
-          const hasPassedMeta = contact.metadata?.passed_quiz === true || contact.metadata?.passed_quiz === 'true';
-          if (hasPassedTag || hasPassedMeta) {
-            return targetVal === true || targetVal === 'true';
-          }
-        }
-      }
-
-      // 4. General contact field check (tags or metadata)
-      if (field && field !== 'invoice_paid' && field !== 'meeting_booked' && field !== 'passed_quiz') {
-        const { data: contact } = await supabase
-          .from('contacts')
-          .select('tags, metadata')
-          .eq('id', contactId)
-          .single();
-
-        if (contact) {
-          const tags = contact.tags || [];
-          const metadata = contact.metadata || {};
-
-          if (field === 'tags' || field === 'tag') {
-            const hasTag = tags.includes(targetVal);
-            if (operator === 'equals' && hasTag) return true;
-            if (operator === 'not_equals' && !hasTag) return true;
-          } else {
-            const val = metadata[field];
-            if (operator === 'equals' && String(val) === String(targetVal)) return true;
-            if (operator === 'not_equals' && String(val) !== String(targetVal)) return true;
-          }
-        }
-      }
-    }
-
-    return false;
+    return evaluateGoalShared(goalRules, workspaceId, contactId, supabase);
   },
 
   /**

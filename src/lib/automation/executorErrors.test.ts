@@ -14,7 +14,7 @@ vi.mock('@/lib/supabase/server', () => ({
       // The route step fetches the contact — simulate the DB failing there.
       if (table === 'contacts') throw new Error(SENSITIVE);
       const rows: Record<string, any> = {
-        workflow_executions: { id: 'e1', status: 'running', current_step_id: 's1', workspace_id: 'w1', contact_id: 'c1', context: {}, workflow: { id: 'wf', goal_event_type: 'none' } },
+        workflow_executions: { id: 'e1', status: 'running', current_step_id: 's1', workspace_id: 'w1', contact_id: 'c1', context: {}, workflow: { id: 'wf', goal_rules: [] } },
         workflow_steps: { id: 's1', type: 'route', config: { branches: [] } },
         workflow_step_logs: { id: 'l1' },
       };

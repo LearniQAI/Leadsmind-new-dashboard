@@ -130,6 +130,8 @@ export interface SaveWorkflowPayload {
   // Only written when provided (the generic editor has no trigger-filter UI
   // and must not wipe a config set elsewhere).
   trigger_config?: Record<string, unknown>;
+  // Exit-on-conversion rules (see src/lib/automation/goals.ts). Only written when provided.
+  goal_rules?: unknown[];
   is_active: boolean;
   steps: EditorStepInput[];
 }
@@ -180,6 +182,7 @@ export async function saveWorkflowEditor(payload: SaveWorkflowPayload) {
   };
   if (payload.description !== undefined) fields.description = payload.description;
   if (payload.trigger_config !== undefined) fields.trigger_config = payload.trigger_config;
+  if (payload.goal_rules !== undefined) fields.goal_rules = payload.goal_rules;
 
   const { error } = await supabase.rpc('save_workflow_graph', {
     p_workflow_id: payload.id,
