@@ -6,6 +6,10 @@ import { logger } from '@/shared/logger';
 import { getTemplateById } from '@/lib/builder/templates';
 import { inngest } from '@/lib/inngest';
 import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
+import { userSafeMessage } from '@/shared/errors/userSafe';
+import { validateRuleGroup } from '@/lib/segments/ruleValidation';
+import { loadSegmentRuleGroup, SegmentUnavailableError } from '@/lib/segments/resolveSegment';
+import type { RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
 import { resolveCampaignFromEmail, isUsableCampaignFromEmail, isPlatformSenderDomain, FROM_EMAIL_REQUIRED_MESSAGE } from '@/lib/campaigns/fromEmail';
 
 // FUNNELS
@@ -1021,6 +1025,7 @@ export async function updateCampaign(id: string, updates: any) {
  let previousState: { status: string; scheduled_for: string | null } | null = null;
  let directEmailConfig: Awaited<ReturnType<typeof getWorkspaceEmailConfig>> = null;
  let audienceLookupFailed = false;
+ let resolvedSegmentRuleGroup: RuleGroup | null = null;
  try {
   const supabase = await createServerClient();
   let workspaceId: string;
@@ -1028,6 +1033,13 @@ export async function updateCampaign(id: string, updates: any) {
    ({ workspaceId } = await requireWorkspaceAccess());
   } catch {
    return { error: 'Unauthorized' };
+  }
+
+  // Ad-hoc segment rules are validated whenever they are saved (not only at send): an unknown
+  // field or a blank value used to be stored silently and later matched the WRONG audience.
+  if (Array.isArray(updates.segment?.ruleGroup?.rules) && updates.segment.ruleGroup.rules.length > 0) {
+   const ruleProblem = validateRuleGroup(updates.segment.ruleGroup);
+   if (ruleProblem) throw new CampaignUserError(ruleProblem);
   }
 
   // If moving status to sent or scheduled, enforce Domain Verification rules
@@ -1051,6 +1063,19 @@ export async function updateCampaign(id: string, updates: any) {
      (Array.isArray(seg?.emails) && seg.emails.length > 0);
     if (!hasAudience) {
      throw new CampaignUserError('Choose who this campaign is for: select at least one tag, a saved segment, a filter, or enter direct email addresses.');
+    }
+
+    // A saved segment is resolved NOW, before anything is mutated, and the campaign FAILS
+    // CLOSED if it is gone. Previously a deleted segment was silently dropped, turning
+    // "tag AND segment" into "tag alone" and sending to everyone with that tag.
+    const usesAdHocRules = Array.isArray(seg?.ruleGroup?.rules) && seg.ruleGroup.rules.length > 0;
+    if (!usesAdHocRules && seg?.segmentId) {
+     try {
+      resolvedSegmentRuleGroup = await loadSegmentRuleGroup(supabase, workspaceId, seg.segmentId);
+     } catch (segErr) {
+      if (segErr instanceof SegmentUnavailableError) throw new CampaignUserError(segErr.message);
+      throw segErr;
+     }
     }
    }
    // Scoped to the caller's own verified workspace — previously this looked
@@ -1139,17 +1164,9 @@ export async function updateCampaign(id: string, updates: any) {
    // snapshot), so an edit to the segment after this campaign was configured
    // is picked up automatically. Mutually exclusive with an ad-hoc ruleGroup
    // in the UI, but if both were somehow set the ad-hoc one wins above.
-   const segmentId: string | null = updates.segment?.segmentId || null;
-   if (!ruleGroup && segmentId && data.workspace_id) {
-    const { data: savedSegment } = await supabase
-     .from('segments')
-     .select('rule_group')
-     .eq('id', segmentId)
-     .eq('workspace_id', data.workspace_id)
-     .maybeSingle();
-    if (savedSegment?.rule_group && Array.isArray(savedSegment.rule_group.rules) && savedSegment.rule_group.rules.length > 0) {
-     ruleGroup = savedSegment.rule_group;
-    }
+   // (already resolved and validated in the preflight above; a missing segment never reaches here)
+   if (!ruleGroup && resolvedSegmentRuleGroup) {
+    ruleGroup = resolvedSegmentRuleGroup;
    }
 
    const combineMode: 'AND' | 'OR' = updates.segment?.combineMode === 'OR' ? 'OR' : 'AND';
@@ -1353,7 +1370,9 @@ export async function updateCampaign(id: string, updates: any) {
       directSent.push(email);
      } catch (sendErr: any) {
       logger.error({ err: sendErr, campaignId: id }, 'update.campaign.direct_send.failed');
-      directFailed.push({ email, reason: sendErr?.message || 'send failed' });
+      // The full error is logged above; `reason` is returned to the client and
+      // embedded in the rollback error, so only provider/config reasons may pass.
+      directFailed.push({ email, reason: userSafeMessage(sendErr, 'an unexpected error occurred') });
      }
     }
 

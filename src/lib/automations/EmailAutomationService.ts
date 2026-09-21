@@ -8,6 +8,7 @@ import { SpamValidator } from '@/lib/intelligence/SpamValidator';
 import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
 import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 import { logger } from '@/shared/logger';
+import { isUserSafeError } from '@/shared/errors/userSafe';
 
 export interface EmailActionConfig {
   templateType: 'confirmation' | 'notification' | 'recovery' | 'welcome' | 'custom_followup' | 'voice_note' | 'voice_note_notification';
@@ -147,6 +148,7 @@ export const EmailAutomationService = {
     let attempts = 0;
     const maxAttempts = 3;
     let lastError = '';
+    let lastErrorSafe = false;
 
     while (attempts < maxAttempts) {
       try {
@@ -163,7 +165,12 @@ export const EmailAutomationService = {
         });
         return { success: true, data: res };
       } catch (err: any) {
+        // Full detail to the server log; the returned string is stored as the
+        // run's error_message and rendered to workspace members, so only a
+        // provider/config rejection (EmailSendError) may be echoed.
+        logger.error({ err, workspaceId, attempt: attempts }, 'email_automation.send_attempt.failed');
         lastError = err.message || 'Delivery error';
+        lastErrorSafe = isUserSafeError(err);
         if (attempts < maxAttempts) {
           // Linear backoff delay
           await new Promise(r => setTimeout(r, attempts * 1000));
@@ -171,7 +178,12 @@ export const EmailAutomationService = {
       }
     }
 
-    return { success: false, error: `Email delivery failed after ${maxAttempts} attempts. Error: ${lastError}` };
+    return {
+      success: false,
+      error: lastErrorSafe
+        ? `Email delivery failed after ${maxAttempts} attempts. Error: ${lastError}`
+        : `Email delivery failed after ${maxAttempts} attempts because of an unexpected error. Check your email provider settings and try again.`,
+    };
   },
 
   /**

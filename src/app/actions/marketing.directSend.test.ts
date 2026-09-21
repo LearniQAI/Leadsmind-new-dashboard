@@ -4,7 +4,7 @@ const sendEmail = vi.fn();
 const getCfg = vi.fn();
 const claim = vi.fn();
 const logErr = vi.fn();
-const state: { updates: any[]; suppression: any[]; campaignFrom: string | null; authEmail: string } = { updates: [], suppression: [], campaignFrom: null, authEmail: 'me@example.com' };
+const state: { updates: any[]; suppression: any[]; campaignFrom: string | null; authEmail: string; segment: any } = { updates: [], suppression: [], campaignFrom: null, authEmail: 'me@example.com', segment: null };
 
 function makeDb() {
   return {
@@ -14,6 +14,7 @@ function makeDb() {
       const res = () => {
         if (table === 'email_campaigns' && op === 'select') return { data: { from_email: state.campaignFrom, workspace_id: 'w1', status: 'draft', scheduled_for: null, subject: 's', from_name: 'F' }, error: null };
         if (table === 'email_campaigns' && op === 'update') return { data: { id: 'c1', workspace_id: 'w1', subject: 's', from_name: 'F', from_email: state.campaignFrom }, error: null };
+        if (table === 'segments') return { data: state.segment, error: null };
         if (table === 'sender_domains') return { data: { spf_status: true, dkim_status: true }, error: null };
         if (table === 'global_suppression_list') return { data: state.suppression, error: null };
         return { data: [], error: null };
@@ -42,7 +43,7 @@ import { updateCampaign, sendTestEmailAction } from '@/app/actions/marketing';
 
 const base = { status: 'scheduled', scheduled_for: null, body_html: '<a href="{{unsubscribe_link}}">u</a> {{first_name}}', segment: { emails: ['a@x.com'] } };
 
-beforeEach(() => { sendEmail.mockReset(); getCfg.mockReset(); state.updates = []; state.suppression = []; state.campaignFrom = null; state.authEmail = 'me@example.com'; logErr.mockReset(); claim.mockReset(); claim.mockResolvedValue({ ok: true }); });
+beforeEach(() => { sendEmail.mockReset(); getCfg.mockReset(); state.updates = []; state.suppression = []; state.campaignFrom = null; state.authEmail = 'me@example.com'; state.segment = null; logErr.mockReset(); claim.mockReset(); claim.mockResolvedValue({ ok: true }); });
 
 describe('updateCampaign direct-address path (B3)', () => {
   it('passes the workspace key and populates unsubscribe link', async () => {
@@ -68,9 +69,10 @@ describe('updateCampaign direct-address path (B3)', () => {
 
   it('rolls status back when every direct send fails and nothing else is queued', async () => {
     getCfg.mockResolvedValue({ apiKey: 're_workspace', fromEmail: 'me@acme.com' });
-    sendEmail.mockRejectedValue(new Error('domain not verified'));
+    // A provider rejection is user-safe (EmailSendError sets userSafe) and is shown.
+    sendEmail.mockRejectedValue(Object.assign(new Error('The domain is not verified'), { userSafe: true }));
     const r: any = await updateCampaign('c1', { ...base, segment: { emails: ['a@x.com'] } });
-    expect(r.error).toMatch(/domain not verified.*not scheduled/);
+    expect(r.error).toMatch(/The domain is not verified.*not scheduled/);
     const last = state.updates[state.updates.length - 1];
     expect(last.p).toEqual({ status: 'draft', scheduled_for: null });
   });
@@ -209,5 +211,70 @@ describe('test-send error classification', () => {
     getCfg.mockRejectedValue(new Error('relation "workspace_email_providers" does not exist'));
     const r: any = await sendTestEmailAction('c1', 'a@x.com', '<p/>');
     expect(r.error).toBe('Something went wrong sending the test email. Please try again.');
+  });
+});
+
+describe('direct-send failure reasons (item 7)', () => {
+  const ok = { apiKey: 're_workspace', fromEmail: 'me@acme.com' };
+  it('masks an internal error in both directFailed reasons and the rollback message, and logs the real one', async () => {
+    getCfg.mockResolvedValue(ok);
+    const internal = new Error('connect ECONNREFUSED 10.0.0.5:5432 password authentication failed for user "svc_admin"');
+    sendEmail.mockRejectedValue(internal);
+    const r: any = await updateCampaign('c1', { ...base, segment: { emails: ['a@x.com'] } });
+    expect(r.error).toBe('Email could not be sent: an unexpected error occurred. The campaign was not scheduled.');
+    expect(JSON.stringify(r)).not.toMatch(/ECONNREFUSED|svc_admin|10\.0\.0\.5/);
+    expect(logErr).toHaveBeenCalledWith(expect.objectContaining({ err: internal }), 'update.campaign.direct_send.failed');
+  });
+  it('partial failure: successes stay, and the failed entry carries only a safe reason', async () => {
+    getCfg.mockResolvedValue(ok);
+    sendEmail
+      .mockResolvedValueOnce({})
+      .mockRejectedValueOnce(new Error('relation "email_events" does not exist'))
+      .mockRejectedValueOnce(Object.assign(new Error('The to field must be a valid email address'), { userSafe: true }));
+    const r: any = await updateCampaign('c1', { ...base, segment: { emails: ['a@x.com', 'b@x.com', 'c@x.com'] } });
+    expect(r.directSent).toEqual(['a@x.com']);
+    expect(r.directFailed).toEqual([
+      { email: 'b@x.com', reason: 'an unexpected error occurred' },
+      { email: 'c@x.com', reason: 'The to field must be a valid email address' },
+    ]);
+  });
+});
+
+describe('segment handling in updateCampaign (items 1-3)', () => {
+  const ok = { apiKey: 're_workspace', fromEmail: 'me@acme.com' };
+  const future = new Date(Date.now() + 86400000).toISOString();
+
+  it('a DELETED segment fails closed: clear error, nothing mutated (was: silently widened to the tag alone)', async () => {
+    getCfg.mockResolvedValue(ok);
+    state.segment = null; // maybeSingle -> no such segment
+    const r: any = await updateCampaign('c1', { status: 'scheduled', scheduled_for: future, segment: { tags: ['vip'], segmentId: 'gone', combineMode: 'AND' } });
+    expect(r.error).toMatch(/no longer exists \(it was deleted\)/);
+    expect(state.updates).toEqual([]);
+  });
+
+  it('a segment with invalid stored rules fails closed too', async () => {
+    getCfg.mockResolvedValue(ok);
+    state.segment = { rule_group: { logic: 'AND', rules: [{ field: 'company', operator: 'equals', value: 'x' }] } };
+    const r: any = await updateCampaign('c1', { status: 'scheduled', scheduled_for: future, segment: { tags: ['vip'], segmentId: 's1' } });
+    expect(r.error).toMatch(/segment selected for this audience is invalid/);
+    expect(state.updates).toEqual([]);
+  });
+
+  it('ad-hoc rules with a blank value are rejected at SAVE time, even without scheduling (item 3)', async () => {
+    const r: any = await updateCampaign('c1', { segment: { ruleGroup: { logic: 'AND', rules: [{ field: 'first_name', operator: 'contains', value: '' }] } } });
+    expect(r.error).toMatch(/Enter a value/);
+    expect(state.updates).toEqual([]);
+  });
+
+  it('ad-hoc rules with an unknown field are rejected at save time (item 2)', async () => {
+    const r: any = await updateCampaign('c1', { segment: { ruleGroup: { logic: 'AND', rules: [{ field: 'company', operator: 'equals', value: 'Acme' }] } } });
+    expect(r.error).toMatch(/Unknown segment field/);
+  });
+
+  it('CONTROL: an existing, valid segment does not trip the new guard', async () => {
+    getCfg.mockResolvedValue(ok);
+    state.segment = { rule_group: { logic: 'AND', rules: [{ field: 'source', operator: 'equals', value: 'x' }] } };
+    const r: any = await updateCampaign('c1', { status: 'scheduled', scheduled_for: future, segment: { segmentId: 's1' } });
+    expect(String(r.error ?? '')).not.toMatch(/segment selected for this audience/);
   });
 });

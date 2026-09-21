@@ -1,3 +1,4 @@
+import { isUserSafeError } from '@/shared/errors/userSafe';
 import { createAdminClient } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/email';
 import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
@@ -120,7 +121,10 @@ Well done, and see you in the next course.
       { err, courseId, contactId, workspaceId, validationId },
       'lms.certificate_email.send_failed',
     );
-    return { sent: false, reason: err?.message || 'send_failed' };
+    // `reason` travels to callers that return it to end users (e.g. the public
+    // guest-checkout response), so only a user-safe message may pass; any other
+    // error is reduced to the generic 'send_failed' code (full error logged above).
+    return { sent: false, reason: isUserSafeError(err) && err.message ? err.message : 'send_failed' };
   }
 }
 

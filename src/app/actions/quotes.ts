@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { requireWorkspaceAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
+import { userSafeMessage } from '@/shared/errors/userSafe';
 
 // Columns that actually exist on public.quotes. InvoiceFormContainer is
 // shared with Invoices and always includes an `issue_date` field in its save
@@ -112,8 +113,9 @@ export async function sendQuoteNow(quoteId: string) {
     }
   } catch (e) {
     logger.error({ err: e, quoteId, workspaceId }, 'quotes.send_now.failed');
-    const message = e instanceof Error ? e.message : 'Failed to send quote';
-    return { success: false, error: message };
+    // Same rule as sendInvoiceNow: only provider/config rejections are safe to
+    // show; PDF-generation and DB failures are masked (full detail logged above).
+    return { success: false, error: userSafeMessage(e, 'Failed to send quote. Please try again.') };
   }
 
   try {

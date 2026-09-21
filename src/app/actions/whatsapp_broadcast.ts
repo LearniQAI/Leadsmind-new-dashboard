@@ -18,6 +18,8 @@ import { requireWorkspaceAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 import { decrypt } from '@/lib/encryption';
 import { SegmentationCompiler, RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
+import { validateRuleGroup } from '@/lib/segments/ruleValidation';
+import { loadSegmentRuleGroup } from '@/lib/segments/resolveSegment';
 
 export interface CreateWhatsAppBroadcastPayload {
   name: string;
@@ -120,16 +122,14 @@ async function resolveAudience(
       ? payload.ruleGroup
       : null;
 
+  // Validate ad-hoc rules, and resolve a saved segment FAIL-CLOSED: a deleted/invalid segment must
+  // error clearly (and before any row is written), never be dropped and evaluated on tags alone.
+  if (ruleGroup) {
+    const problem = validateRuleGroup(ruleGroup);
+    if (problem) throw new Error(problem);
+  }
   if (!ruleGroup && payload.segmentId) {
-    const { data: savedSegment } = await supabase
-      .from('segments')
-      .select('rule_group')
-      .eq('id', payload.segmentId)
-      .eq('workspace_id', workspaceId)
-      .maybeSingle();
-    if (savedSegment?.rule_group && Array.isArray(savedSegment.rule_group.rules) && savedSegment.rule_group.rules.length > 0) {
-      ruleGroup = savedSegment.rule_group;
-    }
+    ruleGroup = await loadSegmentRuleGroup(supabase, workspaceId, payload.segmentId);
   }
 
   const tags = (payload.tags ?? []).filter(Boolean);

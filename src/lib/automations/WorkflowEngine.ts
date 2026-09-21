@@ -10,6 +10,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { UnifiedActivityEngine } from '@/lib/crm/UnifiedActivityEngine';
 import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 import { logger } from '@/shared/logger';
+import { userSafeMessage } from '@/shared/errors/userSafe';
 
 export interface WorkflowStep {
   id: string;
@@ -520,7 +521,10 @@ export const WorkflowEngine = {
         : { success: false, error: crmRes.error };
 
     } catch (err: any) {
-      return { success: false, error: err.message || 'Workflow step executor crashed.' };
+      // The returned string is persisted as the run's error_message and shown to
+      // workspace members: log the real error, show only a user-safe message.
+      logger.error({ err, stepType: step?.type }, 'workflow_engine.step_executor.crashed');
+      return { success: false, error: userSafeMessage(err, 'Workflow step failed unexpectedly.') };
     }
   }
 };

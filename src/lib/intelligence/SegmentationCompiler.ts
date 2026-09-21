@@ -1,4 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { assertValidRuleGroup, InvalidRuleGroupError } from '@/lib/segments/ruleValidation';
+
+export { InvalidRuleGroupError };
 
 export interface FilterRule {
   field: string;
@@ -17,6 +20,10 @@ export const SegmentationCompiler = {
    * Parameter placeholders ($1, $2, etc.) are used to prevent SQL injection.
    */
   compileToSql(workspaceId: string, ruleGroup: RuleGroup): { sql: string; params: any[] } {
+    // Reject unknown fields/operators and blank values up front. Previously a rule the
+    // compiler didn't recognise was silently DROPPED here, so a group made only of such
+    // rules compiled to "all contacts in the workspace" while the JS fallback matched none.
+    assertValidRuleGroup(ruleGroup);
     const params: any[] = [workspaceId];
     let paramIndex = 2;
 
@@ -35,7 +42,10 @@ export const SegmentationCompiler = {
 
       const formatOp = (fieldExpr: string) => {
         if (op === 'equals') return `${fieldExpr} = ${getPlaceholder()}`;
-        if (op === 'not_equals') return `${fieldExpr} != ${getPlaceholder()}`;
+        // IS DISTINCT FROM (not !=): "is not X" must INCLUDE contacts whose value is NULL/empty,
+        // exactly like the JS path (dbVal !== val). `!=` yields NULL for a NULL column and
+        // silently dropped those contacts.
+        if (op === 'not_equals') return `${fieldExpr} IS DISTINCT FROM ${getPlaceholder()}`;
         if (op === 'greater_than') return `${fieldExpr} > ${getPlaceholder()}`;
         if (op === 'less_than') return `${fieldExpr} < ${getPlaceholder()}`;
         if (op === 'contains') return `${fieldExpr} ILIKE '%' || ${getPlaceholder()} || '%'`;
@@ -109,9 +119,12 @@ export const SegmentationCompiler = {
         ), 0) ${compareSign} ${getPlaceholder(countThreshold)}::numeric`;
       }
 
-      if (sqlCond) {
-        conditions.push(sqlCond);
+      // Every rule was validated above, so an empty condition here is a compiler bug — fail
+      // loudly rather than silently widening the audience.
+      if (!sqlCond) {
+        throw new InvalidRuleGroupError(`Unsupported segment rule for field "${rule.field}"`);
       }
+      conditions.push(sqlCond);
     }
 
     const whereClause = conditions.length > 0 ? `AND (${conditions.join(logicOperator)})` : '';
@@ -125,6 +138,9 @@ export const SegmentationCompiler = {
    * to programmatic client-side intersections to ensure remote environment compatibility.
    */
   async executeSegment(workspaceId: string, ruleGroup: RuleGroup): Promise<any[]> {
+    // Validate once, before either path runs, so the SQL RPC and the JS fallback can never
+    // disagree about a malformed rule (they previously did, in opposite directions).
+    assertValidRuleGroup(ruleGroup);
     const supabase = createAdminClient();
     const compiled = this.compileToSql(workspaceId, ruleGroup);
 
@@ -242,7 +258,8 @@ export const SegmentationCompiler = {
             return count >= threshold;
           }
 
-          return false;
+          // unreachable: assertValidRuleGroup() rejected unknown fields before this ran
+          throw new InvalidRuleGroupError(`Unsupported segment rule for field "${rule.field}"`);
         });
 
         if (ruleGroup.logic === 'OR') {
@@ -252,6 +269,7 @@ export const SegmentationCompiler = {
         }
       });
     } catch (fallbackErr: any) {
+      if (fallbackErr instanceof InvalidRuleGroupError) throw fallbackErr;
       console.error(`[SegmentationCompiler] Fallback filtration failed: ${fallbackErr.message}`);
       return [];
     }

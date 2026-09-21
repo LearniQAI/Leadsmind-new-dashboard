@@ -14,6 +14,7 @@ import { isWithinBusinessHours, nextWindowOpen, BusinessHoursConfig } from "./bu
 import { resolveWinningBranch } from "./condition_evaluator";
 import { cyrb53 } from "@/lib/utils";
 import { logger } from "@/shared/logger";
+import { userSafeMessage } from "@/shared/errors/userSafe";
 
 // Logging is observability, not business logic — a broken log transport
 // (e.g. pino's worker-thread transport dying) must never be able to abort
@@ -367,11 +368,14 @@ export async function processNextStep(executionId: string, depth = 0) {
 
  } catch (err: any) {
   safeLog(() => logger.error({ err, stepType: step.type }, "executor.step.failed"));
-  await updateLog({ status: 'failed', error_message: err.message, completed_at: new Date().toISOString() });
+  // Full error is logged above. error_message is stored and rendered to workspace
+  // members (ExecutionLogs), so only a user-safe message may be persisted.
+  const safeMessage = userSafeMessage(err, 'The step failed unexpectedly.');
+  await updateLog({ status: 'failed', error_message: safeMessage, completed_at: new Date().toISOString() });
 
   await supabase.from("workflow_executions").update({ 
    status: 'failed', 
-   error_message: `Step ${step?.type || 'unknown'} failed: ${err.message}` 
+   error_message: `Step ${step?.type || 'unknown'} failed: ${safeMessage}` 
   }).eq("id", executionId);
  }
 }

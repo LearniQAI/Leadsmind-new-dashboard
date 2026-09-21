@@ -16,6 +16,7 @@ import {
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { SegmentRuleBuilder } from '@/components/crm/SegmentRuleBuilder';
 import type { RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
+import { validateRuleGroup } from '@/lib/segments/ruleValidation';
 import { createSegment, updateSegment, deleteSegment } from '@/app/actions/segments';
 
 interface SegmentRow {
@@ -55,6 +56,9 @@ export default function SegmentsClient({ initialSegments }: { initialSegments: S
   const handleSave = async () => {
     if (!formName.trim()) { toast.error('Please enter a segment name'); return; }
     if (!formRuleGroup || formRuleGroup.rules.length === 0) { toast.error('Add at least one condition'); return; }
+    // A blank value used to be saveable and then matched every contact.
+    const ruleProblem = validateRuleGroup(formRuleGroup);
+    if (ruleProblem) { toast.error(ruleProblem); return; }
 
     setSaving(true);
     try {

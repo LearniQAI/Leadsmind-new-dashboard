@@ -6,6 +6,7 @@ import { headers } from 'next/headers';
 import { sendEmail } from '@/lib/email';
 import { sendSMS } from '@/lib/sms';
 import { checkRateLimit } from '@/lib/security/rateLimit';
+import { logger } from '@/shared/logger';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -108,7 +109,11 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
-    console.error('[Portal Magic Link Error]:', err.message);
-    return NextResponse.json({ error: err.message || 'Verification flow failed' }, { status: 500 });
+    // Unauthenticated endpoint: log the full error server-side and return a fixed
+    // generic message ALWAYS — even a provider rejection ("API key is invalid")
+    // discloses platform email configuration to an anonymous caller and is not
+    // actionable for them.
+    logger.error({ err }, 'portal.magic_link.failed');
+    return NextResponse.json({ error: 'We could not send your sign-in link. Please try again.' }, { status: 500 });
   }
 }

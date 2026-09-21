@@ -5,12 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { requireWorkspaceAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 import { SegmentationCompiler, RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
-
-function validateRuleGroup(ruleGroup: RuleGroup) {
-  if (!ruleGroup || !Array.isArray(ruleGroup.rules) || ruleGroup.rules.length === 0) {
-    throw new Error('A segment needs at least one condition');
-  }
-}
+import { validateRuleGroup } from '@/lib/segments/ruleValidation';
 
 export async function listSegments() {
   try {
@@ -49,7 +44,10 @@ export async function createSegment(payload: { name: string; ruleGroup: RuleGrou
   try {
     const { workspaceId, userId } = await requireWorkspaceAccess();
     if (!payload.name?.trim()) return { success: false, error: 'Segment name is required' };
-    validateRuleGroup(payload.ruleGroup);
+    // Server-side, so an API caller cannot store an unknown field or a blank value that would
+    // later match the wrong audience (the UI enforces the same rules for a clear message).
+    const ruleProblem = validateRuleGroup(payload.ruleGroup);
+    if (ruleProblem) return { success: false, error: ruleProblem };
 
     const supabase = await createServerClient();
     const { data, error } = await supabase
@@ -78,7 +76,11 @@ export async function createSegment(payload: { name: string; ruleGroup: RuleGrou
 export async function updateSegment(id: string, payload: Partial<{ name: string; ruleGroup: RuleGroup }>) {
   try {
     const { workspaceId } = await requireWorkspaceAccess();
-    if (payload.ruleGroup) validateRuleGroup(payload.ruleGroup);
+    if (payload.name !== undefined && !payload.name.trim()) return { success: false, error: 'Segment name is required' };
+    if (payload.ruleGroup) {
+      const ruleProblem = validateRuleGroup(payload.ruleGroup);
+      if (ruleProblem) return { success: false, error: ruleProblem };
+    }
 
     const updates: Record<string, any> = {};
     if (payload.name !== undefined) updates.name = payload.name.trim();

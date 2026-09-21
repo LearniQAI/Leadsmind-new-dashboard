@@ -170,7 +170,7 @@ export async function guestFreeEnroll(input: GuestFreeInput) {
       }
     }
 
-    const { emailSent, emailReason } = await welcomeGuestStudent({
+    const { emailSent } = await welcomeGuestStudent({
       courseId,
       contactId,
       workspaceId,
@@ -178,7 +178,10 @@ export async function guestFreeEnroll(input: GuestFreeInput) {
       accessType,
     });
 
-    return { success: true, alreadyEnrolled: false, emailSent, emailReason };
+    // Public, unauthenticated response: never forward the upstream failure text
+    // (welcomeGuestStudent's `emailReason`, which can be a provider message) —
+    // a fixed code only. The real reason is already logged by the email helper.
+    return { success: true, alreadyEnrolled: false, emailSent, emailReason: emailSent ? undefined : 'send_failed' };
   } catch (err: any) {
     logger.error({ err, courseId }, 'guest_checkout.free.failed');
     return { error: 'Something went wrong finishing your enrolment. Please try again.' };

@@ -5,6 +5,18 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { UnifiedActivityEngine } from '@/lib/crm/UnifiedActivityEngine';
 import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 import { syncContactTagsToRelational } from '@/modules/tags/sync/syncContactTags';
+import { logger } from '@/shared/logger';
+import { userSafeMessage } from '@/shared/errors/userSafe';
+
+// A step's `error` is persisted as the run's error_message and rendered to
+// workspace members (ExecutionLogs). Supabase/Postgres errors carry constraint
+// names, column names and SQL detail, so they are never safe to show: log the
+// real error and return only a user-safe message (a DB error is never tagged
+// safe, so this is always the generic one).
+function actionFailure(err: unknown, action: string): { success: false; error: string } {
+  logger.error({ err, action }, 'crm_action.failed');
+  return { success: false, error: userSafeMessage(err, 'The CRM action could not be completed.') };
+}
 
 export interface CRMActionPayload {
   workspaceId: string;
@@ -60,8 +72,7 @@ export const CRMActionHandler = {
           return { success: false, error: `Unsupported CRM action type: ${actionType}` };
       }
     } catch (err: any) {
-      console.error(`[CRMActionHandler] Execution error for ${actionType}:`, err);
-      return { success: false, error: err.message || 'CRM Action database execution failed.' };
+      return actionFailure(err, actionType);
     }
   },
 
@@ -97,7 +108,7 @@ export const CRMActionHandler = {
       .select()
       .single();
 
-    return error ? { success: false, error: error.message } : { success: true, data };
+    return error ? actionFailure(error, 'create_task') : { success: true, data };
   },
 
   /**
@@ -111,7 +122,7 @@ export const CRMActionHandler = {
       .select()
       .single();
 
-    return error ? { success: false, error: error.message } : { success: true, data };
+    return error ? actionFailure(error, 'assign_owner') : { success: true, data };
   },
 
   /**
@@ -164,7 +175,7 @@ export const CRMActionHandler = {
       opportunityId = inserted?.id ?? null;
     }
 
-    if (res.error) return { success: false, error: res.error.message };
+    if (res.error) return actionFailure(res.error, 'update_pipeline');
 
     // Keep automation-driven stage moves consistent with drag-and-drop /
     // API-driven ones: both should fire the same downstream trigger event
@@ -219,7 +230,7 @@ export const CRMActionHandler = {
 
     if (!error) syncContactTagsToRelational(workspaceId, contactId, mergedTags).catch(() => {});
 
-    return error ? { success: false, error: error.message } : { success: true };
+    return error ? actionFailure(error, 'apply_tags') : { success: true };
   },
 
   /**
@@ -238,7 +249,7 @@ export const CRMActionHandler = {
       .select()
       .single();
 
-    return error ? { success: false, error: error.message } : { success: true, data };
+    return error ? actionFailure(error, 'create_note') : { success: true, data };
   },
 
   /**
@@ -259,7 +270,7 @@ export const CRMActionHandler = {
       .update(updates)
       .eq('id', contactId);
 
-    return error ? { success: false, error: error.message } : { success: true };
+    return error ? actionFailure(error, 'update_fields') : { success: true };
   },
 
   /**
@@ -280,7 +291,7 @@ export const CRMActionHandler = {
       .select()
       .single();
 
-    return error ? { success: false, error: error.message } : { success: true, data };
+    return error ? actionFailure(error, 'create_reminder') : { success: true, data };
   },
 
   async sendWhatsAppVoice(supabase: any, workspaceId: string, contactId: string | null, config: any) {
