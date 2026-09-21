@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { sendSMS } from '@/lib/sms';
+import { sendSMS, SmsOptedOutError } from '@/lib/sms';
+import { normalizePhone } from '@/lib/phone';
 import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 import { logger } from '@/shared/logger';
 import crypto from 'crypto';
@@ -95,9 +96,18 @@ export async function GET(req: Request) {
         continue;
       }
 
+      // Stored phones are often local ("082 123 4567"); '+' + phone made those an invalid
+      // "+082 123 4567". Normalise to E.164, and fail the row clearly if it cannot be resolved.
+      const cleanPhone = normalizePhone(contact.phone);
+      if (!cleanPhone) {
+        updates.push({ id: job.id, status: 'failed', error_log: 'Invalid phone number (cannot be converted to international format)', locked_by: null });
+        failedIncrements[job.campaign_id] = (failedIncrements[job.campaign_id] || 0) + 1;
+        continue;
+      }
+
       try {
-        const cleanPhone = contact.phone.startsWith('+') ? contact.phone : `+${contact.phone}`;
         const result = await sendSMS({
+          workspaceId: job.workspace_id,
           to: cleanPhone,
           message: campaign.message_body,
           config: {
@@ -110,6 +120,13 @@ export async function GET(req: Request) {
         sentIncrements[campaign.id] = (sentIncrements[campaign.id] || 0) + 1;
         sentCount++;
       } catch (sendErr: any) {
+        // sendSMS itself refuses opted-out numbers (durable suppression list + contact flags), which
+        // covers a STOP recorded after this batch's contact rows were read.
+        if (sendErr instanceof SmsOptedOutError) {
+          updates.push({ id: job.id, status: 'skipped_opt_out', locked_by: null });
+          optOutIncrements[job.campaign_id] = (optOutIncrements[job.campaign_id] || 0) + 1;
+          continue;
+        }
         const isHardFail = /invalid|auth|unsubscribed|blacklist/i.test(sendErr.message || '');
         const nextRetryCount = (job.retry_count || 0) + 1;
 

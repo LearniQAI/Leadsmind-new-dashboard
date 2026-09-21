@@ -48,7 +48,7 @@ export async function markLessonCompleteForContact(
 
     const { data: enrollment } = await adminClient
       .from('enrollments')
-      .select('id, status, active, enrolled_at')
+      .select('id, status, active, enrolled_at, expires_at, grace_period_expires_at')
       .eq('contact_id', contactId)
       .eq('course_id', courseId)
       .maybeSingle();

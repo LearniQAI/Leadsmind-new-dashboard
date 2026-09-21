@@ -89,6 +89,7 @@ export const AutomationActions = {
    .from("contacts")
    .select("phone")
    .eq("id", contactId)
+   .eq("workspace_id", workspaceId)
    .single();
 
   if (!contact?.phone) throw new Error("Contact has no phone number");
@@ -101,6 +102,7 @@ export const AutomationActions = {
    .single();
 
   await sendSMS({
+   workspaceId: workspaceId,
    to: contact.phone,
    message: config.message || "Hi, this is an automated message.",
    config: {
@@ -267,6 +269,7 @@ export const AutomationActions = {
    const bodyText = replaceTokens(config.body || "");
 
    await sendSMS({
+    workspaceId: workspaceId,
     to: `whatsapp:${cleanPhone}`,
     message: bodyText,
     config: {
@@ -485,6 +488,7 @@ export const AutomationActions = {
     const msg1Text = `Hi ${contact.first_name || 'there'}, this is ${senderName} — ${senderJobTitle} at ${workspaceName}. I have left you a quick voice message below 👇`;
     
     await sendSMS({
+      workspaceId: workspaceId,
       to,
       message: msg1Text,
       config: {
@@ -499,6 +503,7 @@ export const AutomationActions = {
     // Message 2 (Audio Content)
     const audioUrl = config.audioUrl || config.audio_url || '';
     await sendSMS({
+      workspaceId: workspaceId,
       to,
       message: "",
       mediaUrl: audioUrl,
@@ -519,6 +524,7 @@ export const AutomationActions = {
       const msg3Text = `📝 Transcript: ${excerpt}${transcript.length > 200 ? '...' : ''}`;
       
       await sendSMS({
+        workspaceId: workspaceId,
         to,
         message: msg3Text,
         config: {

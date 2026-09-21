@@ -13,6 +13,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
 import { resolveWorkspaceTwilioCredentials, type WorkspaceTwilioRow } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 import { humanizeTwilioError } from '@/lib/twilio/humanizeTwilioError';
+import { inboundSmsWebhookUrl } from '@/lib/twilio/inboundWebhook';
 import { logger } from '@/shared/logger';
 
 export interface WorkspacePhoneNumber {
@@ -156,7 +157,10 @@ export async function purchaseWorkspacePhoneNumber(phoneNumber: string): Promise
 
   let purchased: any;
   try {
-    purchased = await client.incomingPhoneNumbers.create({ phoneNumber: trimmed });
+    // Point the new number's SMS webhook at the STOP/inbound handler from the start (when the app
+    // URL is public), instead of relying on a manual step.
+    const smsUrl = inboundSmsWebhookUrl();
+    purchased = await client.incomingPhoneNumbers.create({ phoneNumber: trimmed, ...(smsUrl ? { smsUrl, smsMethod: 'POST' } : {}) });
   } catch (err: any) {
     logger.error({ err, workspaceId, phoneNumber: trimmed }, 'telephony.purchase.twilio_failed');
     return { error: humanizeTwilioError(err) };

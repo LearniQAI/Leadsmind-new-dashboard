@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { getUser } from '@/lib/auth';
 import { getOrCreateStudentContact } from '@/app/actions/studentEnrollments';
 import { ensureCourseCertificate } from '@/lib/lms/issueCertificate';
+import { enrolmentInactiveReason } from '@/lib/lms/enrolment';
 import { generateCertificatePDF } from '../../../../../../../libs/services/src/pdf/cert-generator';
 
 export const dynamic = 'force-dynamic';
@@ -45,6 +46,22 @@ export async function GET(
     const contactId = await getOrCreateStudentContact(course.workspace_id);
     if (!contactId) {
       return NextResponse.json({ error: 'Student contact not resolved' }, { status: 400 });
+    }
+
+    // 2b. The enrolment must still be active (same isEnrolmentActive predicate, incl. expiry) —
+    // a suspended / cancelled / expired / pending-approval student can't pull a certificate.
+    const { data: enrollment } = await adminClient
+      .from('enrollments')
+      .select('status, active, expires_at, grace_period_expires_at')
+      .eq('contact_id', contactId)
+      .eq('course_id', courseId)
+      .maybeSingle();
+    const inactiveReason = enrolmentInactiveReason(enrollment);
+    if (inactiveReason) {
+      return NextResponse.json(
+        { error: inactiveReason, code: enrollment ? 'ENROLMENT_INACTIVE' : 'NOT_ENROLLED' },
+        { status: 403 }
+      );
     }
 
     // 3. Verify Course Completion Status

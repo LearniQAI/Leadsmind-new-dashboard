@@ -55,6 +55,7 @@ export default function PhoneTab() {
       toast.error(res.error);
     } else {
       toast.success('Twilio account connected.');
+      if (res.warning) toast.warning(res.warning, { duration: 12000 });
       setTwilioConfigured(true);
       setTwilioNumber(twilioPhone);
       setShowTwilioForm(false);

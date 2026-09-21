@@ -240,6 +240,8 @@ export async function POST(req: NextRequest) {
               const creds = resolveWorkspaceTwilioCredentials(ws);
 
               await sendSMS({
+                workspaceId: invoiceWorkspaceId,
+                purpose: 'transactional',
                 to,
                 message: `Payment Confirmed: We have received your payment of R${payload.amount_gross} for invoice #${matchedInvoice.invoice_number || m_payment_id}. Reference: ${payload.pf_payment_id || m_payment_id}. Thank you!`,
                 config: creds.accountSid && creds.authToken ? {

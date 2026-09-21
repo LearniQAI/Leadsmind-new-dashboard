@@ -99,13 +99,27 @@ async function resolveAudience(
 
   const { data: eligible, error: eligErr } = await supabase
     .from('contacts')
-    .select('id, phone, sms_opt_out, opted_out')
+    .select('id, phone, phone_e164, sms_opt_out, opted_out')
     .in('id', Array.from(matchedIds));
   if (eligErr) throw eligErr;
 
-  const withPhone = (eligible ?? []).filter((c: any) => !!c.phone);
-  const excludedOptOut = withPhone.filter((c: any) => c.sms_opt_out || c.opted_out).length;
-  const contactIds = withPhone.filter((c: any) => !c.sms_opt_out && !c.opted_out).map((c: any) => c.id);
+  // Opt-outs also live in the durable suppression list (workspace + E.164 phone), which outlives
+  // contact deletion/re-import; honour both it and the contact flags.
+  const suppressedPhones = new Set<string>();
+  const phones = [...new Set((eligible ?? []).map((c: any) => c.phone_e164).filter(Boolean))] as string[];
+  for (let i = 0; i < phones.length; i += 100) {
+    const { data: listed, error: listErr } = await supabase
+      .from('sms_suppression_list').select('phone_e164')
+      .eq('workspace_id', workspaceId).in('phone_e164', phones.slice(i, i + 100));
+    if (listErr) throw listErr;
+    for (const r of listed ?? []) suppressedPhones.add(r.phone_e164);
+  }
+
+  // A number that cannot be normalised to E.164 can never be texted (or matched to a STOP): skip it.
+  const withPhone = (eligible ?? []).filter((c: any) => !!c.phone && !!c.phone_e164);
+  const isOptedOut = (c: any) => c.sms_opt_out || c.opted_out || suppressedPhones.has(c.phone_e164);
+  const excludedOptOut = withPhone.filter(isOptedOut).length;
+  const contactIds = withPhone.filter((c: any) => !isOptedOut(c)).map((c: any) => c.id);
 
   return { contactIds, excludedOptOut };
 }

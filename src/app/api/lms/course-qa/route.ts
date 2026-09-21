@@ -7,6 +7,7 @@ import { toClientError, UnauthorizedError, ForbiddenError, NotFoundError, Valida
 import { logger } from '@/shared/logger';
 import { runCreditGuard, consumeAICredit } from '@/lib/ai/creditGuard';
 import { embedText } from '@/lib/ai/embeddings';
+import { enrolmentInactiveReason } from '@/lib/lms/enrolment';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,12 +79,15 @@ export async function POST(req: NextRequest) {
 
     const { data: enrollment, error: enrollmentError } = await adminClient
       .from('enrollments')
-      .select('id')
+      .select('id, status, active, expires_at, grace_period_expires_at')
       .eq('course_id', courseId)
       .eq('contact_id', contactId)
       .maybeSingle();
     if (enrollmentError) throw enrollmentError;
-    if (!enrollment) throw new ForbiddenError('You are not enrolled in this course');
+    // Same predicate as the player / mark-complete / quiz submit: suspended, cancelled,
+    // pending-approval and expired students must not be able to spend the workspace's AI credits.
+    const inactiveReason = enrolmentInactiveReason(enrollment);
+    if (inactiveReason) throw new ForbiddenError(inactiveReason);
 
     // 1. Server-side per-(user, course) cooldown.
     const { data: lastInteraction, error: lastError } = await adminClient

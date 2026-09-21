@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { validateRequest } from 'twilio';
 import { logger } from '@/shared/logger';
+import { normalizePhone, splitChannelPrefix } from '@/lib/phone';
+import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
+import { recordSmsOptOut, clearSmsOptOut } from '@/lib/smsOptOut';
+import { cancelSmsExecutionsForContacts } from '@/lib/automation/cancelOptOutExecutions';
 
 export const runtime = 'nodejs';
 
@@ -10,26 +14,62 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+const STOP_KEYWORDS = ['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT'];
+const START_KEYWORDS = ['START', 'UNSTOP', 'YES'];
+const twiml = (inner = '') => new NextResponse(`<Response>${inner}</Response>`, { status: 200, headers: { 'Content-Type': 'text/xml' } });
+
 export async function POST(req: NextRequest) {
     let payloadObj: any = {};
   try {
-    const authToken = process.env.TWILIO_AUTH_TOKEN;
-    if (!authToken) {
-      throw new Error('[FATAL] TWILIO_AUTH_TOKEN env var is not configured');
-    }
-
     const formData = await req.formData();
     formData.forEach((value, key) => payloadObj[key] = value);
 
-    // Verify this request genuinely came from Twilio BEFORE any contact lookup,
-    // OpenAI call, or enrollment logic runs. Twilio's algorithm validates the
-    // decoded form parameters against the exact webhook URL, not raw body bytes.
+    // Verify this request genuinely came from Twilio BEFORE any state change. Twilio signs each
+    // webhook with the Auth Token of the account that OWNS the number, so the right token depends
+    // on which number was texted (`To`):
+    //  - a number saved in a workspace's Twilio settings (workspaces.twilio_number) is validated
+    //    ONLY against that workspace's own decrypted token, and the request's AccountSid must be
+    //    that workspace's account -- never the platform token, which cannot sign for it;
+    //  - a number that belongs to no workspace is a platform-level number and is validated against
+    //    the platform's TWILIO_AUTH_TOKEN.
+    // (This used to validate every request against the platform token, so a workspace-owned
+    // account's genuine STOP replies were rejected and dropped.) The DB read below only selects
+    // which token to check; it changes nothing, and a failure returns the same 403 as a bad signature.
     const twilioSignature = req.headers.get('X-Twilio-Signature');
     const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/twilio/inbound`;
-    const isValidSignature = !!twilioSignature && validateRequest(authToken, twilioSignature, webhookUrl, payloadObj);
+    const toE164 = normalizePhone(String(formData.get('To') ?? ''));
+
+    const { data: ownerRows } = toE164
+      ? await supabaseAdmin
+          .from('workspaces')
+          .select('id, twilio_sid, twilio_token, twilio_sid_encrypted, twilio_token_encrypted')
+          .eq('twilio_number', toE164)
+      : { data: [] as any[] };
+    const owners = ownerRows ?? [];
+
+    let workspaceId: string | null = null;
+    let isValidSignature = false;
+    if (owners.length > 0) {
+      for (const ws of owners) {
+        let creds: { accountSid?: string; authToken?: string } = {};
+        try { creds = resolveWorkspaceTwilioCredentials(ws); } catch (err) { logger.error({ err, workspaceId: ws.id }, 'webhook.twilio_inbound.credential_decrypt.failed'); }
+        if (
+          twilioSignature && creds.authToken &&
+          creds.accountSid && payloadObj.AccountSid === creds.accountSid &&
+          validateRequest(creds.authToken, twilioSignature, webhookUrl, payloadObj)
+        ) {
+          isValidSignature = true;
+          workspaceId = ws.id;
+          break;
+        }
+      }
+    } else {
+      const platformToken = process.env.TWILIO_AUTH_TOKEN;
+      isValidSignature = !!(twilioSignature && platformToken && validateRequest(platformToken, twilioSignature, webhookUrl, payloadObj));
+    }
 
     if (!isValidSignature) {
-      logger.warn({ hasSignatureHeader: !!twilioSignature }, 'webhook.twilio_inbound.signature.invalid');
+      logger.warn({ hasSignatureHeader: !!twilioSignature, workspaceOwned: owners.length > 0 }, 'webhook.twilio_inbound.signature.invalid');
       try {
         await supabaseAdmin.from('webhook_dead_letters').insert({
           provider: 'twilio_inbound', payload: payloadObj, error: 'Invalid or missing X-Twilio-Signature', error_type: 'signature_invalid', retry_state: 'dropped'
@@ -52,16 +92,38 @@ export async function POST(req: NextRequest) {
       } catch (dbErr: any) {
         logger.error({ err: dbErr, provider: 'twilio_inbound' }, 'webhook.twilio_inbound.dead_letter_insert.failed');
       }
-      return new NextResponse('<Response></Response>', { status: 200, headers: { 'Content-Type': 'text/xml' } });
+      return twiml();
     }
 
-    logger.info({ fromPhone }, 'webhook.twilio_inbound.sms_received');
+    logger.info({ workspaceId }, 'webhook.twilio_inbound.sms_received');
 
     if (!fromPhone || !body) {
-      return new NextResponse('<Response></Response>', {
-        status: 200,
-        headers: { 'Content-Type': 'text/xml' }
-      });
+      return twiml();
+    }
+
+    // SMS opt-out / opt-in. Handled BEFORE the duplicate check and BEFORE any contact lookup: a STOP
+    // must win over whatever else the contact is mid-flow on, and must be recorded even when the
+    // number is not (yet) a contact -- the durable suppression list (workspace + E.164 phone) is what
+    // keeps a later import from silently re-subscribing them. Both operations are idempotent, so a
+    // Twilio retry of the same webhook is harmless.
+    const keyword = body.trim().replace(/[.!\s]+$/, '').toUpperCase();
+    if (STOP_KEYWORDS.includes(keyword)) {
+      const { e164, contactIds } = await recordSmsOptOut(supabaseAdmin, { workspaceId, phone: splitChannelPrefix(fromPhone).number, source: 'twilio_inbound', messageSid });
+      let cancelled = 0;
+      try {
+        cancelled = await cancelSmsExecutionsForContacts(supabaseAdmin as any, workspaceId, contactIds);
+      } catch (cancelErr) {
+        // The opt-out is already durable and the send-time gate in sendSMS is the backstop.
+        logger.error({ err: cancelErr, workspaceId }, 'webhook.twilio_inbound.stop.cancel_executions.failed');
+      }
+      logger.info({ workspaceId, matched: contactIds.length, cancelled, normalized: !!e164 }, 'webhook.twilio_inbound.stop.recorded');
+      return twiml('<Message>You have been unsubscribed from marketing messages. Reply START to resubscribe.</Message>');
+    }
+    if (START_KEYWORDS.includes(keyword)) {
+      // Only ever lifts the opt-out inside the workspace that owns the number that was texted.
+      if (!workspaceId) return twiml();
+      await clearSmsOptOut(supabaseAdmin, { workspaceId, phone: splitChannelPrefix(fromPhone).number });
+      return twiml('<Message>You have been resubscribed to marketing messages.</Message>');
     }
 
     // Duplicate Webhook Protection
@@ -74,47 +136,20 @@ export async function POST(req: NextRequest) {
 
     if (existingMsg) {
       logger.warn({ messageSid }, 'webhook.twilio_inbound.duplicate_message_skipped');
-      return new NextResponse('<Response></Response>', { status: 200, headers: { 'Content-Type': 'text/xml' } });
+      return twiml();
     }
 
-    // 1. Find the contact by phone
-    const { data: contact } = await supabaseAdmin
-      .from('contacts')
-      .select('id, workspace_id')
-      .eq('phone', fromPhone)
-      .limit(1)
-      .single();
+    // 1. Find the contact: by normalised E.164 phone, scoped to the workspace that owns the number
+    // that was texted (previously: exact-string phone match across ALL workspaces, first row wins).
+    const fromE164 = normalizePhone(splitChannelPrefix(fromPhone).number);
+    let contactQuery = supabaseAdmin.from('contacts').select('id, workspace_id');
+    contactQuery = fromE164 ? contactQuery.eq('phone_e164', fromE164) : contactQuery.eq('phone', fromPhone);
+    if (workspaceId) contactQuery = contactQuery.eq('workspace_id', workspaceId);
+    const { data: contact } = await contactQuery.limit(1).maybeSingle();
 
     if (!contact) {
-      logger.warn({ fromPhone }, 'webhook.twilio_inbound.contact_not_found');
-      return new NextResponse('<Response></Response>', { status: 200, headers: { 'Content-Type': 'text/xml' } });
-    }
-
-    // SMS opt-out/opt-in — checked before any other command (ENROL, AI relay,
-    // etc.) since a STOP reply must always win regardless of what else the
-    // contact is mid-flow on. No equivalent existed for SMS prior to the
-    // Task 42 bulk-sender (email has global_suppression_list); this is the
-    // phone-side counterpart, gating bulk_sms_campaigns dispatch.
-    const normalizedBody = body.trim().toUpperCase();
-    if (['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT'].includes(normalizedBody)) {
-      await supabaseAdmin
-        .from('contacts')
-        .update({ opted_in: false, opted_out: true, opt_out_date: new Date().toISOString(), sms_opt_out: true, sms_opt_out_at: new Date().toISOString() })
-        .eq('id', contact.id);
-      return new NextResponse(
-        '<Response><Message>You have been unsubscribed from marketing messages. Reply START to resubscribe.</Message></Response>',
-        { status: 200, headers: { 'Content-Type': 'text/xml' } }
-      );
-    }
-    if (['START', 'UNSTOP', 'YES'].includes(normalizedBody)) {
-      await supabaseAdmin
-        .from('contacts')
-        .update({ opted_in: true, opted_out: false, opt_out_date: null, sms_opt_out: false, sms_opt_out_at: null })
-        .eq('id', contact.id);
-      return new NextResponse(
-        '<Response><Message>You have been resubscribed to marketing messages.</Message></Response>',
-        { status: 200, headers: { 'Content-Type': 'text/xml' } }
-      );
+      logger.warn({ workspaceId }, 'webhook.twilio_inbound.contact_not_found');
+      return twiml();
     }
 
     // Intercept "ENROL" command for WhatsApp AI self-service registration

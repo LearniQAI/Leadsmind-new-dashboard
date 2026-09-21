@@ -333,6 +333,7 @@ export const WorkflowEngine = {
               const from = `whatsapp:${workspace?.twilio_number || process.env.TWILIO_PHONE_NUMBER}`;
 
               await sendSMS({
+                workspaceId: context.workspaceId,
                 to,
                 message: interpolatedBackupBody,
                 config: {
@@ -398,6 +399,7 @@ export const WorkflowEngine = {
         const bodyText = EmailAutomationService.interpolate(config.body || '', context.values);
 
         const smsRes = await sendSMS({
+          workspaceId: context.workspaceId,
           to,
           message: bodyText,
           config: {

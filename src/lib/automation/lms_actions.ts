@@ -82,6 +82,7 @@ export async function lms_enroll(workspaceId: string, contactId: string, config:
     const creds = resolveWorkspaceTwilioCredentials(workspace);
 
     await sendSMS({
+      workspaceId: workspaceId,
       to,
       message: msgText,
       config: {
@@ -337,6 +338,7 @@ export async function send_whatsapp_template(workspaceId: string, contactId: str
   const creds = resolveWorkspaceTwilioCredentials(workspace);
 
   await sendSMS({
+    workspaceId: workspaceId,
     to: `whatsapp:${cleanPhone}`,
     message: templateBody,
     config: {

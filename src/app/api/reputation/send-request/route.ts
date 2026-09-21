@@ -170,6 +170,7 @@ export async function POST(req: NextRequest) {
           const replacedBody = replaceTokens(campaign.sms_body || campaign.email_body, contactName, campaign.review_url)
 
           await sendSMS({
+            workspaceId: workspaceId,
             to: contactPhone,
             message: replacedBody,
             config: twilioConfig

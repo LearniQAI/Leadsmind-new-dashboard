@@ -9,6 +9,7 @@ import { sendEmail } from '@/lib/email';
 import { revalidatePath } from 'next/cache';
 import { createHash, randomBytes } from 'crypto';
 import { logger, safeLog } from '@/shared/logger';
+import { configureInboundSmsWebhook, describeWebhookFailure } from '@/lib/twilio/inboundWebhook';
 
 async function getActiveWorkspaceId() {
   const id = await getWsId();
@@ -750,7 +751,7 @@ export async function saveTwilioCredentials(
  accountSid: string,
  authToken: string,
  phoneNumber: string,
-): Promise<{ success?: boolean; error?: string }> {
+): Promise<{ success?: boolean; error?: string; warning?: string }> {
  try {
   const { workspaceId } = await requireWorkspaceRole(['admin', 'owner']);
 
@@ -802,7 +803,15 @@ export async function saveTwilioCredentials(
   if (error) throw error;
 
   logger.info({ workspaceId }, 'settings.twilio.credentials.saved');
+
+  // Point the number's SMS webhook at our STOP/inbound handler automatically (it used to be a manual
+  // doc step nobody was told about). Best-effort: a failure is reported, not fatal.
+  const wiring = await configureInboundSmsWebhook(require('twilio')(accountSid.trim(), authToken.trim()), phoneNumber.trim());
   revalidatePath('/settings');
+  if (wiring.ok === false) {
+    logger.warn({ workspaceId, reason: wiring.reason }, 'settings.twilio.inbound_webhook.not_configured');
+    return { success: true, warning: describeWebhookFailure(wiring) };
+  }
   return { success: true };
  } catch (error: any) {
   logger.error({ err: error }, 'save.twilio.credentials.failed');

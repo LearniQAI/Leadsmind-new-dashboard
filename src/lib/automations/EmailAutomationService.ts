@@ -127,6 +127,7 @@ export const EmailAutomationService = {
           const formattedMessage = `📢 *${subject}*\n\n${bodyText}`;
 
           const smsRes = await sendSMS({
+            workspaceId: workspaceId,
             to,
             message: formattedMessage,
             config: {

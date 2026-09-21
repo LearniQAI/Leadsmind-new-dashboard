@@ -121,6 +121,8 @@ export async function POST(req: NextRequest) {
 
       const creds = resolveWorkspaceTwilioCredentials(workspace);
       await sendSMS({
+        workspaceId: workspaceId,
+        purpose: 'transactional',
         to,
         message,
         config: {

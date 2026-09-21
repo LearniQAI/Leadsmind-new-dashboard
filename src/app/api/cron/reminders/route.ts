@@ -129,6 +129,7 @@ export async function GET(request) {
           const workspace = workspacesMap.get(apt.workspace_id);
           const cleanPhone = phone.startsWith('+') ? phone : `+${phone}`;
           await sendSMS({
+            workspaceId: apt.workspace_id,
             to: cleanPhone,
             message: smsText,
             config: {

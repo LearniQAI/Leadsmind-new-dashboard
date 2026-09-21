@@ -18,6 +18,7 @@ import { userSafeMessage } from "@/shared/errors/userSafe";
 import { SEQUENCE_SOURCE } from "./sequenceConstants";
 import { matchesTriggerConfig } from "./triggerFilter";
 import { EmailSuppressedError, isPermanentEmailError } from "./automationEmail";
+import { SmsOptedOutError } from "@/lib/smsOptOut";
 import { randomUUID } from "crypto";
 import { findMetGoal, describeGoal } from "./goals";
 import { checkEmailSuppression } from "@/lib/campaigns/emailSuppression";
@@ -517,6 +518,11 @@ async function runStep(executionId: string, depth = 0) {
    });
    handlerDone = true;
   } catch (handlerErr) {
+   if (handlerErr instanceof SmsOptedOutError) {
+    // STOP: skip just this SMS/WhatsApp step (like a generic workflow's suppressed email); the run's
+    // other steps carry on. (STOP also cancels runs that have SMS steps outright -- see the webhook.)
+    suppressedReason = handlerErr.message;
+   } else {
    if (!(handlerErr instanceof EmailSuppressedError)) throw handlerErr;
    if (execution.workflow?.source === SEQUENCE_SOURCE) {
     // Unsubscribed/bounced mid-sequence: stop the whole run, no further emails.
@@ -530,6 +536,7 @@ async function runStep(executionId: string, depth = 0) {
    }
    // Generic workflow: skip only this email step; its other steps still run.
    suppressedReason = handlerErr.message;
+   }
   }
 
   // ── PROGRESSION ──────────────────────────────────────────────────────────

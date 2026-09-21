@@ -7,6 +7,7 @@ import { gradeQuizAttempt } from '@/lib/lms/gradeQuiz';
 import { gradeModuleQuizAttempt } from '@/lib/lms/gradeModuleQuiz';
 import { getModuleCompletionStatus } from '@/lib/lms/moduleCompletion';
 import { markLessonCompleteForContact } from '@/lib/lms/completeLesson';
+import { enrolmentInactiveReason } from '@/lib/lms/enrolment';
 import { logger } from '@/shared/logger';
 
 /**
@@ -38,6 +39,45 @@ async function resolveCourseContext(
   if (!contactId) return { error: 'Failed to resolve student contact' };
 
   return { workspaceId: course.workspace_id, contactId };
+}
+
+type QuizGateError = { error: string; code: 'NOT_ENROLLED' | 'ENROLMENT_INACTIVE' | 'LESSON_NOT_IN_COURSE' | 'ATTEMPTS_EXCEEDED' };
+
+async function assertCanAttemptQuiz(
+  adminClient: ReturnType<typeof createAdminClient>,
+  contactId: string,
+  courseId: string,
+  lessonId: string
+): Promise<{ ok: true } | QuizGateError> {
+  const { data: enrollment } = await adminClient
+    .from('enrollments')
+    .select('id, status, active, expires_at, grace_period_expires_at')
+    .eq('contact_id', contactId)
+    .eq('course_id', courseId)
+    .maybeSingle();
+
+  if (!enrollment) return { error: 'You are not enrolled in this course.', code: 'NOT_ENROLLED' };
+  const reason = enrolmentInactiveReason(enrollment);
+  if (reason) return { error: reason, code: 'ENROLMENT_INACTIVE' };
+
+  const { data: lesson } = await adminClient
+    .from('course_lessons')
+    .select('id')
+    .eq('id', lessonId)
+    .eq('course_id', courseId)
+    .maybeSingle();
+  if (!lesson) return { error: 'Quiz not found in this course.', code: 'LESSON_NOT_IN_COURSE' };
+
+  const [{ data: settings }, { count }, { data: remedial }] = await Promise.all([
+    adminClient.from('quiz_settings').select('max_attempts').eq('lesson_id', lessonId).maybeSingle(),
+    adminClient.from('quiz_attempts').select('id', { count: 'exact', head: true }).eq('lesson_id', lessonId).eq('student_id', contactId),
+    adminClient.from('lms_remedial_assignments').select('status').eq('enrollment_id', enrollment.id).eq('lesson_id', lessonId).maybeSingle(),
+  ]);
+  const maxAttempts = settings?.max_attempts || 3;
+  if ((count ?? 0) >= maxAttempts && remedial?.status !== 'passed') {
+    return { error: 'You have used all your attempts for this quiz. Complete the remedial path to unlock more.', code: 'ATTEMPTS_EXCEEDED' };
+  }
+  return { ok: true };
 }
 
 /**
@@ -154,6 +194,15 @@ export async function submitQuizAttempt(payload: {
 
     const adminClient = createAdminClient();
 
+    // 0. Gate the attempt itself (not just the completion that follows a pass): the caller must
+    // hold a currently-active enrolment (same isEnrolmentActive predicate as the player and
+    // markLessonComplete, incl. expiry), the lesson must belong to this course, and the
+    // lesson quiz's max_attempts must not be used up (remedial pass lifts the lock — mirrors
+    // StudentQuizClient). The DB trigger quiz_attempts_enforce_max_attempts is the atomic
+    // backstop for parallel submits; this pre-check just gives a clean error.
+    const gate = await assertCanAttemptQuiz(adminClient, contactId, payload.courseId, payload.lessonId);
+    if ('error' in gate) return gate;
+
     // 1. Independently recompute score/pass from the real quiz_questions data — never trust
     // a client-supplied score or pass field.
     const { score, passed, rawScore, maxScore, autoRawScore, pendingManual } =
@@ -179,7 +228,12 @@ export async function submitQuizAttempt(payload: {
         answers: payload.answers
       });
 
-    if (attemptErr) throw attemptErr;
+    if (attemptErr) {
+      if ((attemptErr as any).code === 'LM001') {
+        return { error: 'You have used all your attempts for this quiz. Complete the remedial path to unlock more.', code: 'ATTEMPTS_EXCEEDED' };
+      }
+      throw attemptErr;
+    }
 
     if (pendingManual) {
       return {
@@ -265,12 +319,21 @@ export async function submitModuleQuizAttempt(payload: {
     if ('error' in ctx) return { error: ctx.error };
     const { workspaceId, contactId } = ctx;
 
+    const adminClient = createAdminClient();
+
+    const { data: enrollment } = await adminClient
+      .from('enrollments')
+      .select('id, status, active, expires_at, grace_period_expires_at')
+      .eq('contact_id', contactId)
+      .eq('course_id', payload.courseId)
+      .maybeSingle();
+    const inactiveReason = enrolmentInactiveReason(enrollment);
+    if (inactiveReason) return { error: inactiveReason, code: enrollment ? 'ENROLMENT_INACTIVE' : 'NOT_ENROLLED' };
+
     const completion = await getModuleCompletionStatus(contactId, payload.moduleId);
     if (!completion.allComplete) {
       return { error: 'Complete every lesson in this module before taking its quiz.' };
     }
-
-    const adminClient = createAdminClient();
 
     const { score, passed, rawScore, maxScore, autoRawScore, pendingManual } =
       await gradeModuleQuizAttempt(payload.moduleId, payload.answers);
