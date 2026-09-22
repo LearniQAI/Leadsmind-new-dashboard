@@ -15,6 +15,7 @@ import {
 import { recordBlockCompletion, getCompletedBlockIdsForLesson, getLessonBlockCompletionStatus, getLessonReadingGateStatus, recordLessonReadingCompletion } from '@/app/actions/blockCompletion';
 import SyllabusSidebar from './components/SyllabusSidebar';
 import VideoPlayer from './components/VideoPlayer';
+import AudioDrivePlayer from './components/AudioDrivePlayer';
 import { useHeartbeat } from '@/hooks/useHeartbeat';
 import { getLessonLockReason } from './components/lock-utils';
 import LockedLessonPlaceholder from './components/LockedLessonPlaceholder';
@@ -809,7 +810,15 @@ export default function StudentPlayerClient({
           )}
         </div>
       )}
-      {block.type === 'audio' && block.content?.mode !== 'embed' && block.file_url && (
+      {block.type === 'audio' && block.content?.mode === 'drive' && block.content?.audio_asset_id && (
+        <AudioDrivePlayer
+          assetId={block.content.audio_asset_id}
+          contentBlockId={block.id}
+          isAlreadyCompleted={completedBlockIds.has(block.id)}
+          onComplete={() => markBlockComplete(block.id, { percentage: 90 })}
+        />
+      )}
+      {block.type === 'audio' && block.content?.mode !== 'embed' && block.content?.mode !== 'drive' && block.file_url && (
         <VoiceNotePlayer
           audioUrl={block.file_url}
           waveformBars={block.content?.waveform_bars}
