@@ -81,12 +81,31 @@ describe('evaluateCourseCompletion', () => {
     expect(r.totals).toEqual({ lessons: 3, lessonQuizzes: 1, moduleQuizzes: 1, assignments: 1 });
   });
 
-  it('a draft (visible-to-students) module still counts, matching the player', () => {
+  it('a draft module is excluded from the requirement (Batch 4 / fix 1), even though it is NOT locked in the player', () => {
     const input = base();
     input.modules.push({ id: 'M3', is_active: true, publish_status: 'draft' });
     input.lessons.push({ id: 'L5', module_id: 'M3', is_active: true });
-    expect(evaluateCourseCompletion(input).complete).toBe(false);
-    expect(evaluateCourseCompletion({ ...input, completedLessonIds: ['L1', 'L2', 'L3', 'L5'] }).complete).toBe(true);
+    // Not completed and still eligible: the draft module never entered the denominator.
+    const r = evaluateCourseCompletion(input);
+    expect(r.complete).toBe(true);
+    expect(r.totals.lessons).toBe(3);
+  });
+
+  it('a draft module a student DID finish anyway is not penalized — same totals either way', () => {
+    const input = base();
+    input.modules.push({ id: 'M3', is_active: true, publish_status: 'draft' });
+    input.lessons.push({ id: 'L5', module_id: 'M3', is_active: true });
+    const finished = evaluateCourseCompletion({ ...input, completedLessonIds: ['L1', 'L2', 'L3', 'L5'] });
+    expect(finished.complete).toBe(true);
+    expect(finished.totals.lessons).toBe(3);
+  });
+
+  it('a draft module quiz does not gate the certificate either', () => {
+    const input = base();
+    input.modules.push({ id: 'M3', is_active: true, publish_status: 'draft' });
+    input.lessons.push({ id: 'L5', module_id: 'M3', is_active: true });
+    input.moduleIdsWithQuiz.push('M3'); // never passed
+    expect(evaluateCourseCompletion(input).complete).toBe(true);
   });
 
   it('a course with no visible lessons cannot yield a certificate', () => {

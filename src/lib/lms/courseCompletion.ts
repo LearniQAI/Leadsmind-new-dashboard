@@ -4,10 +4,16 @@ import type { createAdminClient } from '@/lib/supabase/server';
 // shared by the download route and the assign_certificate automation (Batch 3 / fix 1).
 //
 // Requirements — all must hold:
-//   1. every lesson the student can actually see is complete. "Visible" mirrors the student player
-//      exactly (student/courses/[id]/page.tsx): lesson.is_active AND module.is_active. A module whose
-//      publish_status is 'coming_soon' is locked to students (lock-utils), so it cannot be completed
-//      and is excluded from the denominator rather than making the certificate unreachable.
+//   1. every lesson in a REQUIRED module is complete. "Required" is is_active AND
+//      publish_status NOT IN ('coming_soon', 'draft'). 'coming_soon' is genuinely locked to
+//      students (lock-utils.ts); 'draft', by contrast, is NOT locked in the player today —
+//      lock-utils only special-cases 'coming_soon', so a student CAN open and complete a draft
+//      module's lessons. It is excluded here anyway, by policy (Batch 4 / fix 1): a course's
+//      certificate requirement shouldn't be held hostage by an instructor's in-progress draft
+//      content, even though a student who does finish it isn't penalized for it either (its
+//      lessons still count toward `completedLessonIds` if genuinely done — they're just not
+//      REQUIRED). Confirmed live: 'draft' and 'published' are the only publish_status values in
+//      use today; 'coming_soon' has real code support but 0 live rows.
 //   2. every visible lesson that has quiz questions has a PASSED lesson-quiz attempt.
 //   3. every visible module that has module-quiz questions has a PASSED module-quiz attempt
 //      (a 'pending_review' attempt has passed = null and does not count).
@@ -40,9 +46,10 @@ export interface CompletionStatus {
 }
 
 export function evaluateCourseCompletion(input: CompletionInput): CompletionStatus {
+  const HIDDEN_MODULE_STATUSES = new Set(['coming_soon', 'draft']);
   const visibleModules = new Map(
     input.modules
-      .filter((m) => m.is_active !== false && m.publish_status !== 'coming_soon')
+      .filter((m) => m.is_active !== false && !HIDDEN_MODULE_STATUSES.has(m.publish_status || ''))
       .map((m) => [m.id, m])
   );
   const visibleLessons = input.lessons.filter(
