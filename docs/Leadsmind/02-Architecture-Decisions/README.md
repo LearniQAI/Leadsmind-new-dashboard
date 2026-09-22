@@ -17,3 +17,4 @@ superseded ADR stays in place with `status: superseded` and a link forward.
 | [[ADR-0004-sender-domains-vs-custom-domains]] | Sender Domains and Custom Domain Connection stay separate; only the auth posture was unified | accepted |
 | [[ADR-0005-legacy-lms-quiz-cluster-scoped-drop]] | Drop only the confirmed-dead legacy quiz children now; `lms_quizzes` left for a separate decision | accepted |
 | [[ADR-0006-smart-tags-relational-model]] | Replace the never-created `contact_tags_registry` with a hierarchical, polymorphic tag model | accepted |
+| [[ADR-0007-two-lms-automation-engines]] | Keep both LMS automation engines (Engine A `/automations`, Engine B course Automations tab); document the split instead of merging | accepted |
