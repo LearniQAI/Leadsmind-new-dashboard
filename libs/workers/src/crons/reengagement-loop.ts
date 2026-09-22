@@ -3,6 +3,7 @@ import { sendSMS } from '@/lib/sms';
 import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 import { SignJWT } from 'jose';
 import crypto from 'crypto';
+import { logger } from '@/shared/logger';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,24 +23,30 @@ export async function runReengagementLoop() {
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    // Fetch contacts with active portal access and a phone number who have logged in before
+    // Fetch contacts with active portal access and a phone number who have logged in before.
+    // Batch 5 / H2: filters on phone_e164 (the generated, validated E.164 column — migration
+    // 20260921000012, backed by src/lib/phone.ts::normalizePhone) instead of the raw `phone`
+    // column. A contact whose phone can't be confidently normalized (ambiguous length, no
+    // country signal — see normalizePhone's own "never guessed" cases) gets phone_e164 = NULL
+    // and is excluded here rather than reached with a guessed number.
     const { data: contacts, error } = await supabaseAdmin
       .from('contacts')
-      .select('id, email, first_name, phone, workspace_id, last_login_at, last_reengagement_sent_at')
+      .select('id, email, first_name, phone_e164, workspace_id, last_login_at, last_reengagement_sent_at')
       .eq('portal_access_enabled', true)
       .eq('portal_access_revoked', false)
       .not('last_login_at', 'is', null)
       .lte('last_login_at', thirtyDaysAgo.toISOString())
-      .not('phone', 'is', null);
+      .not('phone_e164', 'is', null);
 
     if (error) throw error;
 
     if (!contacts || contacts.length === 0) {
       console.log('[Re-engagement Loop] No inactive contacts matching criteria found.');
-      return { processed: 0, sent: 0 };
+      return { processed: 0, sent: 0, skipped: 0 };
     }
 
     let sentCount = 0;
+    let skippedCount = 0;
 
     for (const contact of contacts) {
       // Rate limit re-engagement messages to once every 30 days
@@ -77,23 +84,36 @@ export async function runReengagementLoop() {
         .single();
 
       const workspaceName = workspace?.name || 'our client portal';
-      
-      const cleanPhone = contact.phone.replace(/[\s\-()]/g, '');
-      const formattedPhone = cleanPhone.startsWith('+') 
-        ? cleanPhone 
-        : `+27${cleanPhone.replace(/^0/, '')}`; // default to South African code if no sign
-      
-      const whatsappTo = `whatsapp:${formattedPhone}`;
+
+      // Batch 5 / H2: contact.phone_e164 is already a validated E.164 destination (the query
+      // above excludes contacts it couldn't be resolved for) — no more inline country-code
+      // guessing here.
+      const whatsappTo = `whatsapp:${contact.phone_e164}`;
       const message = `Hi ${contact.first_name || 'there'}! We noticed it's been a while since you last logged into the ${workspaceName} portal. Here's a secure, direct link to access your dashboard, courses, and bills: ${magicLinkUrl}`;
+
+      // Batch 5 / H2: a real, workspace-owned or platform-level (TWILIO_PHONE_NUMBER) number
+      // only — the previous '+14155238886' fallback was Twilio's PUBLIC WhatsApp sandbox
+      // number, which real, unconsented recipients must never be contacted from. No FROM
+      // number resolves -> skip this send and log it, rather than reroute to the sandbox.
+      const fromNumber = workspace?.twilio_number || process.env.TWILIO_PHONE_NUMBER || null;
+      if (!fromNumber) {
+        logger.warn(
+          { contactId: contact.id, workspaceId: contact.workspace_id },
+          'cron.reengagement_loop.no_from_number_configured_skipping'
+        );
+        skippedCount++;
+        continue;
+      }
 
       try {
         const creds = resolveWorkspaceTwilioCredentials(workspace);
         await sendSMS({
           to: whatsappTo,
           message,
+          workspaceId: contact.workspace_id,
           config: {
             ...creds,
-            fromNumber: `whatsapp:${workspace?.twilio_number || process.env.TWILIO_PHONE_NUMBER || '+14155238886'}`,
+            fromNumber: `whatsapp:${fromNumber}`,
           }
         });
 
@@ -119,7 +139,7 @@ export async function runReengagementLoop() {
       }
     }
 
-    return { processed: contacts.length, sent: sentCount };
+    return { processed: contacts.length, sent: sentCount, skipped: skippedCount };
   } catch (err: any) {
     console.error('[Re-engagement Loop Error]:', err);
     throw err;
