@@ -20,6 +20,7 @@ export async function cancelSmsExecutionsForContacts(
   workspaceId: string | null,
   contactIds: string[],
   reason = 'sms_opt_out',
+  logMessage = 'Cancelled: contact replied STOP (SMS/WhatsApp opt-out).',
 ): Promise<number> {
   if (contactIds.length === 0) return 0;
 
@@ -71,7 +72,7 @@ export async function cancelSmsExecutionsForContacts(
         workspace_id: exec.workspace_id,
         step_id: stepId,
         status: 'skipped',
-        error_message: 'Cancelled: contact replied STOP (SMS/WhatsApp opt-out).',
+        error_message: logMessage,
         started_at: now,
         completed_at: now,
       });

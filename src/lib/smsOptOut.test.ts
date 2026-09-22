@@ -29,6 +29,21 @@ describe('getSmsOptOutReason', () => {
     expect(await getSmsOptOutReason(flagged, 'w1', '+27821234567')).toBe('contact_flag');
   });
 
+  it('distinguishes an invalid-number record from a consent-based opt-out by the list row\'s reason', async () => {
+    const invalid = fakeDb({ sms_suppression_list: { rows: [{ reason: 'invalid_number' }] } });
+    expect(await getSmsOptOutReason(invalid, 'w1', '+27821234567')).toBe('invalid_number');
+    const stop = fakeDb({ sms_suppression_list: { rows: [{ reason: 'stop_keyword' }] } });
+    expect(await getSmsOptOutReason(stop, 'w1', '+27821234567')).toBe('suppression_list');
+    const via21610 = fakeDb({ sms_suppression_list: { rows: [{ reason: 'twilio_error_21610' }] } });
+    expect(await getSmsOptOutReason(via21610, 'w1', '+27821234567')).toBe('suppression_list');
+  });
+
+  it('also checks the contacts.sms_invalid flag (not just sms_opt_out/opted_out)', async () => {
+    const db = fakeDb({ contacts: { rows: [{ id: 'c' }] } });
+    expect(await getSmsOptOutReason(db, 'w1', '+27821234567')).toBe('contact_flag');
+    expect(db.calls.find((c: any) => c.table === 'contacts' && c.op === 'or')!.args[0]).toContain('sms_invalid.eq.true');
+  });
+
   it('is scoped to the workspace and allows a clean number', async () => {
     const db = fakeDb();
     expect(await getSmsOptOutReason(db, 'w1', '+27821234567')).toBeNull();
@@ -84,5 +99,14 @@ describe('SmsOptedOutError', () => {
     expect(e.userSafe).toBe(true);
     expect(e.reason).toBe('suppression_list');
     expect(e).toBeInstanceOf(Error);
+  });
+
+  it('an invalid-number block reads as a deliverability fact, never as "opted out"', () => {
+    const optOut = new SmsOptedOutError('contact_flag');
+    const invalid = new SmsOptedOutError('invalid_number');
+    expect(invalid.message).toMatch(/invalid/i);
+    expect(invalid.message).not.toMatch(/opted out|STOP/i);
+    expect(optOut.message).toMatch(/opted out/i);
+    expect(invalid.message).not.toBe(optOut.message);
   });
 });

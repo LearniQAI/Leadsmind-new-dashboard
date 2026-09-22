@@ -64,7 +64,7 @@ async function resolveAudience(
   supabase: Awaited<ReturnType<typeof createServerClient>>,
   workspaceId: string,
   payload: Pick<CreateBulkSmsPayload, 'segmentId' | 'ruleGroup' | 'tags'>
-): Promise<{ contactIds: string[]; excludedOptOut: number }> {
+): Promise<{ contactIds: string[]; excludedOptOut: number; excludedInvalid: number }> {
   let ruleGroup: RuleGroup | null =
     payload.ruleGroup && Array.isArray(payload.ruleGroup.rules) && payload.ruleGroup.rules.length > 0
       ? payload.ruleGroup
@@ -102,7 +102,7 @@ async function resolveAudience(
     matchedIds = ruleMatchedIds || tagMatchedIds || new Set<string>();
   }
 
-  if (matchedIds.size === 0) return { contactIds: [], excludedOptOut: 0 };
+  if (matchedIds.size === 0) return { contactIds: [], excludedOptOut: 0, excludedInvalid: 0 };
 
   // Chunked: one request carrying every matched id put them all in the URL and failed outright for
   // audiences above ~300-400 contacts.
@@ -111,31 +111,36 @@ async function resolveAudience(
   for (let i = 0; i < matchedList.length; i += ID_CHUNK) {
     const { data, error: eligErr } = await supabase
       .from('contacts')
-      .select('id, phone, phone_e164, sms_opt_out, opted_out')
+      .select('id, phone, phone_e164, sms_opt_out, opted_out, sms_invalid')
       .in('id', matchedList.slice(i, i + ID_CHUNK));
     if (eligErr) throw eligErr;
     eligible.push(...(data ?? []));
   }
 
-  // Opt-outs also live in the durable suppression list (workspace + E.164 phone), which outlives
-  // contact deletion/re-import; honour both it and the contact flags.
-  const suppressedPhones = new Set<string>();
+  // Opt-outs and invalid-number flags also live in the durable suppression list (workspace + E.164
+  // phone), which outlives contact deletion/re-import; honour it alongside the contact-row flags.
+  // reasonByPhone distinguishes the two so a dead number isn't miscounted as an opt-out or vice versa.
+  const reasonByPhone = new Map<string, string>();
   const phones = [...new Set((eligible ?? []).map((c: any) => c.phone_e164).filter(Boolean))] as string[];
   for (let i = 0; i < phones.length; i += 100) {
     const { data: listed, error: listErr } = await supabase
-      .from('sms_suppression_list').select('phone_e164')
+      .from('sms_suppression_list').select('phone_e164, reason')
       .eq('workspace_id', workspaceId).in('phone_e164', phones.slice(i, i + 100));
     if (listErr) throw listErr;
-    for (const r of listed ?? []) suppressedPhones.add(r.phone_e164);
+    for (const r of listed ?? []) reasonByPhone.set(r.phone_e164, r.reason);
   }
 
-  // A number that cannot be normalised to E.164 can never be texted (or matched to a STOP): skip it.
+  // A number that cannot be normalised to E.164 can never be texted (or matched to a STOP/invalid
+  // record): skip it (counted as an opt-out exclusion, matching its prior behaviour, since it was
+  // never distinguished from "unreachable" before this change either).
   const withPhone = (eligible ?? []).filter((c: any) => !!c.phone && !!c.phone_e164);
-  const isOptedOut = (c: any) => c.sms_opt_out || c.opted_out || suppressedPhones.has(c.phone_e164);
+  const isInvalid = (c: any) => c.sms_invalid || reasonByPhone.get(c.phone_e164) === 'invalid_number';
+  const isOptedOut = (c: any) => !isInvalid(c) && (c.sms_opt_out || c.opted_out || reasonByPhone.has(c.phone_e164));
+  const excludedInvalid = withPhone.filter(isInvalid).length;
   const excludedOptOut = withPhone.filter(isOptedOut).length;
-  const contactIds = withPhone.filter((c: any) => !isOptedOut(c)).map((c: any) => c.id);
+  const contactIds = withPhone.filter((c: any) => !isInvalid(c) && !isOptedOut(c)).map((c: any) => c.id);
 
-  return { contactIds, excludedOptOut };
+  return { contactIds, excludedOptOut, excludedInvalid };
 }
 
 // Creates the campaign and, in the same call, resolves the audience and
@@ -163,7 +168,7 @@ export async function createBulkSmsCampaign(payload: CreateBulkSmsPayload) {
 
     const supabase = await createServerClient();
 
-    const { contactIds, excludedOptOut } = await resolveAudience(supabase, workspaceId, payload);
+    const { contactIds, excludedOptOut, excludedInvalid } = await resolveAudience(supabase, workspaceId, payload);
     if (contactIds.length === 0) {
       return { success: false as const, error: 'No eligible recipients matched this audience (check opt-outs and missing phone numbers)' };
     }
@@ -183,6 +188,7 @@ export async function createBulkSmsCampaign(payload: CreateBulkSmsPayload) {
         status: 'scheduled',
         total_recipients: contactIds.length,
         total_skipped_opt_out: excludedOptOut,
+        total_skipped_invalid_number: excludedInvalid,
         created_by: userId,
       })
       .select()
@@ -215,7 +221,7 @@ export async function createBulkSmsCampaign(payload: CreateBulkSmsPayload) {
     }
 
     revalidatePath('/sms');
-    return { success: true as const, data: campaign, recipientCount: contactIds.length, excludedOptOut };
+    return { success: true as const, data: campaign, recipientCount: contactIds.length, excludedOptOut, excludedInvalid };
   } catch (error: any) {
     logger.error({ err: error }, 'create.bulk_sms_campaign.failed');
     // Only errors authored for the user (validation, "segment was deleted", ...) reach the client;

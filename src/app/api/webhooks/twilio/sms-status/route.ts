@@ -4,7 +4,8 @@ import { logger } from '@/shared/logger';
 import { verifyTwilioWebhook } from '@/lib/twilio/verifyWebhook';
 import { recordSmsOptOut } from '@/lib/smsOptOut';
 import { cancelSmsExecutionsForContacts } from '@/lib/automation/cancelOptOutExecutions';
-import { splitChannelPrefix } from '@/lib/phone';
+import { splitChannelPrefix, normalizePhone } from '@/lib/phone';
+import { isDestinationSoftFailCode, recordSmsSoftFail, resetSmsSoftFailStreak } from '@/lib/smsDeliveryFailures';
 
 export const runtime = 'nodejs';
 
@@ -63,6 +64,8 @@ export async function POST(req: NextRequest) {
     if (error) throw error;
 
     if (result?.applied && result.failed && errorCode === RECIPIENT_UNSUBSCRIBED) {
+      // Consent signal: the recipient replied STOP to Twilio itself. Own path (recordSmsOptOut),
+      // never conflated with an invalid-number fact.
       const { contactIds } = await recordSmsOptOut(supabaseAdmin, {
         workspaceId: verdict.workspaceId,
         phone: splitChannelPrefix(String(payload.To ?? '')).number,
@@ -71,6 +74,38 @@ export async function POST(req: NextRequest) {
       });
       try { await cancelSmsExecutionsForContacts(supabaseAdmin as any, verdict.workspaceId, contactIds); } catch (err) {
         logger.error({ err }, 'webhook.twilio_sms_status.cancel_executions.failed');
+      }
+    } else if (result?.applied && result.failed && result.contact_id && isDestinationSoftFailCode(errorCode)) {
+      // Deliverability signal: a permanent-shaped failure that says the NUMBER can't receive SMS, not
+      // that the recipient withdrew consent. Counted toward a threshold (see smsDeliveryFailures.ts for
+      // why a single occurrence is never enough); only crossing it flags the number invalid.
+      try {
+        const outcome = await recordSmsSoftFail(supabaseAdmin, {
+          workspaceId: verdict.workspaceId,
+          contactId: result.contact_id,
+          phoneE164: normalizePhone(splitChannelPrefix(String(payload.To ?? '')).number),
+          errorCode,
+          messageSid,
+        });
+        if (outcome.flagged) {
+          logger.info({ workspaceId: verdict.workspaceId, contactId: result.contact_id, errorCode }, 'webhook.twilio_sms_status.number_flagged_invalid');
+          try {
+            await cancelSmsExecutionsForContacts(
+              supabaseAdmin as any, verdict.workspaceId, [result.contact_id], 'sms_invalid_number',
+              'Cancelled: contact\'s phone number is invalid (repeated delivery failures).',
+            );
+          } catch (err) {
+            logger.error({ err }, 'webhook.twilio_sms_status.cancel_executions.failed');
+          }
+        }
+      } catch (err) {
+        logger.error({ err, errorCode }, 'webhook.twilio_sms_status.record_soft_fail.failed');
+      }
+    } else if (result?.applied && result.terminal && !result.failed && result.contact_id) {
+      // Delivered/read: the number just proved it works. Resets the consecutive-failure streak only
+      // (mirrors email's bounce-reset-on-success); the lifetime total is a durable flakiness signal.
+      try { await resetSmsSoftFailStreak(supabaseAdmin, result.contact_id); } catch (err) {
+        logger.error({ err }, 'webhook.twilio_sms_status.reset_soft_fail.failed');
       }
     }
 

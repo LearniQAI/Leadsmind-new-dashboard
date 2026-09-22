@@ -10,35 +10,17 @@
 //
 // Tags are read from tag_assignments (the source of truth), NOT the legacy contacts.tags array,
 // which is only a denormalised copy that can drift (same fix as the Segments "Has tag" rule).
+// Server-only evaluation logic. Types/constants/describeGoal live in ./goalTypes (no logger, no
+// supabase) so client components can import the schema without pulling in server-only code -
+// never import this file from a 'use client' component.
 import { logger } from '@/shared/logger';
+import { CONVERTED_APPOINTMENT_STATUSES, type GoalRule } from './goalTypes';
 
-export interface GoalRule {
-  field: string;
-  operator?: string;
-  value?: unknown;
-  tag_id?: string;
-}
-
-// Only appointments that were genuinely booked and kept count: a cancelled booking (or a
-// no-show) is not a conversion.
-export const CONVERTED_APPOINTMENT_STATUSES = ['scheduled', 'showed_up'];
+export type { GoalRule } from './goalTypes';
+export { CONVERTED_APPOINTMENT_STATUSES, GOAL_FIELDS, describeGoal } from './goalTypes';
 
 const isTrue = (v: unknown) => v === true || v === 'true';
 const norm = (s: unknown) => String(s ?? '').trim().toLowerCase();
-
-/** Editor-facing rule fields (what the sequence editor can create). */
-export const GOAL_FIELDS = { appointment: 'meeting_booked', invoice: 'invoice_paid', tag: 'tag' } as const;
-
-export function describeGoal(rule: GoalRule): string {
-  switch (rule.field) {
-    case 'meeting_booked': return 'an appointment was booked';
-    case 'invoice_paid': return 'an invoice was paid';
-    case 'passed_quiz': return 'the quiz was passed';
-    case 'tag': case 'tags':
-      return `${rule.operator === 'not_equals' ? 'tag removed' : 'tag added'}: ${String(rule.value ?? '')}`;
-    default: return `${rule.field} ${rule.operator ?? 'equals'} ${String(rule.value ?? '')}`;
-  }
-}
 
 /**
  * Whether the contact has the tag, per tag_assignments. Matches by tag id when the rule has

@@ -1,16 +1,30 @@
-// SMS/WhatsApp opt-out: one implementation for recording (STOP webhook), checking (sendSMS) and
-// clearing (START). An opt-out is honoured if EITHER the durable suppression list
+// SMS/WhatsApp send-blocking: one implementation for recording (STOP webhook, invalid-number delivery
+// failures), checking (sendSMS) and clearing (START — opt-out only, never invalid-number: correcting a
+// number doesn't happen by texting FROM it). A send is blocked if EITHER the durable list
 // (sms_suppression_list, keyed by workspace + E.164 phone — survives contact delete/re-import) OR
-// the contact-row flags (sms_opt_out / opted_out — also set by other UI paths) say so. The flags
-// are unified across SMS and WhatsApp (migration 20260823000002), so one opt-out covers both.
+// the contact-row opt-out flags (sms_opt_out / opted_out — also set by other UI paths) say so.
+// sms_suppression_list holds TWO distinct reasons, never conflated:
+//   'stop_keyword' / 'twilio_error_21610' -- a CONSENT withdrawal (the person asked to stop);
+//   'invalid_number' -- a DELIVERABILITY fact (the number can't receive SMS at all), set by
+//   src/lib/smsDeliveryFailures.ts after repeated permanent-shaped Twilio delivery failures. A
+//   corrected/working number should stop being invalid; it was never a consent question, so it does
+//   NOT touch sms_opt_out/opted_out and is not lifted by START.
+// The opt-out flags are unified across SMS and WhatsApp (migration 20260823000002).
 import { normalizePhone } from '@/lib/phone';
 
-// Thrown by sendSMS instead of sending to an opted-out number. Not a delivery failure: callers
-// treat it as "skipped" (the executor skips the step, the bulk worker counts skipped_opt_out).
+export type SmsBlockReason = 'suppression_list' | 'contact_flag' | 'invalid_number';
+
+// Thrown by sendSMS instead of sending to a blocked number. Not itself a delivery failure: callers
+// treat it as "skipped" (the executor skips the step; the bulk worker counts skipped_opt_out or
+// skipped_invalid_number depending on `.reason`).
 export class SmsOptedOutError extends Error {
   readonly userSafe = true as const;
-  constructor(readonly reason: 'suppression_list' | 'contact_flag') {
-    super('This contact has opted out of SMS/WhatsApp messages (STOP).');
+  constructor(readonly reason: SmsBlockReason) {
+    super(
+      reason === 'invalid_number'
+        ? 'This contact\'s phone number is marked invalid (repeated delivery failures) and cannot be messaged.'
+        : 'This contact has opted out of SMS/WhatsApp messages (STOP).',
+    );
     this.name = 'SmsOptedOutError';
   }
 }
@@ -20,19 +34,19 @@ export async function getSmsOptOutReason(
   supabase: any,
   workspaceId: string,
   phone: string,
-): Promise<'suppression_list' | 'contact_flag' | null> {
+): Promise<SmsBlockReason | null> {
   const e164 = normalizePhone(phone);
-  if (!e164) return null; // not a number we can identify: nothing to match a STOP against
+  if (!e164) return null; // not a number we can identify: nothing to match a STOP/invalid record against
 
   const [{ data: listed, error: listErr }, { data: flagged, error: flagErr }] = await Promise.all([
-    supabase.from('sms_suppression_list').select('id').eq('workspace_id', workspaceId).eq('phone_e164', e164).limit(1),
+    supabase.from('sms_suppression_list').select('reason').eq('workspace_id', workspaceId).eq('phone_e164', e164).limit(1),
     supabase.from('contacts').select('id')
       .eq('workspace_id', workspaceId).eq('phone_e164', e164)
-      .or('sms_opt_out.eq.true,opted_out.eq.true')
+      .or('sms_opt_out.eq.true,opted_out.eq.true,sms_invalid.eq.true')
       .limit(1),
   ]);
   if (listErr || flagErr) throw new Error(`SMS opt-out lookup failed: ${(listErr ?? flagErr).message}`);
-  if (listed && listed.length > 0) return 'suppression_list';
+  if (listed && listed.length > 0) return listed[0].reason === 'invalid_number' ? 'invalid_number' : 'suppression_list';
   if (flagged && flagged.length > 0) return 'contact_flag';
   return null;
 }
