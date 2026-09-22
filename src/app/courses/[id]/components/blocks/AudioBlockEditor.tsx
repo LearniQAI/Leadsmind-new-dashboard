@@ -8,16 +8,18 @@ import { decodeWaveformPeaks } from "@/lib/audio/decodeWaveformPeaks";
 import type { ContentBlock } from "../ContentBlockList";
 import { PropertyGroup } from "@/components/builder/inspector/primitives";
 import { SandboxedHtml } from "@/components/lms/SandboxedHtml";
+import AudioDriveBlockEditor from "./AudioDriveBlockEditor";
 
 interface AudioBlockEditorProps {
   block: ContentBlock;
   onChange: (patch: Partial<ContentBlock>) => void;
 }
 
-type AudioMode = "upload" | "embed";
+type AudioMode = "upload" | "embed" | "drive";
 
 export default function AudioBlockEditor({ block, onChange }: AudioBlockEditorProps) {
-  const mode: AudioMode = block.content?.mode === "embed" ? "embed" : "upload";
+  const mode: AudioMode =
+    block.content?.mode === "embed" ? "embed" : block.content?.mode === "drive" ? "drive" : "upload";
 
   const [urlInput, setUrlInput] = useState(block.file_url || "");
   const [embedInput, setEmbedInput] = useState<string>(block.content?.embed_html || "");
@@ -84,6 +86,11 @@ export default function AudioBlockEditor({ block, onChange }: AudioBlockEditorPr
         completion_rule: "opened",
         completion_threshold: null,
       });
+    } else if (next === "drive") {
+      // Real completion_rule is only set once a link actually validates (AudioDriveBlockEditor
+      // does that server-side, via POST /api/lms/audio-assets) — switching the tab alone
+      // doesn't fake a "ready" state.
+      onChange({ content: { ...block.content, mode: "drive" } });
     } else {
       onChange({
         content: { ...block.content, mode: "upload" },
@@ -106,6 +113,7 @@ export default function AudioBlockEditor({ block, onChange }: AudioBlockEditorPr
         <div className="flex gap-1 p-0.5 rounded-lg bg-dash-surface ring-1 ring-inset ring-dash-border">
           {([
             { id: "upload", label: "Upload / Link" },
+            { id: "drive", label: "Drive link" },
             { id: "embed", label: "Embed code" },
           ] as const).map(({ id, label }) => (
             <button
@@ -153,7 +161,7 @@ export default function AudioBlockEditor({ block, onChange }: AudioBlockEditorPr
               </div>
             </div>
           </div>
-        ) : (
+        ) : mode === "embed" ? (
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold !text-dash-textMuted block">Embed snippet (HTML)</label>
             <textarea
@@ -169,56 +177,60 @@ export default function AudioBlockEditor({ block, onChange }: AudioBlockEditorPr
               Paste an embed snippet from a podcast host or audio platform.
             </div>
           </div>
-        )}
+        ) : null}
       </PropertyGroup>
 
-      <PropertyGroup title="Live Preview">
-        {mode === "upload" ? (
-          <>
-            {isDecoding && (
-              <div className="flex items-center gap-2 text-[10px] !text-dash-textMuted py-4 justify-center border border-dash-border rounded-xl bg-dash-surface">
-                <Loader2 size={13} className="animate-spin motion-reduce:animate-none" /> Generating waveform from audio...
+      {mode === "drive" ? (
+        <AudioDriveBlockEditor block={block} onChange={onChange} />
+      ) : (
+        <PropertyGroup title="Live Preview">
+          {mode === "upload" ? (
+            <>
+              {isDecoding && (
+                <div className="flex items-center gap-2 text-[10px] !text-dash-textMuted py-4 justify-center border border-dash-border rounded-xl bg-dash-surface">
+                  <Loader2 size={13} className="animate-spin motion-reduce:animate-none" /> Generating waveform from audio...
+                </div>
+              )}
+
+              {!isDecoding && block.file_url && (
+                <>
+                  <VoiceNotePlayer audioUrl={block.file_url} waveformBars={waveformBars} theme="light" />
+                  {waveformBars.length > 0 && (
+                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-green bg-green/10 border border-green/20 rounded-lg px-3 py-2 mt-2">
+                      <CheckCircle2 size={13} className="shrink-0" /> Real waveform generated from the uploaded audio
+                    </div>
+                  )}
+                </>
+              )}
+
+              {!isDecoding && !block.file_url && (
+                <div className="text-[10px] !text-dash-textMuted py-4 text-center border border-dashed border-dash-border rounded-xl">
+                  Upload or link a file above to generate a waveform preview
+                </div>
+              )}
+
+              {!isDecoding && decodeError && (
+                <p className="text-[10px] text-amber-600 mt-1">{decodeError}</p>
+              )}
+            </>
+          ) : embedInput.trim() ? (
+            <>
+              <SandboxedHtml
+                html={embedInput}
+                className="rounded-lg overflow-hidden border border-dash-border h-[180px] bg-dash-surface"
+                title="Audio embed preview"
+              />
+              <div className="flex items-center gap-1.5 text-[10px] font-bold text-green bg-green/10 border border-green/20 rounded-lg px-3 py-2 mt-2">
+                <CheckCircle2 size={13} className="shrink-0" /> This is what students will see. Completion: marked when the student opens this block.
               </div>
-            )}
-
-            {!isDecoding && block.file_url && (
-              <>
-                <VoiceNotePlayer audioUrl={block.file_url} waveformBars={waveformBars} theme="light" />
-                {waveformBars.length > 0 && (
-                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-green bg-green/10 border border-green/20 rounded-lg px-3 py-2 mt-2">
-                    <CheckCircle2 size={13} className="shrink-0" /> Real waveform generated from the uploaded audio
-                  </div>
-                )}
-              </>
-            )}
-
-            {!isDecoding && !block.file_url && (
-              <div className="text-[10px] !text-dash-textMuted py-4 text-center border border-dashed border-dash-border rounded-xl">
-                Upload or link a file above to generate a waveform preview
-              </div>
-            )}
-
-            {!isDecoding && decodeError && (
-              <p className="text-[10px] text-amber-600 mt-1">{decodeError}</p>
-            )}
-          </>
-        ) : embedInput.trim() ? (
-          <>
-            <SandboxedHtml
-              html={embedInput}
-              className="rounded-lg overflow-hidden border border-dash-border h-[180px] bg-dash-surface"
-              title="Audio embed preview"
-            />
-            <div className="flex items-center gap-1.5 text-[10px] font-bold text-green bg-green/10 border border-green/20 rounded-lg px-3 py-2 mt-2">
-              <CheckCircle2 size={13} className="shrink-0" /> This is what students will see. Completion: marked when the student opens this block.
+            </>
+          ) : (
+            <div className="text-[10px] !text-dash-textMuted py-4 text-center border border-dashed border-dash-border rounded-xl">
+              Paste an embed snippet above to preview it
             </div>
-          </>
-        ) : (
-          <div className="text-[10px] !text-dash-textMuted py-4 text-center border border-dashed border-dash-border rounded-xl">
-            Paste an embed snippet above to preview it
-          </div>
-        )}
-      </PropertyGroup>
+          )}
+        </PropertyGroup>
+      )}
     </div>
   );
 }

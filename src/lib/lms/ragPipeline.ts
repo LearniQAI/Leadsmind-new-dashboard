@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { embedTexts, EMBEDDING_MODEL } from '@/lib/ai/embeddings';
-import { extractLessonText, chunkText, hashContent } from '@/lib/lms/chunking';
+import { chunkText, hashContent } from '@/lib/lms/chunking';
+import { getLessonTextForAI } from '@/lib/lms/lessonContentForAI';
 import { logger } from '@/shared/logger';
 
 export type RagProcessResult =
@@ -10,18 +11,19 @@ export type RagProcessResult =
   | { status: 'failed'; error: string };
 
 /**
- * Re-chunks and re-embeds a single lesson's content, called from the real
- * lesson save/update path (POST/PATCH /api/lms/lessons). Skips the OpenAI
- * call entirely when the extracted text is unchanged since the last embed
- * (content_hash match) — a lesson metadata-only edit (title, position, etc.)
- * never triggers a wasted re-embed.
+ * Re-chunks and re-embeds a single lesson's content. Batch 5 (RAG rebuild): now called from the
+ * lms_ai_ingest_queue poller (real DB triggers on content_blocks/pages enqueue a lesson on any
+ * real content edit — see migration 20260922110001), not inline from the lesson metadata save
+ * route, and reads the real content via getLessonTextForAI() (content_blocks + canvas inline
+ * text), not the always-empty legacy course_lessons.content field. Skips the OpenAI call
+ * entirely when the extracted text is unchanged since the last embed (content_hash match).
  */
 export async function processLessonForRAG(lessonId: string): Promise<RagProcessResult> {
   const adminClient = createAdminClient();
 
   const { data: lesson, error: lessonError } = await adminClient
     .from('course_lessons')
-    .select('id, module_id, course_id, workspace_id, title, lesson_type, content')
+    .select('id, module_id, course_id, workspace_id, title')
     .eq('id', lessonId)
     .maybeSingle();
 
@@ -31,7 +33,7 @@ export async function processLessonForRAG(lessonId: string): Promise<RagProcessR
   }
   if (!lesson) return { status: 'failed', error: 'Lesson not found' };
 
-  const text = extractLessonText(lesson);
+  const text = await getLessonTextForAI(adminClient, lessonId);
 
   if (!text) {
     // Content was removed/never had text — clear any stale chunks from a

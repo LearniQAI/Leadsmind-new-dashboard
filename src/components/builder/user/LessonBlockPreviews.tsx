@@ -58,6 +58,16 @@ export function BlockCanvasPreview({ block }: { block: any }) {
           </div>
         );
       }
+      if (block.content?.mode === 'drive') {
+        return block.content?.audio_asset_id ? (
+          <div className="rounded-lg border border-dash-border bg-dash-surface px-3 py-4 text-center">
+            <Headphones size={18} className="mx-auto mb-1 text-cyan-500" />
+            <span className="text-[10px] !text-dash-textMuted">Google Drive audio linked</span>
+          </div>
+        ) : (
+          <EmptyPreview label="No Drive link validated yet" />
+        );
+      }
       return block.file_url ? (
         <div className="pointer-events-none">
           <VoiceNotePlayer

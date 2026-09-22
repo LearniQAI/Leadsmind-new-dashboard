@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { createAdminClient } from '@/lib/supabase/server';
-import { extractLessonText, hashContent } from '@/lib/lms/chunking';
+import { hashContent } from '@/lib/lms/chunking';
+import { getLessonTextForAI } from '@/lib/lms/lessonContentForAI';
 import { logger } from '@/shared/logger';
 
 export type SummaryProcessResult =
@@ -34,10 +35,11 @@ function buildSummaryPrompt(lessonTitle: string, text: string) {
 
 /**
  * Generates (or refreshes) a lesson's AI summary. Mirrors processLessonForRAG's
- * shape/rationale closely: same lesson fetch, same extractLessonText() call,
- * same content_hash change-detection to skip a wasted API call on an
- * unchanged save — but this is ONE chat-completion call, no embeddings, no
- * chunking (a summary reads the whole lesson text at once).
+ * shape/rationale closely: same lesson fetch, same real-content text (Batch 5: via
+ * getLessonTextForAI — content_blocks + canvas inline text, not the always-empty legacy
+ * field), same content_hash change-detection to skip a wasted API call on an unchanged save —
+ * but this is ONE chat-completion call, no embeddings, no chunking (a summary reads the whole
+ * lesson text at once).
  *
  * `force` bypasses the unchanged-content skip, for the instructor-triggered
  * manual regenerate action.
@@ -47,7 +49,7 @@ export async function processLessonSummary(lessonId: string, force = false): Pro
 
   const { data: lesson, error: lessonError } = await adminClient
     .from('course_lessons')
-    .select('id, module_id, course_id, workspace_id, title, lesson_type, content')
+    .select('id, module_id, course_id, workspace_id, title')
     .eq('id', lessonId)
     .maybeSingle();
 
@@ -57,7 +59,7 @@ export async function processLessonSummary(lessonId: string, force = false): Pro
   }
   if (!lesson) return { status: 'failed', error: 'Lesson not found' };
 
-  const text = extractLessonText(lesson);
+  const text = await getLessonTextForAI(adminClient, lessonId);
 
   if (!text) {
     // No text content (e.g. a video lesson with no transcript) — clear any

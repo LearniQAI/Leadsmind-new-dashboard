@@ -15,6 +15,7 @@ import {
 import { recordBlockCompletion, getCompletedBlockIdsForLesson, getLessonBlockCompletionStatus, getLessonReadingGateStatus, recordLessonReadingCompletion } from '@/app/actions/blockCompletion';
 import SyllabusSidebar from './components/SyllabusSidebar';
 import VideoPlayer from './components/VideoPlayer';
+import AudioDrivePlayer from './components/AudioDrivePlayer';
 import { useHeartbeat } from '@/hooks/useHeartbeat';
 import { getLessonLockReason } from './components/lock-utils';
 import LockedLessonPlaceholder from './components/LockedLessonPlaceholder';
@@ -809,7 +810,23 @@ export default function StudentPlayerClient({
           )}
         </div>
       )}
-      {block.type === 'audio' && block.content?.mode !== 'embed' && block.file_url && (
+      {block.type === 'audio' && block.content?.mode === 'drive' && block.content?.audio_asset_id && (
+        <AudioDrivePlayer
+          assetId={block.content.audio_asset_id}
+          contentBlockId={block.id}
+          courseId={course.id}
+          lessonId={activeLesson.id}
+          title={activeLesson.title}
+          courseTitle={course.title}
+          moduleTitle={activeModule?.title}
+          artworkUrl={course.thumbnail_url}
+          completionThreshold={block.completion_threshold}
+          isAlreadyCompleted={completedBlockIds.has(block.id)}
+          onComplete={() => markBlockComplete(block.id, { percentage: 90 })}
+          theme={theme}
+        />
+      )}
+      {block.type === 'audio' && block.content?.mode !== 'embed' && block.content?.mode !== 'drive' && block.file_url && (
         <VoiceNotePlayer
           audioUrl={block.file_url}
           waveformBars={block.content?.waveform_bars}
@@ -1149,6 +1166,15 @@ export default function StudentPlayerClient({
                           handleToggleComplete(activeLesson.id);
                         } else if (lessonGenuinelyDone) {
                           handleCompleteAndAdvance(false);
+                        } else if (course.completion_mode === 'strict') {
+                          // Batch 6 / Part 1: this course has turned off "mark complete
+                          // anyway" — the server would reject the override regardless, so
+                          // don't offer a dialog whose only button doesn't work here.
+                          toast.error(
+                            readingGate.required && !readingGate.done
+                              ? 'This course requires you to actually read through the lesson before marking it complete.'
+                              : 'This course requires every block to be genuinely completed before marking the lesson complete.'
+                          );
                         } else {
                           setShowSoftConfirm(true);
                         }

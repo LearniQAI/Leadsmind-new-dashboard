@@ -6,6 +6,8 @@ import { ensureCourseCertificate } from '@/lib/lms/issueCertificate';
 import { enrolmentInactiveReason } from '@/lib/lms/enrolment';
 import { getCourseCompletionStatus } from '@/lib/lms/courseCompletion';
 import { generateCertificatePDF } from '../../../../../../../libs/services/src/pdf/cert-generator';
+import { userSafeMessage } from '@/shared/errors/userSafe';
+import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -155,7 +157,14 @@ export async function GET(
     });
 
   } catch (err: any) {
-    console.error('[API Certificate Download Error]:', err);
-    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
+    // Batch 4 / fix 2: this used to return err.message verbatim — a DB/driver error, a
+    // Chromium/PDF failure, or any other runtime exception can carry internal detail (hosts,
+    // paths, SQL, stack fragments). Only a genuinely user-safe error (userSafe.ts — the same
+    // AppError family every other LMS route already exposes) is shown as-is; everything else
+    // is replaced with a generic message plus a short id tying it back to the full, logged error.
+    const errorId = crypto.randomUUID().slice(0, 8);
+    logger.error({ err, errorId, params }, 'lms.certificate.download.failed');
+    const message = userSafeMessage(err, `Something went wrong generating your certificate. Reference: ${errorId}`);
+    return NextResponse.json({ error: message, errorId }, { status: 500 });
   }
 }

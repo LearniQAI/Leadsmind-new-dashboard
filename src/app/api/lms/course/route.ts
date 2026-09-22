@@ -23,7 +23,17 @@ export async function GET(req: NextRequest) {
       .single();
 
     if (error || !course) throw new NotFoundError('Course');
-    return NextResponse.json({ data: course });
+
+    // Batch 6 / Part 1 — cheap, always-computed count so the strict-mode toggle can warn
+    // "N students partway through used the override" without a second round trip. Not a
+    // stored column: it's a live count of course_progress rows, not part of the course row.
+    const { count: overrideCount } = await adminClient
+      .from('course_progress')
+      .select('id', { count: 'exact', head: true })
+      .eq('course_id', id)
+      .eq('completion_override', true);
+
+    return NextResponse.json({ data: { ...course, override_in_progress_count: overrideCount ?? 0 } });
   } catch (err: any) {
     logger.error({ err }, 'lms.course.get.failed');
     const clientError = toClientError(err);
@@ -41,7 +51,7 @@ export async function PATCH(req: NextRequest) {
     const adminClient = createAdminClient();
 
     const body = await req.json();
-    const { title, description, price, status, thumbnail_url, certificate_config, category_id } = body;
+    const { title, description, price, status, thumbnail_url, certificate_config, category_id, completion_mode } = body;
 
     const updatePayload: any = {};
     if (title !== undefined) updatePayload.title = title;
@@ -51,6 +61,14 @@ export async function PATCH(req: NextRequest) {
     if (status !== undefined) {
       updatePayload.status = status;
       updatePayload.published = (status === 'published');
+    }
+    // Batch 6 / Part 1 (strict completion mode) — the only two real values; the DB CHECK
+    // constraint is the actual backstop, this just avoids a round-trip for a typo'd value.
+    if (completion_mode !== undefined) {
+      if (completion_mode !== 'loose' && completion_mode !== 'strict') {
+        return NextResponse.json({ error: "completion_mode must be 'loose' or 'strict'" }, { status: 400 });
+      }
+      updatePayload.completion_mode = completion_mode;
     }
     // Batch 6 (G9) — category_id is never trusted blindly: null clears it (uncategorized),
     // otherwise it must be a real category in the CALLER'S OWN workspace, same discipline as

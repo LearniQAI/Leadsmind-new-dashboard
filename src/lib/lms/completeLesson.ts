@@ -67,6 +67,20 @@ export async function markLessonCompleteForContact(
 
     if (!lesson) return { error: 'Lesson not found in this course' };
 
+    // Batch 6 / Part 1 — strict completion mode: a course opts out of the override entirely.
+    // `requestedOverride` is what the caller asked for; `allowIncomplete` is what's actually
+    // honoured below — forced false when the course is 'strict', regardless of the caller.
+    // Default 'loose' means every existing course keeps today's exact behaviour unchanged.
+    const { data: courseRow } = await adminClient
+      .from('courses')
+      .select('completion_mode')
+      .eq('id', courseId)
+      .maybeSingle();
+    const isStrict = courseRow?.completion_mode === 'strict';
+    const requestedOverride = opts?.allowIncomplete === true;
+    const allowIncomplete = requestedOverride && !isStrict;
+    const strictOverrideRejected = requestedOverride && isStrict;
+
     // Schedule (drip) gate — a lesson still behind its module's enrollment-relative drip
     // offset isn't open to the student, so it can't be marked complete no matter what the
     // block/reading state looks like. Mirrors getLessonLockReason() on the read side and
@@ -112,8 +126,12 @@ export async function markLessonCompleteForContact(
 
       const completedCount = new Set((completions || []).map((c) => c.content_block_id)).size;
       if (completedCount < blockIds.length) {
-        if (!opts?.allowIncomplete) {
-          return { error: `Complete every block in this lesson first (${completedCount}/${blockIds.length} done)` };
+        if (!allowIncomplete) {
+          return {
+            error: strictOverrideRejected
+              ? `This course requires every block to be genuinely completed (${completedCount}/${blockIds.length} done) — the instructor has turned off "mark complete anyway" for this course.`
+              : `Complete every block in this lesson first (${completedCount}/${blockIds.length} done)`,
+          };
         }
         completionOverride = true;
       }
@@ -144,8 +162,12 @@ export async function markLessonCompleteForContact(
       if (readingGate.required) {
         const readDone = await hasLessonReadingCompletion(adminClient, lessonId, contactId);
         if (!readDone) {
-          if (!opts?.allowIncomplete) {
-            return { error: 'Read through the full lesson before marking it complete.' };
+          if (!allowIncomplete) {
+            return {
+              error: strictOverrideRejected
+                ? 'This course requires you to actually read through the lesson — the instructor has turned off "mark complete anyway" for this course.'
+                : 'Read through the full lesson before marking it complete.',
+            };
           }
           completionOverride = true;
         }
@@ -214,24 +236,13 @@ export async function markLessonCompleteForContact(
         }
       }
 
-      const { data: allCourseLessons } = await adminClient
-        .from('course_lessons')
-        .select('id')
-        .eq('course_id', courseId);
-
-      const { data: allCompletedCourseLessons } = await adminClient
-        .from('course_progress')
-        .select('lesson_id')
-        .eq('contact_id', contactId)
-        .eq('course_id', courseId)
-        .not('completed_at', 'is', null);
-
-      // Same guarantee: true exactly on the completion that takes the course to 100%.
-      // This is the same real trigger point the certificate auto-eligibility check uses.
-      if (allCompletedCourseLessons && allCompletedCourseLessons.length === allCourseLessons?.length) {
-        await publishEvent(workspaceId, 'course_completed', contactId, { courseId });
-        await emitLMSEvent('course_completed', { workspaceId, contactId, courseId });
-      }
+      // Batch 4 / fix 3: was a plain lesson-count equality here, independently of (and looser
+      // than) the real completion definition the certificate route uses — see
+      // courseCompletionEvent.ts. A lesson completing is one of several places completion can
+      // now be reached (a quiz pass or an assignment grading can also be the final piece), so
+      // this same helper is called from those paths too.
+      const { maybeFireCourseCompleted } = await import('./courseCompletionEvent');
+      await maybeFireCourseCompleted(adminClient, workspaceId, contactId, courseId);
     } catch (telemetryErr) {
       logger.error({ err: telemetryErr, workspaceId, contactId, courseId }, 'complete_lesson.telemetry_hook.failed');
     }

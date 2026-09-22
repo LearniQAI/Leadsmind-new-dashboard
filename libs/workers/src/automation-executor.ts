@@ -17,7 +17,18 @@ export async function executeLMSAction(
 ) {
   try {
     console.log(`[LMS Worker Executor] Executing action: ${actionType} for contact ${contactId}`);
-    const courseId = config.courseId || config.course_id;
+    // Batch 4 / fix 5: `config.course_id` (snake_case) is the rule's OWN configured target
+    // course, set via RuleModal for enroll_course/revoke_course (courseBlueprints.ts action_config.course_id).
+    // `config.courseId` (camelCase) is the triggering event's own course, always injected by
+    // emitLMSEvent's actionConfig (lms-event-bus.ts) as a same-course-by-default convenience for
+    // actions that never set a course of their own (assign_certificate, send_certificate_email).
+    // This used to check courseId first, so an unrelated event on ANY course would silently
+    // redirect a rule's explicitly configured target course to that event's course instead —
+    // confirmed against a real enroll_course rule (courseBlueprints.ts): its whole reason to set
+    // action_config.course_id is to enroll into a DIFFERENT (typically paid) course than
+    // whichever one triggered the rule, e.g. "course_completed" on Course A -> enroll_course
+    // into Course B. The rule's own target must win when it set one.
+    const courseId = config.course_id || config.courseId;
 
     switch (actionType) {
       // Access Handlers

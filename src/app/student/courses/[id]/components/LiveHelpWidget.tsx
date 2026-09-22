@@ -8,6 +8,12 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { DashEmptyState } from '@/components/dashboard-ui';
+import { useAudioPlayer } from '@/components/lms/AudioPlayerProvider';
+
+// The mini audio player bar (~68px + a 1px progress hairline) sits fixed at the true viewport
+// bottom whenever a track is loaded and its full view isn't on screen — this FAB needs to sit
+// above it, not under it, when that's the case.
+const MINI_PLAYER_CLEARANCE = 88;
 
 const BRAND = '#7B3FF2';
 
@@ -30,6 +36,8 @@ export default function LiveHelpWidget({ courseId, enrollment }: LiveHelpWidgetP
   const supabase = createClient();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('advisors');
+  const { track: miniPlayerTrack, isFullViewActive } = useAudioPlayer();
+  const miniPlayerVisible = !!miniPlayerTrack && !isFullViewActive;
 
   // Data States
   const [experts, setExperts] = useState<any[]>([]);
@@ -201,7 +209,8 @@ export default function LiveHelpWidget({ courseId, enrollment }: LiveHelpWidgetP
           onClick={() => setIsOpen(true)}
           aria-label="Virtual Support Office"
           title="Virtual Support Office"
-          className="group fixed bottom-[76px] right-5 z-[80] flex h-11 w-11 items-center justify-center rounded-full border border-dash-border bg-white shadow-lg shadow-slate-900/10 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl active:scale-95"
+          style={{ bottom: 76 + (miniPlayerVisible ? MINI_PLAYER_CLEARANCE : 0) }}
+          className="group fixed right-5 z-[80] flex h-11 w-11 items-center justify-center rounded-full border border-dash-border bg-white shadow-lg shadow-slate-900/10 transition-[bottom,transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-xl active:scale-95 motion-reduce:transition-none"
         >
           <Headset className="h-[18px] w-[18px] transition-transform duration-300 group-hover:rotate-6" style={{ color: BRAND }} />
           {activeSession && (

@@ -4,8 +4,12 @@ import React, { useState, useEffect } from 'react';
 import { BookOpen, X, Send, Loader2, AlertCircle, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { DashEmptyState } from '@/components/dashboard-ui';
+import { useAudioPlayer } from '@/components/lms/AudioPlayerProvider';
 
 const BRAND = '#1359FF';
+// Same clearance LiveHelpWidget uses — keeps this FAB above the mini audio player bar instead
+// of overlapping it when a track is loaded and only the mini bar is on screen.
+const MINI_PLAYER_CLEARANCE = 88;
 
 interface SourceChunk {
   lessonId: string;
@@ -38,6 +42,8 @@ export default function CourseQAWidget({ courseId, onJumpToLesson }: CourseQAWid
 
   const [interactions, setInteractions] = useState<QAInteraction[]>([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const { track: miniPlayerTrack, isFullViewActive } = useAudioPlayer();
+  const miniPlayerVisible = !!miniPlayerTrack && !isFullViewActive;
 
   useEffect(() => {
     if (isOpen && !historyLoaded) {
@@ -127,7 +133,8 @@ export default function CourseQAWidget({ courseId, onJumpToLesson }: CourseQAWid
           onClick={() => setIsOpen(true)}
           aria-label="Ask about this course"
           title="Ask about this course"
-          className="group fixed bottom-[132px] right-5 z-[80] flex h-11 w-11 items-center justify-center rounded-full border border-dash-border bg-white shadow-lg shadow-slate-900/10 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl active:scale-95"
+          style={{ bottom: 132 + (miniPlayerVisible ? MINI_PLAYER_CLEARANCE : 0) }}
+          className="group fixed right-5 z-[80] flex h-11 w-11 items-center justify-center rounded-full border border-dash-border bg-white shadow-lg shadow-slate-900/10 transition-[bottom,transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-xl active:scale-95 motion-reduce:transition-none"
         >
           <BookOpen className="h-[18px] w-[18px] transition-transform duration-300 group-hover:rotate-6" style={{ color: BRAND }} />
         </button>

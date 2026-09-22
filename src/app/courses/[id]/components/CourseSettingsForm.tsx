@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { Loader2, ImagePlus, Link2 } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Loader2, ImagePlus, Link2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -19,6 +19,7 @@ import {
   InputAffix,
   PrimaryButton,
   GhostButton,
+  Toggle,
 } from "./settings/primitives";
 import CourseCategoryField from "./CourseCategoryField";
 
@@ -40,6 +41,7 @@ export default function CourseSettingsForm({ course, onSaved }: CourseSettingsFo
     status: course.status || (course.published ? "published" : "draft"),
     thumbnail: course.thumbnail_url || "",
     categoryId: course.category_id || null,
+    completionMode: course.completion_mode || "loose",
   };
 
   const [editTitle, setEditTitle] = useState(initial.title);
@@ -48,8 +50,29 @@ export default function CourseSettingsForm({ course, onSaved }: CourseSettingsFo
   const [editStatus, setEditStatus] = useState(initial.status);
   const [editThumbnail, setEditThumbnail] = useState(initial.thumbnail);
   const [editCategoryId, setEditCategoryId] = useState<string | null>(initial.categoryId);
+  const [editCompletionMode, setEditCompletionMode] = useState<"loose" | "strict">(initial.completionMode);
+  const [overrideInProgressCount, setOverrideInProgressCount] = useState<number | null>(null);
   const [isSavingCourse, setIsSavingCourse] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Batch 6 / Part 1 — how many students partway through THIS course have used "mark
+  // complete anyway" on at least one lesson. Fetched once so switching to strict can warn
+  // with a real number, not a guess; only matters when the current mode is loose (nothing to
+  // warn about the other direction — strict -> loose only relaxes a rule going forward).
+  useEffect(() => {
+    if (initial.completionMode !== "loose") return;
+    let cancelled = false;
+    fetch(`/api/lms/course?id=${course.id}`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (!cancelled && typeof json?.data?.override_in_progress_count === "number") {
+          setOverrideInProgressCount(json.data.override_in_progress_count);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [course.id]);
 
   const dirty =
     editTitle !== initial.title ||
@@ -57,7 +80,8 @@ export default function CourseSettingsForm({ course, onSaved }: CourseSettingsFo
     String(editPrice) !== String(initial.price) ||
     editStatus !== initial.status ||
     editThumbnail !== initial.thumbnail ||
-    editCategoryId !== initial.categoryId;
+    editCategoryId !== initial.categoryId ||
+    editCompletionMode !== initial.completionMode;
 
   const resetForm = () => {
     setEditTitle(initial.title);
@@ -66,6 +90,7 @@ export default function CourseSettingsForm({ course, onSaved }: CourseSettingsFo
     setEditStatus(initial.status);
     setEditThumbnail(initial.thumbnail);
     setEditCategoryId(initial.categoryId);
+    setEditCompletionMode(initial.completionMode);
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -133,6 +158,7 @@ export default function CourseSettingsForm({ course, onSaved }: CourseSettingsFo
           status: editStatus,
           thumbnail_url: editThumbnail,
           category_id: editCategoryId,
+          completion_mode: editCompletionMode,
         }),
       });
       const dataJson = await res.json();
@@ -273,6 +299,38 @@ export default function CourseSettingsForm({ course, onSaved }: CourseSettingsFo
                 placeholder="Describe what students will learn in this course..."
                 rows={5}
               />
+            </Field>
+
+            <Field
+              label="Completion requirement"
+              align="start"
+              hint="Loose (default): a student can mark a lesson complete without finishing every block, after confirming a one-time prompt. Strict: that prompt no longer works — every video, reading and quiz must genuinely be finished."
+            >
+              <div className="space-y-2">
+                <Toggle
+                  checked={editCompletionMode === "strict"}
+                  onChange={(v) => setEditCompletionMode(v ? "strict" : "loose")}
+                  label="Require genuine completion (strict mode)"
+                  description={
+                    editCompletionMode === "strict"
+                      ? "Students cannot mark a lesson complete without actually finishing it."
+                      : "Students may mark a lesson complete via a one-time confirmation, even if unfinished."
+                  }
+                />
+                {initial.completionMode === "loose" &&
+                  editCompletionMode === "strict" &&
+                  !!overrideInProgressCount && (
+                    <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[12px] leading-relaxed text-amber-800">
+                      <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+                      <span>
+                        {overrideInProgressCount} student{overrideInProgressCount === 1 ? "" : "s"} partway
+                        through this course used the override on at least one block. Their already-recorded
+                        completions won&apos;t change, but they&apos;ll need to actually complete anything they
+                        haven&apos;t yet — the override will no longer work for them either.
+                      </span>
+                    </div>
+                  )}
+              </div>
             </Field>
           </FieldGroup>
         </SettingsBody>

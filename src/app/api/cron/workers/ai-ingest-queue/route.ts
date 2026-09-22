@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { scanForAbandonment } from '../../../../../libs/workers/src/crons/abandonment-scanner';
+import { processAiIngestQueue } from '../../../../../../libs/workers/src/crons/ai-ingest-queue';
 import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
@@ -13,15 +13,11 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const result = await scanForAbandonment();
-
-    return NextResponse.json({
-      success: true,
-      result
-    });
+    const result = await processAiIngestQueue();
+    return NextResponse.json({ success: true, result });
   } catch (err: any) {
-    logger.error({ err }, 'cron.abandonment_scanner.failed');
-    return NextResponse.json({ error: 'Abandonment scan failed.' }, { status: 500 });
+    logger.error({ err }, 'cron.ai_ingest_queue.failed');
+    return NextResponse.json({ error: 'AI ingest queue processing failed.' }, { status: 500 });
   }
 }
 
