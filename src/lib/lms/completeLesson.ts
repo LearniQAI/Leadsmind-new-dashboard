@@ -214,24 +214,13 @@ export async function markLessonCompleteForContact(
         }
       }
 
-      const { data: allCourseLessons } = await adminClient
-        .from('course_lessons')
-        .select('id')
-        .eq('course_id', courseId);
-
-      const { data: allCompletedCourseLessons } = await adminClient
-        .from('course_progress')
-        .select('lesson_id')
-        .eq('contact_id', contactId)
-        .eq('course_id', courseId)
-        .not('completed_at', 'is', null);
-
-      // Same guarantee: true exactly on the completion that takes the course to 100%.
-      // This is the same real trigger point the certificate auto-eligibility check uses.
-      if (allCompletedCourseLessons && allCompletedCourseLessons.length === allCourseLessons?.length) {
-        await publishEvent(workspaceId, 'course_completed', contactId, { courseId });
-        await emitLMSEvent('course_completed', { workspaceId, contactId, courseId });
-      }
+      // Batch 4 / fix 3: was a plain lesson-count equality here, independently of (and looser
+      // than) the real completion definition the certificate route uses — see
+      // courseCompletionEvent.ts. A lesson completing is one of several places completion can
+      // now be reached (a quiz pass or an assignment grading can also be the final piece), so
+      // this same helper is called from those paths too.
+      const { maybeFireCourseCompleted } = await import('./courseCompletionEvent');
+      await maybeFireCourseCompleted(adminClient, workspaceId, contactId, courseId);
     } catch (telemetryErr) {
       logger.error({ err: telemetryErr, workspaceId, contactId, courseId }, 'complete_lesson.telemetry_hook.failed');
     }

@@ -381,6 +381,15 @@ export async function submitModuleQuizAttempt(payload: {
       logger.error({ err: evtErr, courseId: payload.courseId, moduleId: payload.moduleId }, 'student_progress.module_quiz_attempt.lms_event.failed');
     }
 
+    // Batch 4 / fix 3: a module quiz has no lesson to "complete", so it never went through
+    // completeLesson.ts's course_completed check — a course whose only remaining requirement
+    // was this module quiz never fired the event at all. Same shared trigger point as every
+    // other completing action; see courseCompletionEvent.ts.
+    if (passed) {
+      const { maybeFireCourseCompleted } = await import('@/lib/lms/courseCompletionEvent');
+      await maybeFireCourseCompleted(adminClient, workspaceId, contactId, payload.courseId);
+    }
+
     return { success: true, score, passed, maxScore, rawScore };
   } catch (err: any) {
     logger.error({ err, courseId: payload.courseId, moduleId: payload.moduleId }, 'student_progress.module_quiz_attempt.submit.failed');
