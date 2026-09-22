@@ -27,6 +27,7 @@
 //   live_session         .description                        otherwise nothing.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { flattenLessonCanvas, isTrackableCanvasItem, type LessonCanvasItem } from './flattenLessonCanvas';
 
 const PER_BLOCK_CHAR_CAP = 2000;
 
@@ -92,6 +93,32 @@ export function textFromBlock(block: { type: string; content: any; file_url?: st
   }
 }
 
+/**
+ * Text a canvas-native inline item contributes (Batch 5 / RAG rebuild) — the part of a lesson
+ * authored directly on the Craft.js canvas (heading/paragraph/image alt text/an unwired
+ * ContentBox placeholder) that lives ONLY in `pages.content`, never in `content_blocks`. A real
+ * `block` or a `contentbox` WITH a blockId is skipped here — that content is already counted
+ * once, from `content_blocks`, by textFromBlock() above; counting it again here would duplicate
+ * it in the embedded/summarized text.
+ */
+export function textFromCanvasItem(item: LessonCanvasItem): string {
+  switch (item.kind) {
+    case 'heading':
+    case 'richtext':
+      return clip(htmlToText(item.html));
+    case 'image':
+      return item.alt ? clip(item.alt) : '';
+    case 'contentbox':
+      // Only reached for a placeholder with no blockId (see isTrackableCanvasItem) — its
+      // headline/body/cta are its only content, never represented anywhere else.
+      return item.blockId
+        ? ''
+        : clip([item.headline, htmlToText(item.body), item.ctaText].filter(Boolean).join(' — '));
+    default:
+      return '';
+  }
+}
+
 /** Legacy fallback: some pre-canvas lessons elsewhere may still store a real string body. */
 function legacyLessonText(content: any): string {
   if (!content) return '';
@@ -123,9 +150,13 @@ export async function assembleLessonContext(
     return { combinedText: '', perLesson: [], bodyCharCount: 0 };
   }
 
-  const [{ data: lessons }, { data: blocks }] = await Promise.all([
+  const [{ data: lessons }, { data: blocks }, { data: pages }] = await Promise.all([
     db.from('course_lessons').select('id, title, content').in('id', lessonIds),
     db.from('content_blocks').select('lesson_id, type, content, file_url, position').in('lesson_id', lessonIds),
+    // Canvas lessons (the Lesson Builder / BuilderEditor) store the authored tree here, keyed
+    // by course_lesson_id — see textFromCanvasItem's doc comment for why this is a real,
+    // frequently non-empty second content source, not a rare edge case.
+    db.from('pages').select('course_lesson_id, content').in('course_lesson_id', lessonIds),
   ]);
 
   const lessonById = new Map((lessons || []).map((l: any) => [l.id, l]));
@@ -135,6 +166,7 @@ export async function assembleLessonContext(
     arr.push(b);
     blocksByLesson.set(b.lesson_id, arr);
   }
+  const pageByLesson = new Map((pages || []).map((p: any) => [p.course_lesson_id, p]));
 
   let bodyCharCount = 0;
   const perLesson = lessonIds.map((id) => {
@@ -153,6 +185,18 @@ export async function assembleLessonContext(
       if (t) bodyParts.push(t);
     }
 
+    // Canvas-native inline content (headings/paragraphs/image alt text/unwired ContentBox
+    // placeholders) — skips 'block' and blockId-carrying 'contentbox' items, already covered
+    // above via content_blocks, so nothing is double-counted.
+    const page = pageByLesson.get(id);
+    if (page) {
+      for (const item of flattenLessonCanvas(page.content)) {
+        if (isTrackableCanvasItem(item)) continue;
+        const t = textFromCanvasItem(item);
+        if (t) bodyParts.push(t);
+      }
+    }
+
     const text = bodyParts.join('\n').replace(/\n{3,}/g, '\n\n').trim();
     bodyCharCount += text.length;
     return { lessonId: id, title, text };
@@ -163,4 +207,17 @@ export async function assembleLessonContext(
     .join('\n\n');
 
   return { combinedText, perLesson, bodyCharCount };
+}
+
+/**
+ * Convenience wrapper for the RAG chunking and lesson-summary pipelines (Batch 5 / RAG
+ * rebuild): the real, complete text for exactly one lesson (content_blocks + canvas inline
+ * content + the legacy field), or null when the lesson genuinely has nothing written — the
+ * same "null means nothing to embed/summarize" contract the old chunking.ts::extractLessonText
+ * had, but backed by the real content sources instead of only the always-empty legacy field.
+ */
+export async function getLessonTextForAI(db: SupabaseClient, lessonId: string): Promise<string | null> {
+  const { perLesson } = await assembleLessonContext(db, [lessonId]);
+  const text = perLesson[0]?.text || '';
+  return text || null;
 }

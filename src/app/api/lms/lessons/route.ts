@@ -3,8 +3,6 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { requireLmsInstructor } from '@/lib/lms/access';
 import { ForbiddenError, NotFoundError, toClientError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger';
-import { processLessonForRAG } from '@/lib/lms/ragPipeline';
-import { processLessonSummary } from '@/lib/lms/summaryPipeline';
 import { getLessonTemplateById, BLANK_LESSON_CANVAS } from '@/lib/builder/lessonTemplates';
 import { recomputeCoursePreviewLessons } from '@/lib/lms/coursePreview';
 
@@ -140,29 +138,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Best-effort: re-chunk/re-embed for RAG Q&A (Task 96). Never let an
-    // embedding failure fail the lesson save itself — the save is the
-    // primary operation; a failed embed just means this lesson isn't
-    // searchable yet, and will retry on the next content-changing save.
-    try {
-      const ragResult = await processLessonForRAG(lesson.id);
-      if (ragResult.status === 'failed') {
-        logger.error({ lessonId: lesson.id, error: ragResult.error }, 'lms.lessons.post.rag_processing_failed');
-      }
-    } catch (ragErr) {
-      logger.error({ err: ragErr, lessonId: lesson.id }, 'lms.lessons.post.rag_processing_threw');
-    }
-
-    // Best-effort: generate the AI lesson summary (Task 95). Same
-    // never-fail-the-save rule as RAG processing above.
-    try {
-      const summaryResult = await processLessonSummary(lesson.id);
-      if (summaryResult.status === 'failed') {
-        logger.error({ lessonId: lesson.id, error: summaryResult.error }, 'lms.lessons.post.summary_processing_failed');
-      }
-    } catch (summaryErr) {
-      logger.error({ err: summaryErr, lessonId: lesson.id }, 'lms.lessons.post.summary_processing_threw');
-    }
+    // Batch 5 (RAG rebuild): RAG re-chunk/re-embed and AI summary regeneration are no longer
+    // triggered inline here — DB triggers on course_lessons/content_blocks/pages (migration
+    // 20260922110001) enqueue into lms_ai_ingest_queue on every real content write (including
+    // the ones this route can't see, e.g. a canvas save, which writes `pages` directly from the
+    // browser), and a cron poller (/api/cron/workers/ai-ingest-queue) processes it async.
 
     return NextResponse.json({ data: lesson });
   } catch (err: any) {
@@ -241,29 +221,8 @@ export async function PATCH(req: NextRequest) {
       await recomputeCoursePreviewLessons(lesson.course_id);
     }
 
-    // Same best-effort re-chunk/re-embed as POST, only worth doing when
-    // content actually changed (title/position-only edits don't affect
-    // what's embedded, and processLessonForRAG's own content_hash check
-    // would no-op anyway, but skip the extra work/log noise here).
-    if (content !== undefined) {
-      try {
-        const ragResult = await processLessonForRAG(lesson.id);
-        if (ragResult.status === 'failed') {
-          logger.error({ lessonId: lesson.id, error: ragResult.error }, 'lms.lessons.patch.rag_processing_failed');
-        }
-      } catch (ragErr) {
-        logger.error({ err: ragErr, lessonId: lesson.id }, 'lms.lessons.patch.rag_processing_threw');
-      }
-
-      try {
-        const summaryResult = await processLessonSummary(lesson.id);
-        if (summaryResult.status === 'failed') {
-          logger.error({ lessonId: lesson.id, error: summaryResult.error }, 'lms.lessons.patch.summary_processing_failed');
-        }
-      } catch (summaryErr) {
-        logger.error({ err: summaryErr, lessonId: lesson.id }, 'lms.lessons.patch.summary_processing_threw');
-      }
-    }
+    // Batch 5 (RAG rebuild): see the matching note in POST above — the
+    // `content_lessons.content` UPDATE trigger (migration 20260922110001) now covers this.
 
     return NextResponse.json({ data: lesson });
   } catch (err: any) {

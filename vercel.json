@@ -86,6 +86,10 @@
       "schedule": "0 7 * * *"
     },
     {
+      "path": "/api/cron/workers/ai-ingest-queue",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/reminders",
       "schedule": "*/5 * * * *"
     },

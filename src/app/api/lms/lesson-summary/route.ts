@@ -6,7 +6,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { toClientError, UnauthorizedError, ForbiddenError, NotFoundError, ValidationError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger';
 import { runCreditGuard, consumeAICredit } from '@/lib/ai/creditGuard';
-import { extractLessonText } from '@/lib/lms/chunking';
+import { getLessonTextForAI } from '@/lib/lms/lessonContentForAI';
 import { processLessonSummary } from '@/lib/lms/summaryPipeline';
 
 export const dynamic = 'force-dynamic';
@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       summary: summary ?? null,
-      hasSummarizableContent: extractLessonText(lesson) !== null,
+      hasSummarizableContent: (await getLessonTextForAI(adminClient, lessonId)) !== null,
     });
   } catch (error: any) {
     logger.error({ err: error }, 'lms.lesson_summary.get.failed');
@@ -94,15 +94,15 @@ export async function POST(req: NextRequest) {
     if (!lesson) throw new NotFoundError('Lesson');
     if (lesson.workspace_id !== workspaceId) throw new ForbiddenError('You do not have access to this lesson');
 
-    const text = extractLessonText(lesson);
+    const adminClient = createAdminClient();
+
+    const text = await getLessonTextForAI(adminClient, lessonId);
     if (!text) {
       return NextResponse.json(
         { error: 'This lesson has no text content to summarize.', code: 'NO_CONTENT' },
         { status: 422 }
       );
     }
-
-    const adminClient = createAdminClient();
 
     // Server-side per-lesson cooldown on the explicit manual regenerate action.
     const { data: existing, error: existingError } = await adminClient
