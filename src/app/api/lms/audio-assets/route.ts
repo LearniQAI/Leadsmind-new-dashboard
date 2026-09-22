@@ -7,6 +7,53 @@ import { googleDriveLinkProvider } from '@/lib/lms/audio/googleDriveLinkProvider
 
 export const dynamic = 'force-dynamic';
 
+// Audio Library (Phase 3 Part B, Screen 1): every audio_assets row in the caller's workspace,
+// with the course/lesson it's attached to. NOTE on "one audio file, many uses" (the PRD's own
+// architecture principle): audio_assets.content_block_id is UNIQUE (Phase 1's migration) — this
+// schema is 1:1 today, an asset belongs to exactly one block. Pasting the same Drive link into a
+// second lesson creates a SEPARATE row with the same google_drive_file_id, which is genuine
+// duplication, not reuse. Real cross-lesson reuse would need dropping that UNIQUE constraint for
+// a join table instead — a real schema change, out of scope for this pass; flagged here rather
+// than built as UI that implies a capability that doesn't exist yet.
+export async function GET(req: NextRequest) {
+  try {
+    const { workspaceId } = await requireLmsInstructor();
+    const adminClient = createAdminClient();
+
+    const { searchParams } = new URL(req.url);
+    const status = searchParams.get('status');
+    const courseId = searchParams.get('courseId');
+    const q = searchParams.get('q');
+
+    let query = adminClient
+      .from('audio_assets')
+      .select(
+        'id, filename, mime_type, duration_seconds, size_bytes, status, last_validation_error, last_validated_at, created_at, content_block_id, content_blocks!inner(id, lesson_id, course_lessons!inner(id, title, course_id, workspace_id, courses!inner(id, title)))'
+      )
+      .eq('content_blocks.course_lessons.workspace_id', workspaceId)
+      .order('created_at', { ascending: false });
+
+    if (status && ['pending', 'ready', 'broken'].includes(status)) {
+      query = query.eq('status', status);
+    }
+    if (courseId) {
+      query = query.eq('content_blocks.course_lessons.course_id', courseId);
+    }
+    if (q) {
+      query = query.ilike('filename', `%${q}%`);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    return NextResponse.json({ data });
+  } catch (err: any) {
+    logger.error({ err }, 'lms.audio_assets.list.failed');
+    const clientError = toClientError(err);
+    return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
+  }
+}
+
 // Creates (or re-points) the one audio_assets row for a drive-mode audio content block: parses
 // the pasted Google Drive share link, validates it server-side (public + actually audio), and —
 // only on success — flips content_blocks.content.mode to 'drive' and attaches the asset id. A

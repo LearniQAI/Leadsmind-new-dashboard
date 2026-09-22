@@ -6,30 +6,43 @@ import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
+async function getOwnedSegment(adminClient: ReturnType<typeof createAdminClient>, id: string, workspaceId: string) {
+  const { data, error } = await adminClient
+    .from('audio_speaker_segments')
+    .select('id, content_blocks!inner(course_lessons!inner(workspace_id))')
+    .eq('id', id)
+    .eq('content_blocks.course_lessons.workspace_id', workspaceId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+// Drag-to-adjust commit from AudioTimeline (start/end) or a speaker reassignment.
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const { workspaceId } = await requireLmsInstructor();
     const adminClient = createAdminClient();
 
-    const { data: row } = await adminClient
-      .from('audio_chapters')
-      .select('id, content_blocks!inner(course_lessons!inner(workspace_id))')
-      .eq('id', id)
-      .eq('content_blocks.course_lessons.workspace_id', workspaceId)
-      .maybeSingle();
-    if (!row) throw new NotFoundError('Chapter');
+    if (!(await getOwnedSegment(adminClient, id, workspaceId))) throw new NotFoundError('Segment');
 
     const body = await req.json();
-    const { title, start_time_ms, end_time_ms, display_order } = body;
+    const { start_time_ms, end_time_ms, speaker_id } = body;
     const updatePayload: any = {};
-    if (title !== undefined) updatePayload.title = title;
     if (start_time_ms !== undefined) updatePayload.start_time_ms = start_time_ms;
     if (end_time_ms !== undefined) updatePayload.end_time_ms = end_time_ms;
-    if (display_order !== undefined) updatePayload.display_order = display_order;
+    if (speaker_id !== undefined) updatePayload.speaker_id = speaker_id;
+
+    if (
+      updatePayload.start_time_ms !== undefined &&
+      updatePayload.end_time_ms !== undefined &&
+      updatePayload.end_time_ms <= updatePayload.start_time_ms
+    ) {
+      return NextResponse.json({ error: 'end_time_ms must be greater than start_time_ms' }, { status: 400 });
+    }
 
     const { data, error } = await adminClient
-      .from('audio_chapters')
+      .from('audio_speaker_segments')
       .update(updatePayload)
       .eq('id', id)
       .select()
@@ -38,7 +51,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     return NextResponse.json({ data });
   } catch (err: any) {
-    logger.error({ err }, 'lms.audio_chapters.update.failed');
+    logger.error({ err }, 'lms.audio_speaker_segments.update.failed');
     const clientError = toClientError(err);
     return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
@@ -50,20 +63,14 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const { workspaceId } = await requireLmsInstructor();
     const adminClient = createAdminClient();
 
-    const { data: row } = await adminClient
-      .from('audio_chapters')
-      .select('id, content_blocks!inner(course_lessons!inner(workspace_id))')
-      .eq('id', id)
-      .eq('content_blocks.course_lessons.workspace_id', workspaceId)
-      .maybeSingle();
-    if (!row) return NextResponse.json({ success: true });
+    if (!(await getOwnedSegment(adminClient, id, workspaceId))) return NextResponse.json({ success: true });
 
-    const { error } = await adminClient.from('audio_chapters').delete().eq('id', id);
+    const { error } = await adminClient.from('audio_speaker_segments').delete().eq('id', id);
     if (error) throw error;
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
-    logger.error({ err }, 'lms.audio_chapters.delete.failed');
+    logger.error({ err }, 'lms.audio_speaker_segments.delete.failed');
     const clientError = toClientError(err);
     return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
   }
