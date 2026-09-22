@@ -814,6 +814,11 @@ export default function StudentPlayerClient({
         <AudioDrivePlayer
           assetId={block.content.audio_asset_id}
           contentBlockId={block.id}
+          courseId={course.id}
+          lessonId={activeLesson.id}
+          title={activeLesson.title}
+          courseTitle={course.title}
+          completionThreshold={block.completion_threshold}
           isAlreadyCompleted={completedBlockIds.has(block.id)}
           onComplete={() => markBlockComplete(block.id, { percentage: 90 })}
         />
@@ -1158,6 +1163,15 @@ export default function StudentPlayerClient({
                           handleToggleComplete(activeLesson.id);
                         } else if (lessonGenuinelyDone) {
                           handleCompleteAndAdvance(false);
+                        } else if (course.completion_mode === 'strict') {
+                          // Batch 6 / Part 1: this course has turned off "mark complete
+                          // anyway" — the server would reject the override regardless, so
+                          // don't offer a dialog whose only button doesn't work here.
+                          toast.error(
+                            readingGate.required && !readingGate.done
+                              ? 'This course requires you to actually read through the lesson before marking it complete.'
+                              : 'This course requires every block to be genuinely completed before marking the lesson complete.'
+                          );
                         } else {
                           setShowSoftConfirm(true);
                         }

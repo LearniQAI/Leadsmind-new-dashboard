@@ -5,6 +5,7 @@ import {
   BookOpen, LayoutDashboard, LogOut, ArrowLeftRight, Trophy, Settings, Layers
 } from 'lucide-react';
 import { requireAuth } from '@/lib/auth';
+import StudentAudioPlayerShell from '@/components/lms/StudentAudioPlayerShell';
 
 interface StudentLayoutProps {
   children: React.ReactNode;
@@ -59,7 +60,7 @@ export default async function StudentLayout({ children }: StudentLayoutProps) {
 
       {/* Page Content Panel */}
       <main className="flex-1 overflow-y-auto p-10 min-h-screen bg-dash-bg">
-        {children}
+        <StudentAudioPlayerShell>{children}</StudentAudioPlayerShell>
       </main>
     </div>
   );
