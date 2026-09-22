@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { validateRequest } from 'twilio';
 import { logger } from '@/shared/logger';
 import { normalizePhone, splitChannelPrefix } from '@/lib/phone';
-import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
+import { verifyTwilioWebhook } from '@/lib/twilio/verifyWebhook';
 import { recordSmsOptOut, clearSmsOptOut } from '@/lib/smsOptOut';
 import { cancelSmsExecutionsForContacts } from '@/lib/automation/cancelOptOutExecutions';
 
@@ -24,52 +23,16 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     formData.forEach((value, key) => payloadObj[key] = value);
 
-    // Verify this request genuinely came from Twilio BEFORE any state change. Twilio signs each
-    // webhook with the Auth Token of the account that OWNS the number, so the right token depends
-    // on which number was texted (`To`):
-    //  - a number saved in a workspace's Twilio settings (workspaces.twilio_number) is validated
-    //    ONLY against that workspace's own decrypted token, and the request's AccountSid must be
-    //    that workspace's account -- never the platform token, which cannot sign for it;
-    //  - a number that belongs to no workspace is a platform-level number and is validated against
-    //    the platform's TWILIO_AUTH_TOKEN.
-    // (This used to validate every request against the platform token, so a workspace-owned
-    // account's genuine STOP replies were rejected and dropped.) The DB read below only selects
-    // which token to check; it changes nothing, and a failure returns the same 403 as a bad signature.
+    // Verify this request genuinely came from Twilio BEFORE any state change (see verifyTwilioWebhook:
+    // a workspace-owned number is validated with THAT workspace's own token, never the platform token).
     const twilioSignature = req.headers.get('X-Twilio-Signature');
     const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/twilio/inbound`;
-    const toE164 = normalizePhone(String(formData.get('To') ?? ''));
-
-    const { data: ownerRows } = toE164
-      ? await supabaseAdmin
-          .from('workspaces')
-          .select('id, twilio_sid, twilio_token, twilio_sid_encrypted, twilio_token_encrypted')
-          .eq('twilio_number', toE164)
-      : { data: [] as any[] };
-    const owners = ownerRows ?? [];
-
-    let workspaceId: string | null = null;
-    let isValidSignature = false;
-    if (owners.length > 0) {
-      for (const ws of owners) {
-        let creds: { accountSid?: string; authToken?: string } = {};
-        try { creds = resolveWorkspaceTwilioCredentials(ws); } catch (err) { logger.error({ err, workspaceId: ws.id }, 'webhook.twilio_inbound.credential_decrypt.failed'); }
-        if (
-          twilioSignature && creds.authToken &&
-          creds.accountSid && payloadObj.AccountSid === creds.accountSid &&
-          validateRequest(creds.authToken, twilioSignature, webhookUrl, payloadObj)
-        ) {
-          isValidSignature = true;
-          workspaceId = ws.id;
-          break;
-        }
-      }
-    } else {
-      const platformToken = process.env.TWILIO_AUTH_TOKEN;
-      isValidSignature = !!(twilioSignature && platformToken && validateRequest(platformToken, twilioSignature, webhookUrl, payloadObj));
-    }
+    const verdict = await verifyTwilioWebhook(supabaseAdmin, { signature: twilioSignature, url: webhookUrl, params: payloadObj, numberField: 'To' });
+    const isValidSignature = verdict.valid;
+    const workspaceId: string | null = verdict.workspaceId;
 
     if (!isValidSignature) {
-      logger.warn({ hasSignatureHeader: !!twilioSignature, workspaceOwned: owners.length > 0 }, 'webhook.twilio_inbound.signature.invalid');
+      logger.warn({ hasSignatureHeader: !!twilioSignature, workspaceOwned: verdict.workspaceOwned }, 'webhook.twilio_inbound.signature.invalid');
       try {
         await supabaseAdmin.from('webhook_dead_letters').insert({
           provider: 'twilio_inbound', payload: payloadObj, error: 'Invalid or missing X-Twilio-Signature', error_type: 'signature_invalid', retry_state: 'dropped'

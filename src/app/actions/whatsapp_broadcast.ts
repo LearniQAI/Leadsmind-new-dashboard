@@ -1,9 +1,10 @@
 'use server';
 
 // WhatsApp Broadcast Lists — Task 43. Audience resolution and the
-// dispatch-queue shape deliberately mirror bulk_sms.ts (which itself mirrors
-// email_campaigns/campaign_dispatch_queue) — same SegmentationCompiler +
-// tag_assignments audience reuse, same admin-client queue insert pattern.
+// dispatch-queue shape mirror bulk_sms.ts (which follows email_campaigns/
+// campaign_dispatch_queue): SegmentationCompiler for segments/rules, tags resolved from
+// tag_assignments via src/lib/tagAudience.ts (ALL listed tags; the legacy contacts.tags
+// array is NOT read), same admin-client queue insert pattern.
 // Two differences from Bulk SMS: (1) consent gates on contacts.opted_out,
 // the WhatsApp-specific field already maintained by
 // processInboundComplianceAndWindow() in webhooks/meta/route.ts — NOT
@@ -20,6 +21,13 @@ import { decrypt } from '@/lib/encryption';
 import { SegmentationCompiler, RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
 import { validateRuleGroup } from '@/lib/segments/ruleValidation';
 import { loadSegmentRuleGroup } from '@/lib/segments/resolveSegment';
+import { resolveContactIdsWithAllTags } from '@/lib/tagAudience';
+import { userSafeMessage } from '@/shared/errors/userSafe';
+import { ValidationError } from '@/shared/errors/AppError';
+
+// PostgREST puts `.in('id', [...])` in the URL; a URL over ~12-16k characters is rejected. Chunk id lists.
+const ID_CHUNK = 100;
+const QUEUE_INSERT_CHUNK = 500;
 
 export interface CreateWhatsAppBroadcastPayload {
   name: string;
@@ -106,7 +114,7 @@ export async function listApprovedWhatsAppTemplates() {
     return { success: true as const, data: approved, mock: false };
   } catch (error: any) {
     logger.error({ err: error }, 'list.whatsapp_templates.failed');
-    return { success: false as const, error: error.message || 'Failed to fetch WhatsApp templates' };
+    return { success: false as const, error: userSafeMessage(error, 'Failed to fetch WhatsApp templates') };
   }
 }
 
@@ -126,7 +134,7 @@ async function resolveAudience(
   // error clearly (and before any row is written), never be dropped and evaluated on tags alone.
   if (ruleGroup) {
     const problem = validateRuleGroup(ruleGroup);
-    if (problem) throw new Error(problem);
+    if (problem) throw new ValidationError(problem); // authored for the user, so safe to show
   }
   if (!ruleGroup && payload.segmentId) {
     ruleGroup = await loadSegmentRuleGroup(supabase, workspaceId, payload.segmentId);
@@ -140,15 +148,11 @@ async function resolveAudience(
     ruleMatchedIds = new Set(matches.map((c: any) => c.id));
   }
 
+  // Tags are matched against tag_assignments (the source of truth), NOT the legacy contacts.tags array
+  // this used to read; a contact must carry ALL the listed tags (by name or id).
   let tagMatchedIds: Set<string> | null = null;
   if (tags.length > 0) {
-    const { data: legacyMatches, error: tagErr } = await supabase
-      .from('contacts')
-      .select('id')
-      .eq('workspace_id', workspaceId)
-      .contains('tags', tags);
-    if (tagErr) throw tagErr;
-    tagMatchedIds = new Set((legacyMatches ?? []).map((c: any) => c.id));
+    tagMatchedIds = await resolveContactIdsWithAllTags(supabase, workspaceId, tags);
   }
 
   let matchedIds: Set<string>;
@@ -160,15 +164,34 @@ async function resolveAudience(
 
   if (matchedIds.size === 0) return { contactIds: [], excludedOptOut: 0 };
 
-  const { data: eligible, error: eligErr } = await supabase
-    .from('contacts')
-    .select('id, phone, opted_out, sms_opt_out')
-    .in('id', Array.from(matchedIds));
-  if (eligErr) throw eligErr;
+  // Chunked: putting every id in one request URL fails outright above ~300-400 contacts.
+  const matchedList = Array.from(matchedIds);
+  const eligible: any[] = [];
+  for (let i = 0; i < matchedList.length; i += ID_CHUNK) {
+    const { data, error: eligErr } = await supabase
+      .from('contacts')
+      .select('id, phone, phone_e164, opted_out, sms_opt_out')
+      .in('id', matchedList.slice(i, i + ID_CHUNK));
+    if (eligErr) throw eligErr;
+    eligible.push(...(data ?? []));
+  }
 
-  const withPhone = (eligible ?? []).filter((c: any) => !!c.phone);
-  const excludedOptOut = withPhone.filter((c: any) => c.opted_out || c.sms_opt_out).length;
-  const contactIds = withPhone.filter((c: any) => !c.opted_out && !c.sms_opt_out).map((c: any) => c.id);
+  // Opt-out is unified across SMS and WhatsApp and also lives durably in sms_suppression_list.
+  const suppressedPhones = new Set<string>();
+  const phones = [...new Set(eligible.map((c: any) => c.phone_e164).filter(Boolean))] as string[];
+  for (let i = 0; i < phones.length; i += ID_CHUNK) {
+    const { data: listed, error: listErr } = await supabase
+      .from('sms_suppression_list').select('phone_e164')
+      .eq('workspace_id', workspaceId).in('phone_e164', phones.slice(i, i + ID_CHUNK));
+    if (listErr) throw listErr;
+    for (const r of listed ?? []) suppressedPhones.add(r.phone_e164);
+  }
+
+  // A number that cannot be normalised to E.164 can never be messaged (or matched to a STOP): skip it.
+  const withPhone = eligible.filter((c: any) => !!c.phone && !!c.phone_e164);
+  const isOptedOut = (c: any) => c.opted_out || c.sms_opt_out || suppressedPhones.has(c.phone_e164);
+  const excludedOptOut = withPhone.filter(isOptedOut).length;
+  const contactIds = withPhone.filter((c: any) => !isOptedOut(c)).map((c: any) => c.id);
 
   return { contactIds, excludedOptOut };
 }
@@ -232,19 +255,25 @@ export async function createWhatsAppBroadcastCampaign(payload: CreateWhatsAppBro
     }));
 
     const admin = createAdminClient();
-    const { error: queueErr } = await admin
-      .from('whatsapp_dispatch_queue')
-      .upsert(queueRows, { onConflict: 'campaign_id,contact_id', ignoreDuplicates: true });
-    if (queueErr) {
-      logger.error({ err: queueErr, campaignId: campaign.id }, 'create.whatsapp_broadcast_campaign.queue_insert.failed');
-      throw new Error('Failed to queue campaign recipients');
+    for (let i = 0; i < queueRows.length; i += QUEUE_INSERT_CHUNK) {
+      const { error: queueErr } = await admin
+        .from('whatsapp_dispatch_queue')
+        .upsert(queueRows.slice(i, i + QUEUE_INSERT_CHUNK), { onConflict: 'campaign_id,contact_id', ignoreDuplicates: true });
+      if (queueErr) {
+        logger.error({ err: queueErr, campaignId: campaign.id }, 'create.whatsapp_broadcast_campaign.queue_insert.failed');
+        // Do not leave a "scheduled" campaign with only part of its audience queued.
+        await admin.from('whatsapp_dispatch_queue').delete().eq('campaign_id', campaign.id);
+        await admin.from('whatsapp_broadcast_campaigns').delete().eq('id', campaign.id);
+        throw new Error('Failed to queue campaign recipients');
+      }
     }
 
     revalidatePath('/whatsapp-broadcasts');
     return { success: true as const, data: campaign, recipientCount: contactIds.length, excludedOptOut };
   } catch (error: any) {
     logger.error({ err: error }, 'create.whatsapp_broadcast_campaign.failed');
-    return { success: false as const, error: error.message || 'Failed to create WhatsApp campaign' };
+    // Only errors authored for the user reach the client; driver/DB/network errors are replaced by a generic message.
+    return { success: false as const, error: userSafeMessage(error, 'Failed to create WhatsApp campaign') };
   }
 }
 

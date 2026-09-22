@@ -49,7 +49,7 @@ async function workspacesOwningNumber(fromNumber: string | null | undefined): Pr
  return (data ?? []).map((w: any) => w.id);
 }
 
-export async function sendSMS({ to: rawTo, message, mediaUrl, config, workspaceId, purpose = 'marketing' }: { to: string, message: string, mediaUrl?: string, config?: { accountSid?: string | null, authToken?: string | null, fromNumber?: string | null }, workspaceId?: string, purpose?: SmsPurpose }) {
+export async function sendSMS({ to: rawTo, message, mediaUrl, config, workspaceId, purpose = 'marketing', statusCallback, dedupeSince }: { to: string, message: string, mediaUrl?: string, statusCallback?: string, dedupeSince?: string, config?: { accountSid?: string | null, authToken?: string | null, fromNumber?: string | null }, workspaceId?: string, purpose?: SmsPurpose }) {
  const isPlatformLevelSend = config === undefined;
 
  const { prefix, number } = splitChannelPrefix(rawTo);
@@ -94,8 +94,9 @@ export async function sendSMS({ to: rawTo, message, mediaUrl, config, workspaceI
   );
  }
 
- const twilio = require('twilio');
- let client;
+ const twilioModule: any = await import('twilio');
+ const twilio = twilioModule.default ?? twilioModule;
+ let client: any;
  if (apiKey && apiSecret) {
    client = twilio(apiKey, apiSecret, { accountSid });
  } else {
@@ -104,13 +105,48 @@ export async function sendSMS({ to: rawTo, message, mediaUrl, config, workspaceI
 
  try {
   const options: any = { body: message, from: fromNumber, to };
+  // Twilio POSTs every status change (queued/sent/delivered/undelivered/failed) here; see the sms-status webhook.
+  if (statusCallback) options.statusCallback = statusCallback;
   if (mediaUrl) {
     options.mediaUrl = [mediaUrl];
   }
+  // Twilio has NO idempotency key for message creation (its docs and the Node SDK offer none), so a
+  // re-attempt of a send that may already have succeeded -- a worker that crashed after Twilio accepted
+  // the message but before the row was marked sent, or a request that timed out after acceptance --
+  // would text the recipient twice. When the caller says this is a re-attempt (dedupeSince = when the
+  // first attempt began), first look for an identical message already created since then and adopt
+  // it. If that lookup itself fails the error propagates: better to retry later than to risk a duplicate.
+  if (dedupeSince) {
+   const priorSid = await findEarlierIdenticalMessage(client, { to, from: fromNumber, body: message, since: dedupeSince });
+   if (priorSid) {
+    logger.warn({ sid: priorSid }, 'sms.dedupe.adopted_prior_message');
+    return { sid: priorSid, reconciled: true as const };
+   }
+  }
   const result = await client.messages.create(options);
-  return { sid: result.sid };
+  return { sid: result.sid, reconciled: false as const };
  } catch (error) {
   logger.error({ err: error }, 'sms.twilio.failed');
   throw error;
  }
+}
+
+/**
+ * The sid of a message already created to `to` from `from` with this exact body since `since`
+ * (minus a minute of clock skew), or null. A message Twilio itself failed/cancelled does not count
+ * as "already sent". Looks at the most recent 50 messages between the pair, which comfortably covers
+ * a one-message-per-recipient bulk send.
+ */
+export async function findEarlierIdenticalMessage(
+  client: any,
+  args: { to: string; from: string; body: string; since: string },
+): Promise<string | null> {
+  const cutoff = new Date(args.since).getTime() - 60_000;
+  const recent: any[] = await client.messages.list({ to: args.to, from: args.from, limit: 50 });
+  const match = recent.find((m) =>
+    String(m.body ?? '').trim() === args.body.trim() &&
+    new Date(m.dateCreated ?? m.dateSent ?? 0).getTime() >= cutoff &&
+    !['failed', 'canceled'].includes(String(m.status)),
+  );
+  return match?.sid ?? null;
 }

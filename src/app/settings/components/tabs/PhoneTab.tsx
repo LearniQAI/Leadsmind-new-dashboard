@@ -12,6 +12,7 @@ import {
   importWorkspacePhoneNumber,
   listWorkspacePhoneNumbers,
   releaseWorkspacePhoneNumber,
+  setWorkspaceSmsSender,
   type AvailableNumberResult,
   type ImportableNumber,
   type WorkspacePhoneNumber,
@@ -268,6 +269,7 @@ function NumbersSection() {
 
   const [pendingRelease, setPendingRelease] = useState<WorkspacePhoneNumber | null>(null);
   const [releasingId, setReleasingId] = useState<string | null>(null);
+  const [settingSenderId, setSettingSenderId] = useState<string | null>(null);
 
   const refreshNumbers = useCallback(async () => {
     setLoadingNumbers(true);
@@ -336,6 +338,18 @@ function NumbersSection() {
     refreshNumbers();
   };
 
+  // Which owned number SMS/WhatsApp are sent from (the workspace's single sender). Also points that
+  // number's SMS webhook at our STOP handler.
+  const handleUseForSms = async (n: WorkspacePhoneNumber) => {
+    setSettingSenderId(n.id);
+    const res = await setWorkspaceSmsSender(n.id);
+    setSettingSenderId(null);
+    if (res.error) { toast.error(res.error); return; }
+    toast.success(`${n.phone_number} is now your SMS & WhatsApp sending number.`);
+    if (res.warning) toast.warning(res.warning, { duration: 12000 });
+    refreshNumbers();
+  };
+
   const confirmRelease = async () => {
     if (!pendingRelease) return;
     setReleasingId(pendingRelease.id);
@@ -389,9 +403,21 @@ function NumbersSection() {
                     <div className="flex items-center gap-2 mt-1">
                       <CapabilityBadges capabilities={n.capabilities} />
                       <span className="text-[10px] !text-dash-textMuted">{n.source === 'purchased' ? 'Purchased' : 'Imported'}</span>
+                      {n.is_sms_sender && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">SMS &amp; WhatsApp sender</span>
+                      )}
                     </div>
                   </div>
                 </div>
+                {n.capabilities.sms && !n.is_sms_sender && (
+                  <button
+                    onClick={() => handleUseForSms(n)}
+                    disabled={settingSenderId === n.id}
+                    className="text-[11px] font-bold text-dash-accent hover:text-dash-accent/80 transition-colors motion-reduce:transition-none disabled:opacity-50"
+                  >
+                    {settingSenderId === n.id ? 'Setting…' : 'Use for SMS & WhatsApp'}
+                  </button>
+                )}
                 <button
                   onClick={() => setPendingRelease(n)}
                   disabled={releasingId === n.id}

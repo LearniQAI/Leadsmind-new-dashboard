@@ -45,3 +45,14 @@ export function describeWebhookFailure(r: Extract<InboundWebhookResult, { ok: fa
     default: return 'Saved, but Twilio would not let us set the number\'s STOP-reply webhook. Set its SMS webhook to /api/webhooks/twilio/inbound manually.';
   }
 }
+
+/**
+ * The URL Twilio calls with delivery-status updates for a message we send (queued -> sent ->
+ * delivered / undelivered / failed). Same public-https rule as the inbound URL: null when the app
+ * URL is not public, in which case the message is simply sent without a callback. Must match EXACTLY
+ * what the sms-status route rebuilds for signature validation.
+ */
+export function smsStatusCallbackUrl(): string | null {
+  const inbound = inboundSmsWebhookUrl();
+  return inbound ? inbound.replace(/\/inbound$/, '/sms-status') : null;
+}

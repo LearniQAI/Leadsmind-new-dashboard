@@ -1,13 +1,14 @@
 'use server';
 
 // Bulk SMS marketing — one-time scheduled bulk send. Audience resolution and
-// the dispatch-queue shape deliberately mirror email_campaigns / campaign_dispatch_queue
-// in marketing.ts (SegmentationCompiler.executeSegment() for saved Segments /
-// ad-hoc rule groups, tag_assignments for tags), swapping sendEmail for
-// sendSMS and gating on contacts.sms_opt_out (email's equivalent is
-// contacts.is_invalid_email, popia.ts). Not built on the Email Sequences
-// wait/resume engine — that's for multi-step drips, this is a single
-// scheduled broadcast.
+// the dispatch-queue shape follow email_campaigns / campaign_dispatch_queue
+// in marketing.ts: SegmentationCompiler.executeSegment() for saved Segments /
+// ad-hoc rule groups, and tags resolved from tag_assignments (src/lib/tagAudience.ts:
+// a contact must carry ALL listed tags). The legacy contacts.tags array is NOT read.
+// Opt-out is the contact's sms_opt_out/opted_out flags plus the durable
+// sms_suppression_list (src/lib/smsOptOut.ts), enforced again at send time.
+// Not built on the Email Sequences wait/resume engine — that's for multi-step
+// drips, this is a single scheduled broadcast.
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
@@ -16,6 +17,16 @@ import { logger } from '@/shared/logger';
 import { SegmentationCompiler, RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
 import { validateRuleGroup } from '@/lib/segments/ruleValidation';
 import { loadSegmentRuleGroup } from '@/lib/segments/resolveSegment';
+import { userSafeMessage } from '@/shared/errors/userSafe';
+import { ValidationError } from '@/shared/errors/AppError';
+import { getSmsReadiness, SMS_NOT_CONFIGURED_MESSAGE } from '@/lib/smsReadiness';
+import { MAX_SMS_BODY_CHARS } from '@/lib/smsSegments';
+import { resolveContactIdsWithAllTags } from '@/lib/tagAudience';
+
+// PostgREST puts `.in('id', [...])` in the URL, and a URL longer than ~12-16k characters is rejected
+// (measured live: 300 uuids works, 400+ fails). Every id-list lookup is therefore done in chunks.
+const ID_CHUNK = 100;
+const QUEUE_INSERT_CHUNK = 500;
 
 export interface CreateBulkSmsPayload {
   name: string;
@@ -63,7 +74,7 @@ async function resolveAudience(
   // error clearly (and before any row is written), never be dropped and evaluated on tags alone.
   if (ruleGroup) {
     const problem = validateRuleGroup(ruleGroup);
-    if (problem) throw new Error(problem);
+    if (problem) throw new ValidationError(problem); // authored for the user, so safe to show
   }
   if (!ruleGroup && payload.segmentId) {
     ruleGroup = await loadSegmentRuleGroup(supabase, workspaceId, payload.segmentId);
@@ -77,15 +88,11 @@ async function resolveAudience(
     ruleMatchedIds = new Set(matches.map((c: any) => c.id));
   }
 
+  // Tags are matched against tag_assignments (the source of truth), NOT the legacy contacts.tags array
+  // this used to read; a contact must carry ALL the listed tags (by name or id).
   let tagMatchedIds: Set<string> | null = null;
   if (tags.length > 0) {
-    const { data: legacyMatches, error: tagErr } = await supabase
-      .from('contacts')
-      .select('id')
-      .eq('workspace_id', workspaceId)
-      .contains('tags', tags);
-    if (tagErr) throw tagErr;
-    tagMatchedIds = new Set((legacyMatches ?? []).map((c: any) => c.id));
+    tagMatchedIds = await resolveContactIdsWithAllTags(supabase, workspaceId, tags);
   }
 
   let matchedIds: Set<string>;
@@ -97,11 +104,18 @@ async function resolveAudience(
 
   if (matchedIds.size === 0) return { contactIds: [], excludedOptOut: 0 };
 
-  const { data: eligible, error: eligErr } = await supabase
-    .from('contacts')
-    .select('id, phone, phone_e164, sms_opt_out, opted_out')
-    .in('id', Array.from(matchedIds));
-  if (eligErr) throw eligErr;
+  // Chunked: one request carrying every matched id put them all in the URL and failed outright for
+  // audiences above ~300-400 contacts.
+  const matchedList = Array.from(matchedIds);
+  const eligible: any[] = [];
+  for (let i = 0; i < matchedList.length; i += ID_CHUNK) {
+    const { data, error: eligErr } = await supabase
+      .from('contacts')
+      .select('id, phone, phone_e164, sms_opt_out, opted_out')
+      .in('id', matchedList.slice(i, i + ID_CHUNK));
+    if (eligErr) throw eligErr;
+    eligible.push(...(data ?? []));
+  }
 
   // Opt-outs also live in the durable suppression list (workspace + E.164 phone), which outlives
   // contact deletion/re-import; honour both it and the contact flags.
@@ -135,9 +149,17 @@ export async function createBulkSmsCampaign(payload: CreateBulkSmsPayload) {
     const { workspaceId, userId } = await requireWorkspaceAccess();
     if (!payload.name?.trim()) return { success: false as const, error: 'Campaign name is required' };
     if (!payload.messageBody?.trim()) return { success: false as const, error: 'Message body is required' };
+    if (payload.messageBody.trim().length > MAX_SMS_BODY_CHARS) {
+      return { success: false as const, error: `Message is too long (maximum ${MAX_SMS_BODY_CHARS} characters).` };
+    }
     if (!payload.segmentId && !payload.ruleGroup && !(payload.tags && payload.tags.length > 0)) {
       return { success: false as const, error: 'Select an audience (segment, rule, or tags)' };
     }
+
+    // Pre-flight: refuse upfront when the workspace cannot send SMS at all, rather than accepting a
+    // campaign whose every row then fails (and is retried for over an hour) at dispatch time.
+    const readiness = await getSmsReadiness(workspaceId);
+    if (!readiness.ready) return { success: false as const, error: SMS_NOT_CONFIGURED_MESSAGE };
 
     const supabase = await createServerClient();
 
@@ -179,19 +201,26 @@ export async function createBulkSmsCampaign(payload: CreateBulkSmsPayload) {
     // user-facing RLS policy (same as campaign_dispatch_queue), it's only
     // ever written by server actions / the cron worker.
     const admin = createAdminClient();
-    const { error: queueErr } = await admin
-      .from('sms_dispatch_queue')
-      .upsert(queueRows, { onConflict: 'campaign_id,contact_id', ignoreDuplicates: true });
-    if (queueErr) {
-      logger.error({ err: queueErr, campaignId: campaign.id }, 'create.bulk_sms_campaign.queue_insert.failed');
-      throw new Error('Failed to queue campaign recipients');
+    for (let i = 0; i < queueRows.length; i += QUEUE_INSERT_CHUNK) {
+      const { error: queueErr } = await admin
+        .from('sms_dispatch_queue')
+        .upsert(queueRows.slice(i, i + QUEUE_INSERT_CHUNK), { onConflict: 'campaign_id,contact_id', ignoreDuplicates: true });
+      if (queueErr) {
+        logger.error({ err: queueErr, campaignId: campaign.id }, 'create.bulk_sms_campaign.queue_insert.failed');
+        // Do not leave a "scheduled" campaign with only part of its audience queued.
+        await admin.from('sms_dispatch_queue').delete().eq('campaign_id', campaign.id);
+        await admin.from('bulk_sms_campaigns').delete().eq('id', campaign.id);
+        throw new Error('Failed to queue campaign recipients');
+      }
     }
 
     revalidatePath('/sms');
     return { success: true as const, data: campaign, recipientCount: contactIds.length, excludedOptOut };
   } catch (error: any) {
     logger.error({ err: error }, 'create.bulk_sms_campaign.failed');
-    return { success: false as const, error: error.message || 'Failed to create SMS campaign' };
+    // Only errors authored for the user (validation, "segment was deleted", ...) reach the client;
+    // driver/DB/network errors are logged above and replaced by a generic message.
+    return { success: false as const, error: userSafeMessage(error, 'Failed to create SMS campaign') };
   }
 }
 
@@ -211,19 +240,23 @@ export async function cancelBulkSmsCampaign(id: string) {
       return { success: false as const, error: 'Only scheduled or in-progress campaigns can be cancelled' };
     }
 
-    const admin = createAdminClient();
-    await admin
-      .from('sms_dispatch_queue')
-      .update({ status: 'failed', error_log: 'Cancelled by user' })
-      .eq('campaign_id', id)
-      .eq('status', 'pending');
-
+    // Campaign FIRST: the dispatch worker re-reads this status before every send, so rows it has
+    // already claimed ('processing') but not yet sent stop too. Only a message already handed to Twilio
+    // cannot be recalled. Then close out the queued rows as 'cancelled' (not 'failed': a cancel is not a
+    // send failure and must not count as one).
     const { error: updateErr } = await supabase
       .from('bulk_sms_campaigns')
       .update({ status: 'cancelled' })
       .eq('id', id)
       .eq('workspace_id', workspaceId);
     if (updateErr) throw updateErr;
+
+    const admin = createAdminClient();
+    await admin
+      .from('sms_dispatch_queue')
+      .update({ status: 'cancelled', error_log: 'Cancelled by user', locked_by: null })
+      .eq('campaign_id', id)
+      .in('status', ['pending', 'processing', 'deferred']);
 
     revalidatePath('/sms');
     return { success: true as const };

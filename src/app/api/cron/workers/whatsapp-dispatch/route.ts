@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { MetaAdapter } from '@/lib/meta/MetaAdapter';
 import { isWithinWhatsAppSessionWindow } from '@/lib/meta/whatsappWindow';
 import { logger } from '@/shared/logger';
+import { normalizePhone } from '@/lib/phone';
+import { getSmsOptOutReason } from '@/lib/smsOptOut';
 import crypto from 'crypto';
 
 const supabaseAdmin = createClient(
@@ -87,10 +89,6 @@ export async function GET(req: Request) {
     const windowMap = new Map(conversations?.map((c: any) => [c.contact_id, c.last_customer_message_at]));
 
     const updates: any[] = [];
-    const sentIncrements: Record<string, number> = {};
-    const failedIncrements: Record<string, number> = {};
-    const optOutIncrements: Record<string, number> = {};
-    const noTemplateIncrements: Record<string, number> = {};
 
     for (const job of jobs) {
       const campaign = campaignsMap.get(job.campaign_id);
@@ -99,13 +97,11 @@ export async function GET(req: Request) {
 
       if (!campaign || !contact || !contact.phone) {
         updates.push({ id: job.id, status: 'failed', error_log: 'Missing relational data', locked_by: null });
-        failedIncrements[job.campaign_id] = (failedIncrements[job.campaign_id] || 0) + 1;
         continue;
       }
 
       if (!connection?.credentials) {
         updates.push({ id: job.id, status: 'failed', error_log: 'WhatsApp connection not configured', locked_by: null });
-        failedIncrements[job.campaign_id] = (failedIncrements[job.campaign_id] || 0) + 1;
         continue;
       }
 
@@ -113,13 +109,32 @@ export async function GET(req: Request) {
       // as sms-dispatch's contact.sms_opt_out re-check.
       if (contact.opted_out || contact.sms_opt_out) {
         updates.push({ id: job.id, status: 'skipped_opt_out', locked_by: null });
-        optOutIncrements[job.campaign_id] = (optOutIncrements[job.campaign_id] || 0) + 1;
+        continue;
+      }
+      // Opt-out is unified across SMS and WhatsApp and lives durably in sms_suppression_list too (it
+      // survives a contact being deleted and re-imported). This worker sends through Meta, NOT through
+      // sendSMS, so it does not get sendSMS's gate for free: check it here. Fails closed on a lookup error.
+      let optOutReason: string | null = null;
+      try {
+        optOutReason = await getSmsOptOutReason(supabaseAdmin, job.workspace_id, contact.phone);
+      } catch (optErr: any) {
+        updates.push({ id: job.id, status: 'pending', retry_count: (job.retry_count || 0) + 1, scheduled_for: new Date(now.getTime() + 15 * 60000).toISOString(), error_log: 'Could not verify opt-out status; will retry', locked_by: null });
+        logger.error({ err: optErr }, 'cron.whatsapp_dispatch.opt_out_lookup.failed');
+        continue;
+      }
+      if (optOutReason) {
+        updates.push({ id: job.id, status: 'skipped_opt_out', locked_by: null });
         continue;
       }
 
       const inWindow = isWithinWhatsAppSessionWindow(windowMap.get(job.contact_id));
       const adapter = new MetaAdapter(connection.credentials);
-      const cleanPhone = contact.phone.startsWith('+') ? contact.phone : `+${contact.phone}`;
+      // Stored phones are often local ("082 123 4567"); '+' + phone made those invalid. Normalise to E.164.
+      const cleanPhone = normalizePhone(contact.phone);
+      if (!cleanPhone) {
+        updates.push({ id: job.id, status: 'failed', error_log: 'Invalid phone number (cannot be converted to international format)', locked_by: null });
+        continue;
+      }
 
       try {
         let result: { success: boolean; externalId?: string; error?: string };
@@ -136,14 +151,12 @@ export async function GET(req: Request) {
           // Out of window with no approved template configured — cannot
           // legally free-text this contact, and there's nothing else to send.
           updates.push({ id: job.id, status: 'skipped_no_template', locked_by: null });
-          noTemplateIncrements[job.campaign_id] = (noTemplateIncrements[job.campaign_id] || 0) + 1;
           continue;
         }
 
         if (!result.success) throw new Error(result.error || 'WhatsApp send failed');
 
         updates.push({ id: job.id, status: 'sent', whatsapp_message_id: result.externalId, was_template: usedTemplate, locked_by: null });
-        sentIncrements[campaign.id] = (sentIncrements[campaign.id] || 0) + 1;
         sentCount++;
       } catch (sendErr: any) {
         const isHardFail = /invalid|auth|unsubscribed|blacklist|template/i.test(sendErr.message || '');
@@ -151,7 +164,6 @@ export async function GET(req: Request) {
 
         if (isHardFail || nextRetryCount >= 3) {
           updates.push({ id: job.id, status: 'failed', error_log: sendErr.message, locked_by: null });
-          failedIncrements[campaign.id] = (failedIncrements[campaign.id] || 0) + 1;
         } else {
           const backoffMinutes = Math.pow(4, nextRetryCount) * 15;
           const nextTime = new Date(now.getTime() + backoffMinutes * 60000);
@@ -168,63 +180,34 @@ export async function GET(req: Request) {
     }
 
     if (updates.length > 0) {
-      const results = await Promise.all(
-        updates.map((u) => {
-          const { id: jobId, ...fields } = u;
-          return supabaseAdmin.from('whatsapp_dispatch_queue').update(fields).eq('id', jobId);
-        })
-      );
-      const updateErr = results.find((r) => r.error)?.error;
-      if (updateErr) {
-        logger.error({ err: updateErr, workerId }, 'cron.whatsapp_dispatch.queue_status_update.failed');
+      const flush = (u: any) => {
+        const { id: jobId, ...fields } = u;
+        return supabaseAdmin.from('whatsapp_dispatch_queue').update(fields).eq('id', jobId);
+      };
+      const results = await Promise.all(updates.map(flush));
+      // A row update can fail transiently (network). A row that WAS sent but stays 'processing' would be
+      // reclaimed after 5 minutes and sent again, so retry each failed update once before giving up.
+      for (let i = 0; i < results.length; i++) {
+        if (!results[i].error) continue;
+        const retry = await flush(updates[i]);
+        if (retry.error) logger.error({ err: retry.error, workerId, jobId: updates[i].id }, 'cron.whatsapp_dispatch.queue_status_update.failed');
       }
     }
 
-    const touchedCampaignIds = new Set([
-      ...Object.keys(sentIncrements),
-      ...Object.keys(failedIncrements),
-      ...Object.keys(optOutIncrements),
-      ...Object.keys(noTemplateIncrements),
-    ]);
-    for (const cid of touchedCampaignIds) {
-      const { data: camp } = await supabaseAdmin
-        .from('whatsapp_broadcast_campaigns')
-        .select('total_sent, total_failed, total_skipped_opt_out, total_skipped_no_template')
-        .eq('id', cid)
-        .single();
-      if (camp) {
-        await supabaseAdmin
-          .from('whatsapp_broadcast_campaigns')
-          .update({
-            total_sent: (camp.total_sent || 0) + (sentIncrements[cid] || 0),
-            total_failed: (camp.total_failed || 0) + (failedIncrements[cid] || 0),
-            total_skipped_opt_out: (camp.total_skipped_opt_out || 0) + (optOutIncrements[cid] || 0),
-            total_skipped_no_template: (camp.total_skipped_no_template || 0) + (noTemplateIncrements[cid] || 0),
-          })
-          .eq('id', cid);
-      }
-    }
-
+    // Campaign totals come from refresh_whatsapp_campaign_totals: it locks the campaign row, counts the
+    // queue rows and writes the totals in one transaction, so concurrent workers can neither lose an
+    // increment (the old read-then-write did) nor overwrite a newer total with an older one. Then close the
+    // campaign once every row is terminal ('failed' when nothing was sent and something failed); the update
+    // is conditional so a cancelled campaign is never resurrected.
     for (const cid of campaignIds) {
-      const { count: remaining } = await supabaseAdmin
-        .from('whatsapp_dispatch_queue')
-        .select('id', { count: 'exact', head: true })
-        .eq('campaign_id', cid)
-        .in('status', ['pending', 'processing']);
-
-      if ((remaining ?? 0) === 0) {
-        const { data: campToClose } = await supabaseAdmin
-          .from('whatsapp_broadcast_campaigns')
-          .select('status')
-          .eq('id', cid)
-          .single();
-        if (campToClose && !['completed', 'cancelled'].includes(campToClose.status)) {
-          await supabaseAdmin
-            .from('whatsapp_broadcast_campaigns')
-            .update({ status: 'completed', sent_at: now.toISOString() })
-            .eq('id', cid);
-        }
-      }
+      const { data: t, error: refreshErr } = await supabaseAdmin.rpc('refresh_whatsapp_campaign_totals', { p_campaign_id: cid });
+      if (refreshErr) { logger.error({ err: refreshErr, campaignId: cid }, 'cron.whatsapp_dispatch.totals_refresh.failed'); continue; }
+      if (!t || t.open !== 0) continue;
+      await supabaseAdmin
+        .from('whatsapp_broadcast_campaigns')
+        .update({ status: t.sent === 0 && t.failed > 0 ? 'failed' : 'completed', sent_at: now.toISOString() })
+        .eq('id', cid)
+        .in('status', ['scheduled', 'sending']);
     }
 
     return NextResponse.json({ success: true, processed: jobs.length, sent: sentCount });
