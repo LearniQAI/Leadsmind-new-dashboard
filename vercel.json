@@ -82,6 +82,10 @@
       "schedule": "0 5 * * *"
     },
     {
+      "path": "/api/cron/reengagement-loop",
+      "schedule": "0 7 * * *"
+    },
+    {
       "path": "/api/cron/reminders",
       "schedule": "*/5 * * * *"
     },
