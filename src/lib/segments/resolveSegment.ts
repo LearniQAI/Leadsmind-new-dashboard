@@ -8,6 +8,8 @@ import type { RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
  * wider audience than the user configured.
  */
 export class SegmentUnavailableError extends Error {
+  // Authored for the user ("the saved segment was deleted"), so safe to show as-is.
+  readonly userSafe = true as const;
   constructor(message: string) {
     super(message);
     this.name = 'SegmentUnavailableError';

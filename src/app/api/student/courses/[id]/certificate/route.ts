@@ -3,6 +3,8 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { getUser } from '@/lib/auth';
 import { getOrCreateStudentContact } from '@/app/actions/studentEnrollments';
 import { ensureCourseCertificate } from '@/lib/lms/issueCertificate';
+import { enrolmentInactiveReason } from '@/lib/lms/enrolment';
+import { getCourseCompletionStatus } from '@/lib/lms/courseCompletion';
 import { generateCertificatePDF } from '../../../../../../../libs/services/src/pdf/cert-generator';
 
 export const dynamic = 'force-dynamic';
@@ -31,7 +33,7 @@ export async function GET(
       .single();
 
     if (!course) {
-      return NextResponse.json({ error: 'Course not found' }, { status: 444 });
+      return NextResponse.json({ error: 'Course not found' }, { status: 404 });
     }
 
     // Certificate design: per-course override -> workspace default -> built-in classic.
@@ -47,54 +49,45 @@ export async function GET(
       return NextResponse.json({ error: 'Student contact not resolved' }, { status: 400 });
     }
 
-    // 3. Verify Course Completion Status
-    const [lessonsRes, progressRes, contactRes] = await Promise.all([
-      adminClient.from('course_lessons').select('id').eq('course_id', courseId),
-      adminClient.from('course_progress').select('lesson_id').eq('contact_id', contactId).eq('course_id', courseId).not('completed_at', 'is', null),
-      adminClient.from('contacts').select('first_name, last_name, email').eq('id', contactId).single()
-    ]);
-
-    const totalLessons = lessonsRes.data?.length || 0;
-    const completedLessons = progressRes.data?.length || 0;
-    const contact = contactRes.data;
-
-    if (totalLessons === 0) {
-      return NextResponse.json({ error: 'Course contains no lessons' }, { status: 400 });
+    // 2b. The enrolment must still be active (same isEnrolmentActive predicate, incl. expiry) —
+    // a suspended / cancelled / expired / pending-approval student can't pull a certificate.
+    const { data: enrollment } = await adminClient
+      .from('enrollments')
+      .select('status, active, expires_at, grace_period_expires_at')
+      .eq('contact_id', contactId)
+      .eq('course_id', courseId)
+      .maybeSingle();
+    const inactiveReason = enrolmentInactiveReason(enrollment);
+    if (inactiveReason) {
+      return NextResponse.json(
+        { error: inactiveReason, code: enrollment ? 'ENROLMENT_INACTIVE' : 'NOT_ENROLLED' },
+        { status: 403 }
+      );
     }
 
-    if (completedLessons < totalLessons) {
-      return NextResponse.json({
-        error: 'Course not fully completed yet',
-        progress: `${completedLessons}/${totalLessons}`
-      }, { status: 403 });
-    }
+    // 3. Verify course completion — the shared definition (courseCompletion.ts): every visible lesson
+    // complete, lesson quizzes AND module quizzes passed, graded assignments passed. Inactive lessons
+    // the student can't see are excluded. An already-issued certificate is never re-gated or revoked
+    // (issuance is idempotent), so a re-download of an existing certificate skips this check.
+    const { data: alreadyIssued } = await adminClient
+      .from('course_certificates')
+      .select('id')
+      .eq('contact_id', contactId)
+      .eq('course_id', courseId)
+      .maybeSingle();
 
-    // 3b. course_progress row-count alone only proves a lesson was marked complete, not that
-    // any quiz attached to it was actually passed — a completion certificate must also verify
-    // a real passing quiz_attempts row exists for every lesson that has quiz questions.
-    const lessonIds = (lessonsRes.data || []).map((l: any) => l.id);
-    const { data: quizLessons } = await adminClient
-      .from('quiz_questions')
-      .select('lesson_id')
-      .in('lesson_id', lessonIds);
-
-    const quizLessonIds = Array.from(new Set((quizLessons || []).map((q: any) => q.lesson_id)));
-
-    if (quizLessonIds.length > 0) {
-      const { data: passedAttempts } = await adminClient
-        .from('quiz_attempts')
-        .select('lesson_id')
-        .eq('student_id', contactId)
-        .eq('passed', true)
-        .in('lesson_id', quizLessonIds);
-
-      const passedLessonIds = new Set((passedAttempts || []).map((a: any) => a.lesson_id));
-      const missingQuiz = quizLessonIds.some((id) => !passedLessonIds.has(id));
-
-      if (missingQuiz) {
-        return NextResponse.json({
-          error: 'Course not fully completed yet — one or more quizzes have not been passed'
-        }, { status: 403 });
+    if (!alreadyIssued) {
+      const completion = await getCourseCompletionStatus(adminClient, contactId, courseId);
+      if (!completion.complete) {
+        return NextResponse.json(
+          {
+            error: completion.reason,
+            code: 'COURSE_NOT_COMPLETE',
+            totals: completion.totals,
+            missing: completion.missing,
+          },
+          { status: completion.totals.lessons === 0 ? 400 : 403 }
+        );
       }
     }
 
@@ -109,6 +102,8 @@ export async function GET(
       courseId,
       workspaceId: course.workspace_id,
       adminClient,
+      // Criteria were verified above (or the certificate already exists).
+      requireCompletion: false,
     });
 
     const validationId = cert.validation_id;

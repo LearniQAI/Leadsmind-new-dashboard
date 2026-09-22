@@ -1,4 +1,21 @@
 import { logger } from '@/shared/logger';
+import { createAdminClient } from '@/lib/supabase/server';
+import { normalizePhone, splitChannelPrefix } from '@/lib/phone';
+import { getSmsOptOutReason, SmsOptedOutError } from '@/lib/smsOptOut';
+
+export { SmsOptedOutError };
+
+// Opt-out enforcement lives HERE, in the one function every SMS/WhatsApp send in the app funnels
+// through (it is the only caller of twilio messages.create), so no call site can forget it.
+//  - purpose 'marketing' (the default) is checked against the workspace's opt-outs
+//    (sms_suppression_list + contact flags) and throws SmsOptedOutError instead of sending.
+//  - purpose 'transactional' (one-time codes, payment receipts, legally-required consent requests,
+//    internal staff notifications) is exempt — callers must say so explicitly.
+//  - a platform-level send (no `config`) belongs to no workspace and is not checked.
+// The workspace is the explicit `workspaceId` when the caller passes it, else the workspace that
+// owns `config.fromNumber`. Recipients are also normalised to E.164 here (South African local
+// numbers become +27…), replacing the ad-hoc `'+' + phone` every caller used to do.
+export type SmsPurpose = 'marketing' | 'transactional';
 
 // Two distinct calling conventions, not one:
 //
@@ -23,8 +40,36 @@ import { logger } from '@/shared/logger';
 //    api/auth/portal/magic-link), none of which are workspace-scoped
 //    actions to begin with. This is the one case the env vars below are
 //    still used for, unchanged from before.
-export async function sendSMS({ to, message, mediaUrl, config }: { to: string, message: string, mediaUrl?: string, config?: { accountSid?: string | null, authToken?: string | null, fromNumber?: string | null } }) {
+async function workspacesOwningNumber(fromNumber: string | null | undefined): Promise<string[]> {
+ const { number } = splitChannelPrefix(fromNumber ?? '');
+ const e164 = normalizePhone(number);
+ if (!e164) return [];
+ const { data, error } = await createAdminClient().from('workspaces').select('id').eq('twilio_number', e164);
+ if (error) throw new Error(`Could not resolve the sending workspace: ${error.message}`);
+ return (data ?? []).map((w: any) => w.id);
+}
+
+export async function sendSMS({ to: rawTo, message, mediaUrl, config, workspaceId, purpose = 'marketing', statusCallback, dedupeSince }: { to: string, message: string, mediaUrl?: string, statusCallback?: string, dedupeSince?: string, config?: { accountSid?: string | null, authToken?: string | null, fromNumber?: string | null }, workspaceId?: string, purpose?: SmsPurpose }) {
  const isPlatformLevelSend = config === undefined;
+
+ const { prefix, number } = splitChannelPrefix(rawTo);
+ const e164 = normalizePhone(number);
+ const to = e164 ? `${prefix}${e164}` : rawTo;
+
+ if (!isPlatformLevelSend && purpose !== 'transactional' && e164) {
+  const workspaceIds = workspaceId ? [workspaceId] : await workspacesOwningNumber(config?.fromNumber);
+  if (workspaceIds.length === 0) {
+   logger.warn({ fromNumber: config?.fromNumber }, 'sms.optout_check.workspace_unresolved');
+  }
+  const admin = createAdminClient();
+  for (const wsId of workspaceIds) {
+   const reason = await getSmsOptOutReason(admin, wsId, e164); // throws on lookup failure: fail closed
+   if (reason) {
+    logger.info({ workspaceId: wsId, reason }, 'sms.blocked_opted_out');
+    throw new SmsOptedOutError(reason);
+   }
+  }
+ }
 
  const accountSid = isPlatformLevelSend ? process.env.TWILIO_ACCOUNT_SID : config?.accountSid;
  const authToken = isPlatformLevelSend ? process.env.TWILIO_AUTH_TOKEN : config?.authToken;
@@ -49,8 +94,9 @@ export async function sendSMS({ to, message, mediaUrl, config }: { to: string, m
   );
  }
 
- const twilio = require('twilio');
- let client;
+ const twilioModule: any = await import('twilio');
+ const twilio = twilioModule.default ?? twilioModule;
+ let client: any;
  if (apiKey && apiSecret) {
    client = twilio(apiKey, apiSecret, { accountSid });
  } else {
@@ -59,13 +105,48 @@ export async function sendSMS({ to, message, mediaUrl, config }: { to: string, m
 
  try {
   const options: any = { body: message, from: fromNumber, to };
+  // Twilio POSTs every status change (queued/sent/delivered/undelivered/failed) here; see the sms-status webhook.
+  if (statusCallback) options.statusCallback = statusCallback;
   if (mediaUrl) {
     options.mediaUrl = [mediaUrl];
   }
+  // Twilio has NO idempotency key for message creation (its docs and the Node SDK offer none), so a
+  // re-attempt of a send that may already have succeeded -- a worker that crashed after Twilio accepted
+  // the message but before the row was marked sent, or a request that timed out after acceptance --
+  // would text the recipient twice. When the caller says this is a re-attempt (dedupeSince = when the
+  // first attempt began), first look for an identical message already created since then and adopt
+  // it. If that lookup itself fails the error propagates: better to retry later than to risk a duplicate.
+  if (dedupeSince) {
+   const priorSid = await findEarlierIdenticalMessage(client, { to, from: fromNumber, body: message, since: dedupeSince });
+   if (priorSid) {
+    logger.warn({ sid: priorSid }, 'sms.dedupe.adopted_prior_message');
+    return { sid: priorSid, reconciled: true as const };
+   }
+  }
   const result = await client.messages.create(options);
-  return { sid: result.sid };
+  return { sid: result.sid, reconciled: false as const };
  } catch (error) {
   logger.error({ err: error }, 'sms.twilio.failed');
   throw error;
  }
+}
+
+/**
+ * The sid of a message already created to `to` from `from` with this exact body since `since`
+ * (minus a minute of clock skew), or null. A message Twilio itself failed/cancelled does not count
+ * as "already sent". Looks at the most recent 50 messages between the pair, which comfortably covers
+ * a one-message-per-recipient bulk send.
+ */
+export async function findEarlierIdenticalMessage(
+  client: any,
+  args: { to: string; from: string; body: string; since: string },
+): Promise<string | null> {
+  const cutoff = new Date(args.since).getTime() - 60_000;
+  const recent: any[] = await client.messages.list({ to: args.to, from: args.from, limit: 50 });
+  const match = recent.find((m) =>
+    String(m.body ?? '').trim() === args.body.trim() &&
+    new Date(m.dateCreated ?? m.dateSent ?? 0).getTime() >= cutoff &&
+    !['failed', 'canceled'].includes(String(m.status)),
+  );
+  return match?.sid ?? null;
 }

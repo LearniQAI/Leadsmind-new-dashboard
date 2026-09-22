@@ -67,7 +67,7 @@ export async function getStudentPendingWork(): Promise<{
 
     const { data: enrollments } = await db
       .from('enrollments')
-      .select('course_id, status, active')
+      .select('course_id, status, active, expires_at, grace_period_expires_at')
       .in('contact_id', contactIds);
     const activeCourseIds = uniq(
       (enrollments || []).filter((e: any) => isEnrolmentActive(e)).map((e: any) => e.course_id),

@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
     // auth isn't workspace-scoped the way CRM/automation sends are, so
     // there's no per-workspace Twilio account to route this through.
     await sendSMS({
+      purpose: 'transactional', // one-time login code/link: never blocked by a marketing opt-out
       to: 'whatsapp:' + cleanPhone,
       message: `Your LeadsMind Client Portal Verification PIN: ${code}. Valid for 5 minutes.`
     });

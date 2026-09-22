@@ -55,7 +55,7 @@ export async function getStudentFlashcardSets(): Promise<{ data: FlashcardSetSum
 
     const { data: enrollments } = await db
       .from('enrollments')
-      .select('course_id, status, active')
+      .select('course_id, status, active, expires_at, grace_period_expires_at')
       .in('contact_id', contactIds);
     const courseIds = Array.from(
       new Set((enrollments || []).filter((e: any) => isEnrolmentActive(e)).map((e: any) => e.course_id))
@@ -169,7 +169,7 @@ async function resolveSetForStudent(blockId: string) {
 
   const { data: enrolment } = await db
     .from('enrollments')
-    .select('id, status, active')
+    .select('id, status, active, expires_at, grace_period_expires_at')
     .eq('course_id', course.id)
     .eq('contact_id', contactId)
     .maybeSingle();

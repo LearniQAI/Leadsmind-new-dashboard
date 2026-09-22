@@ -5,6 +5,7 @@ import { createAdminClient, createServerClient } from '@/lib/supabase/server';
 import { getOrCreateStudentContact } from '@/app/actions/studentEnrollments';
 import { ForbiddenError, NotFoundError, toClientError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger';
+import { toClientRemedialAssignment } from '@/lib/lms/remedialClient';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -72,9 +73,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: res.error }, { status: 500 });
     }
 
+    // Answer keys stay server-side (Batch 3 / fix 4) — grading happens in /api/lms/remedial/submit.
     return NextResponse.json({
       success: true,
-      assignment: res.assignment
+      assignment: toClientRemedialAssignment(res.assignment)
     });
 
   } catch (err: any) {

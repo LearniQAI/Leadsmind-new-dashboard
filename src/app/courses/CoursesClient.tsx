@@ -62,7 +62,11 @@ export default function CoursesClient({
       if (dataJson.error) {
         toast.error(dataJson.error);
       } else {
-        toast.success(`"${deletingCourse.title}" and everything in it has been deleted.`);
+        toast.success(
+          dataJson.archived
+            ? `"${deletingCourse.title}" was archived — its students keep their access and certificates.`
+            : `"${deletingCourse.title}" and everything in it has been deleted.`
+        );
         setCourses((prev) => prev.filter((c) => c.id !== deletingCourse.id));
         setDeletingCourse(null);
       }
@@ -258,13 +262,15 @@ export default function CoursesClient({
         isOpen={deletingCourse !== null}
         onClose={() => setDeletingCourse(null)}
         onConfirm={handleConfirmDelete}
-        title={`Delete "${deletingCourse?.title || ""}"?`}
+        title={`${(deletingCourse?.enrollments?.[0]?.count ?? 0) > 0 ? "Archive" : "Delete"} "${deletingCourse?.title || ""}"?`}
         description={
-          deletingCourse
+          deletingCourse && (deletingCourse.enrollments?.[0]?.count ?? 0) > 0
+            ? `This course has ${deletingCourse.enrollments[0].count} enrolled student(s), so it will be archived, not deleted: it is hidden from catalogues and closed to new enrolments, and students keep their access and certificates.`
+          : deletingCourse
             ? `This permanently deletes ${deletingCourse.modules?.[0]?.count ?? 0} module(s), ${deletingCourse.lessons?.[0]?.count ?? 0} lesson(s), and unenrolls ${deletingCourse.enrollments?.[0]?.count ?? 0} student(s). This cannot be undone.`
             : ""
         }
-        confirmText="Delete course"
+        confirmText={(deletingCourse?.enrollments?.[0]?.count ?? 0) > 0 ? "Archive course" : "Delete course"}
         isDestructive
         isLoading={isDeleting}
       />

@@ -195,6 +195,8 @@ export async function POST(req: Request) {
             const wsName = workspace?.name || 'LeadsMind';
             const messageText = `🔔 *New Support Ticket logged for ${wsName}*\n\n*From:* ${name || email}\n*Subject:* ${subject}\n*Priority:* ${mappedPriority.toUpperCase()}\n\nReply directly from your dashboard: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/support/tickets?id=${ticket.id}`;
             await sendSMS({
+              workspaceId: workspaceId,
+              purpose: 'transactional',
               to,
               message: messageText,
               config: configTwilio

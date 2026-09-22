@@ -84,6 +84,7 @@ export async function POST(req: NextRequest) {
       // are, so there's no per-workspace Twilio account to route this
       // through.
       await sendSMS({
+        purpose: 'transactional', // one-time login code/link: never blocked by a marketing opt-out
         to: 'whatsapp:' + contact.phone,
         message: `Your LeadsMind Client Portal Magic Access Link (expires in 15 mins): ${magicLinkUrl}`
       });

@@ -376,6 +376,7 @@ export async function sendReviewRequest(contactId: string, channel: 'email' | 's
       };
 
       await sendSMS({
+        workspaceId: workspaceId,
         to,
         message: messageText,
         config

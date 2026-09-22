@@ -65,7 +65,7 @@ export async function publishEvent(
   // any caller outside a Vercel Function), getContext().waitUntil is
   // undefined and this call is a no-op — the promise still runs as a
   // normal fire-and-forget, matching prior behavior exactly.
-  const trigger = triggerWorkflows(workspaceId, eventType, contactId).catch((err) => {
+  const trigger = triggerWorkflows(workspaceId, eventType, contactId, payload).catch((err) => {
     try {
       logger.error({ err, eventType }, "event_bus.trigger_workflows.failed");
     } catch { /* logging failure must not mask the real error */ }

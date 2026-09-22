@@ -7,6 +7,7 @@ import { requireAuth } from '@/lib/auth';
 import { getOrCreateStudentContact } from '@/app/actions/studentEnrollments';
 import { generateRemedialAssignment } from '../../../../../../libs/services/src/ai/remedial-prompter';
 import RemedialClient from './RemedialClient';
+import { toClientRemedialAssignment } from '@/lib/lms/remedialClient';
 import { logger } from '@/shared/logger';
 
 interface RemedialPageProps {
@@ -98,7 +99,7 @@ export default async function RemedialPage({ params, searchParams }: RemedialPag
       <RemedialClient
         course={course}
         lesson={lesson}
-        assignment={assignment}
+        assignment={toClientRemedialAssignment(assignment)}
       />
     </div>
   );

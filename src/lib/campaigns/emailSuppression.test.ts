@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { suppressionReason, loadSuppressedEmails, filterEmailableContactIds } from '@/lib/campaigns/emailSuppression';
+import { suppressionReason, loadSuppressedEmails, filterEmailableContactIds, checkEmailSuppression, escapeLikePattern } from '@/lib/campaigns/emailSuppression';
 
 // Minimal chainable fake of the supabase query builder.
 function fakeDb(tables: Record<string, any[]>, failTable?: string) {
@@ -29,6 +29,31 @@ describe('suppressionReason', () => {
   it('allows a clean contact and is workspace-scoped', () => {
     expect(suppressionReason({ email: 'ok@x.com' }, 'w1', sup)).toBeNull();
     expect(suppressionReason({ email: 'gone@x.com' }, 'w2', sup)).toBeNull();
+  });
+});
+
+describe('checkEmailSuppression', () => {
+  const dbWith = (rows: any[], fail = false) => ({
+    from: () => {
+      const q: any = {
+        select: () => q, eq: () => q, limit: () => q,
+        ilike: (_c: string, pattern: string) => { q.pattern = pattern; return q; },
+        then: (res: any) => res(fail ? { data: null, error: { message: 'boom' } } : { data: rows, error: null }),
+      };
+      return q;
+    },
+  }) as any;
+
+  it('flags a suppressed address, invalid contacts and email-less contacts', async () => {
+    expect(await checkEmailSuppression(dbWith([{ email: 'gone@x.com' }]), 'w1', { email: 'Gone@x.com' })).toBe('suppressed');
+    expect(await checkEmailSuppression(dbWith([]), 'w1', { email: 'a@x.com', is_invalid_email: true })).toBe('invalid_email');
+    expect(await checkEmailSuppression(dbWith([]), 'w1', { email: null })).toBe('no_email');
+    expect(await checkEmailSuppression(dbWith([]), 'w1', { email: 'ok@x.com' })).toBeNull();
+  });
+
+  it('fails closed on a lookup error and escapes LIKE wildcards', async () => {
+    await expect(checkEmailSuppression(dbWith([], true), 'w1', { email: 'a@x.com' })).rejects.toThrow('suppression lookup failed');
+    expect(escapeLikePattern('a_b%c@x.com')).toBe('a\\_b\\%c@x.com');
   });
 });
 

@@ -13,6 +13,8 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
 import { resolveWorkspaceTwilioCredentials, type WorkspaceTwilioRow } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 import { humanizeTwilioError } from '@/lib/twilio/humanizeTwilioError';
+import { inboundSmsWebhookUrl, configureInboundSmsWebhook, describeWebhookFailure } from '@/lib/twilio/inboundWebhook';
+import { adoptSmsSenderIfNone, setSmsSender, reassignSenderAfterRelease, getSmsSenderNumber, isSmsSender } from '@/lib/smsSender';
 import { logger } from '@/shared/logger';
 
 export interface WorkspacePhoneNumber {
@@ -24,6 +26,9 @@ export interface WorkspacePhoneNumber {
   source: 'purchased' | 'imported';
   status: 'active' | 'released';
   created_at: string;
+  // True when this is the number SMS/WhatsApp are sent FROM (workspaces.twilio_number, the single source
+  // of truth for sending -- see src/lib/smsSender.ts).
+  is_sms_sender?: boolean;
 }
 
 export interface AvailableNumberResult {
@@ -156,7 +161,10 @@ export async function purchaseWorkspacePhoneNumber(phoneNumber: string): Promise
 
   let purchased: any;
   try {
-    purchased = await client.incomingPhoneNumbers.create({ phoneNumber: trimmed });
+    // Point the new number's SMS webhook at the STOP/inbound handler from the start (when the app
+    // URL is public), instead of relying on a manual step.
+    const smsUrl = inboundSmsWebhookUrl();
+    purchased = await client.incomingPhoneNumbers.create({ phoneNumber: trimmed, ...(smsUrl ? { smsUrl, smsMethod: 'POST' } : {}) });
   } catch (err: any) {
     logger.error({ err, workspaceId, phoneNumber: trimmed }, 'telephony.purchase.twilio_failed');
     return { error: humanizeTwilioError(err) };
@@ -180,8 +188,18 @@ export async function purchaseWorkspacePhoneNumber(phoneNumber: string): Promise
     if (error) throw error;
 
     logger.info({ workspaceId, sid: purchased.sid }, 'telephony.purchase.saved');
+
+    // A purchased number used to sit in workspace_phone_numbers forever and never send anything, because
+    // every sender reads workspaces.twilio_number. If the workspace has no SMS sender yet, this one
+    // becomes it (never overriding one already chosen). Its SMS webhook was set at purchase above.
+    let adopted = false;
+    try {
+      adopted = await adoptSmsSenderIfNone(adminClient, workspaceId, data as any);
+    } catch (adoptErr) {
+      logger.error({ err: adoptErr, workspaceId }, 'telephony.purchase.adopt_sender_failed');
+    }
     revalidatePath('/settings');
-    return { data: data as WorkspacePhoneNumber };
+    return { data: { ...(data as WorkspacePhoneNumber), is_sms_sender: adopted } };
   } catch (dbErr) {
     logger.error(
       { err: dbErr, workspaceId, twilioSid: purchased.sid, phoneNumber: purchased.phoneNumber },
@@ -232,7 +250,7 @@ export async function listImportableTwilioNumbers(): Promise<{ data?: Importable
 }
 
 // IMPORT (attach) — no Twilio purchase happens here; the number already exists on the account.
-export async function importWorkspacePhoneNumber(twilioNumberSid: string): Promise<{ data?: WorkspacePhoneNumber; error?: string }> {
+export async function importWorkspacePhoneNumber(twilioNumberSid: string): Promise<{ data?: WorkspacePhoneNumber; error?: string; warning?: string }> {
   if (!twilioNumberSid?.trim()) return { error: 'Missing number SID.' };
 
   const ctx = await getWorkspaceTwilioContext();
@@ -273,8 +291,23 @@ export async function importWorkspacePhoneNumber(twilioNumberSid: string): Promi
     return { error: 'Failed to save the imported number. Please try again.' };
   }
 
+  // Becomes the SMS sender only if the workspace has none. Only THEN is the number's SMS webhook pointed at
+  // our STOP handler: an imported number may already have a webhook of the customer's own, which must not
+  // be overwritten unless we are actually going to send from it.
+  let adopted = false;
+  let warning: string | undefined;
+  try {
+    adopted = await adoptSmsSenderIfNone(adminClient, workspaceId, data as any);
+    if (adopted) {
+      const wiring = await configureInboundSmsWebhook(client, number.phoneNumber);
+      if (wiring.ok === false) warning = describeWebhookFailure(wiring);
+    }
+  } catch (adoptErr) {
+    logger.error({ err: adoptErr, workspaceId }, 'telephony.import.adopt_sender_failed');
+  }
+
   revalidatePath('/settings');
-  return { data: data as WorkspacePhoneNumber };
+  return { data: { ...(data as WorkspacePhoneNumber), is_sms_sender: adopted }, ...(warning ? { warning } : {}) };
 }
 
 // LIST — the workspace's own tracked numbers, no Twilio call needed.
@@ -290,7 +323,8 @@ export async function listWorkspacePhoneNumbers(): Promise<{ data?: WorkspacePho
     .order('created_at', { ascending: false });
 
   if (error) return { error: 'Failed to load phone numbers.' };
-  return { data: data as WorkspacePhoneNumber[] };
+  const sender = await getSmsSenderNumber(adminClient, workspaceId);
+  return { data: (data as WorkspacePhoneNumber[]).map((n) => ({ ...n, is_sms_sender: isSmsSender(sender, n.phone_number) })) };
 }
 
 // RELEASE — a real, billing-stopping Twilio mutation. Releases on Twilio first; only marks the
@@ -303,7 +337,7 @@ export async function releaseWorkspacePhoneNumber(id: string): Promise<{ success
 
   const { data: row, error: fetchError } = await adminClient
     .from('workspace_phone_numbers')
-    .select('id, twilio_number_sid, status')
+    .select('id, twilio_number_sid, phone_number, status')
     .eq('id', id)
     .eq('workspace_id', workspaceId)
     .single();
@@ -332,6 +366,32 @@ export async function releaseWorkspacePhoneNumber(id: string): Promise<{ success
     return { error: 'Number was released on Twilio, but updating LeadsMind failed. Refresh the page — it should disappear from your list.' };
   }
 
+  // If the released number was the SMS sender, hand the role to another active SMS-capable number or
+  // clear it: a released number cannot send, and leaving it set would make the workspace look ready
+  // while every send failed.
+  try {
+    await reassignSenderAfterRelease(adminClient, workspaceId, row.phone_number);
+  } catch (reassignErr) {
+    logger.error({ err: reassignErr, workspaceId }, 'telephony.release.reassign_sender_failed');
+  }
+
   revalidatePath('/settings');
   return { success: true };
+}
+
+// USE FOR SMS -- choose which owned, active, SMS-capable number SMS/WhatsApp are sent FROM. Also points
+// that number's SMS webhook at our STOP/inbound handler (this is an explicit action on that number).
+export async function setWorkspaceSmsSender(id: string): Promise<{ success?: boolean; error?: string; warning?: string }> {
+  const ctx = await getWorkspaceTwilioContext();
+  if (ctx.error || !ctx.data) return { error: ctx.error };
+  const { client, workspaceId, adminClient } = ctx.data;
+
+  const result = await setSmsSender(adminClient, workspaceId, id);
+  if (result.ok === false) {
+    return { error: result.reason === 'not_sms_capable' ? 'That number cannot send SMS.' : result.reason === 'released' ? 'That number has been released.' : 'Number not found.' };
+  }
+
+  const wiring = await configureInboundSmsWebhook(client, result.phone);
+  revalidatePath('/settings');
+  return wiring.ok === false ? { success: true, warning: describeWebhookFailure(wiring) } : { success: true };
 }

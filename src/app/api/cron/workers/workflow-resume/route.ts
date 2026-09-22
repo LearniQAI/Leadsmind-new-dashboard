@@ -1,17 +1,24 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import { processNextStep } from '@/lib/automation/executor';
+import { runClaimedExecution } from '@/lib/automation/executor';
 import { logger } from '@/shared/logger';
+import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// executor.ts's `wait` step and business-hours hold correctly persist a
-// resume_at/held_until timestamp on workflow_executions.context and know how
-// to continue once that time has passed -- but processNextStep is only ever
-// called recursively from within the same request that started the run.
-// Nothing else calls it, so a paused execution sits forever unless something
-// external sweeps for expired holds and resumes them. This is that sweep.
+const BATCH_SIZE = 50;
+// Stop taking new batches after this long so a big backlog can't run into the platform's
+// function time limit; whatever is left is picked up by the next tick.
+const TIME_BUDGET_MS = 45_000;
+
+// Workflow executions are the fifth work queue (with the email/SMS/WhatsApp campaign queues
+// and Communications Hub messages). This is its worker, on the same claim/reclaim pattern:
+// acquire_workflow_executions atomically claims due executions (FOR UPDATE SKIP LOCKED), so
+// two overlapping cron runs -- or a cron run and the request that just enrolled a contact --
+// can never both run the same step. "Due" covers an elapsed wait, an elapsed business-hours
+// hold, an elapsed retry backoff, AND a run stranded 'running' by a crashed worker (its lock
+// went stale). A run reclaimed 3 times is marked failed by the function itself.
 export async function GET(req: Request) {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) throw new Error('[FATAL] CRON_SECRET env var is not configured');
@@ -20,34 +27,31 @@ export async function GET(req: Request) {
   }
 
   const supabase = createAdminClient();
-  const nowIso = new Date().toISOString();
+  const workerId = `wf_cron_${crypto.randomUUID()}`;
+  const startedAt = Date.now();
   let resumed = 0;
   let failed = 0;
 
   try {
-    // context is JSONB; resume_at/held_until are ISO strings when set.
-    // ISO 8601 UTC ('Z'-suffixed) timestamps compare correctly with plain
-    // lexicographic <= , so ->> text comparison against nowIso is valid.
-    // Two separate queries (not .or() with an interpolated raw filter
-    // string) to avoid PostgREST filter-string parsing edge cases around
-    // the dots in a timestamp value.
-    const [resumeDue, holdDue] = await Promise.all([
-      supabase.from('workflow_executions').select('id').eq('status', 'running').lte('context->>resume_at', nowIso),
-      supabase.from('workflow_executions').select('id').eq('status', 'running').lte('context->>held_until', nowIso),
-    ]);
-    if (resumeDue.error) throw resumeDue.error;
-    if (holdDue.error) throw holdDue.error;
+    while (Date.now() - startedAt < TIME_BUDGET_MS) {
+      const { data: claimed, error } = await supabase.rpc('acquire_workflow_executions', {
+        worker_id: workerId,
+        batch_size: BATCH_SIZE,
+        target_execution_id: null,
+      });
+      if (error) throw error;
+      if (!claimed || claimed.length === 0) break;
 
-    const dueIds = new Set([...(resumeDue.data ?? []), ...(holdDue.data ?? [])].map((r) => r.id));
-
-    for (const executionId of dueIds) {
-      try {
-        await processNextStep(executionId);
-        resumed++;
-      } catch (err) {
-        failed++;
-        logger.error({ err, executionId }, 'cron.workflow_resume.step_failed');
+      for (const execution of claimed) {
+        try {
+          await runClaimedExecution(execution.id, workerId);
+          resumed++;
+        } catch (err) {
+          failed++;
+          logger.error({ err, executionId: execution.id }, 'cron.workflow_resume.step_failed');
+        }
       }
+      if (claimed.length < BATCH_SIZE) break;
     }
   } catch (err) {
     logger.error({ err }, 'cron.workflow_resume.failed');

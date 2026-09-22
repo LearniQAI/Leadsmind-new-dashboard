@@ -80,7 +80,7 @@ export async function enrollStudent(courseId: string, opts?: { cohortId?: string
     // Fetch the course to find its workspace_id, price, and pricing_model
     const { data: course, error: courseError } = await adminClient
       .from('courses')
-      .select('workspace_id, price, pricing_model, start_method, email_access_auto_send, cohorts_enabled')
+      .select('workspace_id, price, pricing_model, start_method, email_access_auto_send, cohorts_enabled, published, status, enrolment_cap')
       .eq('id', courseId)
       .single();
 
@@ -116,6 +116,23 @@ export async function enrollStudent(courseId: string, opts?: { cohortId?: string
 
     if (existing) {
       return { success: true, message: 'Already enrolled' };
+    }
+
+    // Only NEW enrolments are gated below — the "already enrolled" return above deliberately
+    // runs first so students already enrolled under the old behaviour (e.g. in a since-draft
+    // course, or in a course now at/over its cap) are never invalidated by these checks.
+    // Same published + cap rules as guestCheckout / courseCommerce.
+    if (!(course.published || course.status === 'published')) {
+      return { error: 'This course is not currently available.' };
+    }
+    if (course.enrolment_cap !== null && course.enrolment_cap > 0) {
+      const { count } = await adminClient
+        .from('enrollments')
+        .select('*', { count: 'exact', head: true })
+        .eq('course_id', courseId);
+      if (count !== null && count >= course.enrolment_cap) {
+        return { error: 'Enrolment for this course is closed (capacity reached).' };
+      }
     }
 
     // Paid courses require a real, completed payment record before enrollment is created —
@@ -257,6 +274,8 @@ export async function getMyEnrollments() {
         enrolled_at,
         status,
         active,
+        expires_at,
+        grace_period_expires_at,
         course:courses (
           id,
           title,
@@ -432,6 +451,8 @@ export async function getEnrolledCoursesWithProgress() {
         enrolled_at,
         status,
         active,
+        expires_at,
+        grace_period_expires_at,
         last_active_at,
         last_lesson_id,
         last_position_seconds,

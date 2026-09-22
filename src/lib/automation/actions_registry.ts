@@ -8,7 +8,11 @@
 // matching the already-correct convention in executor.ts (5/5 sites) and
 // Engine B's WorkflowEngine.ts/AutomationLogger.ts.
 import { createAdminClient } from "@/lib/supabase/server";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, EmailSendError } from "@/lib/email";
+import { checkEmailSuppression } from "@/lib/campaigns/emailSuppression";
+import { resolveCampaignFromEmail, FROM_EMAIL_REQUIRED_MESSAGE } from "@/lib/campaigns/fromEmail";
+import { buildUnsubscribeLink } from "@/lib/email/unsubscribeLink";
+import { buildAutomationEmail, EmailSuppressedError, type StepContext } from "./automationEmail";
 import { getWorkspaceEmailConfig } from "@/lib/email/resolveConfig";
 import { sendSMS } from "@/lib/sms";
 import { calculateLeadScore } from "../../app/actions/automation";
@@ -20,17 +24,25 @@ import { sendInvoiceEmail } from "@/lib/invoices/sendInvoiceEmail";
 import { calculateInvoiceTotals } from "@/lib/invoicing/calculations";
 
 export const AutomationActions = {
- send_email: async (workspaceId: string, contactId: string, config: any) => {
+ send_email: async (workspaceId: string, contactId: string, config: any, ctx: StepContext = {}) => {
   const supabase = createAdminClient();
   
-  // Fetch contact
+  // Fetch contact (workspace-scoped: this runs on the admin client)
   const { data: contact } = await supabase
    .from("contacts")
-   .select("email, first_name")
+   .select("id, email, first_name, last_name, company, is_invalid_email")
    .eq("id", contactId)
+   .eq("workspace_id", workspaceId)
    .single();
 
   if (!contact?.email) throw new Error("Contact has no email address");
+
+  // Send-time gate, same rules as the campaign worker: a contact can
+  // unsubscribe or bounce after the workflow enrolled them, so this is
+  // checked on EVERY email step, not just at enrollment. Fails closed (a
+  // lookup error throws and the step fails rather than sending).
+  const blocked = await checkEmailSuppression(supabase as any, workspaceId, contact);
+  if (blocked === 'invalid_email' || blocked === 'suppressed') throw new EmailSuppressedError(blocked);
 
   // Workspace's own Resend key/from-address, as configured via the
   // Settings > Email Provider UI (workspace_email_providers, encrypted) —
@@ -38,19 +50,35 @@ export const AutomationActions = {
   // columns, which no code path ever writes to.
   const emailConfig = await getWorkspaceEmailConfig(workspaceId);
 
-  const isHtml = config.body?.startsWith('<') || config.isHtml;
+  // Never substitute a platform From address (sendEmail would otherwise fall
+  // back to RESEND_FROM_EMAIL / noreply@leadsmind.io): same rule as campaigns.
+  const fromEmail = resolveCampaignFromEmail(null, emailConfig?.fromEmail);
+  if (!fromEmail) throw new EmailSendError(FROM_EMAIL_REQUIRED_MESSAGE);
+
+  const { subject, html, text } = buildAutomationEmail(config, contact, buildUnsubscribeLink(contact.email, workspaceId));
 
   await sendEmail({
    to: contact.email,
-   subject: config.subject || "Important Update",
-   react: !isHtml ? (config.body || `Hello ${contact.first_name}, this is an automated message.`) : undefined,
-   html: isHtml ? config.body : undefined,
+   subject,
+   html,
+   text,
+   // One logical send per (execution, step, attempt): a crash-redelivery is deduplicated by Resend.
+   idempotencyKey: ctx.executionId && ctx.stepId ? `wfx-${ctx.executionId}-${ctx.stepId}-${ctx.attempt ?? 0}` : undefined,
    config: {
     apiKey: emailConfig?.apiKey,
-    fromEmail: emailConfig?.fromEmail,
+    fromEmail,
     fromName: emailConfig?.fromName,
+    // Resend echoes these on every webhook event; the deliverability webhook keys off
+    // workflow_id to attribute bounces/complaints/opens to this workflow (campaign sends
+    // use campaign_id). Tag values must be [A-Za-z0-9_-]; UUIDs are.
+    tags: ctx.workflowId
+     ? [
+        { name: 'workflow_id', value: ctx.workflowId },
+        { name: 'contact_id', value: contact.id },
+       ]
+     : undefined,
    }
-  } as any);
+  });
  },
 
  send_sms: async (workspaceId: string, contactId: string, config: any) => {
@@ -61,6 +89,7 @@ export const AutomationActions = {
    .from("contacts")
    .select("phone")
    .eq("id", contactId)
+   .eq("workspace_id", workspaceId)
    .single();
 
   if (!contact?.phone) throw new Error("Contact has no phone number");
@@ -73,6 +102,7 @@ export const AutomationActions = {
    .single();
 
   await sendSMS({
+   workspaceId: workspaceId,
    to: contact.phone,
    message: config.message || "Hi, this is an automated message.",
    config: {
@@ -239,6 +269,7 @@ export const AutomationActions = {
    const bodyText = replaceTokens(config.body || "");
 
    await sendSMS({
+    workspaceId: workspaceId,
     to: `whatsapp:${cleanPhone}`,
     message: bodyText,
     config: {
@@ -457,6 +488,7 @@ export const AutomationActions = {
     const msg1Text = `Hi ${contact.first_name || 'there'}, this is ${senderName} — ${senderJobTitle} at ${workspaceName}. I have left you a quick voice message below 👇`;
     
     await sendSMS({
+      workspaceId: workspaceId,
       to,
       message: msg1Text,
       config: {
@@ -471,6 +503,7 @@ export const AutomationActions = {
     // Message 2 (Audio Content)
     const audioUrl = config.audioUrl || config.audio_url || '';
     await sendSMS({
+      workspaceId: workspaceId,
       to,
       message: "",
       mediaUrl: audioUrl,
@@ -491,6 +524,7 @@ export const AutomationActions = {
       const msg3Text = `📝 Transcript: ${excerpt}${transcript.length > 200 ? '...' : ''}`;
       
       await sendSMS({
+        workspaceId: workspaceId,
         to,
         message: msg3Text,
         config: {

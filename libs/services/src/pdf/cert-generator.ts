@@ -28,11 +28,18 @@ export async function generateCertificatePDF(payload: {
     payload.config || {}
   );
 
-  const browser = await puppeteer.launch({
-    args: chromium.args,
-    executablePath: await chromium.executablePath(),
-    headless: true,
-  });
+  // @sparticuz/chromium is a Lambda (Amazon Linux) binary — it cannot launch on a local Windows/Mac dev
+  // machine. Outside production fall back to the devDependency `puppeteer` (same approach as
+  // src/lib/pdf/htmlToPdf.ts) so the real certificate download can be exercised in `next dev`.
+  // Production behaviour is unchanged.
+  const browser =
+    process.env.NODE_ENV === 'production'
+      ? await puppeteer.launch({
+          args: chromium.args,
+          executablePath: await chromium.executablePath(),
+          headless: true,
+        })
+      : ((await (await import('puppeteer')).default.launch({ headless: true })) as any);
 
   try {
     const page = await browser.newPage();

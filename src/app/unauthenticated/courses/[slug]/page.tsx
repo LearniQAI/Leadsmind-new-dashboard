@@ -73,7 +73,7 @@ export default async function PublicCourseLandingPage({ params, searchParams }: 
         const adminClient = createAdminClient();
         const { data: enrollment } = await adminClient
           .from('enrollments')
-          .select('status, active')
+          .select('status, active, expires_at, grace_period_expires_at')
           .eq('course_id', course.id)
           .eq('contact_id', contactId)
           .maybeSingle();

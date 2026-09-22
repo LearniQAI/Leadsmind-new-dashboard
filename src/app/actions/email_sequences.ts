@@ -15,7 +15,9 @@ import { getCurrentWorkspaceId, requireWorkspaceAccess } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { saveWorkflowEditor, getWorkflowForEdit, type EditorStepInput } from './automation_editor';
-import { SEQUENCE_SOURCE } from '@/lib/automation/sequenceConstants';
+import { SEQUENCE_SOURCE, SEQUENCE_TRIGGERS } from '@/lib/automation/sequenceConstants';
+import { filterKindForTrigger } from '@/lib/automation/triggerFilter';
+import { goalsToRules, rulesToGoals, MAX_SEQUENCE_GOALS, type SequenceGoal } from '@/lib/automation/sequenceGoals';
 
 export interface SequenceEmailStep {
   subject: string;
@@ -25,14 +27,50 @@ export interface SequenceEmailStep {
   // the first email in the sequence (fires immediately on trigger).
   delayValue: number;
   delayUnit: 'minutes' | 'hours' | 'days';
+  // Ids of the workflow_steps rows behind this email (its send step, and the wait step in
+  // front of it), present once the email has been saved. Sent back unchanged on save so the
+  // database can edit those rows in place: a contact already waiting on / about to receive
+  // this email keeps their place however the emails around it are edited or reordered.
+  stepId?: string;
+  waitStepId?: string;
 }
 
 export interface SavesequencePayload {
   id: string;
   name: string;
   trigger_type: string;
+  // Id of the specific tag / course / funnel the trigger is limited to. Required
+  // for tag_added, student_enrolled_course, course_completed, funnel_subscribed.
+  trigger_filter_id?: string | null;
+  // "Stop when the contact converts": the run ends before its next email as soon as any goal is
+  // met. Omit to leave the sequence's existing goals untouched; [] clears them.
+  goals?: SequenceGoal[];
   is_active: boolean;
   emails: SequenceEmailStep[];
+}
+
+// Builds the trigger_config stored on the workflow from the chosen filter id,
+// verifying the tag/course/funnel really belongs to this workspace.
+async function resolveTriggerConfig(
+  supabase: any,
+  workspaceId: string,
+  triggerType: string,
+  filterId: string | null | undefined,
+): Promise<{ ok: true; config: Record<string, string> } | { ok: false; error: string }> {
+  const kind = filterKindForTrigger(triggerType);
+  if (!kind) return { ok: true, config: {} };
+  if (!filterId) return { ok: false, error: `Choose which ${kind} this sequence should start for` };
+
+  if (kind === 'tag') {
+    const { data } = await supabase.from('tags').select('id, name').eq('id', filterId).eq('workspace_id', workspaceId).maybeSingle();
+    if (!data) return { ok: false, error: 'That tag no longer exists' };
+    // Both stored: some publishers report the tag by id, others by name.
+    return { ok: true, config: { tag_id: data.id, tag_name: data.name } };
+  }
+  const table = kind === 'course' ? 'courses' : 'funnels';
+  const { data } = await supabase.from(table).select('id').eq('id', filterId).eq('workspace_id', workspaceId).maybeSingle();
+  if (!data) return { ok: false, error: `That ${kind} no longer exists` };
+  return { ok: true, config: kind === 'course' ? { course_id: data.id } : { funnel_id: data.id } };
 }
 
 export async function listSequences() {
@@ -53,11 +91,13 @@ export async function listSequences() {
     (data || []).map(async (wf: any) => {
       const { data: statusCounts } = await supabase
         .from('workflow_executions')
-        .select('status')
+        .select('status, error_message')
         .eq('workflow_id', wf.id);
       const stats = { running: 0, completed: 0, failed: 0 };
       for (const row of statusCounts || []) {
         if (row.status === 'running') stats.running++;
+        // Finished, but some email(s) were given up on (set by the executor): needs attention.
+        else if (row.status === 'completed' && row.error_message) stats.failed++;
         else if (row.status === 'completed') stats.completed++;
         else if (row.status === 'failed') stats.failed++;
       }
@@ -104,7 +144,9 @@ export async function getSequenceForEdit(id: string) {
   }
 
   const steps = workflow.workflow_steps || [];
-  const isSimpleAlternating = steps.every((s: any, i: number) =>
+  // email, wait, email, wait, ..., email: odd length, ends on an email. (A trailing wait
+  // has no email after it to belong to and would be lost by this editor.)
+  const isSimpleAlternating = (steps.length === 0 || steps.length % 2 === 1) && steps.every((s: any, i: number) =>
     i % 2 === 0 ? s.type === 'send_email' : s.type === 'wait'
   );
   if (!isSimpleAlternating) {
@@ -114,19 +156,28 @@ export async function getSequenceForEdit(id: string) {
   const emails: SequenceEmailStep[] = [];
   for (let i = 0; i < steps.length; i += 2) {
     const emailStep = steps[i];
-    const waitStep = steps[i + 1];
+    // The wait that precedes this email (saveSequence writes it in front of every email but
+    // the first). This used to read the wait AFTER the email, so every reopen-and-save shifted
+    // all delays one email along and reset the last one to 1 day.
+    const waitStep = i > 0 ? steps[i - 1] : undefined;
     emails.push({
       subject: emailStep.config?.subject || '',
       body: emailStep.config?.body || '',
       isHtml: !!emailStep.config?.isHtml,
       delayValue: waitStep?.config?.delayValue ?? 1,
       delayUnit: waitStep?.config?.delayUnit ?? 'days',
+      stepId: emailStep.id,
+      waitStepId: waitStep?.id,
     });
   }
 
   return {
     success: true as const,
-    data: { id: workflow.id, name: workflow.name, trigger_type: workflow.trigger_type, is_active: workflow.is_active, emails },
+    data: {
+      id: workflow.id, name: workflow.name, trigger_type: workflow.trigger_type, is_active: workflow.is_active, emails,
+      goals: rulesToGoals(workflow.goal_rules),
+      trigger_filter_id: workflow.trigger_config?.tag_id ?? workflow.trigger_config?.course_id ?? workflow.trigger_config?.funnel_id ?? null,
+    },
   };
 }
 
@@ -138,23 +189,46 @@ export async function saveSequence(payload: SavesequencePayload) {
   const { workspaceId } = await requireWorkspaceAccess();
   const supabase = await createServerClient();
 
-  const { data: owned } = await supabase.from('workflows').select('id, source').eq('id', payload.id).eq('workspace_id', workspaceId).maybeSingle();
+  const { data: owned } = await supabase.from('workflows').select('id, source, goal_rules').eq('id', payload.id).eq('workspace_id', workspaceId).maybeSingle();
   if (!owned) return { success: false as const, error: 'Sequence not found' };
   if (owned.source !== SEQUENCE_SOURCE) return { success: false as const, error: 'Not an email sequence' };
 
   if (payload.emails.length === 0) return { success: false as const, error: 'Add at least one email' };
+  if (!SEQUENCE_TRIGGERS.some((t) => t.value === payload.trigger_type)) return { success: false as const, error: 'Unsupported trigger' };
+
+  // Goals: validated against this workspace's tags, then stored as goal_rules (existing rules the
+  // editor can't represent are preserved).
+  let goalRules: unknown[] | undefined;
+  if (payload.goals !== undefined) {
+    if (!Array.isArray(payload.goals) || payload.goals.length > MAX_SEQUENCE_GOALS) return { success: false as const, error: 'Too many goals' };
+    if (payload.goals.some((g) => !['appointment', 'invoice', 'tag'].includes(g?.kind))) return { success: false as const, error: 'Unsupported goal' };
+    const tagIds = [...new Set(payload.goals.filter((g) => g.kind === 'tag').map((g) => g.tagId).filter((t): t is string => !!t))];
+    if (payload.goals.some((g) => g.kind === 'tag' && !g.tagId)) return { success: false as const, error: 'Choose a tag for the tag goal' };
+    const tagNames = new Map<string, string>();
+    if (tagIds.length > 0) {
+      const { data: tagRows } = await supabase.from('tags').select('id, name').eq('workspace_id', workspaceId).in('id', tagIds);
+      for (const t of tagRows ?? []) tagNames.set(t.id, t.name);
+      if (tagIds.some((id) => !tagNames.has(id))) return { success: false as const, error: 'A goal tag no longer exists' };
+    }
+    goalRules = goalsToRules(payload.goals, tagNames, owned.goal_rules ?? []);
+  }
+
+  const triggerConfig = await resolveTriggerConfig(supabase, workspaceId, payload.trigger_type, payload.trigger_filter_id);
+  if (triggerConfig.ok === false) return { success: false as const, error: triggerConfig.error };
 
   const steps: EditorStepInput[] = [];
   let position = 1;
   payload.emails.forEach((email, idx) => {
     if (idx > 0) {
       steps.push({
+        id: email.waitStepId,
         position: position++,
         type: 'wait',
         config: { delayValue: email.delayValue, delayUnit: email.delayUnit },
       });
     }
     steps.push({
+      id: email.stepId,
       position: position++,
       type: 'send_email',
       config: { subject: email.subject, body: email.body, isHtml: !!email.isHtml },
@@ -165,6 +239,8 @@ export async function saveSequence(payload: SavesequencePayload) {
     id: payload.id,
     name: payload.name,
     trigger_type: payload.trigger_type,
+    trigger_config: triggerConfig.config,
+    ...(goalRules !== undefined ? { goal_rules: goalRules } : {}),
     is_active: payload.is_active,
     steps,
   });

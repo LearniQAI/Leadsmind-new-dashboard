@@ -22,6 +22,7 @@ export async function getCourses() {
    .from('courses')
    .select('*, modules:course_modules(count), enrollments(count)')
    .eq('workspace_id', workspaceId)
+   .neq('status', 'archived')
    .order('created_at', { ascending: false });
 
   if (error) throw error;

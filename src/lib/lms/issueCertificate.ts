@@ -1,5 +1,14 @@
 import { randomBytes } from 'crypto';
 import { createAdminClient } from '@/lib/supabase/server';
+import { getCourseCompletionStatus } from '@/lib/lms/courseCompletion';
+
+/** Thrown when a certificate is requested for a student who has not met the completion criteria. */
+export class CourseNotCompletedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CourseNotCompletedError';
+  }
+}
 
 /**
  * The persisted, stable-id certificate mechanism.
@@ -36,6 +45,13 @@ export async function ensureCourseCertificate(params: {
   /** Optional — resolved from the course row when omitted. */
   workspaceId?: string;
   adminClient?: ReturnType<typeof createAdminClient>;
+  /**
+   * Default true: a NEW certificate is only minted if the shared completion criteria are met
+   * (courseCompletion.ts) — the automation path used to issue with no check at all. An existing
+   * certificate is always returned as-is (never re-gated / revoked). The download route passes
+   * false because it has already run the same check.
+   */
+  requireCompletion?: boolean;
 }): Promise<IssuedCertificate> {
   const { contactId, courseId } = params;
   const adminClient = params.adminClient ?? createAdminClient();
@@ -49,6 +65,13 @@ export async function ensureCourseCertificate(params: {
 
   if (existingCert) {
     return { ...(existingCert as any), created: false };
+  }
+
+  if (params.requireCompletion !== false) {
+    const completion = await getCourseCompletionStatus(adminClient, contactId, courseId);
+    if (!completion.complete) {
+      throw new CourseNotCompletedError(completion.reason || 'Course not completed.');
+    }
   }
 
   // Resolve the snapshot fields the same way the download route does.

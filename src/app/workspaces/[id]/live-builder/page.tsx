@@ -25,6 +25,7 @@ export default async function WorkspaceLiveBuilderPage({ params }: PageProps) {
     .from('courses')
     .select('id, title')
     .eq('workspace_id', workspaceId)
+    .neq('status', 'archived')
     .order('title', { ascending: true });
 
   return (

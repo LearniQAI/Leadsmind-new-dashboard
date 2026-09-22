@@ -8,11 +8,13 @@ vi.mock('@/shared/logger', () => ({ logger: { error: (...a: any[]) => logErr(...
 vi.mock('@/lib/automation/actions_registry', () => ({ AutomationActions: {} }));
 vi.mock('@/lib/supabase/server', () => ({
   createAdminClient: () => ({
+    // processNextStep claims the execution first (acquire_workflow_executions); grant the claim.
+    rpc: () => Promise.resolve({ data: [{ id: 'e1' }], error: null }),
     from(table: string) {
       // The route step fetches the contact — simulate the DB failing there.
       if (table === 'contacts') throw new Error(SENSITIVE);
       const rows: Record<string, any> = {
-        workflow_executions: { id: 'e1', status: 'running', current_step_id: 's1', workspace_id: 'w1', contact_id: 'c1', context: {}, workflow: { id: 'wf', goal_event_type: 'none' } },
+        workflow_executions: { id: 'e1', status: 'running', current_step_id: 's1', workspace_id: 'w1', contact_id: 'c1', context: {}, workflow: { id: 'wf', goal_rules: [] } },
         workflow_steps: { id: 's1', type: 'route', config: { branches: [] } },
         workflow_step_logs: { id: 'l1' },
       };
@@ -20,6 +22,7 @@ vi.mock('@/lib/supabase/server', () => ({
         select: () => q, insert: () => q, eq: () => q, limit: () => q,
         update: (p: any) => { updates.push({ table, p }); return q; },
         single: () => Promise.resolve({ data: rows[table] ?? null }),
+        maybeSingle: () => Promise.resolve({ data: rows[table] ?? null, error: null }),
         then: (r: any) => r({ data: rows[table] ?? null, error: null }),
       };
       return q;

@@ -33,6 +33,12 @@ interface SendEmailProps {
   */
  replyTo?: string | string[]
  attachments?: { filename: string; content: Buffer | Uint8Array | string }[]
+ /**
+  * Sent as Resend's Idempotency-Key: a redelivery of the same logical send (e.g. a
+  * workflow step re-run after a worker crash) within 24h is deduplicated by Resend
+  * instead of emailing the recipient twice.
+  */
+ idempotencyKey?: string
  config?: {
   apiKey?: string | null
   fromEmail?: string | null
@@ -56,7 +62,7 @@ interface SendEmailProps {
  }
 }
 
-export async function sendEmail({ to, subject, react, html, text, scheduledAt, replyTo, attachments, config }: SendEmailProps) {
+export async function sendEmail({ to, subject, react, html, text, scheduledAt, replyTo, attachments, idempotencyKey, config }: SendEmailProps) {
  const isPlatformLevelSend = config === undefined || config.allowPlatformFallback === true
  const apiKey = isPlatformLevelSend ? (config?.apiKey || process.env.RESEND_API_KEY) : config?.apiKey
  const fromAddress = config?.fromEmail || process.env.RESEND_FROM_EMAIL || 'noreply@leadsmind.io'
@@ -101,7 +107,7 @@ export async function sendEmail({ to, subject, react, html, text, scheduledAt, r
     content: typeof a.content === 'string' ? a.content : Buffer.from(a.content).toString('base64'),
    })),
    scheduledAt: scheduledAt || undefined,
-  } as any)
+  } as any, idempotencyKey ? { idempotencyKey } : undefined)
 
   if (error) {
    logger.error({ err: error }, 'email.resend_api.failed');

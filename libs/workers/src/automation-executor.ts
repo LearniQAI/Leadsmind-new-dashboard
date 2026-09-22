@@ -217,8 +217,20 @@ export async function executeLMSAction(
         // Reuse the single persisted, stable-id certificate path — one row per
         // (contact, course) in course_certificates, validation_id minted once. No second
         // creation path. The student's PDF download route reads this same row.
-        const { ensureCourseCertificate } = await import('@/lib/lms/issueCertificate');
-        const cert = await ensureCourseCertificate({ contactId, courseId, workspaceId });
+        const { ensureCourseCertificate, CourseNotCompletedError } = await import('@/lib/lms/issueCertificate');
+        let cert;
+        try {
+          cert = await ensureCourseCertificate({ contactId, courseId, workspaceId });
+        } catch (certErr) {
+          if (certErr instanceof CourseNotCompletedError) {
+            // Completion criteria (all lessons + lesson/module quizzes + graded assignments) not met
+            // yet — skip quietly rather than failing the action. The student can still download the
+            // certificate once they finish, which issues it then.
+            console.log(`[LMS Worker Executor] assign_certificate skipped for ${contactId} / course ${courseId}: ${certErr.message}`);
+            break;
+          }
+          throw certErr;
+        }
         console.log(
           `[LMS Worker Executor] assign_certificate: ${cert.created ? 'issued' : 'already issued'} ${cert.validation_id} for ${contactId} / course ${courseId}`
         );

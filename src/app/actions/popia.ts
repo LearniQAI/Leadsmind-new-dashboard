@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { logger } from '@/shared/logger';
 import { verifyUnsubscribeToken } from '@/lib/security/unsubscribeToken';
 import { syncContactTagsToRelational } from '@/modules/tags/sync/syncContactTags';
+import { cancelEmailExecutionsForEmail } from '@/lib/automation/cancelEmailExecutions';
 
 export interface ErasureReceipt {
   receiptId: string;
@@ -248,6 +249,17 @@ export async function unsubscribeEmail(email: string, workspaceId: string, token
 
     if (crmContactsError) {
       logger.error({ err: crmContactsError, workspaceId }, 'popia.unsubscribe.crm_contacts_update.failed');
+    }
+
+    // 2b. Stop any in-flight sequence/workflow that would email this address.
+    // The send-time gate in send_email is the backstop; this makes the stop
+    // immediate and visible. A failure here must not fail the unsubscribe
+    // itself (suppression is already recorded above).
+    try {
+      const cancelled = await cancelEmailExecutionsForEmail(supabase, workspaceId, email);
+      if (cancelled > 0) logger.info({ workspaceId, cancelled }, 'popia.unsubscribe.executions_cancelled');
+    } catch (cancelErr) {
+      logger.error({ err: cancelErr, workspaceId }, 'popia.unsubscribe.cancel_executions.failed');
     }
 
     // 3. Log activity if a contact matches
