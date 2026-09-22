@@ -1,7 +1,7 @@
 // Plain (non-"use server") module: the sequence editor's "Stop when the contact converts" goals
 // <-> the workflow's goal_rules JSON (evaluated by src/lib/automation/goals.ts). Shared by the
 // server action and the client editor.
-import { GOAL_FIELDS, type GoalRule } from './goals';
+import { GOAL_FIELDS, type GoalRule } from './goalTypes';
 
 export type SequenceGoalKind = 'appointment' | 'invoice' | 'tag';
 

@@ -17,8 +17,9 @@ const supabaseAdmin = createClient(
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// Queue row statuses: pending -> processing -> sent | failed | skipped_opt_out | cancelled
-// (delivered/undelivered is tracked separately in delivery_status by the Twilio status callback).
+// Queue row statuses: pending -> processing -> sent | failed | skipped_opt_out |
+// skipped_invalid_number | cancelled (delivered/undelivered is tracked separately in
+// delivery_status by the Twilio status callback).
 // Campaign lifecycle: scheduled -> sending (first batch is claimed) -> completed | failed (every row
 // terminal; 'failed' only when nothing at all was sent and something failed) | cancelled (by the user).
 //
@@ -81,7 +82,7 @@ export async function GET(req: Request) {
     const contactIds = jobs.map((j: any) => j.contact_id);
     const { data: contacts } = await supabaseAdmin
       .from('contacts')
-      .select('id, phone, first_name, last_name, company, email, sms_opt_out, opted_out')
+      .select('id, phone, first_name, last_name, company, email, sms_opt_out, opted_out, sms_invalid')
       .in('id', contactIds);
 
     const campaignsMap = new Map(campaigns?.map((c: any) => [c.id, c]));
@@ -113,6 +114,13 @@ export async function GET(req: Request) {
       // campaign was scheduled. (sendSMS also enforces the durable suppression list.)
       if (contact.sms_opt_out || contact.opted_out) {
         updates.push({ id: job.id, status: 'skipped_opt_out', locked_by: null });
+        continue;
+      }
+      // Same re-check for a number flagged invalid (repeated permanent-shaped delivery failures)
+      // between scheduling and dispatch — no point re-attempting a number Twilio has already told us
+      // repeatedly cannot receive SMS.
+      if (contact.sms_invalid) {
+        updates.push({ id: job.id, status: 'skipped_invalid_number', locked_by: null });
         continue;
       }
 
@@ -156,10 +164,12 @@ export async function GET(req: Request) {
         updates.push({ id: job.id, status: 'sent', twilio_sid: result.sid, locked_by: null });
         sentCount++;
       } catch (sendErr: any) {
-        // sendSMS itself refuses opted-out numbers (durable suppression list + contact flags), which
-        // covers a STOP recorded after this batch's contact rows were read.
+        // sendSMS itself refuses a blocked number (opt-out OR invalid, durable list + contact flags),
+        // which covers a STOP or an invalid-number flag recorded after this batch's contact rows were
+        // read. Reported under the right bucket so the campaign card doesn't call a dead number an
+        // "opt-out" or vice versa.
         if (sendErr instanceof SmsOptedOutError) {
-          updates.push({ id: job.id, status: 'skipped_opt_out', locked_by: null });
+          updates.push({ id: job.id, status: sendErr.reason === 'invalid_number' ? 'skipped_invalid_number' : 'skipped_opt_out', locked_by: null });
           continue;
         }
         // Twilio itself refused: the recipient already replied STOP to Twilio. Record it as our own opt-out.

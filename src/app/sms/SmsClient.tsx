@@ -41,6 +41,7 @@ interface CampaignRow {
   total_sent: number;
   total_failed: number;
   total_skipped_opt_out: number;
+  total_skipped_invalid_number?: number;
   total_delivered?: number;
   total_undelivered?: number;
   created_at: string;
@@ -110,9 +111,13 @@ export default function SmsClient({
 
       if (!res.success) { toast.error(res.error || 'Failed to create campaign'); return; }
 
+      const exclusions = [
+        res.excludedOptOut ? `${res.excludedOptOut} opted out` : null,
+        res.excludedInvalid ? `${res.excludedInvalid} invalid number${res.excludedInvalid === 1 ? '' : 's'}` : null,
+      ].filter(Boolean).join(', ');
       toast.success(
         `Campaign scheduled for ${res.recipientCount} recipient${res.recipientCount === 1 ? '' : 's'}` +
-        (res.excludedOptOut ? ` (${res.excludedOptOut} excluded — opted out of SMS)` : '')
+        (exclusions ? ` (${exclusions} excluded)` : '')
       );
       setCampaigns((prev) => [res.data, ...prev]);
       setFormOpen(false);
@@ -207,6 +212,7 @@ export default function SmsClient({
                     {(c.total_undelivered ?? 0) > 0 && <><span>·</span><span className="text-red" title="Twilio reported the message could not be delivered">{c.total_undelivered} not delivered</span></>}
                     {c.total_failed > 0 && <><span>·</span><span className="text-red" title="Twilio refused the message, or it could not be sent">{c.total_failed} failed</span></>}
                     {c.total_skipped_opt_out > 0 && <><span>·</span><span>{c.total_skipped_opt_out} opted out</span></>}
+                    {(c.total_skipped_invalid_number ?? 0) > 0 && <><span>·</span><span title="Repeated Twilio delivery failures marked this number invalid">{c.total_skipped_invalid_number} invalid number{c.total_skipped_invalid_number === 1 ? '' : 's'}</span></>}
                     {c.scheduled_at && <><span>·</span><span>Scheduled {new Date(c.scheduled_at).toLocaleString()}</span></>}
                   </div>
                 </div>
