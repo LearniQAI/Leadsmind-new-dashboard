@@ -818,9 +818,12 @@ export default function StudentPlayerClient({
           lessonId={activeLesson.id}
           title={activeLesson.title}
           courseTitle={course.title}
+          moduleTitle={activeModule?.title}
+          artworkUrl={course.thumbnail_url}
           completionThreshold={block.completion_threshold}
           isAlreadyCompleted={completedBlockIds.has(block.id)}
           onComplete={() => markBlockComplete(block.id, { percentage: 90 })}
+          theme={theme}
         />
       )}
       {block.type === 'audio' && block.content?.mode !== 'embed' && block.content?.mode !== 'drive' && block.file_url && (

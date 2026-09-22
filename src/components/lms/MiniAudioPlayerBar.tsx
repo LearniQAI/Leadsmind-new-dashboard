@@ -3,7 +3,7 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { Play, Pause, X, Loader2 } from "lucide-react";
-import { useAudioPlayer } from "./AudioPlayerProvider";
+import { useAudioPlayer, useAudioTime } from "./AudioPlayerProvider";
 
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
@@ -21,7 +21,8 @@ function formatTime(seconds: number): string {
 // touch it).
 export default function MiniAudioPlayerBar() {
   const router = useRouter();
-  const { track, isPlaying, isLoading, currentTime, duration, isFullViewActive, toggle, close } = useAudioPlayer();
+  const { track, isPlaying, isLoading, isFullViewActive, toggle, close } = useAudioPlayer();
+  const { currentTime, duration } = useAudioTime();
 
   if (!track || isFullViewActive) return null;
 

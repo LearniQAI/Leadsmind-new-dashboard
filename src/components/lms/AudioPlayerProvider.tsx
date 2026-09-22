@@ -29,14 +29,22 @@ export interface AudioTrack {
   completionThreshold?: number | null;
 }
 
+export interface AudioTimeSnapshot {
+  currentTime: number;
+  duration: number;
+  bufferedEnd: number;
+}
+
 interface AudioPlayerContextValue {
   track: AudioTrack | null;
   isPlaying: boolean;
   isLoading: boolean;
   hasError: boolean;
-  currentTime: number;
+  /** Changes only at loadedmetadata (or on load()/close()) — safe to read in a component that
+   *  should NOT re-render on every playback tick, unlike useAudioTime()'s duration field which
+   *  is bundled with currentTime and therefore changes every tick regardless of which field is
+   *  actually read. */
   duration: number;
-  bufferedEnd: number;
   playbackRate: number;
   isFullViewActive: boolean;
   completedAssetIds: Set<string>;
@@ -51,6 +59,13 @@ interface AudioPlayerContextValue {
   /** Called by the full player on mount/unmount so the provider knows whether a matching full
    *  view is currently on screen (drives whether the mini bar renders). */
   registerFullView: (contentBlockId: string) => () => void;
+  /** High-frequency position updates (timeupdate fires several times a second) bypass React
+   *  context reactivity entirely — subscribing here does NOT re-render this provider's other
+   *  consumers, only whoever calls useAudioTime() themselves. Every leaf that needs continuous
+   *  position (scrubber, speaker row, transcript, chapters) subscribes independently so each is
+   *  its own re-render boundary, not the whole player tree on every tick. */
+  subscribeTime: (listener: (snapshot: AudioTimeSnapshot) => void) => () => void;
+  getTimeSnapshot: () => AudioTimeSnapshot;
 }
 
 const AudioPlayerContext = createContext<AudioPlayerContextValue | null>(null);
@@ -74,9 +89,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [bufferedEnd, setBufferedEnd] = useState(0);
   const [playbackRate, setPlaybackRateState] = useState(1);
   const [activeFullViewBlockId, setActiveFullViewBlockId] = useState<string | null>(null);
   const [completedAssetIds, setCompletedAssetIds] = useState<Set<string>>(new Set());
@@ -85,6 +98,27 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   const pendingResumeRef = useRef<number | null>(null);
   const trackRef = useRef<AudioTrack | null>(null);
   trackRef.current = track;
+
+  // Time subscription channel — plain refs/listeners, deliberately outside React state so
+  // updating it never triggers a re-render of the provider (and therefore never of every
+  // useAudioPlayer() consumer). See AudioTimeSnapshot's doc comment above.
+  const timeSnapshotRef = useRef<AudioTimeSnapshot>({ currentTime: 0, duration: 0, bufferedEnd: 0 });
+  const timeListenersRef = useRef<Set<(snapshot: AudioTimeSnapshot) => void>>(new Set());
+
+  const subscribeTime = useCallback((listener: (snapshot: AudioTimeSnapshot) => void) => {
+    timeListenersRef.current.add(listener);
+    listener(timeSnapshotRef.current);
+    return () => {
+      timeListenersRef.current.delete(listener);
+    };
+  }, []);
+
+  const getTimeSnapshot = useCallback(() => timeSnapshotRef.current, []);
+
+  const publishTimeSnapshot = useCallback((next: AudioTimeSnapshot) => {
+    timeSnapshotRef.current = next;
+    timeListenersRef.current.forEach((listener) => listener(next));
+  }, []);
 
   useEffect(() => {
     setPlaybackRateState(readStoredRate());
@@ -105,15 +139,14 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     setTrack(next);
     setHasError(false);
     setIsLoading(true);
-    setCurrentTime(0);
     setDuration(0);
-    setBufferedEnd(0);
+    publishTimeSnapshot({ currentTime: 0, duration: 0, bufferedEnd: 0 });
     lastReportedRef.current = 0;
     pendingResumeRef.current = opts?.resumeAt && opts.resumeAt > 0 ? opts.resumeAt : null;
     audio.src = `/api/audio/${next.assetId}/stream`;
     audio.playbackRate = playbackRate;
     audio.load();
-  }, [playbackRate]);
+  }, [playbackRate, publishTimeSnapshot]);
 
   const play = useCallback(() => {
     audioRef.current?.play().catch(() => {
@@ -167,10 +200,9 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     }
     setTrack(null);
     setIsPlaying(false);
-    setCurrentTime(0);
     setDuration(0);
-    setBufferedEnd(0);
-  }, []);
+    publishTimeSnapshot({ currentTime: 0, duration: 0, bufferedEnd: 0 });
+  }, [publishTimeSnapshot]);
 
   const registerFullView = useCallback((contentBlockId: string) => {
     setActiveFullViewBlockId(contentBlockId);
@@ -186,6 +218,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
 
     const onLoadedMetadata = () => {
       setDuration(audio.duration || 0);
+      publishTimeSnapshot({ ...timeSnapshotRef.current, duration: audio.duration || 0 });
       setIsLoading(false);
       if (pendingResumeRef.current != null) {
         audio.currentTime = Math.min(pendingResumeRef.current, audio.duration || pendingResumeRef.current);
@@ -193,10 +226,11 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       }
     };
     const onTimeUpdate = () => {
-      setCurrentTime(audio.currentTime);
-      if (audio.buffered.length > 0) {
-        setBufferedEnd(audio.buffered.end(audio.buffered.length - 1));
-      }
+      publishTimeSnapshot({
+        currentTime: audio.currentTime,
+        duration: audio.duration || 0,
+        bufferedEnd: audio.buffered.length > 0 ? audio.buffered.end(audio.buffered.length - 1) : timeSnapshotRef.current.bufferedEnd,
+      });
 
       const current = trackRef.current;
       if (!current || !audio.duration || !isFinite(audio.duration)) return;
@@ -232,7 +266,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     };
     const onProgress = () => {
       if (audio.buffered.length > 0) {
-        setBufferedEnd(audio.buffered.end(audio.buffered.length - 1));
+        publishTimeSnapshot({ ...timeSnapshotRef.current, bufferedEnd: audio.buffered.end(audio.buffered.length - 1) });
       }
     };
 
@@ -264,9 +298,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     isPlaying,
     isLoading,
     hasError,
-    currentTime,
     duration,
-    bufferedEnd,
     playbackRate,
     isFullViewActive: !!track && activeFullViewBlockId === track.contentBlockId,
     completedAssetIds,
@@ -279,10 +311,12 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     setPlaybackRate,
     close,
     registerFullView,
+    subscribeTime,
+    getTimeSnapshot,
   }), [
-    track, isPlaying, isLoading, hasError, currentTime, duration, bufferedEnd, playbackRate,
+    track, isPlaying, isLoading, hasError, duration, playbackRate,
     activeFullViewBlockId, completedAssetIds, load, play, pause, toggle, seek, skip,
-    setPlaybackRate, close, registerFullView,
+    setPlaybackRate, close, registerFullView, subscribeTime, getTimeSnapshot,
   ]);
 
   return (
@@ -299,6 +333,16 @@ export function useAudioPlayer(): AudioPlayerContextValue {
   const ctx = useContext(AudioPlayerContext);
   if (!ctx) throw new Error("useAudioPlayer must be used within AudioPlayerProvider");
   return ctx;
+}
+
+/** Subscribes to high-frequency playback position. Only the calling component re-renders on
+ *  each tick — this is the isolation mechanism every time-sensitive leaf (scrubber, speaker
+ *  row, transcript, chapters) should use instead of reading time off useAudioPlayer() itself. */
+export function useAudioTime(): AudioTimeSnapshot {
+  const { subscribeTime, getTimeSnapshot } = useAudioPlayer();
+  const [snapshot, setSnapshot] = useState<AudioTimeSnapshot>(getTimeSnapshot);
+  useEffect(() => subscribeTime(setSnapshot), [subscribeTime]);
+  return snapshot;
 }
 
 /** DEFAULT_THRESHOLD export kept alongside the context so consumers share one constant instead
