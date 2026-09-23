@@ -59,6 +59,15 @@ export async function middleware(request: NextRequest) {
   // existing real page — and a UUID second segment is left alone too, since that's the existing
   // internal /courses/[id] admin route, not a public slug.
   //
+  // >>> ADDING A NEW STATIC PAGE DIRECTLY UNDER src/app/courses/ (a real 2-segment route like
+  // /courses/{name}, not the [id] admin route)? Add its folder name to the Set below, or every
+  // request to it silently rewrites to /unauthenticated/courses/{name} instead and 404s — this
+  // exact bug has now hit needs-grading, audio-library, speakers, and podcast independently
+  // (Phase 4's audit found no further gaps, but the pattern will keep recurring for whoever adds
+  // the next one). This is a SEPARATE gate from src/lib/supabase/middleware.ts's isPublicPage
+  // list — a route can pass one and still get blocked by the other; check both when adding any
+  // new fully-public top-level route (not just under /courses/). <<<
+  //
   // Kept in sync with the real folders under src/app/courses/ (everything that isn't [id]):
   // certificates, components, utils, needs-grading, audio-library, speakers, podcast.
   // "needs-grading" was missing here — the real cross-course assignment inbox at

@@ -116,6 +116,14 @@ export async function updateSession(request: NextRequest) {
  const isAcceptInvitePage = request.nextUrl.pathname.startsWith('/auth/accept-invite')
 
  // Define what should be public (landing pages, etc. if any)
+ //
+ // >>> ADDING A NEW FULLY-PUBLIC ROUTE (no login required at all)? It needs an entry here or
+ // every request to it 307s to /auth/signin-basic before your page ever runs — this hit
+ // /podcast/* live during Phase 4's build (an anonymous podcast RSS reader/app can't sign in).
+ // This is a SEPARATE gate from RESERVED_COURSES_SEGMENTS in src/middleware.ts, which only
+ // covers static children of /courses/ specifically — a route can need an entry in one, the
+ // other, or (for a new /courses/{name} page meant to be fully public) both. Phase 5's audit
+ // swept every route added in Phases 1-4 against both gates; no further gaps found. <<<
  const isPublicPage =
    request.nextUrl.pathname === '/' ||
    isAuthPage ||
