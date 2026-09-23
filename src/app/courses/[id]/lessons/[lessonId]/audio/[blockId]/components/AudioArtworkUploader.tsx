@@ -108,7 +108,7 @@ export default function AudioArtworkUploader({ contentBlockId, artworkUrl, onCha
         }}
         disabled={!!busy}
         aria-label={shown ? 'Replace artwork image' : 'Upload artwork image'}
-        className={`relative flex aspect-square w-40 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed transition-colors duration-150 motion-reduce:transition-none ${
+        className={`relative flex aspect-[4/5] w-32 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed transition-colors duration-150 motion-reduce:transition-none ${
           isDragging ? 'border-dash-accent bg-dash-accent/5' : shown ? 'border-transparent' : 'border-dash-border bg-dash-surface hover:border-dash-accent/60'
         }`}
       >
@@ -141,12 +141,14 @@ export default function AudioArtworkUploader({ contentBlockId, artworkUrl, onCha
 
       <div className="min-w-0 flex-1 space-y-2">
         <p className="text-[12px] !text-dash-textMuted">
-          Shown beside the live waveform in the student player (stacked above it on phones). Without artwork, the
-          player shows the full-width waveform.
+          Shown as a narrow panel beside the live waveform in the student player (above it on phones).
+          Without artwork, the player shows the full-width waveform.
         </p>
         <p className="text-[12px] !text-dash-text">
-          <span className="font-bold">Recommended: square, at least 800 × 800 px.</span>{' '}
-          <span className="!text-dash-textMuted">PNG, JPG or WebP, up to 10 MB. It&apos;s cropped to a square, so keep the subject centred.</span>
+          <span className="font-bold">Recommended: portrait 4:5, at least 800 × 1000 px.</span>{' '}
+          <span className="!text-dash-textMuted">
+            PNG, JPG or WebP, up to 10 MB. It&apos;s cropped to a 4:5 portrait from the centre, so keep the subject centred.
+          </span>
         </p>
         {artworkUrl && (
           <div className="flex gap-2 pt-1">

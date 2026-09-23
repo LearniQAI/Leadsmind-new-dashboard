@@ -51,7 +51,7 @@ export default function PlaybackSpeedMenu() {
                 aria-pressed={rate === playbackRate}
                 className={`flex h-7 min-w-[38px] items-center justify-center rounded-full px-2 text-[11px] font-bold tabular-nums ${playerMotion} ${playerFocus} ${
                   rate === playbackRate
-                    ? 'bg-gradient-to-br from-player-fillFrom to-player-fillTo !text-white shadow-player-glow'
+                    ? 'bg-player-ink !text-white'
                     : '!text-player-textMuted hover:bg-player-raised hover:!text-player-text'
                 }`}
               >

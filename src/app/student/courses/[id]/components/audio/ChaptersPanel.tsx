@@ -52,9 +52,9 @@ export default function ChaptersPanel({ chapters, bare = false, active = true, o
               aria-current={isActive ? 'true' : undefined}
               className={`flex items-center gap-3 px-3 py-2.5 ${playerRow} ${isActive ? 'bg-player-raised' : ''}`}
             >
-              {isActive && <span className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-gradient-to-b from-player-fillFrom to-player-fillTo" aria-hidden="true" />}
+              {isActive && <span className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-player-ink" aria-hidden="true" />}
               <span
-                className={`w-10 shrink-0 text-[11px] font-semibold tabular-nums ${isActive ? '!text-player-violetText' : '!text-player-textMuted'}`}
+                className={`w-10 shrink-0 text-[11px] font-semibold tabular-nums ${isActive ? '!text-player-text' : '!text-player-textMuted'}`}
               >
                 {formatTime(c.start_time_ms / 1000)}
               </span>

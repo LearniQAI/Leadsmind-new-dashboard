@@ -1,16 +1,16 @@
 "use client";
 
 import React, { useCallback, useRef, useState, useEffect } from 'react';
-import { Play, Pause, Loader2, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { SkipBackIcon, SkipForwardIcon } from '@/components/lms/PlayerIcons';
 import {
   playerEyebrow,
   playerFocus,
   playerIconButton,
   playerPanel,
-  playerPrimaryButton,
   playerRow,
 } from '@/lib/lms/audio/playerStyles';
+import PlayerPlayButton from '@/components/lms/PlayerPlayButton';
 
 interface Chapter {
   id: string;
@@ -128,8 +128,8 @@ export default function PublicEpisodePlayer({ episodeId, title, artworkUrl, chap
     return (
       <div className={`p-5 ${playerPanel}`} role="alert">
         <div className="flex items-center justify-center gap-3.5">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-50 ring-1 ring-inset ring-amber-200">
-            <AlertTriangle className="text-amber-700" size={18} />
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-player-raised ring-1 ring-inset ring-player-border">
+            <AlertTriangle className="!text-player-text" size={18} />
           </span>
           <p className="text-[13px] font-bold !text-player-text">This episode is temporarily unavailable.</p>
         </div>
@@ -144,23 +144,8 @@ export default function PublicEpisodePlayer({ episodeId, title, artworkUrl, chap
 
       <div className="rounded-2xl border border-player-border bg-player-surface p-5 shadow-player-card">
         <div className="flex items-center gap-5">
-          <button
-            type="button"
-            onClick={toggle}
-            aria-label={isPlaying ? 'Pause' : 'Play'}
-            className={`h-16 w-16 shrink-0 ${playerPrimaryButton}`}
-          >
-            {/* Same cross-fading glyph swap as the lesson player (200ms, ease-player). */}
-            <Glyph show={!isLoading && !isPlaying}>
-              <Play size={24} fill="currentColor" strokeLinejoin="round" className="ml-0.5" />
-            </Glyph>
-            <Glyph show={!isLoading && isPlaying}>
-              <Pause size={24} fill="currentColor" strokeLinejoin="round" />
-            </Glyph>
-            <Glyph show={isLoading}>
-              <Loader2 size={24} className="animate-spin motion-reduce:animate-none" />
-            </Glyph>
-          </button>
+          {/* The shared signature play button — presentational only (no provider/data access). */}
+          <PlayerPlayButton size="lg" isPlaying={isPlaying} isBusy={isLoading} onClick={toggle} />
 
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex items-center gap-2">
@@ -173,7 +158,7 @@ export default function PublicEpisodePlayer({ episodeId, title, artworkUrl, chap
                 <SkipBackIcon size={20} />
               </button>
               <div className="min-w-0 flex-1 text-center">
-                <span className="block text-[10px] font-bold uppercase tracking-[0.12em] !text-player-violetText">
+                <span className="block text-[10px] font-bold uppercase tracking-[0.12em] !text-player-textMuted">
                   {activeChapter ? 'Now playing' : 'Episode'}
                 </span>
                 <span className="block truncate text-[14px] font-bold !text-player-text">
@@ -213,12 +198,12 @@ export default function PublicEpisodePlayer({ episodeId, title, artworkUrl, chap
               >
                 <div className="absolute inset-y-0 left-0 h-full rounded-full bg-player-buffered" style={{ width: `${bufferedPct}%` }} />
                 <div
-                  className={`absolute inset-y-0 left-0 h-full rounded-full bg-gradient-to-r from-player-violetUi to-player-magentaUi ${isDragging ? '' : 'transition-[width] duration-150 ease-linear'}`}
+                  className={`absolute inset-y-0 left-0 h-full rounded-full bg-player-ink ${isDragging ? '' : 'transition-[width] duration-150 ease-linear'}`}
                   style={{ width: `${playedPct}%` }}
                 />
               </div>
               <div
-                className={`absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full border-[3px] border-white bg-player-violetUi shadow-player-glow transition-transform duration-150 ease-player group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100 ${isDragging ? 'scale-125' : ''}`}
+                className={`absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full border-[3px] border-white bg-player-ink shadow-player-panel transition-transform duration-150 ease-player group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100 ${isDragging ? 'scale-125' : ''}`}
                 style={{ left: `calc(${playedPct}% - 7px)` }}
               />
             </div>
@@ -245,9 +230,9 @@ export default function PublicEpisodePlayer({ episodeId, title, artworkUrl, chap
                   className={`flex items-center gap-3 px-3 py-2.5 ${playerRow} ${isActive ? 'bg-player-raised' : ''}`}
                 >
                   {isActive && (
-                    <span className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-gradient-to-b from-player-fillFrom to-player-fillTo" aria-hidden="true" />
+                    <span className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-player-ink" aria-hidden="true" />
                   )}
-                  <span className={`w-10 shrink-0 text-[11px] font-semibold tabular-nums ${isActive ? '!text-player-violetText' : '!text-player-textMuted'}`}>
+                  <span className={`w-10 shrink-0 text-[11px] font-semibold tabular-nums ${isActive ? '!text-player-text' : '!text-player-textMuted'}`}>
                     {formatTime(c.start_time_ms / 1000)}
                   </span>
                   <span className={`truncate text-[13px] ${isActive ? 'font-semibold !text-player-text' : 'font-medium !text-player-textMuted'}`}>
@@ -260,18 +245,5 @@ export default function PublicEpisodePlayer({ episodeId, title, artworkUrl, chap
         </div>
       )}
     </div>
-  );
-}
-
-function Glyph({ show, children }: { show: boolean; children: React.ReactNode }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={`absolute inset-0 flex items-center justify-center transition-[opacity,transform] duration-200 ease-player motion-reduce:transition-none ${
-        show ? 'scale-100 opacity-100' : 'scale-75 opacity-0'
-      }`}
-    >
-      {children}
-    </span>
   );
 }

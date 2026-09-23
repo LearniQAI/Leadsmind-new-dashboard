@@ -42,7 +42,7 @@ export default function AdminAudioPreview({
       // Occupies the player slot, so it wears the player identity (player-* tokens), not builder chrome.
       <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-player-buffered bg-player-surface text-center">
         <span className="flex h-11 w-11 items-center justify-center rounded-full bg-player-raised ring-1 ring-inset ring-player-border">
-          <Headphones size={20} className="!text-player-violetText" />
+          <Headphones size={20} className="!text-player-text" />
         </span>
         <p className="max-w-[220px] text-[12px] !text-player-textMuted">
           Paste and validate a Drive link to see the live student preview here.
