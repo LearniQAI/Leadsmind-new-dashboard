@@ -24,7 +24,6 @@ const BASE = {
   buffered: '#C7C7C7', // scrubber buffered range
   ink: '#111111', // text, icons, fills, active state, focus
   textMutedSeed: '#737373',
-  waveQuietSeed: '#A3A3A3',
 } as const;
 
 export const PLAYER = {
@@ -38,11 +37,9 @@ export const PLAYER = {
   /** >= 4.5:1 on raised (and therefore on surface) — secondary text, time readouts, labels. */
   textMuted: darkenUntil(BASE.textMutedSeed, BASE.raised, 4.5),
   /** The one "accent": play-button fill (white icon on it), scrubber fill, active markers, focus
-   *  ring, active speaker ring, and the waveform's LOUD end. */
+   *  ring, active speaker ring, and the waveform (whose bars carry loudness as opacity: loud bars
+   *  are near-solid ink, quiet ones a soft grey). */
   ink: BASE.ink,
-  /** >= 3:1 on raised — the waveform's QUIET end. Bars run waveQuiet (centre) → ink (tips), so
-   *  louder, taller bars reach further into ink: louder reads darker. */
-  waveQuiet: darkenUntil(BASE.waveQuietSeed, BASE.raised, 3),
 } as const;
 
 export type PlayerPalette = typeof PLAYER;
