@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { ArrowLeft, CheckCircle2, AlertTriangle, RefreshCw, Loader2, X, Plus } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, AlertTriangle, RefreshCw, Loader2, X, Plus, ChevronDown } from 'lucide-react';
 import { AudioPlayerProvider } from '@/components/lms/AudioPlayerProvider';
 import { useAudioAuthoringData } from './components/useAudioAuthoringData';
 import AdminAudioPreview from './components/AdminAudioPreview';
@@ -29,6 +29,9 @@ export default function AudioLessonBuilderPage() {
   const [isValidating, setIsValidating] = useState(false);
   const [previewVersion, setPreviewVersion] = useState(0);
   const [newSpeakerName, setNewSpeakerName] = useState('');
+  // null = not yet toggled by the admin: collapsed by default, open when real advanced content
+  // already exists (so existing work is never hidden behind a click).
+  const [advancedOpen, setAdvancedOpen] = useState<boolean | null>(null);
 
   const bump = <T extends (...args: any[]) => Promise<void>>(fn: T) => async (...args: Parameters<T>) => {
     await fn(...args);
@@ -52,6 +55,12 @@ export default function AudioLessonBuilderPage() {
       }
       data.setAsset(json.data);
       if (json.data.status === 'ready') {
+        // The POST also writes audio_asset_id into the block's content server-side; mirror that
+        // locally so the live preview (keyed off block.content.audio_asset_id) appears right now
+        // instead of only after a reload.
+        data.setBlock((b) =>
+          b ? { ...b, completion_threshold: 90, content: { ...(b.content || {}), mode: 'drive', audio_asset_id: json.data.id } } : b
+        );
         setShareUrlInput('');
         setPreviewVersion((v) => v + 1);
         toast.success('Audio link validated');
@@ -124,6 +133,9 @@ export default function AudioLessonBuilderPage() {
   const assetId = data.block?.content?.audio_asset_id || null;
   const attachedSpeakerIds = new Set(data.lessonSpeakers.map((s) => s.speaker_id));
   const availableSpeakers = data.allSpeakers.filter((s) => !attachedSpeakerIds.has(s.id));
+  const hasAdvancedContent =
+    data.lessonSpeakers.length > 0 || data.segments.length > 0 || data.chapters.length > 0 || data.transcript.length > 0;
+  const isAdvancedOpen = advancedOpen ?? hasAdvancedContent;
 
   return (
     <AudioPlayerProvider>
@@ -193,11 +205,54 @@ export default function AudioLessonBuilderPage() {
                   </button>
                 </div>
               )}
+
+              {data.asset?.status === 'ready' && assetId && (
+                <p className="mt-2 text-[12px] !text-dash-textMuted">
+                  That&apos;s all this lesson needs — students get the full player with a live waveform, scrubbing and
+                  speed control. Everything below is optional.
+                </p>
+              )}
             </section>
 
             {assetId && (
-              <>
-                <section className="rounded-2xl border border-dash-border bg-white p-5">
+              <section className="rounded-2xl border border-dash-border bg-white">
+                <button
+                  type="button"
+                  onClick={() => setAdvancedOpen(!isAdvancedOpen)}
+                  aria-expanded={isAdvancedOpen}
+                  aria-controls="audio-advanced-authoring"
+                  className="flex w-full items-center gap-3 px-5 py-4 text-left"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-[13px] font-bold !text-dash-text">Advanced: speakers, chapters &amp; transcript</h2>
+                      <span className="rounded-full bg-dash-surface px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide !text-dash-textMuted">
+                        Optional
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-[12px] !text-dash-textMuted">
+                      {hasAdvancedContent
+                        ? `${[
+                            data.lessonSpeakers.length && `${data.lessonSpeakers.length} speaker${data.lessonSpeakers.length === 1 ? '' : 's'}`,
+                            data.chapters.length && `${data.chapters.length} chapter${data.chapters.length === 1 ? '' : 's'}`,
+                            data.transcript.length && `${data.transcript.length} transcript line${data.transcript.length === 1 ? '' : 's'}`,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')} added.`
+                        : 'Extra richness for listeners who want it — not needed for a finished lesson.'}
+                    </p>
+                  </div>
+                  <ChevronDown
+                    size={16}
+                    className={`shrink-0 !text-dash-textMuted transition-transform duration-200 motion-reduce:transition-none ${isAdvancedOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+
+                {/* Rendered only while open (not merely hidden) — the timeline editor measures its
+                    own width on mount, which would read 0 inside a collapsed container. */}
+                {isAdvancedOpen && (
+              <div id="audio-advanced-authoring" className="space-y-4 border-t border-dash-border p-5">
+                <section>
                   <h2 className="mb-3 text-[13px] font-bold !text-dash-text">Speakers</h2>
                   <div className="mb-3 flex flex-wrap gap-2">
                     {data.lessonSpeakers.map((ls) => (
@@ -247,7 +302,7 @@ export default function AudioLessonBuilderPage() {
                   </div>
                 </section>
 
-                <section className="rounded-2xl border border-dash-border bg-white p-5">
+                <section className="border-t border-dash-border pt-4">
                   <h2 className="mb-3 text-[13px] font-bold !text-dash-text">Speaker timeline</h2>
                   <SpeakerTimelineEditor
                     contentBlockId={contentBlockId}
@@ -258,7 +313,7 @@ export default function AudioLessonBuilderPage() {
                   />
                 </section>
 
-                <section className="rounded-2xl border border-dash-border bg-white p-5">
+                <section className="border-t border-dash-border pt-4">
                   <h2 className="mb-3 text-[13px] font-bold !text-dash-text">Chapters</h2>
                   <ChapterEditor
                     contentBlockId={contentBlockId}
@@ -267,7 +322,7 @@ export default function AudioLessonBuilderPage() {
                   />
                 </section>
 
-                <section className="rounded-2xl border border-dash-border bg-white p-5">
+                <section className="border-t border-dash-border pt-4">
                   <h2 className="mb-3 text-[13px] font-bold !text-dash-text">Transcript</h2>
                   <TranscriptEditor
                     contentBlockId={contentBlockId}
@@ -276,7 +331,9 @@ export default function AudioLessonBuilderPage() {
                     onTranscriptChange={bump(data.refetchTranscript)}
                   />
                 </section>
-              </>
+              </div>
+                )}
+              </section>
             )}
           </div>
 

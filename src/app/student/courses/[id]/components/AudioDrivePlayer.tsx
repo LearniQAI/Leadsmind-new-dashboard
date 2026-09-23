@@ -17,7 +17,7 @@ import Scrubber from './audio/Scrubber';
 import PlaybackSpeedMenu from './audio/PlaybackSpeedMenu';
 import TranscriptPanel from './audio/TranscriptPanel';
 import ChaptersPanel from './audio/ChaptersPanel';
-import ArtworkFallback from './audio/ArtworkFallback';
+import LiveWaveformVisualizer from '@/components/lms/LiveWaveformVisualizer';
 
 interface CourseThemeLike {
   primaryHex: string;
@@ -90,6 +90,7 @@ export default function AudioDrivePlayer({
     if (content.loading) return;
     const track: AudioTrack = {
       assetId, contentBlockId, courseId, lessonId, title, courseTitle, artworkUrl, completionThreshold,
+      accentHex: theme.primaryHex,
     };
     player.load(track, { resumeAt: content.resumePositionSeconds ?? undefined });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -140,15 +141,16 @@ export default function AudioDrivePlayer({
 
   if (isInitialLoading || content.loading) {
     return (
-      <div className="w-full animate-pulse rounded-2xl border border-dash-border bg-white p-5">
+      <div className="w-full animate-pulse rounded-2xl border border-dash-border bg-white p-5 motion-reduce:animate-none">
         <div className="flex items-center gap-4">
-          <div className="h-20 w-20 shrink-0 rounded-xl bg-dash-surface" />
+          {artworkUrl && <div className="h-20 w-20 shrink-0 rounded-xl bg-dash-surface" />}
           <div className="min-w-0 flex-1 space-y-2">
             <div className="h-4 w-2/3 rounded bg-dash-surface" />
             <div className="h-3 w-1/2 rounded bg-dash-surface" />
           </div>
         </div>
-        <div className="mt-6 h-10 w-10 rounded-full bg-dash-surface" />
+        <div className={`mt-4 w-full rounded-xl bg-dash-surface ${artworkUrl ? 'h-11' : 'h-[88px]'}`} />
+        <div className="mx-auto mt-5 h-14 w-14 rounded-full bg-dash-surface" />
         <div className="mt-4 h-1.5 w-full rounded-full bg-dash-surface" />
       </div>
     );
@@ -180,11 +182,9 @@ export default function AudioDrivePlayer({
       <div className="rounded-2xl border border-dash-border bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
         {/* Artwork + header */}
         <div className="flex items-center gap-4">
-          {artworkUrl ? (
+          {artworkUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={artworkUrl} alt="" className="h-20 w-20 shrink-0 rounded-xl object-cover shadow-sm" />
-          ) : (
-            <ArtworkFallback gradientClass={theme.gradientClass} className="h-20 w-20 shrink-0 rounded-xl shadow-sm" />
           )}
           <div className="min-w-0 flex-1">
             <h3 className="truncate text-[16px] font-bold !text-dash-text">{title}</h3>
@@ -196,6 +196,22 @@ export default function AudioDrivePlayer({
               </p>
             )}
           </div>
+        </div>
+
+        {/* Live waveform — shown for every audio block, zero authoring. Without artwork it IS the
+            visual identity (tall hero band on a faint accent wash, replacing the old static
+            gradient tile); with real artwork it steps down to a slim band so it adds life without
+            competing with the image. Bars use the AA-safe `ui` accent, same as the scrubber. */}
+        <div
+          className={`mt-4 rounded-xl ${artworkUrl ? 'px-1' : 'px-3 py-2'}`}
+          style={artworkUrl ? undefined : { backgroundColor: `${accent.raw}0F` }}
+        >
+          <LiveWaveformVisualizer
+            active={isActiveTrack}
+            color={accent.ui}
+            bars={artworkUrl ? 56 : 48}
+            className={`w-full ${artworkUrl ? 'h-11' : 'h-[72px]'}`}
+          />
         </div>
 
         {/* Speaker row */}
