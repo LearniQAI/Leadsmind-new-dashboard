@@ -1,9 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Play, Pause, X, Loader2 } from "lucide-react";
+import { getAccessibleAccent } from "@/lib/color/accessibleAccent";
 import { useAudioPlayer, useAudioTime } from "./AudioPlayerProvider";
+import LiveWaveformVisualizer from "./LiveWaveformVisualizer";
 
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
@@ -23,6 +25,7 @@ export default function MiniAudioPlayerBar() {
   const router = useRouter();
   const { track, isPlaying, isLoading, isFullViewActive, toggle, close } = useAudioPlayer();
   const { currentTime, duration } = useAudioTime();
+  const accent = useMemo(() => (track?.accentHex ? getAccessibleAccent(track.accentHex) : null), [track?.accentHex]);
 
   if (!track || isFullViewActive) return null;
 
@@ -51,18 +54,31 @@ export default function MiniAudioPlayerBar() {
           className="flex min-w-0 flex-1 items-center gap-3 text-left"
           aria-label={`Reopen ${track.title}`}
         >
-          <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-dash-surface ring-1 ring-inset ring-dash-border">
+          {/* Lightweight waveform (few bars, ~30fps cap, still when paused) — this bar mostly
+              sits in peripheral vision. The full player's visualizer unmounts when this one
+              mounts and vice versa (isFullViewActive), so only one loop ever runs. */}
+          <div
+            className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-dash-surface ring-1 ring-inset ring-dash-border"
+            style={!track.artworkUrl && accent ? { backgroundColor: `${accent.raw}14` } : undefined}
+          >
             {track.artworkUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={track.artworkUrl} alt="" className="h-full w-full object-cover" />
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={track.artworkUrl} alt="" className="h-full w-full object-cover" />
+                {isPlaying && (
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent px-1.5 pb-1 pt-3">
+                    <LiveWaveformVisualizer active variant="mini" bars={4} color="#FFFFFF" className="h-3.5 w-full" />
+                  </div>
+                )}
+              </>
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-dash-accent">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path d="M9 18V5l12-2v13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  <circle cx="6" cy="18" r="3" stroke="currentColor" strokeWidth="1.5" />
-                  <circle cx="18" cy="16" r="3" stroke="currentColor" strokeWidth="1.5" />
-                </svg>
-              </div>
+              <LiveWaveformVisualizer
+                active
+                variant="mini"
+                bars={5}
+                color={accent?.ui}
+                className="h-full w-full px-2 text-dash-accent"
+              />
             )}
           </div>
           <div className="min-w-0 flex-1">

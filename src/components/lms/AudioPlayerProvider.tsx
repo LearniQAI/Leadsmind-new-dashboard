@@ -27,6 +27,9 @@ export interface AudioTrack {
   artworkUrl?: string | null;
   /** The block's real completion_threshold (falls back to 90, same default used everywhere else). */
   completionThreshold?: number | null;
+  /** The course theme's raw accent hex — carried on the track so surfaces that render outside
+   *  the lesson page (the mini bar) can still theme the waveform on-brand. */
+  accentHex?: string | null;
 }
 
 export interface AudioTimeSnapshot {
@@ -66,6 +69,10 @@ interface AudioPlayerContextValue {
    *  its own re-render boundary, not the whole player tree on every tick. */
   subscribeTime: (listener: (snapshot: AudioTimeSnapshot) => void) => () => void;
   getTimeSnapshot: () => AudioTimeSnapshot;
+  /** The one AnalyserNode tapping the one <audio> element, or null when live analysis isn't in
+   *  use (not yet played, reduced motion, iOS, no Web Audio). Visualizers only ever READ from it
+   *  — getByteFrequencyData is non-destructive, so the full player and mini bar can share it. */
+  getAnalyser: () => AnalyserNode | null;
 }
 
 const AudioPlayerContext = createContext<AudioPlayerContextValue | null>(null);
@@ -81,6 +88,33 @@ function readStoredRate(): number {
   } catch {
     return 1;
   }
+}
+
+// Live-waveform analysis routes the <audio> element through Web Audio
+// (createMediaElementSource). That rerouting is permanent for the element's lifetime: once
+// connected, the element is ONLY audible through the AudioContext. Two consequences drive when
+// we opt out entirely and let the visualizer fall back to its calm non-reactive state:
+//  - iOS/iPadOS WebKit suspends AudioContexts when the page is backgrounded or the screen locks,
+//    which would silence a routed element — i.e. break lock-screen listening, the most common
+//    way people consume audio lessons on a phone. A waveform is not worth that.
+//  - prefers-reduced-motion users never see the reactive animation, so there's nothing to gain.
+// Works as-is for our stream because /api/audio/[id]/stream is a same-origin proxy — a
+// cross-origin source without CORS would make the analyser read all-zeros ("tainted").
+function canUseLiveAnalysis(): boolean {
+  if (typeof window === "undefined" || typeof window.AudioContext === "undefined") return false;
+  try {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
+  } catch {
+    // matchMedia unavailable — treat as no preference.
+  }
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  return !isIOS;
+}
+
+interface AudioGraph {
+  ctx: AudioContext;
+  analyser: AnalyserNode;
 }
 
 export function AudioPlayerProvider({ children }: { children: React.ReactNode }) {
@@ -151,14 +185,57 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     audio.load();
   }, [playbackRate, publishTimeSnapshot]);
 
+  // Built lazily inside play() — i.e. inside the user's click — because an AudioContext created
+  // outside a user gesture starts "suspended", and a suspended context would make the (now
+  // rerouted) element silent. One graph per provider, i.e. per <audio> element: calling
+  // createMediaElementSource twice on the same element throws.
+  const graphRef = useRef<AudioGraph | null>(null);
+  const graphFailedRef = useRef(false);
+
+  const ensureGraph = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio || graphRef.current || graphFailedRef.current) return;
+    if (!canUseLiveAnalysis()) {
+      graphFailedRef.current = true;
+      return;
+    }
+    try {
+      const ctx = new AudioContext();
+      const source = ctx.createMediaElementSource(audio);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.78;
+      analyser.minDecibels = -85;
+      analyser.maxDecibels = -20;
+      source.connect(analyser);
+      analyser.connect(ctx.destination);
+      graphRef.current = { ctx, analyser };
+    } catch {
+      // Web Audio unavailable/refused — playback is unaffected (the element was never
+      // rerouted), the visualizer just stays in its non-reactive state.
+      graphFailedRef.current = true;
+    }
+  }, []);
+
+  const getAnalyser = useCallback(() => graphRef.current?.analyser ?? null, []);
+
+  useEffect(() => {
+    return () => {
+      graphRef.current?.ctx.close().catch(() => {});
+      graphRef.current = null;
+    };
+  }, []);
+
   const play = useCallback(() => {
+    ensureGraph();
+    graphRef.current?.ctx.resume().catch(() => {});
     audioRef.current?.play().catch(() => {
       // Autoplay/interaction restrictions — the UI's own play button click already satisfies
       // the user-gesture requirement in the normal case; a rejected play() here just means the
       // browser blocked it (e.g. programmatic resume without a fresh gesture), so isPlaying
       // stays driven by the element's own 'play'/'pause' events below, not this call.
     });
-  }, []);
+  }, [ensureGraph]);
 
   const pause = useCallback(() => {
     audioRef.current?.pause();
@@ -259,7 +336,15 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
         }
       });
     };
-    const onPlay = () => setIsPlaying(true);
+    const onPlay = () => {
+      setIsPlaying(true);
+      // Playback started some other way than play() (media keys, OS media session) after the
+      // graph already exists — make sure the context isn't sitting suspended, or the rerouted
+      // element would play silently. Never CREATES the graph here: outside a user gesture a new
+      // context would start suspended.
+      const graph = graphRef.current;
+      if (graph && graph.ctx.state !== "running") graph.ctx.resume().catch(() => {});
+    };
     const onPause = () => setIsPlaying(false);
     const onWaiting = () => setIsLoading(true);
     const onPlaying = () => setIsLoading(false);
@@ -316,10 +401,11 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     registerFullView,
     subscribeTime,
     getTimeSnapshot,
+    getAnalyser,
   }), [
     track, isPlaying, isLoading, hasError, duration, playbackRate,
     activeFullViewBlockId, completedAssetIds, load, play, pause, toggle, seek, skip,
-    setPlaybackRate, close, registerFullView, subscribeTime, getTimeSnapshot,
+    setPlaybackRate, close, registerFullView, subscribeTime, getTimeSnapshot, getAnalyser,
   ]);
 
   return (
