@@ -239,20 +239,27 @@ export default function AudioLibraryClient() {
                   <span className="flex items-center gap-1">
                     <Clock3 size={11} /> {formatDuration(asset.duration_seconds)} &middot; {formatSize(asset.size_bytes)}
                   </span>
-                  {(asset.status === 'broken' || asset.status === 'pending') && (
-                    <button
-                      onClick={() => handleRecheck(asset)}
-                      disabled={rechecking === asset.id}
-                      className="flex items-center gap-1 font-bold !text-dash-text hover:text-dash-accent"
-                    >
-                      {rechecking === asset.id ? (
-                        <Loader2 size={11} className="animate-spin motion-reduce:animate-none" />
-                      ) : (
-                        <RefreshCw size={11} />
-                      )}
-                      Recheck
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {asset.status === 'ready' && (
+                      <Link href="/courses/podcast" className="flex items-center gap-1 font-bold !text-dash-text hover:text-dash-accent" title="Publish this audio publicly as a podcast episode">
+                        <Share2 size={11} /> Add to Podcast
+                      </Link>
+                    )}
+                    {(asset.status === 'broken' || asset.status === 'pending') && (
+                      <button
+                        onClick={() => handleRecheck(asset)}
+                        disabled={rechecking === asset.id}
+                        className="flex items-center gap-1 font-bold !text-dash-text hover:text-dash-accent"
+                      >
+                        {rechecking === asset.id ? (
+                          <Loader2 size={11} className="animate-spin motion-reduce:animate-none" />
+                        ) : (
+                          <RefreshCw size={11} />
+                        )}
+                        Recheck
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             );
