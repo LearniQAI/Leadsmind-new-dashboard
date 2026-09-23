@@ -25,6 +25,9 @@ interface LiveWaveformVisualizerProps {
   active: boolean;
   /** Bar color — pass the AA-safe accent `ui` variant. Falls back to the canvas's CSS color. */
   color?: string;
+  /** Optional gradient partner: bars run colorTo (tips) → color (centre) → colorTo (tips), so
+   *  louder, taller bars visibly reach further into the partner colour. Drawing only. */
+  colorTo?: string;
   bars?: number;
   variant?: "full" | "mini";
   className?: string;
@@ -71,6 +74,7 @@ function buildBandEdges(bands: number, binCount: number, sampleRate: number): nu
 export default function LiveWaveformVisualizer({
   active,
   color,
+  colorTo,
   bars = 48,
   variant = "full",
   className = "",
@@ -80,8 +84,8 @@ export default function LiveWaveformVisualizer({
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Everything the frame loop reads lives in refs so prop/state changes never restart it.
-  const stateRef = useRef({ playing: false, reduced: false, color: color ?? "", variant });
-  stateRef.current = { playing: active && isPlaying, reduced: reducedMotion, color: color ?? "", variant };
+  const stateRef = useRef({ playing: false, reduced: false, color: color ?? "", colorTo: colorTo ?? "", variant });
+  stateRef.current = { playing: active && isPlaying, reduced: reducedMotion, color: color ?? "", colorTo: colorTo ?? "", variant };
   const wakeRef = useRef<() => void>(() => {});
 
   useEffect(() => {
@@ -103,6 +107,8 @@ export default function LiveWaveformVisualizer({
     let mode: Mode | null = null;
     let cssWidth = 0;
     let cssHeight = 0;
+    let gradient: CanvasGradient | null = null;
+    let gradientKey = "";
 
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
@@ -121,11 +127,25 @@ export default function LiveWaveformVisualizer({
     };
 
     const draw = () => {
-      const { color: c, variant: v } = stateRef.current;
+      const { color: c, colorTo: c2, variant: v } = stateRef.current;
       const n = heights.length;
       ctx2d.clearRect(0, 0, cssWidth, cssHeight);
       if (cssWidth <= 0 || cssHeight <= 0) return;
-      ctx2d.fillStyle = c || getComputedStyle(canvas).color;
+      const base = c || getComputedStyle(canvas).color;
+      if (c2) {
+        // Rebuilt only when height/colours change, not every frame.
+        const key = `${cssHeight}|${base}|${c2}`;
+        if (key !== gradientKey) {
+          gradient = ctx2d.createLinearGradient(0, 0, 0, cssHeight);
+          gradient.addColorStop(0, c2);
+          gradient.addColorStop(0.5, base);
+          gradient.addColorStop(1, c2);
+          gradientKey = key;
+        }
+        ctx2d.fillStyle = gradient!;
+      } else {
+        ctx2d.fillStyle = base;
+      }
       ctx2d.globalAlpha = alpha;
       const slot = cssWidth / n;
       const barW = Math.max(1.5, Math.min(slot * 0.56, v === "mini" ? 4 : 6));
@@ -276,7 +296,7 @@ export default function LiveWaveformVisualizer({
   // Any state change that could alter what's drawn restarts the (self-stopping) loop.
   useEffect(() => {
     wakeRef.current();
-  }, [active, isPlaying, reducedMotion, color, variant]);
+  }, [active, isPlaying, reducedMotion, color, colorTo, variant]);
 
   return <canvas ref={canvasRef} aria-hidden="true" className={`block ${className}`} />;
 }

@@ -11,6 +11,7 @@ import SpeakerTimelineEditor from './components/SpeakerTimelineEditor';
 import TranscriptEditor from './components/TranscriptEditor';
 import ChapterEditor from './components/ChapterEditor';
 import AudioAnalyticsPanel from './components/AudioAnalyticsPanel';
+import AudioArtworkUploader from './components/AudioArtworkUploader';
 
 // Screen 2 (Phase 3 Part B): the core authoring screen, modeled on this app's real pattern for
 // a spacious sub-editor (the quiz workbench at /courses/[id]/quiz/[quizId]) rather than
@@ -138,7 +139,9 @@ export default function AudioLessonBuilderPage() {
   const isAdvancedOpen = advancedOpen ?? hasAdvancedContent;
 
   return (
-    <AudioPlayerProvider>
+    // recordProgress=false: admin preview plays must not create a student contact for the
+    // admin or write audio_progress — that would also skew the analytics panel on this page.
+    <AudioPlayerProvider recordProgress={false}>
       <div className="min-h-screen bg-dash-bg p-6 md:p-8">
         <button
           onClick={() => router.push(`/courses/${courseId}/lessons/${lessonId}/builder`)}
@@ -213,6 +216,17 @@ export default function AudioLessonBuilderPage() {
                 </p>
               )}
             </section>
+
+            {assetId && (
+              <section className="rounded-2xl border border-dash-border bg-white p-5">
+                <h2 className="mb-3 text-[13px] font-bold !text-dash-text">Cover artwork</h2>
+                <AudioArtworkUploader
+                  contentBlockId={contentBlockId}
+                  artworkUrl={data.block?.audio_artwork_url ?? null}
+                  onChange={(url) => data.setBlock((b) => (b ? { ...b, audio_artwork_url: url } : b))}
+                />
+              </section>
+            )}
 
             {assetId && (
               <section className="rounded-2xl border border-dash-border bg-white">
@@ -351,6 +365,7 @@ export default function AudioLessonBuilderPage() {
               course={data.course}
               lesson={data.lesson}
               completionThreshold={data.block?.completion_threshold ?? 90}
+              artworkUrl={data.block?.audio_artwork_url ?? null}
             />
             {assetId && (
               <div className="mt-4">

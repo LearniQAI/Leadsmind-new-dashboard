@@ -28,7 +28,7 @@ function relativeLuminance([r, g, b]: [number, number, number]): number {
   return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
 }
 
-function contrastRatio(hexA: string, hexB: string): number {
+export function contrastRatio(hexA: string, hexB: string): number {
   const lA = relativeLuminance(hexToRgb(hexA));
   const lB = relativeLuminance(hexToRgb(hexB));
   const [lighter, darker] = lA > lB ? [lA, lB] : [lB, lA];
@@ -37,7 +37,7 @@ function contrastRatio(hexA: string, hexB: string): number {
 
 /** Darkens toward black (multiplicatively, preserving hue) until the target contrast against
  *  `against` is met, capped at pure black so it always terminates. */
-function darkenUntil(hex: string, against: string, targetRatio: number): string {
+export function darkenUntil(hex: string, against: string, targetRatio: number): string {
   let [r, g, b] = hexToRgb(hex);
   let current = rgbToHex([r, g, b]);
   let guard = 0;

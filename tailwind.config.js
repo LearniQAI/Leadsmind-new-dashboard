@@ -1,5 +1,9 @@
 /** @type {import('tailwindcss').Config} */
 
+// Audio player signature identity — single source of truth (base hues + AA-derived variants).
+// Tailwind loads its config through jiti, which transpiles this TS module on require.
+const { PLAYER } = require('./src/lib/lms/audio/playerIdentity.ts');
+
 module.exports = {
   // mode: 'jit',
   // purge: ['./src/**/*.{js,ts,jsx,tsx}'],
@@ -159,6 +163,9 @@ module.exports = {
           // builder chrome stays inside LeadsMind's existing palette.
           hover: "#f59e0b",
         },
+        // Audio player only (full player, chapters/transcript, mini bar, admin preview). Its own
+        // identity, independent of the per-course themes — do not use outside player surfaces.
+        player: PLAYER,
         n900: "#04091a",
         n800: "#080f28",
         n700: "#0c1535",
@@ -250,6 +257,20 @@ module.exports = {
         },
       },
 
+      // Audio player elevation: the one card on the page that floats with intent — a soft
+      // violet-tinted lift (not grey), plus a coloured glow reserved for the primary control.
+      boxShadow: {
+        'player-card': '0 1px 2px rgba(27, 21, 55, 0.05), 0 10px 30px -12px rgba(123, 63, 242, 0.28)',
+        'player-panel': '0 1px 2px rgba(27, 21, 55, 0.04)',
+        'player-glow': '0 6px 18px -6px rgba(123, 63, 242, 0.55)',
+        'player-glow-strong': '0 8px 24px -6px rgba(199, 47, 134, 0.55)',
+        'player-art': '0 10px 24px -12px rgba(27, 21, 55, 0.4)',
+      },
+      // The player's existing Stage 2 motion curve (Tailwind's default ease, 150ms interactions /
+      // 200ms state changes), NAMED so every player control uses the same one — not a new curve.
+      transitionTimingFunction: {
+        player: 'cubic-bezier(0.4, 0, 0.2, 1)',
+      },
       backgroundImage: {
         gradientPrimary: "linear-gradient(90deg, #1359FF 0%, #7B3FF2 33%, #FF3CAC 66%, #FF8A00 100%)",
         gradientBlue: "linear-gradient(90deg, #0A0F3D 0%, #1359FF 50%, #00B2FF 100%)",

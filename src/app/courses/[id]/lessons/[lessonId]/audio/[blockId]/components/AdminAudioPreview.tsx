@@ -3,7 +3,6 @@
 import React from 'react';
 import { Headphones } from 'lucide-react';
 import AudioDrivePlayer from '@/app/student/courses/[id]/components/AudioDrivePlayer';
-import { getCourseTheme } from '@/lib/courses/courseThemeTokens';
 import type { CourseInfo, LessonInfo } from './useAudioAuthoringData';
 
 interface AdminAudioPreviewProps {
@@ -14,6 +13,9 @@ interface AdminAudioPreviewProps {
   course: CourseInfo | null;
   lesson: LessonInfo | null;
   completionThreshold: number | null;
+  /** The block's own per-lesson artwork (content_blocks.audio_artwork_url) — never the course
+   *  thumbnail, so the preview matches exactly what students get. */
+  artworkUrl: string | null;
 }
 
 // "Dogfooding the real component" (the PRD's own instruction): this is NOT a second, lighter
@@ -33,14 +35,16 @@ export default function AdminAudioPreview({
   course,
   lesson,
   completionThreshold,
+  artworkUrl,
 }: AdminAudioPreviewProps) {
-  const theme = getCourseTheme(course?.landing_page_settings?.template);
-
   if (!assetId) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-dash-border bg-dash-surface text-center">
-        <Headphones size={24} className="!text-dash-textMuted" />
-        <p className="max-w-[220px] text-[12px] !text-dash-textMuted">
+      // Occupies the player slot, so it wears the player identity (player-* tokens), not builder chrome.
+      <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-player-buffered bg-player-surface text-center">
+        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-player-raised ring-1 ring-inset ring-player-border">
+          <Headphones size={20} className="!text-player-violetText" />
+        </span>
+        <p className="max-w-[220px] text-[12px] !text-player-textMuted">
           Paste and validate a Drive link to see the live student preview here.
         </p>
       </div>
@@ -55,11 +59,10 @@ export default function AdminAudioPreview({
       lessonId={lessonId}
       title={lesson?.title || 'Lesson'}
       courseTitle={course?.title}
-      artworkUrl={course?.thumbnail_url}
+      artworkUrl={artworkUrl}
       completionThreshold={completionThreshold}
       isAlreadyCompleted={false}
       onComplete={() => {}}
-      theme={theme}
     />
   );
 }

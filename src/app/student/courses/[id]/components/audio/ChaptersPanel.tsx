@@ -2,13 +2,17 @@
 
 import React, { useMemo } from 'react';
 import { useAudioTime, useAudioPlayer } from '@/components/lms/AudioPlayerProvider';
-import type { AccessibleAccent } from '@/lib/color/accessibleAccent';
+import { playerEyebrow, playerPanel, playerRow } from '@/lib/lms/audio/playerStyles';
 import type { Chapter } from './useAudioLessonContent';
 
 interface ChaptersPanelProps {
   chapters: Chapter[];
-  accent: AccessibleAccent;
-  className?: string;
+  /** Inside a mobile accordion: no own panel chrome/heading (the accordion provides both). */
+  bare?: boolean;
+  /** This player's block is the loaded track (highlighting follows the shared playhead only then). */
+  active?: boolean;
+  /** Overrides the plain provider seek — the full player passes seek-or-activate. */
+  onSeek?: (seconds: number) => void;
 }
 
 function formatTime(seconds: number): string {
@@ -17,11 +21,13 @@ function formatTime(seconds: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-// Own re-render boundary, same highlight language as TranscriptPanel (accent wash on the
-// active row) so the two panels read as one shared visual system, not two competing ones.
-export default function ChaptersPanel({ chapters, accent, className = '' }: ChaptersPanelProps) {
-  const { seek } = useAudioPlayer();
-  const { currentTime } = useAudioTime();
+// Own re-render boundary, same highlight language as TranscriptPanel (raised tint + gradient
+// edge bar on the active row) so the two panels read as one shared visual system.
+export default function ChaptersPanel({ chapters, bare = false, active = true, onSeek }: ChaptersPanelProps) {
+  const { seek: providerSeek } = useAudioPlayer();
+  const seek = onSeek ?? providerSeek;
+  const snapshot = useAudioTime();
+  const currentTime = active ? snapshot.currentTime : -1;
 
   const activeId = useMemo(() => {
     if (chapters.length === 0) return null;
@@ -33,10 +39,8 @@ export default function ChaptersPanel({ chapters, accent, className = '' }: Chap
   if (chapters.length === 0) return null;
 
   return (
-    <div className={`rounded-2xl border border-dash-border bg-white p-2 ${className}`}>
-      <div className="px-2 pb-1 pt-1 text-[10px] font-bold uppercase tracking-wide !text-dash-textMuted">
-        Chapters
-      </div>
+    <div className={bare ? '' : `p-2 ${playerPanel}`}>
+      {!bare && <div className={`px-3 pb-1.5 pt-2 ${playerEyebrow}`}>Chapters</div>}
       <div className="space-y-0.5">
         {chapters.map((c) => {
           const isActive = c.id === activeId;
@@ -45,18 +49,17 @@ export default function ChaptersPanel({ chapters, accent, className = '' }: Chap
               key={c.id}
               type="button"
               onClick={() => seek(c.start_time_ms / 1000)}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors duration-150 hover:bg-dash-surface motion-reduce:transition-none"
-              style={isActive ? { backgroundColor: `${accent.ui}14` } : undefined}
+              aria-current={isActive ? 'true' : undefined}
+              className={`flex items-center gap-3 px-3 py-2.5 ${playerRow} ${isActive ? 'bg-player-raised' : ''}`}
             >
+              {isActive && <span className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-gradient-to-b from-player-fillFrom to-player-fillTo" aria-hidden="true" />}
               <span
-                className="w-10 shrink-0 text-[11px] font-mono tabular-nums"
-                style={{ color: isActive ? accent.text : '#94A3B8' }}
+                className={`w-10 shrink-0 text-[11px] font-semibold tabular-nums ${isActive ? '!text-player-violetText' : '!text-player-textMuted'}`}
               >
                 {formatTime(c.start_time_ms / 1000)}
               </span>
               <span
-                className="truncate text-[13px]"
-                style={{ color: isActive ? '#0F172A' : '#475569', fontWeight: isActive ? 600 : 500 }}
+                className={`truncate text-[13px] ${isActive ? 'font-semibold !text-player-text' : 'font-medium !text-player-textMuted'}`}
               >
                 {c.title}
               </span>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { getCourseTheme, CourseThemeTokens } from '@/lib/courses/courseThemeTokens';
 
@@ -19,18 +19,22 @@ import { getCourseTheme, CourseThemeTokens } from '@/lib/courses/courseThemeToke
 interface LessonBuilderContextValue {
   lessonId: string | null;
   courseId: string | null;
+  /** Used by the canvas audio player so its header shows the same title students see. */
+  lessonTitle: string | null;
   theme: CourseThemeTokens | null;
 }
 
-const LessonBuilderContext = createContext<LessonBuilderContextValue>({ lessonId: null, courseId: null, theme: null });
+const LessonBuilderContext = createContext<LessonBuilderContextValue>({ lessonId: null, courseId: null, lessonTitle: null, theme: null });
 
 export const LessonBuilderProvider = ({
   lessonId,
   courseId,
+  lessonTitle = null,
   children,
 }: {
   lessonId: string | null;
   courseId: string | null;
+  lessonTitle?: string | null;
   children: React.ReactNode;
 }) => {
   const [theme, setTheme] = useState<CourseThemeTokens | null>(null);
@@ -51,9 +55,11 @@ export const LessonBuilderProvider = ({
     return () => { cancelled = true; };
   }, [courseId]);
 
-  return (
-    <LessonBuilderContext.Provider value={{ lessonId, courseId, theme }}>{children}</LessonBuilderContext.Provider>
-  );
+  // Memoised: a fresh object every render would re-render every canvas consumer (including the
+  // live audio player) whenever the builder shell re-renders for unrelated reasons (autosave).
+  const value = useMemo(() => ({ lessonId, courseId, lessonTitle, theme }), [lessonId, courseId, lessonTitle, theme]);
+
+  return <LessonBuilderContext.Provider value={value}>{children}</LessonBuilderContext.Provider>;
 };
 
 export const useLessonBuilder = () => useContext(LessonBuilderContext);
