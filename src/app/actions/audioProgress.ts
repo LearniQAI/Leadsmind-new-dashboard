@@ -5,6 +5,7 @@ import { getUser, getCurrentWorkspaceId } from '@/lib/auth';
 import { getOrCreateStudentContact } from './studentEnrollments';
 import { recordBlockCompletion } from './blockCompletion';
 import { logger } from '@/shared/logger';
+import { getOwnAudioResumePosition } from '@/lib/lms/audio/audioResume';
 
 // Drive-mode audio's resume/analytics table. This is NOT a second source of truth for
 // completion — recordBlockCompletion() -> lesson_block_completions stays the one real
@@ -100,5 +101,22 @@ export async function recordAudioProgress(
   } catch (err: any) {
     logger.error({ err, contentBlockId }, 'audio_progress.record.failed');
     return { error: 'Failed to record audio progress.' };
+  }
+}
+
+/**
+ * The calling user's OWN resume position for a Drive audio block (null = none). Replaces the
+ * old client-side read that had no user filter and, under the staff analytics RLS policy,
+ * could return another learner's row — see src/lib/lms/audio/audioResume.ts. Read-only: never
+ * creates a contact, so an admin opening the canvas or preview simply gets no resume point.
+ */
+export async function getMyAudioResumePosition(contentBlockId: string): Promise<number | null> {
+  try {
+    const user = await getUser();
+    if (!user?.email || !contentBlockId) return null;
+    return await getOwnAudioResumePosition(createAdminClient(), user.email, contentBlockId);
+  } catch (err: any) {
+    logger.error({ err, contentBlockId }, 'audio_progress.resume.failed');
+    return null;
   }
 }

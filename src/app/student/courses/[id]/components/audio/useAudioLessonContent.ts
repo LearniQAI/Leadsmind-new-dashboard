@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { getMyAudioResumePosition } from '@/app/actions/audioProgress';
 
 export interface Speaker {
   id: string;
@@ -77,7 +78,7 @@ export function useAudioLessonContent(contentBlockId: string | null): AudioLesso
     (async () => {
       const supabase = createClient();
 
-      const [speakersRes, segmentsRes, transcriptRes, chaptersRes, progressRes] = await Promise.all([
+      const [speakersRes, segmentsRes, transcriptRes, chaptersRes, resumePosition] = await Promise.all([
         supabase
           .from('audio_lesson_speakers')
           .select('speaker_id, display_order, speakers(*)')
@@ -98,11 +99,10 @@ export function useAudioLessonContent(contentBlockId: string | null): AudioLesso
           .select('id, title, start_time_ms, end_time_ms, display_order')
           .eq('content_block_id', contentBlockId)
           .order('display_order', { ascending: true }),
-        supabase
-          .from('audio_progress')
-          .select('position_seconds')
-          .eq('content_block_id', contentBlockId)
-          .maybeSingle(),
+        // The caller's OWN row only (server-side, filtered by their contact). The old direct
+        // read here had no user filter, and the staff analytics RLS policy let it return another
+        // learner's position — see src/lib/lms/audio/audioResume.ts.
+        getMyAudioResumePosition(contentBlockId).catch(() => null),
       ]);
 
       if (cancelled) return;
@@ -112,7 +112,7 @@ export function useAudioLessonContent(contentBlockId: string | null): AudioLesso
         segments: segmentsRes.data || [],
         transcript: transcriptRes.data || [],
         chapters: chaptersRes.data || [],
-        resumePositionSeconds: progressRes.data?.position_seconds ?? null,
+        resumePositionSeconds: resumePosition,
       });
     })();
 

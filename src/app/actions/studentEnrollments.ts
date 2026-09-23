@@ -6,6 +6,7 @@ import { stripe } from '@/lib/stripe';
 import { logger } from '@/shared/logger';
 import { isEnrolmentActive } from '@/lib/lms/enrolment';
 import { getCoursePublicBase } from '@/lib/domains/coursePublicUrl.server';
+import { findOwnStudentContactId } from '@/lib/lms/audio/audioResume';
 
 /**
  * Every `contacts.id` matching the logged-in user's email, across all workspaces — the same
@@ -32,16 +33,11 @@ export async function getOrCreateStudentContact(workspaceId: string) {
 
   const adminClient = createAdminClient();
 
-  // Find contact by email in workspace using admin client to bypass RLS select policies
-  const { data: contact } = await adminClient
-    .from('contacts')
-    .select('id')
-    .eq('email', user.email)
-    .eq('workspace_id', workspaceId)
-    .limit(1)
-    .maybeSingle();
-
-  if (contact) return contact.id;
+  // Find contact by email in workspace using admin client to bypass RLS select policies. Shared
+  // with the audio resume read (getOwnAudioResumePosition) so reads and writes always resolve
+  // the SAME contact for a user.
+  const existingId = await findOwnStudentContactId(adminClient, user.email, workspaceId);
+  if (existingId) return existingId;
 
   // Auto-create contact record using admin client to bypass RLS insert policies
   const nameParts = (user.user_metadata?.full_name || '').split(' ');
