@@ -215,9 +215,9 @@ const markets = [
 
 const team = [
   { name: 'Nelly Agboola', location: 'Johannesburg', photo: '/Founders/Nelly.jpeg' },
+  { name: 'Zain Ul Hassan', location: 'Pakistan', photo: '/Founders/Zain.png' },
   { name: 'Naomi Venter', location: 'Cape Town', photo: '/Founders/Naomi picture.jpeg' },
   { name: 'Samuel Jansen Van Vuuren', location: 'Cape Town', photo: '/Founders/Samuel picture.jpeg' },
-  { name: 'Zain Ul Hassan', location: 'Pakistan', photo: '/Founders/Zain.png' },
 ];
 
 function StatBlock({ value, label, dark = false }: { value: string; label: string; dark?: boolean }) {
