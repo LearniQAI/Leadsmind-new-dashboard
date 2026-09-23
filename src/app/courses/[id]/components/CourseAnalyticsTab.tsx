@@ -9,6 +9,8 @@ import {
   BookOpen,
   CheckCircle2,
   XCircle,
+  Clock,
+  AlertTriangle,
 } from "lucide-react";
 import { getCourseAnalytics } from "@/app/actions/lms";
 import { toast } from "sonner";
@@ -67,7 +69,7 @@ export default function CourseAnalyticsTab({ courseId }: CourseAnalyticsTabProps
     );
   }
 
-  const { summary, students, quizAttempts } = data;
+  const { summary, students, quizAttempts, lessonBreakdown } = data;
 
   return (
     <div className="space-y-6">
@@ -111,6 +113,59 @@ export default function CourseAnalyticsTab({ courseId }: CourseAnalyticsTabProps
           tone="amber"
         />
       </div>
+
+      {(summary.dropOffPoint || summary.averageTimeToCompletionDays != null) && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {summary.averageTimeToCompletionDays != null && (
+            <div className="flex items-center gap-3 rounded-xl border border-dash-border bg-white p-4">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
+                <Clock size={16} />
+              </div>
+              <div>
+                <p className="text-[13px] font-semibold text-dash-text">{summary.averageTimeToCompletionDays} days</p>
+                <p className="text-[11px] text-dash-textMuted">Average time to completion</p>
+              </div>
+            </div>
+          )}
+          {summary.dropOffPoint && (
+            <div className="flex items-center gap-3 rounded-xl border border-dash-border bg-white p-4">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                <AlertTriangle size={16} />
+              </div>
+              <div>
+                <p className="truncate text-[13px] font-semibold text-dash-text">{summary.dropOffPoint.lessonTitle}</p>
+                <p className="text-[11px] text-dash-textMuted">
+                  Most common drop-off point &middot; {summary.dropOffPoint.studentCount} student{summary.dropOffPoint.studentCount === 1 ? '' : 's'} stuck here
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {lessonBreakdown && lessonBreakdown.length > 0 && (
+        <SettingsPanel>
+          <SettingsHeader title="Per-lesson completion" description="Where students actually stop, lesson by lesson." />
+          <SettingsBody>
+            <div className="space-y-2">
+              {lessonBreakdown.map((l: any) => (
+                <div key={l.lessonId} className="flex items-center gap-3">
+                  <span className="w-48 shrink-0 truncate text-[12.5px] text-dash-text">{l.title}</span>
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-sky-500 transition-all duration-500 motion-reduce:transition-none"
+                      style={{ width: `${l.completionRate}%` }}
+                    />
+                  </div>
+                  <span className="w-16 shrink-0 text-right text-[11px] font-semibold text-dash-textMuted">
+                    {l.completionRate}% ({l.completedCount})
+                  </span>
+                </div>
+              ))}
+            </div>
+          </SettingsBody>
+        </SettingsPanel>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Roster */}
