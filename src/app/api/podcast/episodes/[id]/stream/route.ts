@@ -45,6 +45,23 @@ function parseRange(header: string | null): { start: number; end?: number } | un
   return { start, end };
 }
 
+// Privacy-deliberate play counting (see the migration + phase report for full reasoning): a
+// plain per-episode, per-day integer counter, nothing else. Counted ONLY for a request with no
+// Range header or one starting at byte 0 — a genuine "someone loaded this episode," not the many
+// mid-file Range requests a single real play generates while buffering, or the many more a
+// single scrub session generates. This is real request-volume counting, not unique-listener
+// tracking, and is never described as the latter anywhere it's surfaced. Fire-and-forget: a
+// counting failure must never fail or slow down the actual audio stream.
+function recordPlayIfInitialRequest(adminClient: ReturnType<typeof createAdminClient>, episodeId: string, range?: { start: number }) {
+  if (range && range.start > 0) return;
+  const today = new Date().toISOString().slice(0, 10);
+  adminClient
+    .rpc('increment_podcast_episode_play', { p_episode_id: episodeId, p_play_date: today })
+    .then(({ error }) => {
+      if (error) logger.error({ err: error, episodeId }, 'lms.podcast.play_count.failed');
+    });
+}
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
@@ -54,6 +71,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     const range = parseRange(req.headers.get('range'));
+    recordPlayIfInitialRequest(createAdminClient(), id, range);
     const stream = await googleDriveLinkProvider.getStream(access.fileId, range);
 
     return new NextResponse(stream.body as any, {

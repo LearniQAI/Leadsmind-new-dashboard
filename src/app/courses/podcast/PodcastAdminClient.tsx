@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import {
-  Mic, Plus, ChevronDown, ChevronUp, Rss, Trash2, AlertTriangle, Globe, Loader2, Calendar,
+  Mic, Plus, ChevronDown, ChevronUp, Rss, Trash2, AlertTriangle, Globe, Loader2, Calendar, Headphones,
 } from 'lucide-react';
 
 const CATEGORIES = [
@@ -396,6 +396,7 @@ function EpisodeManager({ show, onEpisodeCountChange }: { show: Show; onEpisodeC
                       : ''}
                   </p>
                 </div>
+                {isLive && <EpisodePlayCount episodeId={ep.id} />}
                 {ep.status !== 'published' ? (
                   <button
                     onClick={() => setPublishModal(ep)}
@@ -616,5 +617,35 @@ function PublishConfirmModal({
         </div>
       </div>
     </div>
+  );
+}
+
+// Plain request-volume counts (see the migration's own privacy reasoning) — never labeled as
+// "listeners" here, since this table cannot distinguish one listener's repeat requests from
+// another's.
+function EpisodePlayCount({ episodeId }: { episodeId: string }) {
+  const [counts, setCounts] = useState<{ lifetimeTotal: number; last30DaysTotal: number } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/lms/podcast-episodes/${episodeId}/plays`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled && !data.error) setCounts(data.data);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [episodeId]);
+
+  if (!counts) return null;
+
+  return (
+    <span
+      title={`${counts.lifetimeTotal} lifetime stream requests · ${counts.last30DaysTotal} in the last 30 days`}
+      className="flex shrink-0 items-center gap-1 text-[10.5px] font-bold !text-dash-textMuted"
+    >
+      <Headphones size={11} /> {counts.lifetimeTotal}
+    </span>
   );
 }
