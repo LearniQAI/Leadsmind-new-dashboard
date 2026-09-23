@@ -11,8 +11,8 @@ import { useAudioPlayer } from "./AudioPlayerProvider";
 //   reactive — playing, analyser live: bar heights follow real frequency energy each frame.
 //   pulse    — playing, but no analyser (iOS, Web Audio unavailable): a calm, obviously generic
 //              pulse. Deliberately gentle so it never pretends to be reacting to the audio.
-//   idle     — paused / not started: low even bars with a slow breathing wave (full variant),
-//              or perfectly still (mini variant — it lives in peripheral vision).
+//   idle     — paused / not started: perfectly STILL — a calm, low, symmetric resting shape
+//              (no breathing: a paused player must not look like it's still playing).
 //   static   — prefers-reduced-motion: one still frame per state change, no animation loop.
 //
 // The requestAnimationFrame loop only runs while it has something to animate AND the canvas is
@@ -23,18 +23,20 @@ type Mode = "reactive" | "pulse" | "idle" | "static";
 interface LiveWaveformVisualizerProps {
   /** Whether the provider's loaded track is the one this visualizer represents. */
   active: boolean;
-  /** Bar color — pass the AA-safe accent `ui` variant. Falls back to the canvas's CSS color. */
+  /** Bar colour. Loudness is expressed as INTENSITY: each bar's opacity rises with its height, so
+   *  louder reads darker. Falls back to the canvas's CSS color. */
   color?: string;
-  /** Optional gradient partner: bars run colorTo (tips) → color (centre) → colorTo (tips), so
-   *  louder, taller bars visibly reach further into the partner colour. Drawing only. */
-  colorTo?: string;
-  bars?: number;
+  /** A fixed count, or 'auto' = derived from the rendered width (a constant ~7px rhythm of thin
+   *  3px bars at any size — the dense, fine look of a premium waveform). */
+  bars?: number | 'auto';
   variant?: "full" | "mini";
   className?: string;
 }
 
 const IDLE_HEIGHT = 0.16;
-const IDLE_ALPHA = 0.38;
+const IDLE_ALPHA = 0.85;
+/** 'auto' density: one bar per ~7 CSS px, even count so the mirrored shape is symmetric. */
+const autoBarCount = (width: number) => Math.max(12, Math.min(120, 2 * Math.round(width / 14)));
 // Per-frame easing at 60fps, normalised by real frame time below. Fast attack, slow release is
 // what makes bars "pulse confidently" instead of flickering: a peak lands quickly, then decays.
 const ATTACK = 0.34;
@@ -74,7 +76,6 @@ function buildBandEdges(bands: number, binCount: number, sampleRate: number): nu
 export default function LiveWaveformVisualizer({
   active,
   color,
-  colorTo,
   bars = 48,
   variant = "full",
   className = "",
@@ -84,8 +85,8 @@ export default function LiveWaveformVisualizer({
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Everything the frame loop reads lives in refs so prop/state changes never restart it.
-  const stateRef = useRef({ playing: false, reduced: false, color: color ?? "", colorTo: colorTo ?? "", variant });
-  stateRef.current = { playing: active && isPlaying, reduced: reducedMotion, color: color ?? "", colorTo: colorTo ?? "", variant };
+  const stateRef = useRef({ playing: false, reduced: false, color: color ?? "", variant });
+  stateRef.current = { playing: active && isPlaying, reduced: reducedMotion, color: color ?? "", variant };
   const wakeRef = useRef<() => void>(() => {});
 
   useEffect(() => {
@@ -101,14 +102,13 @@ export default function LiveWaveformVisualizer({
     let freq: Uint8Array<ArrayBuffer> | null = null;
     let edges: number[] = [];
     let edgesKey = "";
-    const heights = new Float32Array(bars).fill(IDLE_HEIGHT);
-    const target = new Float32Array(bars);
+    const countFor = (width: number) => (bars === 'auto' ? autoBarCount(width) : bars);
+    let heights = new Float32Array(typeof bars === 'number' ? bars : 0).fill(IDLE_HEIGHT);
+    let target = new Float32Array(heights.length);
     let alpha = IDLE_ALPHA;
     let mode: Mode | null = null;
     let cssWidth = 0;
     let cssHeight = 0;
-    let gradient: CanvasGradient | null = null;
-    let gradientKey = "";
 
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
@@ -118,6 +118,11 @@ export default function LiveWaveformVisualizer({
       canvas.width = Math.max(1, Math.round(rect.width * dpr));
       canvas.height = Math.max(1, Math.round(rect.height * dpr));
       ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const n = countFor(cssWidth);
+      if (n !== heights.length) {
+        heights = new Float32Array(n).fill(IDLE_HEIGHT);
+        target = new Float32Array(n);
+      }
     };
 
     const setMode = (next: Mode) => {
@@ -126,32 +131,26 @@ export default function LiveWaveformVisualizer({
       canvas.dataset.mode = next;
     };
 
+    // Premium look: thin fully-rounded bars on a fixed rhythm, mirrored about the centre line.
+    //  - intensity: a bar's opacity rises with its height, so loud passages read dark/solid and
+    //    quiet ones soft grey (one ink colour — no gradient needed for "louder = darker");
+    //  - vignette (full variant): bars fade toward both ends, focusing the eye on the centre.
     const draw = () => {
-      const { color: c, colorTo: c2, variant: v } = stateRef.current;
+      const { color: c, variant: v } = stateRef.current;
       const n = heights.length;
       ctx2d.clearRect(0, 0, cssWidth, cssHeight);
-      if (cssWidth <= 0 || cssHeight <= 0) return;
-      const base = c || getComputedStyle(canvas).color;
-      if (c2) {
-        // Rebuilt only when height/colours change, not every frame.
-        const key = `${cssHeight}|${base}|${c2}`;
-        if (key !== gradientKey) {
-          gradient = ctx2d.createLinearGradient(0, 0, 0, cssHeight);
-          gradient.addColorStop(0, c2);
-          gradient.addColorStop(0.5, base);
-          gradient.addColorStop(1, c2);
-          gradientKey = key;
-        }
-        ctx2d.fillStyle = gradient!;
-      } else {
-        ctx2d.fillStyle = base;
-      }
-      ctx2d.globalAlpha = alpha;
+      if (cssWidth <= 0 || cssHeight <= 0 || n === 0) return;
+      ctx2d.fillStyle = c || getComputedStyle(canvas).color;
+      const full = v === "full";
       const slot = cssWidth / n;
-      const barW = Math.max(1.5, Math.min(slot * 0.56, v === "mini" ? 4 : 6));
+      const barW = full ? Math.max(1.5, Math.min(3, slot * 0.5)) : Math.max(1.5, Math.min(slot * 0.56, 4));
       const radius = barW / 2;
       const mid = cssHeight / 2;
       for (let i = 0; i < n; i++) {
+        const d = n > 1 ? Math.abs(i - (n - 1) / 2) / ((n - 1) / 2) : 0;
+        const vignette = full ? 0.3 + 0.7 * (1 - d * d) : 1;
+        const intensity = 0.3 + 0.7 * Math.min(1, heights[i] / 0.7);
+        ctx2d.globalAlpha = alpha * vignette * intensity;
         const h = Math.max(barW, heights[i] * cssHeight);
         const x = slot * i + (slot - barW) / 2;
         const y = mid - h / 2;
@@ -214,8 +213,11 @@ export default function LiveWaveformVisualizer({
         return "pulse";
       }
 
+      // Paused/not started: a STILL, calm resting shape (a gentle symmetric rise toward the
+      // centre on the full variant). No time term — nothing moves while paused.
       for (let i = 0; i < n; i++) {
-        target[i] = v === "mini" ? IDLE_HEIGHT : IDLE_HEIGHT + 0.045 * Math.sin(t * 1.9 - i * 0.32);
+        const { d } = envelope(i, n);
+        target[i] = v === "mini" ? IDLE_HEIGHT : 0.1 + 0.1 * (1 - d * d);
       }
       return "idle";
     };
@@ -224,7 +226,7 @@ export default function LiveWaveformVisualizer({
       rafId = null;
       const { playing, reduced, variant: v } = stateRef.current;
 
-      // Mini bar and idle breathing don't need 60fps — cap them at ~30 to halve the cost.
+      // The mini bar and the settle-to-rest after a pause don't need 60fps — cap at ~30.
       const capped = v === "mini" || !playing;
       if (capped && now - lastDrawn < 32) {
         rafId = requestAnimationFrame(frame);
@@ -254,7 +256,8 @@ export default function LiveWaveformVisualizer({
       draw();
 
       // Keep looping only while something is genuinely moving on screen.
-      const animating = !reduced && (nextMode === "reactive" || nextMode === "pulse" || (nextMode === "idle" && v === "full"));
+      // Idle is still: once the bars have eased down to their resting shape the loop STOPS.
+      const animating = !reduced && (nextMode === "reactive" || nextMode === "pulse");
       if (visible && (animating || !settled)) rafId = requestAnimationFrame(frame);
       else lastFrame = 0;
     };
@@ -296,7 +299,7 @@ export default function LiveWaveformVisualizer({
   // Any state change that could alter what's drawn restarts the (self-stopping) loop.
   useEffect(() => {
     wakeRef.current();
-  }, [active, isPlaying, reducedMotion, color, colorTo, variant]);
+  }, [active, isPlaying, reducedMotion, color, variant]);
 
   return <canvas ref={canvasRef} aria-hidden="true" className={`block ${className}`} />;
 }

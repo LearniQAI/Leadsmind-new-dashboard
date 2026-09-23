@@ -16,8 +16,8 @@ const pairings: [string, string, string, number][] = [
   ['muted text on raised field', PLAYER.textMuted, PLAYER.raised, TEXT],
   ['scrubber fill on rail', PLAYER.ink, PLAYER.track, UI],
   ['focus ring / active marker on card', PLAYER.ink, PLAYER.surface, UI],
-  ['waveform loud end (tips) on waveform field', PLAYER.ink, PLAYER.raised, UI],
-  ['waveform quiet end (centre) on waveform field', PLAYER.waveQuiet, PLAYER.raised, UI],
+  // Waveform: decorative (aria-hidden); loud bars reach full-opacity ink on the raised field.
+  ['waveform bars at full intensity on waveform field', PLAYER.ink, PLAYER.raised, UI],
   ['white icon on play button / white text on ink chips', WHITE, PLAYER.ink, TEXT],
   ['play button edge vs card', PLAYER.ink, PLAYER.surface, UI],
 ];

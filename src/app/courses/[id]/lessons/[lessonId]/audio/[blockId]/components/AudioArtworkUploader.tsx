@@ -141,8 +141,8 @@ export default function AudioArtworkUploader({ contentBlockId, artworkUrl, onCha
 
       <div className="min-w-0 flex-1 space-y-2">
         <p className="text-[12px] !text-dash-textMuted">
-          Shown as a narrow panel beside the live waveform in the student player (above it on phones).
-          Without artwork, the player shows the full-width waveform.
+          Shown on the right side of the student player (as a small thumbnail beside the title on narrow
+          screens). Without artwork, the player simply has no image.
         </p>
         <p className="text-[12px] !text-dash-text">
           <span className="font-bold">Recommended: portrait 4:5, at least 800 × 1000 px.</span>{' '}

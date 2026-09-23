@@ -47,6 +47,15 @@ export default function PlayerPlayButton({
       aria-label={isPlaying ? 'Pause' : 'Play'}
       className={`${s.box} ${playerPlayButton} ${isPlaying ? 'animate-player-glow motion-reduce:animate-none' : ''} ${className}`}
     >
+      {/* White hover light: a soft radial highlight + a thin white inner ring fade in over the
+          ink (200ms). Lives INSIDE the button — a white glow around it would vanish on the white
+          card. Decorative and pointer-events-none, so presses still land on the <button> itself
+          (the canvas shield keys off the nearest button). Opacity-only fade: fine for reduced
+          motion (motion-reduce makes it instant). */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle_at_50%_35%,rgba(255,255,255,0.32),rgba(255,255,255,0.08)_55%,transparent_75%)] opacity-0 ring-1 ring-inset ring-white/50 transition-opacity duration-200 ease-player group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none"
+      />
       <span
         aria-hidden="true"
         className={`pointer-events-none absolute inset-y-0 -left-1/2 w-1/2 bg-gradient-to-r from-transparent via-white/30 to-transparent motion-reduce:hidden ${

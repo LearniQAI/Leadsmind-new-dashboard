@@ -77,8 +77,7 @@ export default function MiniAudioPlayerBar() {
                 active
                 variant="mini"
                 bars={5}
-                color={PLAYER.waveQuiet}
-                colorTo={PLAYER.ink}
+                color={PLAYER.ink}
                 className="h-full w-full px-2"
               />
             )}
