@@ -143,7 +143,10 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     publishTimeSnapshot({ currentTime: 0, duration: 0, bufferedEnd: 0 });
     lastReportedRef.current = 0;
     pendingResumeRef.current = opts?.resumeAt && opts.resumeAt > 0 ? opts.resumeAt : null;
-    audio.src = `/api/audio/${next.assetId}/stream`;
+    // contentBlockId is required by the stream route to disambiguate which attachment (and
+    // therefore which course/enrolment) this playback session is gated against — one asset can
+    // now be attached to many content_blocks (see the reuse-enabling migration).
+    audio.src = `/api/audio/${next.assetId}/stream?contentBlockId=${encodeURIComponent(next.contentBlockId)}`;
     audio.playbackRate = playbackRate;
     audio.load();
   }, [playbackRate, publishTimeSnapshot]);

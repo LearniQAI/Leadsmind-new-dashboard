@@ -8,26 +8,43 @@ import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
-// Access-gated proxy: never exposes the raw Drive link to the client. Derives the
-// course/lesson from the content_block the asset is attached to, then runs the same
-// isEnrolmentActive check every other content-access path uses — a non-enrolled or
-// inactive-enrolment request gets 403 before a single byte is streamed. Workspace staff
-// (instructor/admin) can preview without an enrolment row, same as the player's other preview
-// paths.
-async function resolveAccess(assetId: string) {
+// Access-gated proxy: never exposes the raw Drive link to the client. Since one audio_assets
+// row can now be attached to MANY content_blocks (real "one audio file, many uses" — see
+// 20260923100002_lms_audio_asset_reuse.sql), the asset id ALONE no longer determines a unique
+// course/lesson to gate against. The caller must say which attachment it's playing through
+// (?contentBlockId=) — resolved and verified as a REAL attachment of this asset before any
+// enrolment check runs, so a request can't claim an unrelated content_block_id to borrow its
+// access. Runs the same isEnrolmentActive check every other content-access path uses — a
+// non-enrolled or inactive-enrolment request gets 403 before a single byte is streamed.
+// Workspace staff (instructor/admin) can preview without an enrolment row, same as the player's
+// other preview paths.
+async function resolveAccess(assetId: string, contentBlockId: string | null) {
   const adminClient = createAdminClient();
 
-  const { data: asset, error } = await adminClient
-    .from('audio_assets')
+  if (!contentBlockId) {
+    return { error: 'Missing contentBlockId', status: 400 } as const;
+  }
+
+  const { data: attachment, error } = await adminClient
+    .from('audio_asset_attachments')
     .select(
-      'id, google_drive_file_id, status, content_blocks!inner(id, lesson_id, course_lessons!inner(id, course_id, workspace_id))'
+      'audio_asset_id, content_blocks!inner(id, lesson_id, course_lessons!inner(id, course_id, workspace_id))'
     )
-    .eq('id', assetId)
+    .eq('audio_asset_id', assetId)
+    .eq('content_block_id', contentBlockId)
     .maybeSingle();
   if (error) throw error;
+  if (!attachment) return { error: 'Audio not found', status: 404 } as const;
+
+  const { data: asset, error: assetErr } = await adminClient
+    .from('audio_assets')
+    .select('id, google_drive_file_id, status')
+    .eq('id', assetId)
+    .maybeSingle();
+  if (assetErr) throw assetErr;
   if (!asset) return { error: 'Audio not found', status: 404 } as const;
 
-  const lesson = (asset as any).content_blocks.course_lessons;
+  const lesson = (attachment as any).content_blocks.course_lessons;
   const workspaceId: string = lesson.workspace_id;
   const courseId: string = lesson.course_id;
 
@@ -68,7 +85,8 @@ function parseRange(header: string | null): { start: number; end?: number } | un
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const access = await resolveAccess(id);
+    const contentBlockId = req.nextUrl.searchParams.get('contentBlockId');
+    const access = await resolveAccess(id, contentBlockId);
     if (!access.ok) {
       return NextResponse.json({ error: access.error }, { status: access.status });
     }
@@ -90,7 +108,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function HEAD(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const access = await resolveAccess(id);
+    const contentBlockId = req.nextUrl.searchParams.get('contentBlockId');
+    const access = await resolveAccess(id, contentBlockId);
     if (!access.ok) {
       return new NextResponse(null, { status: access.status });
     }

@@ -15,17 +15,22 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const { workspaceId } = await requireLmsInstructor();
     const adminClient = createAdminClient();
 
-    const { data, error } = await adminClient
-      .from('audio_assets')
-      .select('*, content_blocks!inner(course_lessons!inner(workspace_id))')
-      .eq('id', id)
+    // Workspace ownership is now proven via ANY real attachment (audio_asset_attachments), not
+    // a direct column on audio_assets — an asset can be attached to more than one content block.
+    const { data: attachment } = await adminClient
+      .from('audio_asset_attachments')
+      .select('id, content_blocks!inner(course_lessons!inner(workspace_id))')
+      .eq('audio_asset_id', id)
       .eq('content_blocks.course_lessons.workspace_id', workspaceId)
+      .limit(1)
       .maybeSingle();
+    if (!attachment) throw new NotFoundError('Audio asset');
+
+    const { data, error } = await adminClient.from('audio_assets').select('*').eq('id', id).maybeSingle();
     if (error) throw error;
     if (!data) throw new NotFoundError('Audio asset');
 
-    const { content_blocks, ...clean } = data as any;
-    return NextResponse.json({ data: clean });
+    return NextResponse.json({ data });
   } catch (err: any) {
     logger.error({ err }, 'lms.audio_assets.get.failed');
     const clientError = toClientError(err);

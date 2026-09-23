@@ -8,13 +8,10 @@ import { googleDriveLinkProvider } from '@/lib/lms/audio/googleDriveLinkProvider
 export const dynamic = 'force-dynamic';
 
 // Audio Library (Phase 3 Part B, Screen 1): every audio_assets row in the caller's workspace,
-// with the course/lesson it's attached to. NOTE on "one audio file, many uses" (the PRD's own
-// architecture principle): audio_assets.content_block_id is UNIQUE (Phase 1's migration) — this
-// schema is 1:1 today, an asset belongs to exactly one block. Pasting the same Drive link into a
-// second lesson creates a SEPARATE row with the same google_drive_file_id, which is genuine
-// duplication, not reuse. Real cross-lesson reuse would need dropping that UNIQUE constraint for
-// a join table instead — a real schema change, out of scope for this pass; flagged here rather
-// than built as UI that implies a capability that doesn't exist yet.
+// with EVERY content_block/lesson/course it's attached to — real "one audio file, many uses"
+// (audio_asset_attachments is a real many-to-many join table as of the reuse-enabling
+// migration; audio_assets itself no longer carries a content_block_id). Queried from the
+// attachment side (workspace-filterable there) and grouped client-side into one row per asset.
 export async function GET(req: NextRequest) {
   try {
     const { workspaceId } = await requireLmsInstructor();
@@ -25,26 +22,51 @@ export async function GET(req: NextRequest) {
     const courseId = searchParams.get('courseId');
     const q = searchParams.get('q');
 
-    let query = adminClient
-      .from('audio_assets')
+    let attachQuery = adminClient
+      .from('audio_asset_attachments')
       .select(
-        'id, filename, mime_type, duration_seconds, size_bytes, status, last_validation_error, last_validated_at, created_at, content_block_id, content_blocks!inner(id, lesson_id, course_lessons!inner(id, title, course_id, workspace_id, courses!inner(id, title)))'
+        'audio_asset_id, content_block_id, content_blocks!inner(id, lesson_id, course_lessons!inner(id, title, course_id, workspace_id, courses!inner(id, title)))'
       )
-      .eq('content_blocks.course_lessons.workspace_id', workspaceId)
-      .order('created_at', { ascending: false });
-
-    if (status && ['pending', 'ready', 'broken'].includes(status)) {
-      query = query.eq('status', status);
-    }
+      .eq('content_blocks.course_lessons.workspace_id', workspaceId);
     if (courseId) {
-      query = query.eq('content_blocks.course_lessons.course_id', courseId);
+      attachQuery = attachQuery.eq('content_blocks.course_lessons.course_id', courseId);
+    }
+
+    const { data: attachments, error: attachErr } = await attachQuery;
+    if (attachErr) throw attachErr;
+
+    const assetIds = Array.from(new Set((attachments || []).map((a: any) => a.audio_asset_id)));
+    if (assetIds.length === 0) return NextResponse.json({ data: [] });
+
+    let assetQuery = adminClient
+      .from('audio_assets')
+      .select('id, filename, mime_type, duration_seconds, size_bytes, status, last_validation_error, created_at')
+      .in('id', assetIds)
+      .order('created_at', { ascending: false });
+    if (status && ['pending', 'ready', 'broken'].includes(status)) {
+      assetQuery = assetQuery.eq('status', status);
     }
     if (q) {
-      query = query.ilike('filename', `%${q}%`);
+      assetQuery = assetQuery.ilike('filename', `%${q}%`);
     }
 
-    const { data, error } = await query;
-    if (error) throw error;
+    const { data: assets, error: assetErr } = await assetQuery;
+    if (assetErr) throw assetErr;
+
+    const attachmentsByAsset = new Map<string, any[]>();
+    for (const a of attachments || []) {
+      const list = attachmentsByAsset.get((a as any).audio_asset_id) || [];
+      list.push({
+        content_block_id: (a as any).content_block_id,
+        lesson: (a as any).content_blocks?.course_lessons,
+      });
+      attachmentsByAsset.set((a as any).audio_asset_id, list);
+    }
+
+    const data = (assets || []).map((asset: any) => ({
+      ...asset,
+      attachments: attachmentsByAsset.get(asset.id) || [],
+    }));
 
     return NextResponse.json({ data });
   } catch (err: any) {
@@ -54,11 +76,13 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// Creates (or re-points) the one audio_assets row for a drive-mode audio content block: parses
-// the pasted Google Drive share link, validates it server-side (public + actually audio), and —
-// only on success — flips content_blocks.content.mode to 'drive' and attaches the asset id. A
-// failed validation still returns the asset row (status: 'broken') with the actionable error, so
-// the admin UI can show it without the block ever silently switching to drive mode on a bad link.
+// Validates a pasted Drive link and attaches it to a content block via audio_asset_attachments.
+// Real reuse: if this workspace already has a READY asset for the same Drive file (same
+// google_drive_file_id), that existing row is reused — attached again, not re-validated and not
+// duplicated — which is what makes "one audio file, many uses" actually show up in the Audio
+// Library rather than just being schema-possible. Re-pasting a different link into an
+// already-configured block re-points its one attachment (content_block_id stays UNIQUE on the
+// join table — a block still plays exactly one asset).
 export async function POST(req: NextRequest) {
   try {
     const { workspaceId } = await requireLmsInstructor();
@@ -90,30 +114,58 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const validation = await googleDriveLinkProvider.validate(fileId);
+    // Reuse check: any existing, already-validated asset for this exact Drive file, already
+    // attached to something in this workspace.
+    const { data: existingAttachments } = await adminClient
+      .from('audio_asset_attachments')
+      .select('audio_asset_id, content_blocks!inner(course_lessons!inner(workspace_id))')
+      .eq('content_blocks.course_lessons.workspace_id', workspaceId);
+    const candidateAssetIds = Array.from(new Set((existingAttachments || []).map((a: any) => a.audio_asset_id)));
 
-    const assetPayload = {
-      content_block_id,
-      google_drive_file_id: fileId,
-      share_url,
-      filename: validation.metadata?.filename ?? null,
-      mime_type: validation.metadata?.mimeType ?? null,
-      duration_seconds: validation.metadata?.durationSeconds ?? null,
-      size_bytes: validation.metadata?.sizeBytes ?? null,
-      status: validation.ok ? 'ready' : 'broken',
-      last_validation_error: validation.ok ? null : validation.error,
-      last_validated_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
+    let asset: any = null;
+    if (candidateAssetIds.length > 0) {
+      const { data: reusable } = await adminClient
+        .from('audio_assets')
+        .select('*')
+        .in('id', candidateAssetIds)
+        .eq('google_drive_file_id', fileId)
+        .eq('status', 'ready')
+        .limit(1)
+        .maybeSingle();
+      asset = reusable ?? null;
+    }
 
-    const { data: asset, error: upsertErr } = await adminClient
-      .from('audio_assets')
-      .upsert(assetPayload, { onConflict: 'content_block_id' })
-      .select()
-      .single();
-    if (upsertErr) throw upsertErr;
+    if (!asset) {
+      const validation = await googleDriveLinkProvider.validate(fileId);
 
-    if (validation.ok) {
+      const assetPayload = {
+        google_drive_file_id: fileId,
+        share_url,
+        filename: validation.metadata?.filename ?? null,
+        mime_type: validation.metadata?.mimeType ?? null,
+        duration_seconds: validation.metadata?.durationSeconds ?? null,
+        size_bytes: validation.metadata?.sizeBytes ?? null,
+        status: validation.ok ? 'ready' : 'broken',
+        last_validation_error: validation.ok ? null : validation.error,
+        last_validated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data: created, error: insertErr } = await adminClient
+        .from('audio_assets')
+        .insert(assetPayload)
+        .select()
+        .single();
+      if (insertErr) throw insertErr;
+      asset = created;
+    }
+
+    if (asset.status === 'ready') {
+      const { error: attachErr } = await adminClient
+        .from('audio_asset_attachments')
+        .upsert({ audio_asset_id: asset.id, content_block_id }, { onConflict: 'content_block_id' });
+      if (attachErr) throw attachErr;
+
       const currentContent = (block as any).content || {};
       const { error: patchErr } = await adminClient
         .from('content_blocks')
