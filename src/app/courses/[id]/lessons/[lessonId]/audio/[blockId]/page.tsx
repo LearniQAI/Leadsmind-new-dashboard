@@ -10,6 +10,7 @@ import AdminAudioPreview from './components/AdminAudioPreview';
 import SpeakerTimelineEditor from './components/SpeakerTimelineEditor';
 import TranscriptEditor from './components/TranscriptEditor';
 import ChapterEditor from './components/ChapterEditor';
+import AudioAnalyticsPanel from './components/AudioAnalyticsPanel';
 
 // Screen 2 (Phase 3 Part B): the core authoring screen, modeled on this app's real pattern for
 // a spacious sub-editor (the quiz workbench at /courses/[id]/quiz/[quizId]) rather than
@@ -294,6 +295,11 @@ export default function AudioLessonBuilderPage() {
               lesson={data.lesson}
               completionThreshold={data.block?.completion_threshold ?? 90}
             />
+            {assetId && (
+              <div className="mt-4">
+                <AudioAnalyticsPanel contentBlockId={contentBlockId} />
+              </div>
+            )}
           </div>
         </div>
       </div>

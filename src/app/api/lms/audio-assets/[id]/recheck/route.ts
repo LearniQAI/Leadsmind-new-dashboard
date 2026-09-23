@@ -16,11 +16,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { workspaceId } = await requireLmsInstructor();
     const adminClient = createAdminClient();
 
+    // Workspace ownership proven via ANY real attachment — see audio-assets/[id]/route.ts.
+    const { data: attachment } = await adminClient
+      .from('audio_asset_attachments')
+      .select('id, content_blocks!inner(course_lessons!inner(workspace_id))')
+      .eq('audio_asset_id', id)
+      .eq('content_blocks.course_lessons.workspace_id', workspaceId)
+      .limit(1)
+      .maybeSingle();
+    if (!attachment) throw new NotFoundError('Audio asset');
+
     const { data: asset, error } = await adminClient
       .from('audio_assets')
-      .select('id, google_drive_file_id, content_block_id, content_blocks!inner(course_lessons!inner(workspace_id))')
+      .select('id, google_drive_file_id, filename, mime_type, size_bytes')
       .eq('id', id)
-      .eq('content_blocks.course_lessons.workspace_id', workspaceId)
       .maybeSingle();
     if (error) throw error;
     if (!asset) throw new NotFoundError('Audio asset');

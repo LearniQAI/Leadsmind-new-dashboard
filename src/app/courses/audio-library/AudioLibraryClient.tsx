@@ -2,10 +2,20 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Headphones, RefreshCw, Search, AlertTriangle, Clock3, Loader2 } from 'lucide-react';
+import { Headphones, RefreshCw, Search, AlertTriangle, Clock3, Loader2, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 type AssetStatus = 'pending' | 'ready' | 'broken';
+
+interface AssetAttachment {
+  content_block_id: string;
+  lesson: {
+    id: string;
+    title: string;
+    course_id: string;
+    courses: { id: string; title: string };
+  };
+}
 
 interface AudioAssetRow {
   id: string;
@@ -16,17 +26,7 @@ interface AudioAssetRow {
   status: AssetStatus;
   last_validation_error: string | null;
   created_at: string;
-  content_block_id: string;
-  content_blocks: {
-    id: string;
-    lesson_id: string;
-    course_lessons: {
-      id: string;
-      title: string;
-      course_id: string;
-      courses: { id: string; title: string };
-    };
-  };
+  attachments: AssetAttachment[];
 }
 
 const STATUS_META: Record<AssetStatus, { label: string; className: string }> = {
@@ -85,8 +85,11 @@ export default function AudioLibraryClient() {
       const matchesQuery =
         !query ||
         (a.filename || '').toLowerCase().includes(query.toLowerCase()) ||
-        a.content_blocks?.course_lessons?.title?.toLowerCase().includes(query.toLowerCase()) ||
-        a.content_blocks?.course_lessons?.courses?.title?.toLowerCase().includes(query.toLowerCase());
+        a.attachments.some(
+          (att) =>
+            att.lesson?.title?.toLowerCase().includes(query.toLowerCase()) ||
+            att.lesson?.courses?.title?.toLowerCase().includes(query.toLowerCase())
+        );
       return matchesFilter && matchesQuery;
     });
   }, [assets, filter, query]);
@@ -173,33 +176,55 @@ export default function AudioLibraryClient() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((asset) => {
             const statusMeta = STATUS_META[asset.status];
-            const lesson = asset.content_blocks?.course_lessons;
+            const attachments = asset.attachments || [];
             return (
               <div key={asset.id} className="flex flex-col gap-3 rounded-2xl border border-dash-border bg-white p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-dash-surface text-dash-accent">
                     <Headphones size={16} />
                   </div>
-                  <span
-                    className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusMeta.className}`}
-                  >
-                    {statusMeta.label}
-                  </span>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    {attachments.length > 1 && (
+                      <span
+                        title={attachments.map((a) => `${a.lesson?.courses?.title} · ${a.lesson?.title}`).join('\n')}
+                        className="flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700"
+                      >
+                        <Share2 size={10} /> Used in {attachments.length} places
+                      </span>
+                    )}
+                    <span
+                      className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusMeta.className}`}
+                    >
+                      {statusMeta.label}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="min-w-0">
                   <p className="truncate text-[13px] font-bold !text-dash-text" title={asset.filename || undefined}>
                     {asset.filename || 'Untitled audio'}
                   </p>
-                  {lesson ? (
+                  {attachments.length === 0 ? (
+                    <p className="mt-0.5 text-[11px] !text-dash-textMuted">Unattached</p>
+                  ) : attachments.length === 1 ? (
                     <Link
-                      href={`/courses/${lesson.course_id}/lessons/${lesson.id}/audio/${asset.content_block_id}`}
+                      href={`/courses/${attachments[0].lesson.course_id}/lessons/${attachments[0].lesson.id}/audio/${attachments[0].content_block_id}`}
                       className="mt-0.5 block truncate text-[11px] font-medium text-dash-accent hover:underline"
                     >
-                      {lesson.courses?.title} &middot; {lesson.title}
+                      {attachments[0].lesson?.courses?.title} &middot; {attachments[0].lesson?.title}
                     </Link>
                   ) : (
-                    <p className="mt-0.5 text-[11px] !text-dash-textMuted">Unattached</p>
+                    <div className="mt-0.5 space-y-0.5">
+                      {attachments.map((att) => (
+                        <Link
+                          key={att.content_block_id}
+                          href={`/courses/${att.lesson.course_id}/lessons/${att.lesson.id}/audio/${att.content_block_id}`}
+                          className="block truncate text-[11px] font-medium text-dash-accent hover:underline"
+                        >
+                          {att.lesson?.courses?.title} &middot; {att.lesson?.title}
+                        </Link>
+                      ))}
+                    </div>
                   )}
                 </div>
 
@@ -214,20 +239,27 @@ export default function AudioLibraryClient() {
                   <span className="flex items-center gap-1">
                     <Clock3 size={11} /> {formatDuration(asset.duration_seconds)} &middot; {formatSize(asset.size_bytes)}
                   </span>
-                  {(asset.status === 'broken' || asset.status === 'pending') && (
-                    <button
-                      onClick={() => handleRecheck(asset)}
-                      disabled={rechecking === asset.id}
-                      className="flex items-center gap-1 font-bold !text-dash-text hover:text-dash-accent"
-                    >
-                      {rechecking === asset.id ? (
-                        <Loader2 size={11} className="animate-spin motion-reduce:animate-none" />
-                      ) : (
-                        <RefreshCw size={11} />
-                      )}
-                      Recheck
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {asset.status === 'ready' && (
+                      <Link href="/courses/podcast" className="flex items-center gap-1 font-bold !text-dash-text hover:text-dash-accent" title="Publish this audio publicly as a podcast episode">
+                        <Share2 size={11} /> Add to Podcast
+                      </Link>
+                    )}
+                    {(asset.status === 'broken' || asset.status === 'pending') && (
+                      <button
+                        onClick={() => handleRecheck(asset)}
+                        disabled={rechecking === asset.id}
+                        className="flex items-center gap-1 font-bold !text-dash-text hover:text-dash-accent"
+                      >
+                        {rechecking === asset.id ? (
+                          <Loader2 size={11} className="animate-spin motion-reduce:animate-none" />
+                        ) : (
+                          <RefreshCw size={11} />
+                        )}
+                        Recheck
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             );

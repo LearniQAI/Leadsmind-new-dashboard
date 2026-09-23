@@ -59,18 +59,27 @@ export async function middleware(request: NextRequest) {
   // existing real page — and a UUID second segment is left alone too, since that's the existing
   // internal /courses/[id] admin route, not a public slug.
   //
+  // >>> ADDING A NEW STATIC PAGE DIRECTLY UNDER src/app/courses/ (a real 2-segment route like
+  // /courses/{name}, not the [id] admin route)? Add its folder name to the Set below, or every
+  // request to it silently rewrites to /unauthenticated/courses/{name} instead and 404s — this
+  // exact bug has now hit needs-grading, audio-library, speakers, and podcast independently
+  // (Phase 4's audit found no further gaps, but the pattern will keep recurring for whoever adds
+  // the next one). This is a SEPARATE gate from src/lib/supabase/middleware.ts's isPublicPage
+  // list — a route can pass one and still get blocked by the other; check both when adding any
+  // new fully-public top-level route (not just under /courses/). <<<
+  //
   // Kept in sync with the real folders under src/app/courses/ (everything that isn't [id]):
-  // certificates, components, utils, needs-grading, audio-library, speakers. "needs-grading"
-  // was missing here — the real cross-course assignment inbox at
+  // certificates, components, utils, needs-grading, audio-library, speakers, podcast.
+  // "needs-grading" was missing here — the real cross-course assignment inbox at
   // src/app/courses/needs-grading/page.tsx existed and worked, but every request to it was
   // rewritten to /unauthenticated/courses/needs-grading (treating "needs-grading" as a public
   // course slug) and 404'd before Next's own router ever got a chance to match the real static
   // route. Confirmed live: the "Needs grading" button on /courses linked here and hit exactly
-  // this 404. audio-library and speakers (Phase 3 Part B's Audio Library / Speaker Library
-  // screens) hit the exact same bug live during that phase's own build — added here rather
-  // than repeating it a third time.
+  // this 404. audio-library, speakers, and podcast (Phase 3 Part B / Phase 4's admin screens)
+  // hit the exact same bug live during their own builds — added here rather than repeating it
+  // a fourth time.
   const RESERVED_COURSES_SEGMENTS = new Set([
-    'certificates', 'components', 'utils', 'needs-grading', 'audio-library', 'speakers',
+    'certificates', 'components', 'utils', 'needs-grading', 'audio-library', 'speakers', 'podcast',
   ])
   if (
     segments.length === 2 &&

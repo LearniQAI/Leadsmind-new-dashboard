@@ -40,14 +40,28 @@ export async function recordAudioProgress(
 
     const threshold = (block as any).completion_threshold ?? 90;
     const percentage = Math.max(0, Math.min(100, input.percentage));
-    const completed = percentage >= threshold;
+
+    // Phase 5: audio_progress.completion_percentage is a plain overwrite-on-upsert, so a
+    // listener who scrubs backward near the end of a session would understate their real peak
+    // listen-through in this row — meaningless for "average listen-through %" analytics. Read
+    // the existing row first and keep the MAX percentage ever reached; position_seconds/
+    // last_played_at still track the current/last position (that part is genuinely "where they
+    // left off," correct as an overwrite for resume purposes).
+    const { data: existingProgress } = await adminClient
+      .from('audio_progress')
+      .select('completion_percentage')
+      .eq('content_block_id', contentBlockId)
+      .eq('contact_id', contactId)
+      .maybeSingle();
+    const peakPercentage = Math.max(percentage, existingProgress?.completion_percentage ?? 0);
+    const completed = peakPercentage >= threshold;
 
     const { error: upsertErr } = await adminClient.from('audio_progress').upsert(
       {
         content_block_id: contentBlockId,
         contact_id: contactId,
         position_seconds: input.positionSeconds,
-        completion_percentage: percentage,
+        completion_percentage: peakPercentage,
         completed,
         last_played_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -75,7 +89,11 @@ export async function recordAudioProgress(
     }
 
     if (completed) {
-      await recordBlockCompletion(contentBlockId, { percentage });
+      // peakPercentage, not the raw incoming tick's percentage — recordBlockCompletion() does
+      // its own independent `percentage < threshold` check, and a listener who's rewound below
+      // threshold on THIS tick (after already having crossed it earlier) would otherwise get
+      // spuriously rejected here despite `completed` correctly being true.
+      await recordBlockCompletion(contentBlockId, { percentage: peakPercentage });
     }
 
     return { success: true, completed };

@@ -5,6 +5,7 @@ import { getCurrentWorkspaceId, getUser } from '@/lib/auth';
 import { sanitizeSlug } from '@/lib/slug';
 import { isReservedCoursePath } from '@/lib/domains/customDomainRoutes';
 import { logger } from '@/shared/logger';
+import { getCourseCompletionStatus } from '@/lib/lms/courseCompletion';
 
 export async function getCourses() {
  try {
@@ -578,19 +579,44 @@ export async function getCourseAnalytics(courseId: string) {
 
     if (enrollError) throw enrollError;
 
-    // 3. Fetch all course lessons
+    // 3. Fetch all course lessons + modules — module position and hidden status (coming_soon/
+    // draft) are needed to order lessons the same way evaluateCourseCompletion() (Batch 3) does
+    // for the drop-off/per-lesson breakdown below, so "which lesson are students stuck at"
+    // reports against the same visible-lesson set completion is actually judged against.
     const { data: lessons, error: lessonsError } = await adminClient
       .from('course_lessons')
-      .select('id, title, lesson_type')
+      .select('id, title, lesson_type, module_id, position, is_active')
       .eq('course_id', courseId);
 
     if (lessonsError) throw lessonsError;
+
+    const { data: modules, error: modulesError } = await adminClient
+      .from('course_modules')
+      .select('id, position, is_active, publish_status')
+      .eq('course_id', courseId);
+    if (modulesError) throw modulesError;
+
+    const HIDDEN_MODULE_STATUSES = new Set(['coming_soon', 'draft']);
+    const visibleModuleIds = new Set(
+      (modules || []).filter((m: any) => m.is_active !== false && !HIDDEN_MODULE_STATUSES.has(m.publish_status || '')).map((m: any) => m.id)
+    );
+    const modulePosition = new Map((modules || []).map((m: any) => [m.id, m.position ?? 0]));
+    // Same visibility rule evaluateCourseCompletion() uses (Batch 3): active, and not in a
+    // hidden module. Ordered by module position then lesson position — this IS the order a
+    // student actually progresses through the course, so "first incomplete lesson in this
+    // order" is a real drop-off point, not an arbitrary one.
+    const orderedVisibleLessons = (lessons || [])
+      .filter((l: any) => l.is_active !== false && (l.module_id === null || visibleModuleIds.has(l.module_id)))
+      .sort((a: any, b: any) => {
+        const modDelta = (modulePosition.get(a.module_id) ?? 0) - (modulePosition.get(b.module_id) ?? 0);
+        return modDelta !== 0 ? modDelta : (a.position ?? 0) - (b.position ?? 0);
+      });
 
     // 4. Fetch real lesson completions (completed_at set). completed_at:null rows are the
     // player heartbeat remembering video playback position, not completions.
     const { data: progress, error: progressError } = await adminClient
       .from('course_progress')
-      .select('contact_id, lesson_id')
+      .select('contact_id, lesson_id, completed_at')
       .eq('course_id', courseId)
       .not('completed_at', 'is', null);
 
@@ -638,16 +664,52 @@ export async function getCourseAnalytics(courseId: string) {
     const totalEarnings = totalEnrollments * coursePrice;
     const totalLessons = lessons?.length || 0;
 
+    // Real completion, per student — the SAME evaluateCourseCompletion() criteria the
+    // certificate route uses (lesson quizzes passed, module quizzes passed, graded assignments
+    // passed, hidden modules excluded), not the raw "every course_lessons row has a completion
+    // row" approximation this action used before (found during Phase 5's investigation: it was
+    // the same class of bug already fixed in the automation event path — courseCompletionEvent.ts
+    // — but never fixed here). Parallelized across students; acceptable for an admin analytics
+    // view at typical LMS course sizes, not a hot path.
+    const completionStatuses = await Promise.all(
+      (enrollments || []).map((e: any) => getCourseCompletionStatus(adminClient, e.contact_id, courseId))
+    );
+
     let completedStudentsCount = 0;
     let totalProgressPercent = 0;
+    const dropOffCounts = new Map<string, number>();
+    const completionDurationsMs: number[] = [];
 
-    const studentStats = (enrollments || []).map((e: any) => {
+    const studentStats = (enrollments || []).map((e: any, idx: number) => {
       const c = e.contact || {};
       const completedForThisStudent = (progress || []).filter((p: any) => p.contact_id === e.contact_id).length;
       const pct = totalLessons > 0 ? Math.round((completedForThisStudent / totalLessons) * 100) : 0;
-      
-      if (pct === 100) {
+      const isComplete = completionStatuses[idx].complete;
+
+      if (isComplete) {
         completedStudentsCount++;
+        // Time to completion: enrolment to the LAST visible lesson this student completed
+        // (course_progress.completed_at) — the moment they actually finished, not a synthetic
+        // timestamp.
+        const studentCompletions = (progress || [])
+          .filter((p: any) => p.contact_id === e.contact_id)
+          .map((p: any) => new Date(p.completed_at).getTime());
+        if (studentCompletions.length > 0 && e.enrolled_at) {
+          const lastCompletionMs = Math.max(...studentCompletions);
+          const enrolledMs = new Date(e.enrolled_at).getTime();
+          if (lastCompletionMs >= enrolledMs) completionDurationsMs.push(lastCompletionMs - enrolledMs);
+        }
+      } else {
+        // Drop-off point: the first visible lesson (in real course order) this student hasn't
+        // completed — derived from real lesson_block_completions-backed course_progress rows,
+        // not guessed. A student with zero completions drops off at the very first lesson.
+        const completedLessonIds = new Set(
+          (progress || []).filter((p: any) => p.contact_id === e.contact_id).map((p: any) => p.lesson_id)
+        );
+        const stuckAt = orderedVisibleLessons.find((l: any) => !completedLessonIds.has(l.id));
+        if (stuckAt) {
+          dropOffCounts.set(stuckAt.id, (dropOffCounts.get(stuckAt.id) || 0) + 1);
+        }
       }
       totalProgressPercent += pct;
 
@@ -659,11 +721,41 @@ export async function getCourseAnalytics(courseId: string) {
         enrolledAt: e.enrolled_at,
         status: e.status,
         completedLessons: completedForThisStudent,
-        progressPercentage: pct
+        progressPercentage: pct,
+        isComplete,
       };
     });
 
     const averageProgress = totalEnrollments > 0 ? Math.round(totalProgressPercent / totalEnrollments) : 0;
+
+    const averageTimeToCompletionDays =
+      completionDurationsMs.length > 0
+        ? Math.round((completionDurationsMs.reduce((a, b) => a + b, 0) / completionDurationsMs.length) / (1000 * 60 * 60 * 24) * 10) / 10
+        : null;
+
+    const dropOffPoint = (() => {
+      let topLessonId: string | null = null;
+      let topCount = 0;
+      for (const [lessonId, count] of dropOffCounts.entries()) {
+        if (count > topCount) { topCount = count; topLessonId = lessonId; }
+      }
+      if (!topLessonId) return null;
+      const lesson = (lessons || []).find((l: any) => l.id === topLessonId);
+      return { lessonId: topLessonId, lessonTitle: lesson?.title || 'Untitled lesson', studentCount: topCount };
+    })();
+
+    // Per-lesson breakdown: % of ALL enrolled students who have a real completion row for
+    // EACH lesson — so an instructor sees which specific lesson is the actual bottleneck, not
+    // just one aggregate course number.
+    const lessonBreakdown = orderedVisibleLessons.map((l: any) => {
+      const completedCount = (progress || []).filter((p: any) => p.lesson_id === l.id).length;
+      return {
+        lessonId: l.id,
+        title: l.title,
+        completedCount,
+        completionRate: totalEnrollments > 0 ? Math.round((completedCount / totalEnrollments) * 100) : 0,
+      };
+    });
 
     const quizAttemptsLog = attempts.map((a: any) => {
       const lessonObj: any = quizLessons.find((l: any) => l.id === a.lesson_id) || {};
@@ -690,10 +782,13 @@ export async function getCourseAnalytics(courseId: string) {
           totalLessons,
           completedStudentsCount,
           averageProgress,
-          completionRate: totalEnrollments > 0 ? Math.round((completedStudentsCount / totalEnrollments) * 100) : 0
+          completionRate: totalEnrollments > 0 ? Math.round((completedStudentsCount / totalEnrollments) * 100) : 0,
+          averageTimeToCompletionDays,
+          dropOffPoint,
         },
         students: studentStats,
-        quizAttempts: quizAttemptsLog
+        quizAttempts: quizAttemptsLog,
+        lessonBreakdown,
       }
     };
   } catch (error: any) {
