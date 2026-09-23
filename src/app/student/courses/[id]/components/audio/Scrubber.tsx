@@ -88,14 +88,14 @@ export default function Scrubber({ active = true }: { active?: boolean }) {
           style={{ width: `${bufferedPct}%` }}
         />
         <div
-          className={`absolute inset-y-0 left-0 h-full rounded-full bg-gradient-to-r from-player-violetUi to-player-magentaUi ${isDragging ? '' : 'transition-[width] duration-150 ease-linear'}`}
+          className={`absolute inset-y-0 left-0 h-full rounded-full bg-player-ink ${isDragging ? '' : 'transition-[width] duration-150 ease-linear'}`}
           style={{ width: `${playedPct}%` }}
         />
       </div>
       {/* Visual thumb is small; the actual hit target is this whole 16px-tall track, well past
           WCAG's 24px minimum once combined with the pointerdown-anywhere-on-track behavior. */}
       <div
-        className={`absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full border-[3px] border-white bg-player-violetUi shadow-player-glow transition-transform duration-150 ease-player group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100 ${isDragging ? 'scale-125' : ''}`}
+        className={`absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full border-[3px] border-white bg-player-ink shadow-player-panel transition-transform duration-150 ease-player group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100 ${isDragging ? 'scale-125' : ''}`}
         style={{ left: `calc(${playedPct}% - 7px)` }}
       />
     </div>

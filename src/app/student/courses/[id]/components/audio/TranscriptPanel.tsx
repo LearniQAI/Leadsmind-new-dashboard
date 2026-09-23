@@ -108,9 +108,9 @@ export default function TranscriptPanel({ transcript, speakers, bare = false, ac
               aria-current={isActive ? 'true' : undefined}
               className={`block px-3.5 py-2.5 ${playerRow} ${isActive ? 'bg-player-raised' : ''}`}
             >
-              {isActive && <span className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-gradient-to-b from-player-fillFrom to-player-fillTo" aria-hidden="true" />}
+              {isActive && <span className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-player-ink" aria-hidden="true" />}
               {name && (
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.12em] !text-player-magentaText">
+                <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.12em] !text-player-textMuted">
                   {name}
                 </span>
               )}

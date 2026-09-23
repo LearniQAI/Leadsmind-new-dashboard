@@ -64,7 +64,7 @@ export default function SpeakerRow({ speakers, segments, active = true }: Speake
               <div
                 className="h-14 w-14 overflow-hidden rounded-full border-[3px] border-player-surface bg-player-raised shadow-player-panel transition-[box-shadow,opacity] duration-200 ease-player motion-reduce:transition-none"
                 style={{
-                  boxShadow: isActive ? `0 0 0 3px ${PLAYER.violetUi}` : '0 0 0 0 transparent',
+                  boxShadow: isActive ? `0 0 0 3px ${PLAYER.ink}` : '0 0 0 0 transparent',
                   opacity: segments.length > 0 && !isActive ? 0.55 : 1,
                 }}
               >
@@ -86,7 +86,7 @@ export default function SpeakerRow({ speakers, segments, active = true }: Speake
         {activeSpeaker && segments.length > 0 && (
           <p
             key={activeSpeaker.speaker_id}
-            className="truncate text-[12px] font-bold !text-player-violetText animate-in fade-in duration-200 motion-reduce:animate-none"
+            className="truncate text-[12px] font-bold !text-player-text animate-in fade-in duration-200 motion-reduce:animate-none"
             aria-live="polite"
           >
             {speakerLabel(activeSpeaker.speakers)} is speaking

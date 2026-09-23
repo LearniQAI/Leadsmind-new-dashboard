@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { AlertTriangle, ChevronDown, Loader2, Pause, Play } from 'lucide-react';
+import { AlertTriangle, ChevronDown } from 'lucide-react';
 import { useAudioPlayer, useAudioTime, type AudioTrack } from '@/components/lms/AudioPlayerProvider';
 // NOTE: this orchestrator deliberately does NOT call useAudioTime() itself — that hook's
 // snapshot object changes on every timeupdate tick regardless of which field is read, which
@@ -19,7 +19,8 @@ import TranscriptPanel from './audio/TranscriptPanel';
 import ChaptersPanel from './audio/ChaptersPanel';
 import LiveWaveformVisualizer from '@/components/lms/LiveWaveformVisualizer';
 import { SkipBackIcon, SkipForwardIcon } from '@/components/lms/PlayerIcons';
-import { playerEyebrow, playerFocus, playerIconButton, playerPanel, playerPrimaryButton } from '@/lib/lms/audio/playerStyles';
+import { playerEyebrow, playerFocus, playerIconButton, playerPanel } from '@/lib/lms/audio/playerStyles';
+import PlayerPlayButton from '@/components/lms/PlayerPlayButton';
 
 interface AudioDrivePlayerProps {
   assetId: string;
@@ -141,8 +142,8 @@ export default function AudioDrivePlayer({
     return (
       <div className={`w-full p-5 ${playerPanel}`} role="alert">
         <div className="flex items-center gap-3.5">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-50 ring-1 ring-inset ring-amber-200">
-            <AlertTriangle className="text-amber-700" size={18} />
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-player-raised ring-1 ring-inset ring-player-border">
+            <AlertTriangle className="!text-player-text" size={18} />
           </span>
           <div>
             <p className="text-[13px] font-bold !text-player-text">This audio is temporarily unavailable</p>
@@ -167,9 +168,11 @@ export default function AudioDrivePlayer({
         </div>
         {/* Same geometry as the loaded layout below, so nothing jumps when metadata arrives. */}
         {artworkUrl ? (
-          <div className="mt-4 flex flex-col-reverse gap-3 [@container(min-width:540px)]:grid [@container(min-width:540px)]:grid-cols-[minmax(0,65fr)_minmax(0,35fr)] [@container(min-width:540px)]:gap-4">
-            <div className="h-24 rounded-xl bg-player-raised [@container(min-width:540px)]:h-auto" />
-            <div className="mx-auto aspect-square w-full max-w-[18rem] rounded-xl bg-player-raised [@container(min-width:540px)]:max-w-none" />
+          <div className="mt-4 flex flex-col-reverse overflow-hidden rounded-xl border border-player-border bg-player-raised [@container(min-width:400px)]:grid [@container(min-width:400px)]:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
+            <div className="relative h-24 [@container(min-width:400px)]:h-auto" />
+            <div className="border-b border-player-border p-3 [@container(min-width:400px)]:border-b-0 [@container(min-width:400px)]:border-l [@container(min-width:400px)]:p-0">
+              <div className="mx-auto block aspect-[4/5] w-full max-w-[9rem] rounded-lg [@container(min-width:400px)]:max-w-none [@container(min-width:400px)]:rounded-none bg-player-track" />
+            </div>
           </div>
         ) : (
           <div className="mt-4 h-[88px] w-full rounded-xl bg-player-raised" />
@@ -210,12 +213,12 @@ export default function AudioDrivePlayer({
       {/* The card is a size container: the split layout below responds to the card's OWN width,
           not the viewport — the same player renders in the builder's fixed 380px preview column
           (always stacked there) and in the wide student lesson column (side by side).
-          It's the one element on the page that floats: lavender-white surface + violet-tinted
-          lift (shadow-player-card), where every other lesson card sits flat on white. */}
+          It's the one element on the page that floats: a white card with a neutral ink lift
+          (shadow-player-card), where every other lesson card sits flat on white. */}
       <div className="rounded-2xl border border-player-border bg-player-surface p-5 shadow-player-card [container-type:inline-size]">
         <div className="min-w-0">
-          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] !text-player-violetText">
-            <span className="h-1.5 w-1.5 rounded-full bg-gradient-to-br from-player-fillFrom to-player-fillTo" aria-hidden="true" />
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] !text-player-textMuted">
+            <span className="h-1.5 w-1.5 rounded-full bg-player-ink" aria-hidden="true" />
             Audio lesson
           </span>
           <h3 className="mt-1 truncate text-[17px] font-bold leading-snug !text-player-text">{title}</h3>
@@ -228,39 +231,39 @@ export default function AudioDrivePlayer({
           )}
         </div>
 
-        {/* Live waveform — shown for every audio block, zero authoring. Bars: violet body with
-            magenta tips (both AA-derived UI variants on the raised wash). */}
+        {/* Live waveform — shown for every audio block, zero authoring. Bars run grey (quiet, bar
+            centre) → ink (loud, bar tips): louder, taller bars read darker. */}
         {artworkUrl ? (
-          // Custom per-lesson artwork: waveform left / cover art right at 65:35 once the card is
-          // >= 540px wide; below that, stacked with the art on top (podcast-app order) and the
-          // waveform directly above the controls it reacts to. Both are decorative (canvas is
-          // aria-hidden, img alt=""), so the visual reorder has no reading-order cost.
-          <div className="mt-4 flex flex-col-reverse gap-3 [@container(min-width:540px)]:grid [@container(min-width:540px)]:grid-cols-[minmax(0,65fr)_minmax(0,35fr)] [@container(min-width:540px)]:gap-4">
+          // Custom per-lesson artwork. ONE frame (single border, radius, overflow-hidden) holding two
+          // flush regions — the old layout was two separately-rounded/shadowed boxes with a grid gap
+          // between them, which is what produced the seam. >= 400px card width: waveform 75% |
+          // art 25%, divided by a hairline (keeps light-edged photos from melting into the grey
+          // field). Narrower: stacked, art on top, matted and capped at 9rem so a 4:5 portrait never
+          // dominates a phone screen. Both regions are decorative (canvas aria-hidden, img alt="").
+          <div className="mt-4 flex flex-col-reverse overflow-hidden rounded-xl border border-player-border bg-player-raised [@container(min-width:400px)]:grid [@container(min-width:400px)]:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
             {/* The canvas is absolutely positioned so it contributes nothing to layout: its
                 backing-store size (CSS size x DPR) would otherwise feed back into the row height. */}
-            <div className="relative h-24 rounded-xl bg-player-raised [@container(min-width:540px)]:h-auto">
+            <div className="relative h-24 [@container(min-width:400px)]:h-auto">
               <LiveWaveformVisualizer
                 active={isActiveTrack}
-                color={PLAYER.violetUi}
-                colorTo={PLAYER.magentaUi}
-                bars={40}
-                className="absolute inset-x-3 top-1/2 h-[64%] -translate-y-1/2"
+                color={PLAYER.waveQuiet}
+                colorTo={PLAYER.ink}
+                bars={48}
+                className="absolute inset-x-4 top-1/2 h-[62%] -translate-y-1/2"
               />
             </div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={artworkUrl}
-              alt=""
-              className="mx-auto aspect-square w-full max-w-[18rem] rounded-xl object-cover shadow-player-art ring-1 ring-inset ring-black/5 [@container(min-width:540px)]:max-w-none"
-            />
+            <div className="border-b border-player-border p-3 [@container(min-width:400px)]:border-b-0 [@container(min-width:400px)]:border-l [@container(min-width:400px)]:p-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={artworkUrl} alt="" className="mx-auto block aspect-[4/5] w-full max-w-[9rem] rounded-lg [@container(min-width:400px)]:max-w-none [@container(min-width:400px)]:rounded-none object-cover object-center" />
+            </div>
           </div>
         ) : (
           // No artwork: the waveform IS the visual identity — full-width hero band.
-          <div className="mt-4 rounded-xl bg-player-raised px-3 py-2">
+          <div className="mt-4 rounded-xl border border-player-border bg-player-raised px-3 py-2">
             <LiveWaveformVisualizer
               active={isActiveTrack}
-              color={PLAYER.violetUi}
-              colorTo={PLAYER.magentaUi}
+              color={PLAYER.waveQuiet}
+              colorTo={PLAYER.ink}
               bars={48}
               className="h-[72px] w-full"
             />
@@ -286,26 +289,14 @@ export default function AudioDrivePlayer({
             <SkipBackIcon />
           </button>
 
-          <button
-            type="button"
-            // An inactive player (another block holds the shared element) claims it on Play
-            // rather than being disabled — see activate().
+          {/* An inactive player (another block holds the shared element) claims it on Play
+              rather than being disabled — see activate(). */}
+          <PlayerPlayButton
+            size="md"
+            isPlaying={isPlaying}
+            isBusy={isBuffering}
             onClick={isActiveTrack ? player.toggle : () => activate()}
-            aria-label={isPlaying ? 'Pause' : 'Play'}
-            className={`h-14 w-14 ${playerPrimaryButton}`}
-          >
-            {/* All three glyphs stay mounted and cross-fade/scale (200ms, ease-player) so the
-                play/pause swap is a transition, not a hard cut. Reduced motion: instant. */}
-            <PlayGlyph show={!isBuffering && !isPlaying}>
-              <Play size={22} fill="currentColor" strokeLinejoin="round" className="ml-0.5" />
-            </PlayGlyph>
-            <PlayGlyph show={!isBuffering && isPlaying}>
-              <Pause size={22} fill="currentColor" strokeLinejoin="round" />
-            </PlayGlyph>
-            <PlayGlyph show={isBuffering}>
-              <Loader2 size={22} className="animate-spin motion-reduce:animate-none" />
-            </PlayGlyph>
-          </button>
+          />
 
           <button
             type="button"
@@ -373,19 +364,6 @@ export default function AudioDrivePlayer({
         </>
       )}
     </div>
-  );
-}
-
-function PlayGlyph({ show, children }: { show: boolean; children: React.ReactNode }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={`absolute inset-0 flex items-center justify-center transition-[opacity,transform] duration-200 ease-player motion-reduce:transition-none ${
-        show ? 'scale-100 opacity-100' : 'scale-75 opacity-0'
-      }`}
-    >
-      {children}
-    </span>
   );
 }
 

@@ -2,9 +2,10 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import { Play, Pause, X, Loader2 } from "lucide-react";
+import { X } from "lucide-react";
 import { PLAYER } from "@/lib/lms/audio/playerIdentity";
-import { playerFocus, playerIconButton, playerPrimaryButton } from "@/lib/lms/audio/playerStyles";
+import { playerFocus, playerIconButton } from "@/lib/lms/audio/playerStyles";
+import PlayerPlayButton from "./PlayerPlayButton";
 import { useAudioPlayer, useAudioTime } from "./AudioPlayerProvider";
 import LiveWaveformVisualizer from "./LiveWaveformVisualizer";
 
@@ -39,14 +40,14 @@ export default function MiniAudioPlayerBar() {
     <div
       role="region"
       aria-label="Audio player"
-      // Same signature identity as the full player (player-* tokens): lavender-white glass,
-      // gradient progress edge, gradient primary control. Violet-tinted upward shadow so it
-      // reads as floating over the page, like the full player card.
-      className="fixed inset-x-0 bottom-0 z-[85] border-t border-player-border bg-player-surface/95 shadow-[0_-10px_30px_-14px_rgba(123,63,242,0.3)] backdrop-blur supports-[backdrop-filter]:bg-player-surface/85"
+      // Same monochrome identity as the full player (player-* tokens): white glass, ink progress
+      // edge, the glowing play button. Neutral upward shadow so it floats over the page like the
+      // full player card.
+      className="fixed inset-x-0 bottom-0 z-[85] border-t border-player-border bg-player-surface/95 shadow-[0_-10px_30px_-14px_rgba(17,17,17,0.18)] backdrop-blur supports-[backdrop-filter]:bg-player-surface/85"
     >
       <div className="h-[3px] w-full bg-player-track">
         <div
-          className="h-full rounded-r-full bg-gradient-to-r from-player-violetUi to-player-magentaUi transition-[width] duration-200 ease-linear"
+          className="h-full rounded-r-full bg-player-ink transition-[width] duration-200 ease-linear"
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -76,8 +77,8 @@ export default function MiniAudioPlayerBar() {
                 active
                 variant="mini"
                 bars={5}
-                color={PLAYER.violetUi}
-                colorTo={PLAYER.magentaUi}
+                color={PLAYER.waveQuiet}
+                colorTo={PLAYER.ink}
                 className="h-full w-full px-2"
               />
             )}
@@ -91,24 +92,8 @@ export default function MiniAudioPlayerBar() {
           </div>
         </button>
 
-        <button
-          type="button"
-          onClick={toggle}
-          disabled={isLoading}
-          aria-label={isPlaying ? "Pause" : "Play"}
-          className={`h-10 w-10 shrink-0 ${playerPrimaryButton}`}
-        >
-          {/* Same cross-fading glyph swap as the full player. */}
-          <MiniGlyph show={!isLoading && !isPlaying}>
-            <Play size={16} fill="currentColor" strokeLinejoin="round" className="ml-0.5" />
-          </MiniGlyph>
-          <MiniGlyph show={!isLoading && isPlaying}>
-            <Pause size={16} fill="currentColor" strokeLinejoin="round" />
-          </MiniGlyph>
-          <MiniGlyph show={isLoading}>
-            <Loader2 size={16} className="animate-spin motion-reduce:animate-none" />
-          </MiniGlyph>
-        </button>
+        {/* Same glowing play button as the full player (glow, playing pulse/sheen, cross-fade). */}
+        <PlayerPlayButton size="sm" isPlaying={isPlaying} isBusy={isLoading} disabled={isLoading} onClick={toggle} />
 
         <button
           type="button"
@@ -120,18 +105,5 @@ export default function MiniAudioPlayerBar() {
         </button>
       </div>
     </div>
-  );
-}
-
-function MiniGlyph({ show, children }: { show: boolean; children: React.ReactNode }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={`absolute inset-0 flex items-center justify-center transition-[opacity,transform] duration-200 ease-player motion-reduce:transition-none ${
-        show ? "scale-100 opacity-100" : "scale-75 opacity-0"
-      }`}
-    >
-      {children}
-    </span>
   );
 }

@@ -257,19 +257,39 @@ module.exports = {
         },
       },
 
-      // Audio player elevation: the one card on the page that floats with intent — a soft
-      // violet-tinted lift (not grey), plus a coloured glow reserved for the primary control.
+      // Audio player elevation (monochrome): the one card on the page that floats with intent —
+      // a neutral ink lift — plus the glow reserved for the play/pause button.
       boxShadow: {
-        'player-card': '0 1px 2px rgba(27, 21, 55, 0.05), 0 10px 30px -12px rgba(123, 63, 242, 0.28)',
-        'player-panel': '0 1px 2px rgba(27, 21, 55, 0.04)',
-        'player-glow': '0 6px 18px -6px rgba(123, 63, 242, 0.55)',
-        'player-glow-strong': '0 8px 24px -6px rgba(199, 47, 134, 0.55)',
-        'player-art': '0 10px 24px -12px rgba(27, 21, 55, 0.4)',
+        'player-card': '0 1px 2px rgba(17, 17, 17, 0.05), 0 14px 34px -16px rgba(17, 17, 17, 0.28)',
+        'player-panel': '0 1px 2px rgba(17, 17, 17, 0.05)',
+        // Play/pause glow. A near-black button on a WHITE card: a pure grey halo reads as a muddy
+        // drop shadow, and an off-white halo is invisible on white. A faint cool slate halo
+        // (slate-400 at <= 0.5) reads as light around the button while staying "black and white".
+        'player-glow': '0 6px 16px -6px rgba(17, 17, 17, 0.45), 0 0 20px 3px rgba(148, 163, 184, 0.38)',
+        'player-glow-strong': '0 8px 20px -6px rgba(17, 17, 17, 0.5), 0 0 30px 8px rgba(148, 163, 184, 0.52)',
       },
       // The player's existing Stage 2 motion curve (Tailwind's default ease, 150ms interactions /
       // 200ms state changes), NAMED so every player control uses the same one — not a new curve.
       transitionTimingFunction: {
         player: 'cubic-bezier(0.4, 0, 0.2, 1)',
+      },
+      // Play/pause flourish (the ONE place the monochrome restraint is broken). Both run only
+      // while playing (sheen also on hover), and are removed entirely for reduced motion, leaving
+      // the static glow. Deliberately slow: a 3.2s breathe, and a sheen that sweeps for ~1.8s then
+      // rests ~3s — faster/brighter reads as gimmicky.
+      keyframes: {
+        'player-glow': {
+          '0%, 100%': { boxShadow: '0 6px 16px -6px rgba(17, 17, 17, 0.45), 0 0 20px 3px rgba(148, 163, 184, 0.38)' },
+          '50%': { boxShadow: '0 8px 20px -6px rgba(17, 17, 17, 0.5), 0 0 30px 8px rgba(148, 163, 184, 0.52)' },
+        },
+        'player-sheen': {
+          '0%': { transform: 'translateX(0) skewX(-12deg)' },
+          '38%, 100%': { transform: 'translateX(400%) skewX(-12deg)' },
+        },
+      },
+      animation: {
+        'player-glow': 'player-glow 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite',
+        'player-sheen': 'player-sheen 4.8s cubic-bezier(0.4, 0, 0.2, 1) infinite',
       },
       backgroundImage: {
         gradientPrimary: "linear-gradient(90deg, #1359FF 0%, #7B3FF2 33%, #FF3CAC 66%, #FF8A00 100%)",
