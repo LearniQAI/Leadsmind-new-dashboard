@@ -78,7 +78,6 @@ export default async function PublicEpisodePage({ params }: PageProps) {
           title={episode.title}
           artworkUrl={show.artwork_url}
           chapters={chapters}
-          accentHex="#1359FF"
         />
 
         {episode.description && (
