@@ -149,6 +149,12 @@ export async function updateSession(request: NextRequest) {
    request.nextUrl.pathname === '/sitemap-articles.xml' ||
    request.nextUrl.pathname === '/sitemap-marketing.xml' ||
    request.nextUrl.pathname === '/rss.xml' ||
+   // Phase 4 public podcast distribution: the show page, episode pages, and RSS feed
+   // (src/app/podcast/[showSlug]/...) must be reachable with no session at all — podcast
+   // apps and directory crawlers never authenticate. The actual publish gate (status +
+   // publish_at) lives in the route/RLS layer, not here; this only controls whether the
+   // request reaches that layer instead of bouncing to sign-in first.
+   request.nextUrl.pathname.startsWith('/podcast/') ||
    // Meeting rooms are joined by guests holding the link (src/app/meet/[id]) and the reviews
    // widget is embedded on customers' own sites (src/app/widget/reviews) — both are anonymous by design.
    request.nextUrl.pathname.startsWith('/meet/') ||
