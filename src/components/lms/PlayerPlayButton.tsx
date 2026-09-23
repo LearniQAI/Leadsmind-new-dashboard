@@ -17,6 +17,7 @@ import { playerPlayButton } from '@/lib/lms/audio/playerStyles';
 const SIZES = {
   lg: { box: 'h-16 w-16', icon: 24 },
   md: { box: 'h-14 w-14', icon: 22 },
+  compact: { box: 'h-12 w-12', icon: 20 },
   sm: { box: 'h-10 w-10', icon: 16 },
 } as const;
 

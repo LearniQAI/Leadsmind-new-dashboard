@@ -161,25 +161,30 @@ export default function AudioDrivePlayer({
         aria-busy="true"
         aria-label="Loading audio"
       >
-        {/* Same geometry as the loaded layout below, so nothing jumps when metadata arrives. */}
-        <div className="min-w-0 flex-1 p-5">
-          <div className="flex items-center gap-3">
-            {artworkUrl && <div className="aspect-[4/5] w-14 shrink-0 rounded-lg bg-player-track [@container(min-width:720px)]:hidden" />}
+        {/* Same geometry as the loaded compact layout below, so nothing jumps when metadata arrives. */}
+        <div className="min-w-0 flex-1 px-5 py-4">
+          <div className="flex items-start gap-3">
+            {artworkUrl && <div className="aspect-square w-10 shrink-0 rounded-lg bg-player-track [@container(min-width:720px)]:hidden" />}
             <div className="min-w-0 flex-1 space-y-2">
-              <div className="h-2.5 w-20 rounded-full bg-player-track" />
-              <div className="h-4 w-2/3 rounded bg-player-raised" />
-              <div className="h-3 w-1/2 rounded bg-player-raised" />
+              <div className="h-4 w-1/2 rounded bg-player-raised" />
+              <div className="h-3 w-2/3 rounded bg-player-raised" />
             </div>
           </div>
-          <div className="mt-4 h-[74px] w-full rounded-xl bg-player-raised" />
-          <div className="mt-4 flex items-center justify-center gap-6">
-            <div className="h-11 w-11 rounded-full bg-player-raised" />
-            <div className="h-14 w-14 rounded-full bg-player-track" />
-            <div className="h-11 w-11 rounded-full bg-player-raised" />
+          <div className="mt-3 flex items-center gap-3">
+            <div className="flex shrink-0 items-center gap-1.5">
+              <div className="h-10 w-10 rounded-full bg-player-raised" />
+              <div className="h-12 w-12 rounded-full bg-player-track" />
+              <div className="h-10 w-10 rounded-full bg-player-raised" />
+            </div>
+            <div className="h-12 min-w-[80px] flex-1 rounded-xl bg-player-raised" />
           </div>
-          <div className="mt-4 h-1.5 w-full rounded-full bg-player-track" />
+          <div className="mt-3 flex items-center gap-3">
+            <div className="h-3 w-16 rounded bg-player-raised" />
+            <div className="h-1.5 flex-1 rounded-full bg-player-track" />
+            <div className="h-8 w-11 rounded-full bg-player-raised" />
+          </div>
         </div>
-        {artworkUrl && <div className="hidden w-72 shrink-0 border-l border-player-border bg-player-raised [@container(min-width:720px)]:block" />}
+        {artworkUrl && <div className="hidden w-48 shrink-0 border-l border-player-border bg-player-raised [@container(min-width:720px)]:block" />}
       </div>
     );
   }
@@ -212,106 +217,103 @@ export default function AudioDrivePlayer({
           (always stacked there) and in the wide student lesson column (side by side).
           It's the one element on the page that floats: a white card with a neutral ink lift
           (shadow-player-card), where every other lesson card sits flat on white. */}
-      {/* Layout: all content in a left column; custom artwork, when set, is a full-height panel
-          flush against the card's right edge (card width >= 720px, so the content column keeps
-          >= ~430px). Narrower cards show it as a small 4:5 thumbnail beside the title instead —
-          the waveform is a compact band in every case, so artwork never inflates the height. */}
+      {/* Compact layout (~190px tall): three rows in a content column — header / controls +
+          waveform / scrubber — with custom artwork as a full-height, roughly square panel flush
+          against the card's right edge on wide cards (>= 720px; the content column keeps >= ~540px).
+          Narrower cards show the artwork as a small square thumbnail beside the title instead. */}
       <div className="flex overflow-hidden rounded-2xl border border-player-border bg-player-surface shadow-player-card [container-type:inline-size]">
-      <div className="min-w-0 flex-1 p-5">
-        <div className="flex items-center gap-3">
-          {artworkUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={artworkUrl}
-              alt=""
-              className="aspect-[4/5] w-14 shrink-0 rounded-lg object-cover object-center ring-1 ring-inset ring-black/5 [@container(min-width:720px)]:hidden"
-            />
-          )}
-          <div className="min-w-0 flex-1">
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] !text-player-textMuted">
-              <span className="h-1.5 w-1.5 rounded-full bg-player-ink" aria-hidden="true" />
-              Audio lesson
-            </span>
-            <h3 className="mt-1 truncate text-[17px] font-bold leading-snug !text-player-text">{title}</h3>
-            {(courseTitle || moduleTitle) && (
-              <p className="truncate text-[12px] font-medium !text-player-textMuted">
-                {courseTitle}
-                {courseTitle && moduleTitle ? ' · ' : ''}
-                {moduleTitle}
+        <div className="min-w-0 flex-1 px-5 py-4">
+          {/* Row 1 — header */}
+          <div className="flex items-start gap-3">
+            {artworkUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={artworkUrl}
+                alt=""
+                className="aspect-square w-10 shrink-0 rounded-lg object-cover object-center ring-1 ring-inset ring-black/5 [@container(min-width:720px)]:hidden"
+              />
+            )}
+            <div className="min-w-0 flex-1">
+              <h3 className="truncate text-[16px] font-bold leading-snug !text-player-text">{title}</h3>
+              <p className="flex min-w-0 items-center gap-1.5 truncate text-[12px] font-medium !text-player-textMuted">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-player-ink" aria-hidden="true" />
+                <span className="truncate">
+                  Audio lesson
+                  {courseTitle ? ` · ${courseTitle}` : ''}
+                  {moduleTitle ? ` · ${moduleTitle}` : ''}
+                </span>
               </p>
+            </div>
+            {!isAlreadyCompleted && (
+              <span className="hidden shrink-0 pt-0.5 text-[11px] !text-player-textMuted [@container(min-width:520px)]:inline">
+                Completes at {completionThreshold ?? 90}%
+              </span>
             )}
           </div>
-        </div>
 
-        {/* Live waveform — shown for every audio block, zero authoring. One compact band whether or
-            not there's artwork. The canvas sits in normal flow with a definite CSS size (w-full,
-            h-14): an absolutely-positioned canvas can't be sized by left/right insets (it's a
-            replaced element), so it fell back to its backing-store width (CSS px x DPR) and grew
-            on every resize until it spilled across the artwork. */}
-        <div className="mt-4 rounded-xl border border-player-border bg-player-raised px-4 py-2">
-          <LiveWaveformVisualizer active={isActiveTrack} color={PLAYER.ink} bars="auto" className="h-14 w-full" />
-        </div>
+          {/* Speaker row (only when speakers are authored — optional, adds its own height) */}
+          {content.speakers.length > 0 && (
+            <div className="mt-3 flex justify-center">
+              <SpeakerRow speakers={content.speakers} segments={content.segments} active={isActiveTrack} />
+            </div>
+          )}
 
-        {/* Speaker row */}
-        {content.speakers.length > 0 && (
-          <div className="mt-4 flex justify-center">
-            <SpeakerRow speakers={content.speakers} segments={content.segments} active={isActiveTrack} />
+          {/* Row 2 — transport controls + live waveform band, side by side */}
+          <div className="mt-3 flex items-center gap-3">
+            <div className="flex shrink-0 items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => player.skip(-10)}
+                disabled={!isActiveTrack}
+                aria-label="Back 10 seconds"
+                className={`h-10 w-10 ${playerIconButton}`}
+              >
+                <SkipBackIcon size={20} />
+              </button>
+
+              {/* An inactive player (another block holds the shared element) claims it on Play
+                  rather than being disabled — see activate(). */}
+              <PlayerPlayButton
+                size="compact"
+                isPlaying={isPlaying}
+                isBusy={isBuffering}
+                onClick={isActiveTrack ? player.toggle : () => activate()}
+              />
+
+              <button
+                type="button"
+                onClick={() => player.skip(10)}
+                disabled={!isActiveTrack}
+                aria-label="Forward 10 seconds"
+                className={`h-10 w-10 ${playerIconButton}`}
+              >
+                <SkipForwardIcon size={20} />
+              </button>
+            </div>
+
+            {/* Live waveform — zero authoring. Canvas in normal flow with a definite CSS size
+                (an absolutely-positioned canvas can't be sized by insets and would grow to its
+                backing-store width). */}
+            <div className="flex h-12 min-w-[80px] flex-1 items-center rounded-xl border border-player-border bg-player-raised px-3">
+              <LiveWaveformVisualizer active={isActiveTrack} color={PLAYER.ink} bars="auto" className="h-8 w-full" />
+            </div>
           </div>
-        )}
 
-        {/* Controls */}
-        <div className="mt-4 flex items-center justify-center gap-6">
-          <button
-            type="button"
-            onClick={() => player.skip(-10)}
-            disabled={!isActiveTrack}
-            aria-label="Back 10 seconds"
-            className={`h-11 w-11 ${playerIconButton}`}
-          >
-            <SkipBackIcon />
-          </button>
-
-          {/* An inactive player (another block holds the shared element) claims it on Play
-              rather than being disabled — see activate(). */}
-          <PlayerPlayButton
-            size="md"
-            isPlaying={isPlaying}
-            isBusy={isBuffering}
-            onClick={isActiveTrack ? player.toggle : () => activate()}
-          />
-
-          <button
-            type="button"
-            onClick={() => player.skip(10)}
-            disabled={!isActiveTrack}
-            aria-label="Forward 10 seconds"
-            className={`h-11 w-11 ${playerIconButton}`}
-          >
-            <SkipForwardIcon />
-          </button>
-        </div>
-
-        {/* Scrubber + time + speed */}
-        <div className="mt-4 space-y-2">
-          <Scrubber active={isActiveTrack} />
-          <div className="flex items-center justify-between">
+          {/* Row 3 — time · scrubber · speed on one line */}
+          <div className="mt-3 flex items-center gap-3">
             <TimeReadout active={isActiveTrack} />
+            <div className="min-w-0 flex-1">
+              <Scrubber active={isActiveTrack} />
+            </div>
             <PlaybackSpeedMenu />
           </div>
         </div>
 
-        {!isAlreadyCompleted && (
-          <p className="mt-2 text-center text-[11px] !text-player-textMuted">
-            Marks complete automatically at {completionThreshold ?? 90}% listened.
-          </p>
-        )}
-      </div>
-
         {artworkUrl && (
           // Full-height, flush to the card's right edge (the card's overflow-hidden + radius shape
           // its corners); a hairline separates it from the content. Absolutely positioned image so
-          // the CONTENT column sets the height — the art crops to fit (cover, centred), ~4:5.
-          <div className="relative hidden w-72 shrink-0 border-l border-player-border bg-player-raised [@container(min-width:720px)]:block">
+          // the CONTENT column sets the height — the art crops to fit (cover, centred), ~square.
+          <div className="relative hidden w-48 shrink-0 border-l border-player-border bg-player-raised [@container(min-width:720px)]:block">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={artworkUrl} alt="" className="absolute inset-0 h-full w-full object-cover object-center" />
           </div>
@@ -366,7 +368,7 @@ export default function AudioDrivePlayer({
 function TimeReadout({ active }: { active: boolean }) {
   const { currentTime, duration } = useAudioTime();
   return (
-    <span className="text-[12px] font-medium tabular-nums !text-player-textMuted">
+    <span className="shrink-0 text-[12px] font-medium tabular-nums !text-player-textMuted">
       <span className="!text-player-text">{formatTime(active ? currentTime : 0)}</span> / {active ? formatTime(duration) : '--:--'}
     </span>
   );
