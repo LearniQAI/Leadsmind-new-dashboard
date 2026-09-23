@@ -8,6 +8,8 @@ import type { LessonSpeaker, SpeakerSegment } from './useAudioLessonContent';
 interface SpeakerRowProps {
   speakers: LessonSpeaker[];
   segments: SpeakerSegment[];
+  /** This player's block is the loaded track (highlighting follows the shared playhead only then). */
+  active?: boolean;
 }
 
 function speakerLabel(s: LessonSpeaker['speakers']) {
@@ -26,8 +28,9 @@ function initials(name: string) {
 // Isolated re-render boundary (per the brief's explicit performance requirement): this is the
 // ONLY component that subscribes to useAudioTime() for the purpose of speaker highlighting — a
 // timeupdate tick re-renders this row alone, never the transcript/chapters/header around it.
-export default function SpeakerRow({ speakers, segments }: SpeakerRowProps) {
-  const { currentTime } = useAudioTime();
+export default function SpeakerRow({ speakers, segments, active = true }: SpeakerRowProps) {
+  const snapshot = useAudioTime();
+  const currentTime = active ? snapshot.currentTime : -1;
 
   const activeSpeakerId = useMemo(() => {
     if (segments.length === 0) return null;

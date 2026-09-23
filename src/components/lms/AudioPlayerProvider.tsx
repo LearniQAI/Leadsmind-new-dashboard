@@ -114,7 +114,18 @@ interface AudioGraph {
   analyser: AnalyserNode;
 }
 
-export function AudioPlayerProvider({ children }: { children: React.ReactNode }) {
+export function AudioPlayerProvider({
+  children,
+  recordProgress = true,
+}: {
+  children: React.ReactNode;
+  /** false for ADMIN contexts (lesson canvas, Audio Lesson Builder preview): staff test-plays
+   *  must not create a student contact for the admin, write audio_progress/completions, or
+   *  skew listen-through analytics. Playback itself is identical. */
+  recordProgress?: boolean;
+}) {
+  const recordProgressRef = useRef(recordProgress);
+  recordProgressRef.current = recordProgress;
   const audioRef = useRef<HTMLAudioElement>(null);
   const [track, setTrack] = useState<AudioTrack | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -122,7 +133,10 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   const [hasError, setHasError] = useState(false);
   const [duration, setDuration] = useState(0);
   const [playbackRate, setPlaybackRateState] = useState(1);
-  const [activeFullViewBlockId, setActiveFullViewBlockId] = useState<string | null>(null);
+  // Every full player currently on screen (a lesson can hold several audio blocks). Was a single
+  // "last registered wins" id, which made the mini bar appear over a visible full player whenever
+  // the playing block wasn't the last-mounted one.
+  const [fullViewBlockIds, setFullViewBlockIds] = useState<ReadonlySet<string>>(new Set());
   const [completedAssetIds, setCompletedAssetIds] = useState<Set<string>>(new Set());
 
   const lastReportedRef = useRef(0);
@@ -282,9 +296,19 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   }, [publishTimeSnapshot]);
 
   const registerFullView = useCallback((contentBlockId: string) => {
-    setActiveFullViewBlockId(contentBlockId);
+    setFullViewBlockIds((prev) => {
+      if (prev.has(contentBlockId)) return prev;
+      const next = new Set(prev);
+      next.add(contentBlockId);
+      return next;
+    });
     return () => {
-      setActiveFullViewBlockId((current) => (current === contentBlockId ? null : current));
+      setFullViewBlockIds((prev) => {
+        if (!prev.has(contentBlockId)) return prev;
+        const next = new Set(prev);
+        next.delete(contentBlockId);
+        return next;
+      });
     };
   }, []);
 
@@ -317,6 +341,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       // Phase 1 AudioDrivePlayer's original cadence), not every timeupdate tick.
       if (Math.abs(audio.currentTime - lastReportedRef.current) < 5 && pct < 100) return;
       lastReportedRef.current = audio.currentTime;
+      if (!recordProgressRef.current) return;
 
       recordAudioProgress(current.contentBlockId, {
         positionSeconds: audio.currentTime,
@@ -385,7 +410,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     hasError,
     duration,
     playbackRate,
-    isFullViewActive: !!track && activeFullViewBlockId === track.contentBlockId,
+    isFullViewActive: !!track && fullViewBlockIds.has(track.contentBlockId),
     completedAssetIds,
     load,
     play,
@@ -401,7 +426,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     getAnalyser,
   }), [
     track, isPlaying, isLoading, hasError, duration, playbackRate,
-    activeFullViewBlockId, completedAssetIds, load, play, pause, toggle, seek, skip,
+    fullViewBlockIds, completedAssetIds, load, play, pause, toggle, seek, skip,
     setPlaybackRate, close, registerFullView, subscribeTime, getTimeSnapshot, getAnalyser,
   ]);
 
@@ -419,6 +444,12 @@ export function useAudioPlayer(): AudioPlayerContextValue {
   const ctx = useContext(AudioPlayerContext);
   if (!ctx) throw new Error("useAudioPlayer must be used within AudioPlayerProvider");
   return ctx;
+}
+
+/** True when rendered under an AudioPlayerProvider — lets a surface that MAY be mounted outside
+ *  one (a canvas block node) fall back gracefully instead of useAudioPlayer() throwing. */
+export function useHasAudioPlayerProvider(): boolean {
+  return useContext(AudioPlayerContext) !== null;
 }
 
 /** Subscribes to high-frequency playback position. Only the calling component re-renders on

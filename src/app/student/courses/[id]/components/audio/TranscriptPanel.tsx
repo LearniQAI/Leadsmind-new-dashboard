@@ -11,6 +11,10 @@ interface TranscriptPanelProps {
   speakers: LessonSpeaker[];
   /** Inside a mobile accordion: no own panel chrome/heading (the accordion provides both). */
   bare?: boolean;
+  /** This player's block is the loaded track (highlighting follows the shared playhead only then). */
+  active?: boolean;
+  /** Overrides the plain provider seek — the full player passes seek-or-activate. */
+  onSeek?: (seconds: number) => void;
 }
 
 function speakerName(speakers: LessonSpeaker[], speakerId: string | null): string | null {
@@ -26,9 +30,11 @@ function prefersReducedMotion(): boolean {
 // Own re-render boundary. Auto-scroll follows the active line but yields the moment the user
 // scrolls manually (chat-app "new messages" pattern) — a "jump to current" pill reappears the
 // affordance rather than fighting them.
-export default function TranscriptPanel({ transcript, speakers, bare = false }: TranscriptPanelProps) {
-  const { seek } = useAudioPlayer();
-  const { currentTime } = useAudioTime();
+export default function TranscriptPanel({ transcript, speakers, bare = false, active = true, onSeek }: TranscriptPanelProps) {
+  const { seek: providerSeek } = useAudioPlayer();
+  const seek = onSeek ?? providerSeek;
+  const snapshot = useAudioTime();
+  const currentTime = active ? snapshot.currentTime : -1;
   const containerRef = useRef<HTMLDivElement>(null);
   const activeLineRef = useRef<HTMLButtonElement>(null);
   const isAutoScrollingRef = useRef(false);

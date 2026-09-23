@@ -36,7 +36,9 @@ export default function PlaybackSpeedMenu() {
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-hidden="true" />
+          {/* data-player-control: on the lesson canvas, a click-away here only closes the menu —
+              it must not also select/drag the block (see CanvasAudioPlayer). */}
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-hidden="true" data-player-control="" />
           <div className="absolute bottom-full right-0 z-20 mb-2 flex gap-1 rounded-full border border-player-border bg-player-surface p-1 shadow-player-card animate-in fade-in slide-in-from-bottom-1 duration-150 motion-reduce:animate-none">
             {RATES.map((rate) => (
               <button

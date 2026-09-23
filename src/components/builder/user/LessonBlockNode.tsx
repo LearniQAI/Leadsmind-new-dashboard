@@ -6,6 +6,7 @@ import { Loader2, AlertCircle } from 'lucide-react';
 import { useLessonBuilder } from '../LessonBuilderContext';
 import { LessonBlockNodeSettings } from './LessonBlockNodeSettings';
 import { BLOCK_TYPE_META, BlockCanvasPreview } from './LessonBlockPreviews';
+import { CanvasAudioPlayer } from './CanvasAudioPlayer';
 
 export interface LessonBlockNodeProps {
   blockId: string | null;
@@ -173,7 +174,19 @@ export const LessonBlockNode = (allProps: LessonBlockNodeProps & any) => {
             <AlertCircle size={13} /> {error}
           </div>
         ) : block ? (
-          <BlockCanvasPreview block={block} />
+          block.type === 'audio' && block.content?.mode === 'drive' && block.content?.audio_asset_id ? (
+            // The real, fully interactive signature player (not a pointer-events-none preview
+            // like the other block types). Its controls are shielded from Craft's
+            // select/drag; the header strip above and this padding stay the block's grab area.
+            <CanvasAudioPlayer
+              blockId={block.id}
+              assetId={block.content.audio_asset_id}
+              artworkUrl={block.audio_artwork_url ?? null}
+              completionThreshold={block.completion_threshold ?? null}
+            />
+          ) : (
+            <BlockCanvasPreview block={block} />
+          )
         ) : null}
       </div>
     </div>

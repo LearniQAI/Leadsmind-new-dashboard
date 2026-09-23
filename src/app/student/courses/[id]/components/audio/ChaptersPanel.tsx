@@ -9,6 +9,10 @@ interface ChaptersPanelProps {
   chapters: Chapter[];
   /** Inside a mobile accordion: no own panel chrome/heading (the accordion provides both). */
   bare?: boolean;
+  /** This player's block is the loaded track (highlighting follows the shared playhead only then). */
+  active?: boolean;
+  /** Overrides the plain provider seek — the full player passes seek-or-activate. */
+  onSeek?: (seconds: number) => void;
 }
 
 function formatTime(seconds: number): string {
@@ -19,9 +23,11 @@ function formatTime(seconds: number): string {
 
 // Own re-render boundary, same highlight language as TranscriptPanel (raised tint + gradient
 // edge bar on the active row) so the two panels read as one shared visual system.
-export default function ChaptersPanel({ chapters, bare = false }: ChaptersPanelProps) {
-  const { seek } = useAudioPlayer();
-  const { currentTime } = useAudioTime();
+export default function ChaptersPanel({ chapters, bare = false, active = true, onSeek }: ChaptersPanelProps) {
+  const { seek: providerSeek } = useAudioPlayer();
+  const seek = onSeek ?? providerSeek;
+  const snapshot = useAudioTime();
+  const currentTime = active ? snapshot.currentTime : -1;
 
   const activeId = useMemo(() => {
     if (chapters.length === 0) return null;

@@ -13,9 +13,15 @@ function timeFromPointer(clientX: number, el: HTMLDivElement, duration: number):
 // Own re-render boundary (useAudioTime), same isolation pattern as SpeakerRow. Shows played AND
 // buffered range from the real <audio> `buffered` TimeRanges (via the provider), with a
 // physically-grabbable drag handle whose hit target is larger than its visual size.
-export default function Scrubber() {
+// `active` = this player's block is the provider's loaded track. When another block holds the
+// shared element, the time snapshot belongs to THAT block, so an inactive scrubber shows empty
+// and ignores input instead of displaying/seeking someone else's audio.
+export default function Scrubber({ active = true }: { active?: boolean }) {
   const { seek } = useAudioPlayer();
-  const { currentTime, duration, bufferedEnd } = useAudioTime();
+  const snapshot = useAudioTime();
+  const currentTime = active ? snapshot.currentTime : 0;
+  const duration = active ? snapshot.duration : 0;
+  const bufferedEnd = active ? snapshot.bufferedEnd : 0;
   const trackRef = useRef<HTMLDivElement>(null);
   const [dragTime, setDragTime] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -59,7 +65,8 @@ export default function Scrubber() {
     <div
       ref={trackRef}
       role="slider"
-      tabIndex={0}
+      tabIndex={active ? 0 : -1}
+      aria-disabled={!active || undefined}
       aria-label="Seek"
       aria-valuemin={0}
       aria-valuemax={Math.round(duration)}

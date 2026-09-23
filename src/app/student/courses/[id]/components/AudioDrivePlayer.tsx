@@ -61,7 +61,7 @@ export default function AudioDrivePlayer({
   onComplete,
 }: AudioDrivePlayerProps) {
   const player = useAudioPlayer();
-  const { duration } = player;
+  const { duration, registerFullView } = player;
   const content = useAudioLessonContent(contentBlockId);
   // Colours: the player's own signature identity (playerIdentity.ts / `player-*` tokens), NOT the
   // course theme — every variant there is AA-derived and asserted by playerIdentity.test.ts.
@@ -73,23 +73,42 @@ export default function AudioDrivePlayer({
   }, [isAlreadyCompleted]);
 
   useEffect(() => {
-    return player.registerFullView(contentBlockId);
-  }, [player, contentBlockId]);
+    return registerFullView(contentBlockId);
+    // Depends on the STABLE registerFullView callback, not the whole `player` context object:
+    // that object changes on every provider state change, and re-registering on each one would
+    // churn the provider's registered-view Set into a render loop.
+  }, [registerFullView, contentBlockId]);
+
+  const buildTrack = (): AudioTrack => ({
+    assetId, contentBlockId, courseId, lessonId, title, courseTitle, artworkUrl, completionThreshold,
+  });
 
   // Loads once resumePositionSeconds has resolved (or is confirmed absent) so a real saved
-  // position is never raced by an immediate 0-start load.
+  // position is never raced by an immediate 0-start load. Only claims the provider's single
+  // <audio> element if nothing else is loaded (or it's already this block): with several audio
+  // blocks on one page, each used to load() on mount and the LAST one won, leaving the others
+  // permanently disabled. Now the first claims it and any other claims it on its own Play.
   useEffect(() => {
     if (content.loading) return;
-    const track: AudioTrack = {
-      assetId, contentBlockId, courseId, lessonId, title, courseTitle, artworkUrl, completionThreshold,
-    };
-    player.load(track, { resumeAt: content.resumePositionSeconds ?? undefined });
+    const current = player.track;
+    if (current && current.contentBlockId !== contentBlockId) return;
+    player.load(buildTrack(), { resumeAt: content.resumePositionSeconds ?? undefined });
     // artworkUrl is a dep so a replaced/removed image reaches the mini bar's track too — safe:
     // load() short-circuits for the same assetId (metadata update only, never touches audio.src).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assetId, content.loading, artworkUrl]);
 
-  const isActiveTrack = player.track?.assetId === assetId;
+  // One player at a time per provider (matches the student page's single shared element): this
+  // block becomes the loaded track and plays — inside the user's click, so play() is allowed.
+  // `atSeconds` lets a chapter/transcript click on an inactive player start from that point.
+  const activate = (atSeconds?: number) => {
+    player.load(buildTrack(), { resumeAt: atSeconds ?? content.resumePositionSeconds ?? undefined });
+    player.play();
+  };
+
+  // Identity is the BLOCK, not the asset: one recording can be attached to several blocks.
+  const isActiveTrack = player.track?.contentBlockId === contentBlockId;
+  const seekOrActivate = (seconds: number) => (isActiveTrack ? player.seek(seconds) : activate(seconds));
   const isPlaying = isActiveTrack && player.isPlaying;
   const isBuffering = isActiveTrack && player.isLoading && duration > 0;
   const isInitialLoading = isActiveTrack && player.isLoading && duration === 0 && !player.hasError;
@@ -251,7 +270,7 @@ export default function AudioDrivePlayer({
         {/* Speaker row */}
         {content.speakers.length > 0 && (
           <div className="mt-4 flex justify-center">
-            <SpeakerRow speakers={content.speakers} segments={content.segments} />
+            <SpeakerRow speakers={content.speakers} segments={content.segments} active={isActiveTrack} />
           </div>
         )}
 
@@ -269,8 +288,9 @@ export default function AudioDrivePlayer({
 
           <button
             type="button"
-            onClick={player.toggle}
-            disabled={!isActiveTrack}
+            // An inactive player (another block holds the shared element) claims it on Play
+            // rather than being disabled — see activate().
+            onClick={isActiveTrack ? player.toggle : () => activate()}
             aria-label={isPlaying ? 'Pause' : 'Play'}
             className={`h-14 w-14 ${playerPrimaryButton}`}
           >
@@ -300,9 +320,9 @@ export default function AudioDrivePlayer({
 
         {/* Scrubber + time + speed */}
         <div className="mt-5 space-y-2">
-          <Scrubber />
+          <Scrubber active={isActiveTrack} />
           <div className="flex items-center justify-between">
-            <TimeReadout />
+            <TimeReadout active={isActiveTrack} />
             <PlaybackSpeedMenu />
           </div>
         </div>
@@ -318,9 +338,11 @@ export default function AudioDrivePlayer({
       {(content.chapters.length > 0 || content.transcript.length > 0) && (
         <>
           <div className="hidden gap-3 md:grid md:grid-cols-[220px_1fr]">
-            {content.chapters.length > 0 && <ChaptersPanel chapters={content.chapters} />}
+            {content.chapters.length > 0 && (
+              <ChaptersPanel chapters={content.chapters} active={isActiveTrack} onSeek={seekOrActivate} />
+            )}
             {content.transcript.length > 0 && (
-              <TranscriptPanel transcript={content.transcript} speakers={content.speakers} />
+              <TranscriptPanel transcript={content.transcript} speakers={content.speakers} active={isActiveTrack} onSeek={seekOrActivate} />
             )}
           </div>
 
@@ -332,7 +354,7 @@ export default function AudioDrivePlayer({
                   <ChevronDown size={16} className="!text-player-textMuted transition-transform duration-200 ease-player group-open:rotate-180 motion-reduce:transition-none" />
                 </summary>
                 <div className="px-2 pb-2">
-                  <ChaptersPanel chapters={content.chapters} bare />
+                  <ChaptersPanel chapters={content.chapters} active={isActiveTrack} onSeek={seekOrActivate} bare />
                 </div>
               </details>
             )}
@@ -343,7 +365,7 @@ export default function AudioDrivePlayer({
                   <ChevronDown size={16} className="!text-player-textMuted transition-transform duration-200 ease-player group-open:rotate-180 motion-reduce:transition-none" />
                 </summary>
                 <div className="px-2 pb-2">
-                  <TranscriptPanel transcript={content.transcript} speakers={content.speakers} bare />
+                  <TranscriptPanel transcript={content.transcript} speakers={content.speakers} active={isActiveTrack} onSeek={seekOrActivate} bare />
                 </div>
               </details>
             )}
@@ -367,11 +389,14 @@ function PlayGlyph({ show, children }: { show: boolean; children: React.ReactNod
   );
 }
 
-function TimeReadout() {
+// Time/duration are the provider's CURRENT track's — only meaningful for the active block. An
+// inactive block (another one holds the shared element) shows a neutral readout instead of
+// mirroring someone else's position.
+function TimeReadout({ active }: { active: boolean }) {
   const { currentTime, duration } = useAudioTime();
   return (
     <span className="text-[12px] font-medium tabular-nums !text-player-textMuted">
-      <span className="!text-player-text">{formatTime(currentTime)}</span> / {formatTime(duration)}
+      <span className="!text-player-text">{formatTime(active ? currentTime : 0)}</span> / {active ? formatTime(duration) : '--:--'}
     </span>
   );
 }

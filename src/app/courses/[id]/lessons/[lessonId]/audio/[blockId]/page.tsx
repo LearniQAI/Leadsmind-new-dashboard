@@ -139,7 +139,9 @@ export default function AudioLessonBuilderPage() {
   const isAdvancedOpen = advancedOpen ?? hasAdvancedContent;
 
   return (
-    <AudioPlayerProvider>
+    // recordProgress=false: admin preview plays must not create a student contact for the
+    // admin or write audio_progress — that would also skew the analytics panel on this page.
+    <AudioPlayerProvider recordProgress={false}>
       <div className="min-h-screen bg-dash-bg p-6 md:p-8">
         <button
           onClick={() => router.push(`/courses/${courseId}/lessons/${lessonId}/builder`)}
