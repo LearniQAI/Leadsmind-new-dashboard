@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React from "react";
 import { useRouter } from "next/navigation";
 import { Play, Pause, X, Loader2 } from "lucide-react";
-import { getAccessibleAccent } from "@/lib/color/accessibleAccent";
+import { PLAYER } from "@/lib/lms/audio/playerIdentity";
+import { playerFocus, playerIconButton, playerPrimaryButton } from "@/lib/lms/audio/playerStyles";
 import { useAudioPlayer, useAudioTime } from "./AudioPlayerProvider";
 import LiveWaveformVisualizer from "./LiveWaveformVisualizer";
 
@@ -25,7 +26,6 @@ export default function MiniAudioPlayerBar() {
   const router = useRouter();
   const { track, isPlaying, isLoading, isFullViewActive, toggle, close } = useAudioPlayer();
   const { currentTime, duration } = useAudioTime();
-  const accent = useMemo(() => (track?.accentHex ? getAccessibleAccent(track.accentHex) : null), [track?.accentHex]);
 
   if (!track || isFullViewActive) return null;
 
@@ -39,11 +39,14 @@ export default function MiniAudioPlayerBar() {
     <div
       role="region"
       aria-label="Audio player"
-      className="fixed inset-x-0 bottom-0 z-[85] border-t border-dash-border bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-[0_-4px_16px_rgba(15,23,42,0.06)]"
+      // Same signature identity as the full player (player-* tokens): lavender-white glass,
+      // gradient progress edge, gradient primary control. Violet-tinted upward shadow so it
+      // reads as floating over the page, like the full player card.
+      className="fixed inset-x-0 bottom-0 z-[85] border-t border-player-border bg-player-surface/95 shadow-[0_-10px_30px_-14px_rgba(123,63,242,0.3)] backdrop-blur supports-[backdrop-filter]:bg-player-surface/85"
     >
-      <div className="h-0.5 w-full bg-dash-border">
+      <div className="h-[3px] w-full bg-player-track">
         <div
-          className="h-full bg-dash-accent transition-[width] duration-200 ease-linear"
+          className="h-full rounded-r-full bg-gradient-to-r from-player-violetUi to-player-magentaUi transition-[width] duration-200 ease-linear"
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -51,16 +54,13 @@ export default function MiniAudioPlayerBar() {
         <button
           type="button"
           onClick={reopen}
-          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+          className={`group flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left ${playerFocus}`}
           aria-label={`Reopen ${track.title}`}
         >
           {/* Lightweight waveform (few bars, ~30fps cap, still when paused) — this bar mostly
               sits in peripheral vision. The full player's visualizer unmounts when this one
               mounts and vice versa (isFullViewActive), so only one loop ever runs. */}
-          <div
-            className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-dash-surface ring-1 ring-inset ring-dash-border"
-            style={!track.artworkUrl && accent ? { backgroundColor: `${accent.raw}14` } : undefined}
-          >
+          <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-player-raised shadow-player-panel ring-1 ring-inset ring-player-border transition-transform duration-150 ease-player group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100">
             {track.artworkUrl ? (
               <>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -76,14 +76,15 @@ export default function MiniAudioPlayerBar() {
                 active
                 variant="mini"
                 bars={5}
-                color={accent?.ui}
-                className="h-full w-full px-2 text-dash-accent"
+                color={PLAYER.violetUi}
+                colorTo={PLAYER.magentaUi}
+                className="h-full w-full px-2"
               />
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-[13px] font-bold !text-dash-text">{track.title}</div>
-            <div className="truncate text-[11px] !text-dash-textMuted">
+            <div className="truncate text-[13px] font-bold !text-player-text">{track.title}</div>
+            <div className="truncate text-[11px] tabular-nums !text-player-textMuted">
               {track.courseTitle ? `${track.courseTitle} · ` : ""}
               {formatTime(currentTime)} / {formatTime(duration)}
             </div>
@@ -95,26 +96,42 @@ export default function MiniAudioPlayerBar() {
           onClick={toggle}
           disabled={isLoading}
           aria-label={isPlaying ? "Pause" : "Play"}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-dash-accent text-white transition-transform duration-150 hover:scale-105 active:scale-95 disabled:opacity-60 motion-reduce:transition-none motion-reduce:hover:scale-100"
+          className={`h-10 w-10 shrink-0 ${playerPrimaryButton}`}
         >
-          {isLoading ? (
+          {/* Same cross-fading glyph swap as the full player. */}
+          <MiniGlyph show={!isLoading && !isPlaying}>
+            <Play size={16} fill="currentColor" strokeLinejoin="round" className="ml-0.5" />
+          </MiniGlyph>
+          <MiniGlyph show={!isLoading && isPlaying}>
+            <Pause size={16} fill="currentColor" strokeLinejoin="round" />
+          </MiniGlyph>
+          <MiniGlyph show={isLoading}>
             <Loader2 size={16} className="animate-spin motion-reduce:animate-none" />
-          ) : isPlaying ? (
-            <Pause size={16} fill="currentColor" />
-          ) : (
-            <Play size={16} fill="currentColor" className="ml-0.5" />
-          )}
+          </MiniGlyph>
         </button>
 
         <button
           type="button"
           onClick={close}
           aria-label="Close player"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full !text-dash-textMuted transition-colors hover:bg-dash-surface hover:!text-dash-text"
+          className={`h-9 w-9 shrink-0 ${playerIconButton}`}
         >
           <X size={15} />
         </button>
       </div>
     </div>
+  );
+}
+
+function MiniGlyph({ show, children }: { show: boolean; children: React.ReactNode }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`absolute inset-0 flex items-center justify-center transition-[opacity,transform] duration-200 ease-player motion-reduce:transition-none ${
+        show ? "scale-100 opacity-100" : "scale-75 opacity-0"
+      }`}
+    >
+      {children}
+    </span>
   );
 }

@@ -2,11 +2,7 @@
 
 import React, { useCallback, useRef, useState } from 'react';
 import { useAudioTime, useAudioPlayer } from '@/components/lms/AudioPlayerProvider';
-import type { AccessibleAccent } from '@/lib/color/accessibleAccent';
-
-interface ScrubberProps {
-  accent: AccessibleAccent;
-}
+import { playerFocus } from '@/lib/lms/audio/playerStyles';
 
 function timeFromPointer(clientX: number, el: HTMLDivElement, duration: number): number {
   const rect = el.getBoundingClientRect();
@@ -17,7 +13,7 @@ function timeFromPointer(clientX: number, el: HTMLDivElement, duration: number):
 // Own re-render boundary (useAudioTime), same isolation pattern as SpeakerRow. Shows played AND
 // buffered range from the real <audio> `buffered` TimeRanges (via the provider), with a
 // physically-grabbable drag handle whose hit target is larger than its visual size.
-export default function Scrubber({ accent }: ScrubberProps) {
+export default function Scrubber() {
   const { seek } = useAudioPlayer();
   const { currentTime, duration, bufferedEnd } = useAudioTime();
   const trackRef = useRef<HTMLDivElement>(null);
@@ -74,23 +70,26 @@ export default function Scrubber({ accent }: ScrubberProps) {
       onPointerUp={commit}
       onPointerCancel={commit}
       onKeyDown={onKeyDown}
-      className="group relative h-4 w-full cursor-pointer touch-none select-none"
+      className={`group relative h-5 w-full cursor-pointer touch-none select-none rounded-full ${playerFocus}`}
     >
-      <div className="absolute inset-y-0 my-auto h-1.5 w-full rounded-full bg-dash-border">
+      {/* Rail thickens on hover/drag (6px → 8px) so the control visibly "wakes up" under the pointer. */}
+      <div
+        className={`absolute inset-x-0 top-1/2 -translate-y-1/2 overflow-hidden rounded-full bg-player-track transition-[height] duration-150 ease-player motion-reduce:transition-none ${isDragging ? 'h-2' : 'h-1.5 group-hover:h-2'}`}
+      >
         <div
-          className="absolute inset-y-0 left-0 h-full rounded-full bg-dash-border"
-          style={{ width: `${bufferedPct}%`, backgroundColor: '#CBD5E1' }}
+          className="absolute inset-y-0 left-0 h-full rounded-full bg-player-buffered"
+          style={{ width: `${bufferedPct}%` }}
         />
         <div
-          className={`absolute inset-y-0 left-0 h-full rounded-full ${isDragging ? '' : 'transition-[width] duration-150 ease-linear'}`}
-          style={{ width: `${playedPct}%`, backgroundColor: accent.ui }}
+          className={`absolute inset-y-0 left-0 h-full rounded-full bg-gradient-to-r from-player-violetUi to-player-magentaUi ${isDragging ? '' : 'transition-[width] duration-150 ease-linear'}`}
+          style={{ width: `${playedPct}%` }}
         />
       </div>
       {/* Visual thumb is small; the actual hit target is this whole 16px-tall track, well past
           WCAG's 24px minimum once combined with the pointerdown-anywhere-on-track behavior. */}
       <div
-        className={`absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full border-2 border-white shadow transition-transform duration-150 ease-out group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100 ${isDragging ? 'scale-125' : ''}`}
-        style={{ left: `calc(${playedPct}% - 7px)`, backgroundColor: accent.ui }}
+        className={`absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full border-[3px] border-white bg-player-violetUi shadow-player-glow transition-transform duration-150 ease-player group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100 ${isDragging ? 'scale-125' : ''}`}
+        style={{ left: `calc(${playedPct}% - 7px)` }}
       />
     </div>
   );

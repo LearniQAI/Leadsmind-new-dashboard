@@ -27,9 +27,6 @@ export interface AudioTrack {
   artworkUrl?: string | null;
   /** The block's real completion_threshold (falls back to 90, same default used everywhere else). */
   completionThreshold?: number | null;
-  /** The course theme's raw accent hex — carried on the track so surfaces that render outside
-   *  the lesson page (the mini bar) can still theme the waveform on-brand. */
-  accentHex?: string | null;
 }
 
 export interface AudioTimeSnapshot {

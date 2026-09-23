@@ -2,13 +2,12 @@
 
 import React, { useMemo } from 'react';
 import { useAudioTime } from '@/components/lms/AudioPlayerProvider';
-import type { AccessibleAccent } from '@/lib/color/accessibleAccent';
+import { PLAYER } from '@/lib/lms/audio/playerIdentity';
 import type { LessonSpeaker, SpeakerSegment } from './useAudioLessonContent';
 
 interface SpeakerRowProps {
   speakers: LessonSpeaker[];
   segments: SpeakerSegment[];
-  accent: AccessibleAccent;
 }
 
 function speakerLabel(s: LessonSpeaker['speakers']) {
@@ -27,7 +26,7 @@ function initials(name: string) {
 // Isolated re-render boundary (per the brief's explicit performance requirement): this is the
 // ONLY component that subscribes to useAudioTime() for the purpose of speaker highlighting — a
 // timeupdate tick re-renders this row alone, never the transcript/chapters/header around it.
-export default function SpeakerRow({ speakers, segments, accent }: SpeakerRowProps) {
+export default function SpeakerRow({ speakers, segments }: SpeakerRowProps) {
   const { currentTime } = useAudioTime();
 
   const activeSpeakerId = useMemo(() => {
@@ -53,16 +52,16 @@ export default function SpeakerRow({ speakers, segments, accent }: SpeakerRowPro
           return (
             <div
               key={ls.speaker_id}
-              className="relative transition-transform duration-250 ease-out motion-reduce:transition-none"
+              className="relative transition-transform duration-200 ease-player motion-reduce:transition-none"
               style={{
                 transform: isActive && speakers.length > 1 ? 'scale(1.08)' : 'scale(1)',
                 zIndex: isActive ? 10 : 1,
               }}
             >
               <div
-                className="h-14 w-14 overflow-hidden rounded-full border-[3px] border-white bg-dash-surface shadow-sm transition-[box-shadow,opacity] duration-250 ease-out motion-reduce:transition-none"
+                className="h-14 w-14 overflow-hidden rounded-full border-[3px] border-player-surface bg-player-raised shadow-player-panel transition-[box-shadow,opacity] duration-200 ease-player motion-reduce:transition-none"
                 style={{
-                  boxShadow: isActive ? `0 0 0 3px ${accent.ui}` : '0 0 0 0 transparent',
+                  boxShadow: isActive ? `0 0 0 3px ${PLAYER.violetUi}` : '0 0 0 0 transparent',
                   opacity: segments.length > 0 && !isActive ? 0.55 : 1,
                 }}
               >
@@ -70,7 +69,7 @@ export default function SpeakerRow({ speakers, segments, accent }: SpeakerRowPro
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={ls.speakers.image_url} alt="" className="h-full w-full object-cover" />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-[13px] font-bold !text-dash-textMuted">
+                  <div className="flex h-full w-full items-center justify-center text-[13px] font-bold !text-player-textMuted">
                     {initials(label)}
                   </div>
                 )}
@@ -84,8 +83,7 @@ export default function SpeakerRow({ speakers, segments, accent }: SpeakerRowPro
         {activeSpeaker && segments.length > 0 && (
           <p
             key={activeSpeaker.speaker_id}
-            className="truncate text-[12px] font-bold animate-in fade-in duration-200 motion-reduce:animate-none"
-            style={{ color: accent.text }}
+            className="truncate text-[12px] font-bold !text-player-violetText animate-in fade-in duration-200 motion-reduce:animate-none"
             aria-live="polite"
           >
             {speakerLabel(activeSpeaker.speakers)} is speaking

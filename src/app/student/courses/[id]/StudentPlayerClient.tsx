@@ -823,7 +823,6 @@ export default function StudentPlayerClient({
           completionThreshold={block.completion_threshold}
           isAlreadyCompleted={completedBlockIds.has(block.id)}
           onComplete={() => markBlockComplete(block.id, { percentage: 90 })}
-          theme={theme}
         />
       )}
       {block.type === 'audio' && block.content?.mode !== 'embed' && block.content?.mode !== 'drive' && block.file_url && (
