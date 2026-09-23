@@ -72,6 +72,8 @@ export interface ContentBlockInfo {
   lesson_id: string;
   content: { mode?: string; audio_asset_id?: string } | null;
   completion_threshold: number | null;
+  /** Per-lesson cover art (null = full-width waveform only). */
+  audio_artwork_url?: string | null;
 }
 
 // Bootstraps everything the Lesson Builder screen needs, then exposes granular refetchers so

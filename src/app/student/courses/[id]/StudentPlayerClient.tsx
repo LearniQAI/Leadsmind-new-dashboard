@@ -819,7 +819,7 @@ export default function StudentPlayerClient({
           title={activeLesson.title}
           courseTitle={course.title}
           moduleTitle={activeModule?.title}
-          artworkUrl={course.thumbnail_url}
+          artworkUrl={block.audio_artwork_url ?? null}
           completionThreshold={block.completion_threshold}
           isAlreadyCompleted={completedBlockIds.has(block.id)}
           onComplete={() => markBlockComplete(block.id, { percentage: 90 })}

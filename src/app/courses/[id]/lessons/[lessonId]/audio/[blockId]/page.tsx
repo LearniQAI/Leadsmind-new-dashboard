@@ -11,6 +11,7 @@ import SpeakerTimelineEditor from './components/SpeakerTimelineEditor';
 import TranscriptEditor from './components/TranscriptEditor';
 import ChapterEditor from './components/ChapterEditor';
 import AudioAnalyticsPanel from './components/AudioAnalyticsPanel';
+import AudioArtworkUploader from './components/AudioArtworkUploader';
 
 // Screen 2 (Phase 3 Part B): the core authoring screen, modeled on this app's real pattern for
 // a spacious sub-editor (the quiz workbench at /courses/[id]/quiz/[quizId]) rather than
@@ -215,6 +216,17 @@ export default function AudioLessonBuilderPage() {
             </section>
 
             {assetId && (
+              <section className="rounded-2xl border border-dash-border bg-white p-5">
+                <h2 className="mb-3 text-[13px] font-bold !text-dash-text">Cover artwork</h2>
+                <AudioArtworkUploader
+                  contentBlockId={contentBlockId}
+                  artworkUrl={data.block?.audio_artwork_url ?? null}
+                  onChange={(url) => data.setBlock((b) => (b ? { ...b, audio_artwork_url: url } : b))}
+                />
+              </section>
+            )}
+
+            {assetId && (
               <section className="rounded-2xl border border-dash-border bg-white">
                 <button
                   type="button"
@@ -351,6 +363,7 @@ export default function AudioLessonBuilderPage() {
               course={data.course}
               lesson={data.lesson}
               completionThreshold={data.block?.completion_threshold ?? 90}
+              artworkUrl={data.block?.audio_artwork_url ?? null}
             />
             {assetId && (
               <div className="mt-4">

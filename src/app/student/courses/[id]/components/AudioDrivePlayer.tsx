@@ -93,8 +93,10 @@ export default function AudioDrivePlayer({
       accentHex: theme.primaryHex,
     };
     player.load(track, { resumeAt: content.resumePositionSeconds ?? undefined });
+    // artworkUrl is a dep so a replaced/removed image reaches the mini bar's track too — safe:
+    // load() short-circuits for the same assetId (metadata update only, never touches audio.src).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assetId, content.loading]);
+  }, [assetId, content.loading, artworkUrl]);
 
   const isActiveTrack = player.track?.assetId === assetId;
   const isPlaying = isActiveTrack && player.isPlaying;
@@ -141,15 +143,20 @@ export default function AudioDrivePlayer({
 
   if (isInitialLoading || content.loading) {
     return (
-      <div className="w-full animate-pulse rounded-2xl border border-dash-border bg-white p-5 motion-reduce:animate-none">
-        <div className="flex items-center gap-4">
-          {artworkUrl && <div className="h-20 w-20 shrink-0 rounded-xl bg-dash-surface" />}
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="h-4 w-2/3 rounded bg-dash-surface" />
-            <div className="h-3 w-1/2 rounded bg-dash-surface" />
-          </div>
+      <div className="w-full animate-pulse rounded-2xl border border-dash-border bg-white p-5 motion-reduce:animate-none [container-type:inline-size]">
+        <div className="space-y-2">
+          <div className="h-4 w-2/3 rounded bg-dash-surface" />
+          <div className="h-3 w-1/2 rounded bg-dash-surface" />
         </div>
-        <div className={`mt-4 w-full rounded-xl bg-dash-surface ${artworkUrl ? 'h-11' : 'h-[88px]'}`} />
+        {/* Same geometry as the loaded layout below, so nothing jumps when metadata arrives. */}
+        {artworkUrl ? (
+          <div className="mt-4 flex flex-col-reverse gap-3 [@container(min-width:540px)]:grid [@container(min-width:540px)]:grid-cols-[minmax(0,65fr)_minmax(0,35fr)] [@container(min-width:540px)]:gap-4">
+            <div className="h-24 rounded-xl bg-dash-surface [@container(min-width:540px)]:h-auto" />
+            <div className="mx-auto aspect-square w-full max-w-[18rem] rounded-xl bg-dash-surface [@container(min-width:540px)]:max-w-none" />
+          </div>
+        ) : (
+          <div className="mt-4 h-[88px] w-full rounded-xl bg-dash-surface" />
+        )}
         <div className="mx-auto mt-5 h-14 w-14 rounded-full bg-dash-surface" />
         <div className="mt-4 h-1.5 w-full rounded-full bg-dash-surface" />
       </div>
@@ -179,13 +186,11 @@ export default function AudioDrivePlayer({
 
   return (
     <div className="w-full space-y-3" onKeyDown={handleKeyDown}>
-      <div className="rounded-2xl border border-dash-border bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-        {/* Artwork + header */}
+      {/* The card is a size container: the split layout below responds to the card's OWN width,
+          not the viewport — the same player renders in the builder's fixed 380px preview column
+          (always stacked there) and in the wide student lesson column (side by side). */}
+      <div className="rounded-2xl border border-dash-border bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] [container-type:inline-size]">
         <div className="flex items-center gap-4">
-          {artworkUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={artworkUrl} alt="" className="h-20 w-20 shrink-0 rounded-xl object-cover shadow-sm" />
-          )}
           <div className="min-w-0 flex-1">
             <h3 className="truncate text-[16px] font-bold !text-dash-text">{title}</h3>
             {(courseTitle || moduleTitle) && (
@@ -198,21 +203,41 @@ export default function AudioDrivePlayer({
           </div>
         </div>
 
-        {/* Live waveform — shown for every audio block, zero authoring. Without artwork it IS the
-            visual identity (tall hero band on a faint accent wash, replacing the old static
-            gradient tile); with real artwork it steps down to a slim band so it adds life without
-            competing with the image. Bars use the AA-safe `ui` accent, same as the scrubber. */}
-        <div
-          className={`mt-4 rounded-xl ${artworkUrl ? 'px-1' : 'px-3 py-2'}`}
-          style={artworkUrl ? undefined : { backgroundColor: `${accent.raw}0F` }}
-        >
-          <LiveWaveformVisualizer
-            active={isActiveTrack}
-            color={accent.ui}
-            bars={artworkUrl ? 56 : 48}
-            className={`w-full ${artworkUrl ? 'h-11' : 'h-[72px]'}`}
-          />
-        </div>
+        {/* Live waveform — shown for every audio block, zero authoring. Bars use the AA-safe
+            `ui` accent, same as the scrubber. */}
+        {artworkUrl ? (
+          // Custom per-lesson artwork: waveform left / cover art right at 65:35 once the card is
+          // >= 540px wide; below that, stacked with the art on top (podcast-app order) and the
+          // waveform directly above the controls it reacts to. Both are decorative (canvas is
+          // aria-hidden, img alt=""), so the visual reorder has no reading-order cost.
+          <div className="mt-4 flex flex-col-reverse gap-3 [@container(min-width:540px)]:grid [@container(min-width:540px)]:grid-cols-[minmax(0,65fr)_minmax(0,35fr)] [@container(min-width:540px)]:gap-4">
+            {/* The canvas is absolutely positioned so it contributes nothing to layout: its
+                backing-store size (CSS size x DPR) would otherwise feed back into the row height. */}
+            <div
+              className="relative h-24 rounded-xl [@container(min-width:540px)]:h-auto"
+              style={{ backgroundColor: `${accent.raw}0F` }}
+            >
+              <LiveWaveformVisualizer
+                active={isActiveTrack}
+                color={accent.ui}
+                bars={40}
+                className="absolute inset-x-3 top-1/2 h-[64%] -translate-y-1/2"
+              />
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={artworkUrl}
+              alt=""
+              className="mx-auto aspect-square w-full max-w-[18rem] rounded-xl object-cover shadow-[0_4px_14px_rgba(15,23,42,0.10)] ring-1 ring-inset ring-black/5 [@container(min-width:540px)]:max-w-none"
+            />
+          </div>
+        ) : (
+          // No artwork: the waveform IS the visual identity — full-width hero band on a faint
+          // accent wash (unchanged from the waveform build).
+          <div className="mt-4 rounded-xl px-3 py-2" style={{ backgroundColor: `${accent.raw}0F` }}>
+            <LiveWaveformVisualizer active={isActiveTrack} color={accent.ui} bars={48} className="h-[72px] w-full" />
+          </div>
+        )}
 
         {/* Speaker row */}
         {content.speakers.length > 0 && (
