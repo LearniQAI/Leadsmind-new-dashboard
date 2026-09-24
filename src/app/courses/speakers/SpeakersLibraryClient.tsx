@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Users, Plus, Trash2, Loader2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAudioAdvancedAuthoringEnabled } from '@/lib/lms/audio/useAudioAdvancedAuthoringEnabled';
 
 interface Speaker {
   id: string;
@@ -23,6 +24,7 @@ export default function SpeakersLibraryClient() {
   const [draft, setDraft] = useState(emptyDraft);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const advancedEnabled = useAudioAdvancedAuthoringEnabled();
 
   const load = async () => {
     setLoading(true);
@@ -107,6 +109,18 @@ export default function SpeakersLibraryClient() {
         </p>
       </div>
 
+      {/* Speakers are part of advanced audio authoring, locked until launch (the API rejects
+          writes too). Existing speakers stay listed, read-only, and keep playing for students. */}
+      {!advancedEnabled ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-dash-border bg-white p-5">
+          <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-700">
+            Coming soon
+          </span>
+          <p className="text-[12px] !text-dash-textMuted">
+            Speaker highlighting, chapters, and transcripts are coming soon. Check back after launch.
+          </p>
+        </div>
+      ) : (
       <div className="rounded-2xl border border-dash-border bg-white p-5">
         <h2 className="mb-3 text-[13px] font-bold !text-dash-text">Add a speaker</h2>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
@@ -174,6 +188,7 @@ export default function SpeakersLibraryClient() {
           </button>
         </div>
       </div>
+      )}
 
       {loading ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -182,7 +197,9 @@ export default function SpeakersLibraryClient() {
           ))}
         </div>
       ) : speakers.length === 0 ? (
-        <p className="py-8 text-center text-[13px] !text-dash-textMuted">No speakers yet — add one above.</p>
+        <p className="py-8 text-center text-[13px] !text-dash-textMuted">
+          {advancedEnabled ? 'No speakers yet — add one above.' : 'No speakers yet.'}
+        </p>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {speakers.map((s) => (
@@ -201,6 +218,7 @@ export default function SpeakersLibraryClient() {
                 <p className="truncate text-[12.5px] font-bold !text-dash-text">{s.display_name || s.name}</p>
                 {s.role && <p className="truncate text-[11px] !text-dash-textMuted">{s.role}</p>}
               </div>
+              {advancedEnabled && (
               <button
                 onClick={() => handleDelete(s.id)}
                 className="shrink-0 !text-dash-textMuted hover:text-red"
@@ -208,6 +226,7 @@ export default function SpeakersLibraryClient() {
               >
                 <Trash2 size={14} />
               </button>
+              )}
             </div>
           ))}
         </div>

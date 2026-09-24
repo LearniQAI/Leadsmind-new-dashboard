@@ -73,6 +73,16 @@ function buildBandEdges(bands: number, binCount: number, sampleRate: number): nu
   return edges;
 }
 
+/** A bar's opacity before the play/idle fade: loudness as intensity (louder = more solid colour,
+ *  quieter = lighter), times the full variant's edge vignette. Exported so the builder's static
+ *  colour preview draws bars with exactly the same maths as the live player. */
+export function waveformBarOpacity(i: number, n: number, height: number, full: boolean): number {
+  const d = n > 1 ? Math.abs(i - (n - 1) / 2) / ((n - 1) / 2) : 0;
+  const vignette = full ? 0.3 + 0.7 * (1 - d * d) : 1;
+  const intensity = 0.3 + 0.7 * Math.min(1, height / 0.7);
+  return vignette * intensity;
+}
+
 export default function LiveWaveformVisualizer({
   active,
   color,
@@ -147,10 +157,7 @@ export default function LiveWaveformVisualizer({
       const radius = barW / 2;
       const mid = cssHeight / 2;
       for (let i = 0; i < n; i++) {
-        const d = n > 1 ? Math.abs(i - (n - 1) / 2) / ((n - 1) / 2) : 0;
-        const vignette = full ? 0.3 + 0.7 * (1 - d * d) : 1;
-        const intensity = 0.3 + 0.7 * Math.min(1, heights[i] / 0.7);
-        ctx2d.globalAlpha = alpha * vignette * intensity;
+        ctx2d.globalAlpha = alpha * waveformBarOpacity(i, n, heights[i], full);
         const h = Math.max(barW, heights[i] * cssHeight);
         const x = slot * i + (slot - barW) / 2;
         const y = mid - h / 2;

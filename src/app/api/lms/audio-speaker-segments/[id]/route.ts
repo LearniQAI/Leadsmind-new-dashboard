@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { requireLmsInstructor } from '@/lib/lms/access';
 import { NotFoundError, toClientError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger';
+import { advancedAuthoringLockedResponse } from '@/lib/lms/audio/advancedAuthoringGuard';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +20,8 @@ async function getOwnedSegment(adminClient: ReturnType<typeof createAdminClient>
 
 // Drag-to-adjust commit from AudioTimeline (start/end) or a speaker reassignment.
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const locked = await advancedAuthoringLockedResponse();
+  if (locked) return locked;
   try {
     const { id } = await params;
     const { workspaceId } = await requireLmsInstructor();
@@ -58,6 +61,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const locked = await advancedAuthoringLockedResponse();
+  if (locked) return locked;
   try {
     const { id } = await params;
     const { workspaceId } = await requireLmsInstructor();

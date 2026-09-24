@@ -3,7 +3,7 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
-import { PLAYER } from "@/lib/lms/audio/playerIdentity";
+import { waveformColorFor } from "@/lib/lms/audio/waveformColor";
 import { playerFocus, playerIconButton } from "@/lib/lms/audio/playerStyles";
 import PlayerPlayButton from "./PlayerPlayButton";
 import { useAudioPlayer, useAudioTime } from "./AudioPlayerProvider";
@@ -68,6 +68,7 @@ export default function MiniAudioPlayerBar() {
                 <img src={track.artworkUrl} alt="" className="h-full w-full object-cover" />
                 {isPlaying && (
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent px-1.5 pb-1 pt-3">
+                    {/* Always white here: these bars sit on a dark scrim over the photo, where a lesson colour could vanish. */}
                     <LiveWaveformVisualizer active variant="mini" bars={4} color="#FFFFFF" className="h-3.5 w-full" />
                   </div>
                 )}
@@ -77,7 +78,7 @@ export default function MiniAudioPlayerBar() {
                 active
                 variant="mini"
                 bars={5}
-                color={PLAYER.ink}
+                color={waveformColorFor(track.waveformColor)}
                 className="h-full w-full px-2"
               />
             )}

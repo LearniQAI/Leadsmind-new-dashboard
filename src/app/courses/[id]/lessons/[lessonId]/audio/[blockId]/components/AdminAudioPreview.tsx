@@ -16,6 +16,8 @@ interface AdminAudioPreviewProps {
   /** The block's own per-lesson artwork (content_blocks.audio_artwork_url) — never the course
    *  thumbnail, so the preview matches exactly what students get. */
   artworkUrl: string | null;
+  /** content_blocks.audio_waveform_color, the same field every student surface reads. */
+  waveformColor: string | null;
 }
 
 // "Dogfooding the real component" (the PRD's own instruction): this is NOT a second, lighter
@@ -36,6 +38,7 @@ export default function AdminAudioPreview({
   lesson,
   completionThreshold,
   artworkUrl,
+  waveformColor,
 }: AdminAudioPreviewProps) {
   if (!assetId) {
     return (
@@ -60,6 +63,7 @@ export default function AdminAudioPreview({
       title={lesson?.title || 'Lesson'}
       courseTitle={course?.title}
       artworkUrl={artworkUrl}
+      waveformColor={waveformColor}
       completionThreshold={completionThreshold}
       isAlreadyCompleted={false}
       onComplete={() => {}}

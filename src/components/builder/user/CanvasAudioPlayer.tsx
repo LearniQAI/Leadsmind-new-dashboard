@@ -102,19 +102,21 @@ interface CanvasAudioPlayerProps {
   blockId: string;
   assetId: string;
   artworkUrl: string | null;
+  waveformColor: string | null;
   completionThreshold: number | null;
 }
 
 // Memoised on primitive props so canvas-level re-renders (autosave state, selection outline,
 // settings-panel edits to unrelated fields) don't re-render the player tree. Even when it does
 // re-render, nothing restarts: the <audio> element + analyser live in the provider ABOVE the
-// Craft frame, AudioDrivePlayer's load effect only re-runs on asset/artwork change (and
+// Craft frame, AudioDrivePlayer's load effect only re-runs on asset/artwork/colour change (and
 // short-circuits for the same asset), and the visualizer's loop only re-initialises when its bar
 // count changes.
 export const CanvasAudioPlayer = React.memo(function CanvasAudioPlayer({
   blockId,
   assetId,
   artworkUrl,
+  waveformColor,
   completionThreshold,
 }: CanvasAudioPlayerProps) {
   const { lessonId, courseId, lessonTitle } = useLessonBuilder();
@@ -133,6 +135,7 @@ export const CanvasAudioPlayer = React.memo(function CanvasAudioPlayer({
           lessonId={lessonId}
           title={lessonTitle || 'Lesson'}
           artworkUrl={artworkUrl}
+          waveformColor={waveformColor}
           completionThreshold={completionThreshold}
           isAlreadyCompleted={false}
           onComplete={NOOP}

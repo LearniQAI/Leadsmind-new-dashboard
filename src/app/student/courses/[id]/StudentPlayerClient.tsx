@@ -820,6 +820,7 @@ export default function StudentPlayerClient({
           courseTitle={course.title}
           moduleTitle={activeModule?.title}
           artworkUrl={block.audio_artwork_url ?? null}
+          waveformColor={block.audio_waveform_color ?? null}
           completionThreshold={block.completion_threshold}
           isAlreadyCompleted={completedBlockIds.has(block.id)}
           onComplete={() => markBlockComplete(block.id, { percentage: 90 })}
