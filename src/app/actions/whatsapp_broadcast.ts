@@ -23,6 +23,7 @@ import { validateRuleGroup } from '@/lib/segments/ruleValidation';
 import { loadSegmentRuleGroup } from '@/lib/segments/resolveSegment';
 import { resolveContactIdsWithAllTags } from '@/lib/tagAudience';
 import { userSafeMessage } from '@/shared/errors/userSafe';
+import { readWhatsAppCredentials } from '@/lib/meta/whatsappCredentials';
 import { ValidationError } from '@/shared/errors/AppError';
 
 // PostgREST puts `.in('id', [...])` in the URL; a URL over ~12-16k characters is rejected. Chunk id lists.
@@ -83,7 +84,7 @@ export async function listApprovedWhatsAppTemplates() {
       return { success: false as const, error: 'Connect a WhatsApp Business account first (Settings > Integrations)' };
     }
 
-    const wabaId = conn.credentials.whatsapp_business_account_id || '';
+    const { wabaId } = readWhatsAppCredentials(conn.credentials);
     const encryptedToken = conn.credentials.system_user_access_token_encrypted || conn.credentials.access_token_encrypted || '';
 
     if (wabaId.startsWith('mock_') || !encryptedToken) {

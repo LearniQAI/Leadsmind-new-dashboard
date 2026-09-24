@@ -26,6 +26,7 @@ import { VoiceNotePlayer } from '@/components/common/VoiceNotePlayer';
 import ReadingModal from './components/ReadingModal';
 import { isSafeEmbedUrl } from '@/lib/security/isSafeEmbedUrl';
 import { SandboxedHtml } from '@/components/lms/SandboxedHtml';
+import { CanvasLessonImage } from '@/components/lms/CanvasLessonImage';
 import { getCourseTheme } from '@/lib/courses/courseThemeTokens';
 
 function getEmbeddablePdfUrl(url: string): string {
@@ -973,15 +974,7 @@ export default function StudentPlayerClient({
       );
     }
     if (item.kind === 'image') {
-      return (
-        <img
-          key={idx}
-          src={item.src}
-          alt={item.alt}
-          className="w-full object-cover"
-          style={{ borderRadius: `${item.radius ?? 12}px` }}
-        />
-      );
+      return <CanvasLessonImage key={idx} item={item} />;
     }
     if (item.kind === 'divider') {
       return <hr key={idx} className="border-dash-border" />;

@@ -22,7 +22,18 @@
 export type LessonCanvasItem =
   | { kind: 'heading'; level: string; html: string; align: string }
   | { kind: 'richtext'; html: string; align: string }
-  | { kind: 'image'; src: string; alt: string; radius: number }
+  | {
+      kind: 'image';
+      src: string;
+      alt: string;
+      radius: number;
+      /** CSS length (validated) — undefined = full width / natural height. */
+      width?: string;
+      height?: string;
+      align?: 'left' | 'center' | 'right';
+      objectFit?: 'cover' | 'contain' | 'fill' | 'none';
+      shape?: 'square' | 'circle';
+    }
   | { kind: 'divider' }
   | { kind: 'block'; blockId: string; blockType: string }
   | {
@@ -44,6 +55,14 @@ type CraftNode = {
 };
 
 const CONTAINER_TYPES = new Set(['Container', 'Section', 'Columns', 'ROOT']);
+
+// Image width/height are free-text in the builder ("400px", "50%", "auto"). Only plain CSS
+// lengths pass through to the student page; anything else falls back to the default sizing.
+function cssLength(v: unknown): string | undefined {
+  if (typeof v !== 'string') return undefined;
+  const s = v.trim();
+  return /^(auto|\d+(\.\d+)?(px|%|rem|em|vw))$/.test(s) ? s : undefined;
+}
 
 function nodeToItems(
   node: CraftNode | undefined,
@@ -97,8 +116,14 @@ function nodeToItems(
         out.push({
           kind: 'image',
           src: p.src,
-          alt: typeof p.alt === 'string' ? p.alt : '',
+          // A "decorative" image is deliberately alt="" so screen readers skip it.
+          alt: p.decorative ? '' : typeof p.alt === 'string' ? p.alt : '',
           radius: typeof p.borderRadius === 'number' ? p.borderRadius : 12,
+          width: cssLength(p.width),
+          height: cssLength(p.height),
+          align: p.align === 'left' || p.align === 'center' || p.align === 'right' ? p.align : undefined,
+          objectFit: ['cover', 'contain', 'fill', 'none'].includes(p.objectFit) ? p.objectFit : undefined,
+          shape: p.shape === 'circle' ? 'circle' : undefined,
         });
       }
       return;

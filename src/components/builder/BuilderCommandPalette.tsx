@@ -5,6 +5,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { Search, Plus, LayoutTemplate, Box, Type, Image, FileText, ArrowRight } from 'lucide-react';
 import { useEditor } from '@craftjs/core';
 import { RESOLVER } from '@/lib/builder/resolver';
+import { EMPTY_IMAGE_PROPS } from '@/lib/builder/imageDefaults';
 import { useBuilder } from './BuilderContext';
 import { toast } from 'sonner';
 
@@ -22,9 +23,9 @@ const COMMANDS: CommandItem[] = [
   { id: 'columns', name: 'Columns (2)', category: 'Layout', icon: Box, component: <RESOLVER.Columns canvas layout="2" gap={16} padding={16} /> },
   { id: 'heading', name: 'Heading', category: 'Typography', icon: Type, component: <RESOLVER.Heading level="h2" text="Heading" fontWeight="bold" textAlign="left" color="#111827" /> },
   { id: 'paragraph', name: 'Paragraph', category: 'Typography', icon: Type, component: <RESOLVER.Paragraph text="Type your paragraph here." fontSize={16} textAlign="left" color="#4b5563" lineHeight="relaxed" /> },
-  { id: 'image', name: 'Image', category: 'Media', icon: Image, component: <RESOLVER.Image imageUrl="https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=1000&auto=format&fit=crop" altText="Placeholder Image" /> },
-  { id: 'button', name: 'Button', category: 'Interactive', icon: ArrowRight, component: <RESOLVER.Button text="Click Here" variant="primary" size="default" /> },
-  { id: 'form', name: 'Form', category: 'Interactive', icon: FileText, component: <RESOLVER.Form formId="" buttonText="Submit" /> },
+  { id: 'image', name: 'Image', category: 'Media', icon: Image, component: <RESOLVER.Image {...EMPTY_IMAGE_PROPS} /> },
+  { id: 'button', name: 'Button', category: 'Interactive', icon: ArrowRight, component: <RESOLVER.Button text="Click Here" variant="primary" size="md" /> },
+  { id: 'form', name: 'Form', category: 'Interactive', icon: FileText, component: <RESOLVER.Form buttonText="Submit" /> },
 ];
 
 export const BuilderCommandPalette = () => {

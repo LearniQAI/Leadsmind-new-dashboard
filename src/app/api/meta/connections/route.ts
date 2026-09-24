@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { requireWorkspaceRole } from '@/lib/api/workspaceAuth'
 import { isMetaConfigured } from '@/lib/meta/config'
+import { readWhatsAppCredentials } from '@/lib/meta/whatsappCredentials'
 import { UnauthorizedError, ForbiddenError } from '@/shared/errors/AppError'
 
 export const dynamic = 'force-dynamic';
@@ -37,9 +38,9 @@ export async function GET(req: NextRequest) {
         connected: dbRecord?.status === 'connected',
         accountName: plat === 'facebook' ? creds.page_name : 
                      plat === 'instagram' ? creds.instagram_username : 
-                     (creds.waba_name ?? creds.whatsapp_business_name),
+                     readWhatsAppCredentials(creds).businessName,
         accountHandle: plat === 'instagram' && creds.instagram_username ? `@${creds.instagram_username}` : undefined,
-        phoneNumber: plat === 'whatsapp' ? (creds.phone_number ?? creds.whatsapp_phone_number) : undefined,
+        phoneNumber: plat === 'whatsapp' ? readWhatsAppCredentials(creds).phoneNumber : undefined,
       }
     })
 

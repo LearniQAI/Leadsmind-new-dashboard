@@ -7,6 +7,7 @@ loadEnv({ path: '.env.local', override: false });
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { randomUUID } from 'crypto';
 import { createClient } from '@supabase/supabase-js';
+import { deleteTestWorkspaces, sweepStaleTestWorkspaces, testRunPatterns } from './liveCleanup';
 
 const h = vi.hoisted(() => ({
   workspaceId: '', userId: '', userClient: null as any,
@@ -131,6 +132,9 @@ beforeAll(async () => {
     waWorker: await import('@/app/api/cron/workers/whatsapp-dispatch/route'),
   };
   db = M.createAdminClient();
+  // Remove what earlier KILLED runs of this test left behind (a killed run never reaches afterAll).
+  const swept = await sweepStaleTestWorkspaces(db, testRunPatterns('smsh'));
+  if (swept) console.warn(`[cleanup] removed ${swept} stale workspace(s) left by earlier runs of this test`);
 
   const mkWs = async (tag: string) => {
     const password = randomUUID(); const em = `smsh-${runId}-${tag}-owner@example.com`;
@@ -159,12 +163,8 @@ beforeAll(async () => {
 
 afterAll(async () => {
   h.failWhen = null;
-  for (const w of [ws1, ws2].filter(Boolean)) {
-    for (const t of ['sms_dispatch_queue', 'bulk_sms_campaigns', 'whatsapp_dispatch_queue', 'whatsapp_broadcast_campaigns', 'segments', 'sms_suppression_list', 'tag_assignments', 'tags', 'workspace_phone_numbers', 'platform_connections', 'contact_activities', 'contacts']) {
-      await db.from(t).delete().eq('workspace_id', w);
-    }
-  }
-  for (const id of userIds) await db.auth.admin.deleteUser(id).catch(() => {});
+  // Deletes the workspaces themselves (and any others this run's users own) and fails loudly if anything is left.
+  await deleteTestWorkspaces(db, [ws1, ws2], userIds);
 });
 
 // ───────────────────────────── B9 ─────────────────────────────

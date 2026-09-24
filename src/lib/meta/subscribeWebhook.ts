@@ -86,3 +86,57 @@ export async function subscribePageToMetaWebhook(
     return { success: false, error: err.message ?? 'subscribed_apps request threw' }
   }
 }
+
+// WhatsApp needs its OWN subscription, separate from the Page one above: the app must be subscribed
+// to each WhatsApp Business Account (POST /{waba-id}/subscribed_apps) or Meta sends no WhatsApp
+// events for it at all — no inbound messages (so no STOP and no 24h-window clock) and no
+// sent/delivered/read/failed statuses. Confirmed live 2026-09-24: every connected WABA returned
+// {"data":[]} and not one WhatsApp webhook had ever arrived.
+// Which fields are delivered comes from the app-level Webhooks config (whatsapp_business_account
+// object, "messages" field), so this call takes no subscribed_fields.
+// Same POST-then-verify rule as the Page subscription. The WABA listing nests the app id under
+// whatsapp_business_api_data. The id checked is the token's own app (GET /app): that is the app the
+// POST subscribes, and it does not depend on META_APP_ID being set in this environment.
+export async function subscribeWabaToMetaWebhook(
+  wabaId: string,
+  accessToken: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const appRes = await fetch(`https://graph.facebook.com/${GRAPH_API_VERSION}/app?fields=id&access_token=${encodeURIComponent(accessToken)}`)
+    const appData = await appRes.json()
+    const appId = appRes.ok ? String(appData?.id ?? '') : ''
+    if (!appId) {
+      return { success: false, error: appData?.error?.message ?? 'Could not resolve the app this token belongs to' }
+    }
+
+    const url = `https://graph.facebook.com/${GRAPH_API_VERSION}/${wabaId}/subscribed_apps?access_token=${encodeURIComponent(accessToken)}`
+    const res = await fetch(url, { method: 'POST' })
+    const data = await res.json()
+    logger.info({ wabaId, status: res.status, rawResponse: data }, 'meta.subscribe_waba_webhook.post_response')
+
+    if (!res.ok || data?.success !== true) {
+      return {
+        success: false,
+        error: data?.error?.message ?? `subscribed_apps did not return success:true (response: ${JSON.stringify(data)})`,
+      }
+    }
+
+    const verifyRes = await fetch(url)
+    const verifyData = await verifyRes.json()
+    logger.info({ wabaId, status: verifyRes.status, rawResponse: verifyData }, 'meta.subscribe_waba_webhook.verify_get_response')
+
+    const isListed = verifyRes.ok && Array.isArray(verifyData?.data) &&
+      verifyData.data.some((entry: any) => String(entry?.whatsapp_business_api_data?.id ?? entry?.id) === appId)
+
+    if (!isListed) {
+      return {
+        success: false,
+        error: `subscribed_apps POST returned success but verification GET did not list this app (response: ${JSON.stringify(verifyData)})`,
+      }
+    }
+
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err.message ?? 'subscribed_apps request threw' }
+  }
+}

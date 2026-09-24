@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { CanvasLessonImage } from './CanvasLessonImage';
 import { Lock, ArrowRight, Eye, PlayCircle, FileText, Download as DownloadIcon } from 'lucide-react';
 
 // Course Start Method 3 (free preview lessons, then paywall) — the real "no enrollment at
@@ -171,7 +172,7 @@ export default function PreviewLessonClient({
                         );
                       }
                       if (item.kind === 'image') {
-                        return <img key={idx} src={item.src} alt={item.alt} className="max-w-full rounded-xl" />;
+                        return <CanvasLessonImage key={idx} item={item} />;
                       }
                       if (item.kind === 'divider') {
                         return <hr key={idx} className="border-dash-border" />;

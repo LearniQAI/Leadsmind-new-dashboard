@@ -13,6 +13,7 @@ import { EmailAutomationService } from '@/lib/automations/EmailAutomationService
 import { UnifiedActivityEngine } from '@/lib/crm/UnifiedActivityEngine';
 import { logger } from '@/shared/logger';
 import { toClientError } from '@/shared/errors/AppError';
+import { subscribeWabaToMetaWebhook } from '@/lib/meta/subscribeWebhook';
 
 export async function getMetaAuthUrl(targetPlatform?: string) {
 	// Mints a random opaque nonce bound server-side to the real authenticated user + their
@@ -42,6 +43,24 @@ export async function getMetaAuthUrl(targetPlatform?: string) {
 	const url = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(metaRedirectUri)}&scope=${scope}&response_type=code&state=${nonce}`;
 	logger.info({ scope, workspaceId }, 'messaging.meta_oauth.url_generated');
 	return url;
+}
+
+const WA_WEBHOOK_WARNING = 'WhatsApp connected, but Meta rejected the webhook subscription. Incoming WhatsApp messages, opt-outs and delivery receipts will not be received until this is fixed — try reconnecting.';
+
+// Subscribes our app to the WhatsApp Business Account (without it Meta sends no WhatsApp events at
+// all — see subscribeWabaToMetaWebhook) and returns the health fields to store on the connection.
+// Mock ids/tokens (dev) skip the call, same convention as validateMetaPlatformCredentials.
+async function whatsappWebhookHealth(wabaId: string | null | undefined, token: string) {
+  if (wabaId?.startsWith('mock_') || token?.startsWith('mock_')) {
+    return { ok: true, status: 'connected', credentials: { health_status: 'connected' } };
+  }
+  const sub = wabaId
+    ? await subscribeWabaToMetaWebhook(wabaId, token)
+    : { success: false, error: 'No WhatsApp Business Account id to subscribe' };
+  if (!sub.success) logger.error({ wabaId, error: sub.error }, 'messaging.whatsapp.webhook_subscription_failed');
+  return sub.success
+    ? { ok: true, status: 'connected', credentials: { health_status: 'connected' } }
+    : { ok: false, status: 'error', credentials: { health_status: 'webhook_subscription_failed', webhook_subscription_error: sub.error } };
 }
 
 async function validateMetaPlatformCredentials(platform: string, data: any) {
@@ -107,6 +126,8 @@ export async function connectPlatformManually(platform: string, data: any) {
 
     const supabase = await createServerClient();
     let credentials: any = {};
+    let status = 'connected';
+    let warning: string | undefined;
 
     if (platform === 'facebook') {
       credentials = {
@@ -125,14 +146,17 @@ export async function connectPlatformManually(platform: string, data: any) {
         health_status: 'connected'
       };
     } else if (platform === 'whatsapp') {
+      const wa = await whatsappWebhookHealth(data.whatsappBusinessAccountId, data.systemUserAccessToken);
       credentials = {
         phone_number_id: data.phoneNumberId,
-        whatsapp_business_account_id: data.whatsappBusinessAccountId,
-        whatsapp_business_name: validation.name || 'WhatsApp Business Line',
-        whatsapp_phone_number: validation.extra || 'WhatsApp Number',
+        waba_id: data.whatsappBusinessAccountId,
+        waba_name: validation.name || 'WhatsApp Business Line',
+        phone_number: validation.extra || 'WhatsApp Number',
         system_user_access_token_encrypted: encrypt(data.systemUserAccessToken),
-        health_status: 'connected'
+        ...wa.credentials
       };
+      status = wa.status;
+      if (!wa.ok) warning = WA_WEBHOOK_WARNING;
     } else {
       return { error: 'Invalid platform' };
     }
@@ -141,12 +165,12 @@ export async function connectPlatformManually(platform: string, data: any) {
       workspace_id: workspaceId,
       platform,
       credentials,
-      status: 'connected',
+      status,
       last_sync_at: new Date().toISOString()
     }, { onConflict: 'workspace_id,platform' });
 
     if (error) throw error;
-    return { success: true };
+    return { success: true, warning };
   } catch (error: any) {
     logger.error({ err: error, platform }, 'messaging.platform_connection.save.failed');
     return { error: 'Failed to save connection' };
@@ -1014,6 +1038,7 @@ export async function saveMetaConnections(data: {
 
 
     // Persist connections!
+    let warning: string | undefined;
     if (targetPlatform === 'facebook') {
       const { error: fbErr } = await supabase.from('platform_connections').upsert({
         workspace_id: workspaceId,
@@ -1064,18 +1089,20 @@ export async function saveMetaConnections(data: {
       }, { onConflict: 'workspace_id,platform' });
       if (igErr) throw igErr;
     } else if (targetPlatform === 'whatsapp') {
+      const wa = await whatsappWebhookHealth(data.whatsappBusinessAccountId, oauth.token);
+      if (!wa.ok) warning = WA_WEBHOOK_WARNING;
       const { error: waErr } = await supabase.from('platform_connections').upsert({
         workspace_id: workspaceId,
         platform: 'whatsapp',
         credentials: {
           phone_number_id: data.phoneNumberId,
-          whatsapp_business_account_id: data.whatsappBusinessAccountId,
-          whatsapp_business_name: data.whatsappBusinessName || 'WhatsApp Business Line',
-          whatsapp_phone_number: data.whatsappPhoneNumber || 'WhatsApp Number',
+          waba_id: data.whatsappBusinessAccountId,
+          waba_name: data.whatsappBusinessName || 'WhatsApp Business Line',
+          phone_number: data.whatsappPhoneNumber || 'WhatsApp Number',
           system_user_access_token_encrypted: encrypt(oauth.token),
-          health_status: 'connected'
+          ...wa.credentials
         },
-        status: 'connected',
+        status: wa.status,
         last_sync_at: new Date().toISOString()
       }, { onConflict: 'workspace_id,platform' });
       if (waErr) throw waErr;
@@ -1119,18 +1146,20 @@ export async function saveMetaConnections(data: {
 
       // C. WhatsApp Connection
       if (data.phoneNumberId && data.whatsappBusinessAccountId) {
+        const wa = await whatsappWebhookHealth(data.whatsappBusinessAccountId, oauth.token);
+        if (!wa.ok) warning = WA_WEBHOOK_WARNING;
         const { error: waErr } = await supabase.from('platform_connections').upsert({
           workspace_id: workspaceId,
           platform: 'whatsapp',
           credentials: {
             phone_number_id: data.phoneNumberId,
-            whatsapp_business_account_id: data.whatsappBusinessAccountId,
-            whatsapp_business_name: data.whatsappBusinessName || 'WhatsApp Business Line',
-            whatsapp_phone_number: data.whatsappPhoneNumber || 'WhatsApp Number',
+            waba_id: data.whatsappBusinessAccountId,
+            waba_name: data.whatsappBusinessName || 'WhatsApp Business Line',
+            phone_number: data.whatsappPhoneNumber || 'WhatsApp Number',
             system_user_access_token_encrypted: encrypt(oauth.token),
-            health_status: 'connected'
+            ...wa.credentials
           },
-          status: 'connected',
+          status: wa.status,
           last_sync_at: new Date().toISOString()
         }, { onConflict: 'workspace_id,platform' });
         if (waErr) throw waErr;
@@ -1139,7 +1168,7 @@ export async function saveMetaConnections(data: {
       }
     }
 
-    return { success: true };
+    return { success: true, warning };
   } catch (error: any) {
     logger.error({ err: error, workspaceId }, 'messaging.meta_connections.save.failed');
     return { error: 'Failed to save Meta connections' };

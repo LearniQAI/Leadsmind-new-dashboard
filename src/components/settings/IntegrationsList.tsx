@@ -6,6 +6,7 @@ import { ConnectPlatformsModal } from '@/components/dashboard/ConnectPlatformsMo
 import { Instagram as InstagramIcon } from '@/components/icons/BrandIcons';
 import { toast } from 'sonner';
 import { DashButton } from '@/components/dashboard-ui';
+import { readWhatsAppCredentials } from '@/lib/meta/whatsappCredentials';
 
 export function IntegrationsList() {
   const [isOpen, setIsOpen] = useState(false);
@@ -46,6 +47,7 @@ export function IntegrationsList() {
         const needsInstagram = params.get('needs_instagram') === 'true'
         const needsWhatsapp = params.get('needs_whatsapp') === 'true'
         const webhookSubscriptionError = params.get('webhook_subscription_error') === 'true'
+        const waWebhookSubscriptionError = params.get('whatsapp_webhook_subscription_error') === 'true'
         if (process.env.NODE_ENV === 'development') {
           // eslint-disable-next-line no-console
           console.log('[IntegrationsList] needsInstagram:', needsInstagram, 'needsWhatsapp:', needsWhatsapp)
@@ -59,6 +61,9 @@ export function IntegrationsList() {
         // a quiet success (see the 'error' status set in api/auth/meta/callback/route.ts).
         if (webhookSubscriptionError) {
           toast.error('Connected, but Meta rejected the message-webhook subscription. Messenger/Instagram DMs will not be received until this is fixed — try reconnecting.')
+        }
+        if (waWebhookSubscriptionError) {
+          toast.error('WhatsApp connected, but Meta rejected the webhook subscription. Incoming WhatsApp messages, opt-outs and delivery receipts will not be received until this is fixed — try reconnecting.')
         }
 
         if (needsInstagram) {
@@ -273,11 +278,11 @@ export function IntegrationsList() {
                   <div className="mt-4 p-2.5 rounded-lg bg-white border border-dash-border text-[11px] font-medium !text-dash-text flex flex-col gap-1">
                     <div className="flex items-center justify-between">
                       <span>Account Name:</span>
-                      <span className="text-[#25d366] font-semibold">{waConn.credentials?.whatsapp_business_name || 'WhatsApp API'}</span>
+                      <span className="text-[#25d366] font-semibold">{readWhatsAppCredentials(waConn.credentials).businessName || 'WhatsApp API'}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>Phone Line:</span>
-                      <span className="!text-dash-textMuted">{waConn.credentials?.whatsapp_phone_number || 'N/A'}</span>
+                      <span className="!text-dash-textMuted">{readWhatsAppCredentials(waConn.credentials).phoneNumber || 'N/A'}</span>
                     </div>
                   </div>
                 )}

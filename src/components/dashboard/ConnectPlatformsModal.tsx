@@ -21,6 +21,7 @@ import { DashFormField, DashInput } from '@/components/dashboard-ui/FormField';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { readWhatsAppCredentials } from '@/lib/meta/whatsappCredentials';
 
 interface ConnectPlatformsModalProps {
   open: boolean;
@@ -89,7 +90,8 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
     try {
       const res = await connectPlatformManually(activeManualPlatform, formData);
       if (res.success) {
-        toast.success(`${activeManualPlatform.toUpperCase()} connected successfully!`);
+        if (res.warning) toast.error(res.warning);
+        else toast.success(`${activeManualPlatform.toUpperCase()} connected successfully!`);
         setActiveManualPlatform(null);
         setFormData({
           pageId: '',
@@ -377,7 +379,8 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
       const res = await saveMetaConnections(dataToSave, targetPlatform);
 
       if (res.success) {
-        toast.success(`${targetPlatform ? targetPlatform.charAt(0).toUpperCase() + targetPlatform.slice(1) : 'Meta'} connection configured successfully!`);
+        if (res.warning) toast.error(res.warning);
+        else toast.success(`${targetPlatform ? targetPlatform.charAt(0).toUpperCase() + targetPlatform.slice(1) : 'Meta'} connection configured successfully!`);
         setIsOauthWizard(false);
         onOpenChange(false);
       } else {
@@ -982,8 +985,8 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
                     {waConn && (
                       <div className="flex items-center justify-between mt-1 pl-6">
                         <div className="flex flex-col">
-                          <span className="text-[11px] !text-dash-text font-bold">{waConn.credentials?.whatsapp_business_name || 'WhatsApp Line'}</span>
-                          <span className="text-[9px] !text-dash-textMuted mt-0.5">Num: {waConn.credentials?.whatsapp_phone_number || 'N/A'}</span>
+                          <span className="text-[11px] !text-dash-text font-bold">{readWhatsAppCredentials(waConn.credentials).businessName || 'WhatsApp Line'}</span>
+                          <span className="text-[9px] !text-dash-textMuted mt-0.5">Num: {readWhatsAppCredentials(waConn.credentials).phoneNumber || 'N/A'}</span>
                         </div>
                         <DashButton
                           onClick={() => handleDisconnect('whatsapp')}
