@@ -12,6 +12,9 @@ import TranscriptEditor from './components/TranscriptEditor';
 import ChapterEditor from './components/ChapterEditor';
 import AudioAnalyticsPanel from './components/AudioAnalyticsPanel';
 import AudioArtworkUploader from './components/AudioArtworkUploader';
+import AudioWaveformColorPicker from './components/AudioWaveformColorPicker';
+import LockedAdvancedAuthoring from './components/LockedAdvancedAuthoring';
+import { useAudioAdvancedAuthoringEnabled } from '@/lib/lms/audio/useAudioAdvancedAuthoringEnabled';
 
 // Screen 2 (Phase 3 Part B): the core authoring screen, modeled on this app's real pattern for
 // a spacious sub-editor (the quiz workbench at /courses/[id]/quiz/[quizId]) rather than
@@ -33,6 +36,7 @@ export default function AudioLessonBuilderPage() {
   // null = not yet toggled by the admin: collapsed by default, open when real advanced content
   // already exists (so existing work is never hidden behind a click).
   const [advancedOpen, setAdvancedOpen] = useState<boolean | null>(null);
+  const advancedEnabled = useAudioAdvancedAuthoringEnabled();
 
   const bump = <T extends (...args: any[]) => Promise<void>>(fn: T) => async (...args: Parameters<T>) => {
     await fn(...args);
@@ -229,6 +233,27 @@ export default function AudioLessonBuilderPage() {
             )}
 
             {assetId && (
+              <section className="rounded-2xl border border-dash-border bg-white p-5">
+                <h2 className="mb-3 text-[13px] font-bold !text-dash-text">Waveform colour</h2>
+                <AudioWaveformColorPicker
+                  contentBlockId={contentBlockId}
+                  color={data.block?.audio_waveform_color ?? null}
+                  onChange={(color) => data.setBlock((b) => (b ? { ...b, audio_waveform_color: color } : b))}
+                />
+              </section>
+            )}
+
+            {assetId && !advancedEnabled && (
+              <LockedAdvancedAuthoring
+                lessonSpeakers={data.lessonSpeakers}
+                segments={data.segments}
+                chapters={data.chapters}
+                transcript={data.transcript}
+              />
+            )}
+
+            {/* The full editors below stay built; they return when the flag is flipped on. */}
+            {assetId && advancedEnabled && (
               <section className="rounded-2xl border border-dash-border bg-white">
                 <button
                   type="button"
@@ -366,6 +391,7 @@ export default function AudioLessonBuilderPage() {
               lesson={data.lesson}
               completionThreshold={data.block?.completion_threshold ?? 90}
               artworkUrl={data.block?.audio_artwork_url ?? null}
+              waveformColor={data.block?.audio_waveform_color ?? null}
             />
             {assetId && (
               <div className="mt-4">

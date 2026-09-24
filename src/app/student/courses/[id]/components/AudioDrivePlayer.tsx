@@ -10,7 +10,7 @@ import { useAudioPlayer, useAudioTime, type AudioTrack } from '@/components/lms/
 // only changes at loadedmetadata, so it's read from the coarse useAudioPlayer() context instead
 // (see AudioPlayerProvider's `duration` field). Only the isolated leaves (TimeReadout, Scrubber,
 // SpeakerRow, TranscriptPanel, ChaptersPanel) call useAudioTime().
-import { PLAYER } from '@/lib/lms/audio/playerIdentity';
+import { waveformColorFor } from '@/lib/lms/audio/waveformColor';
 import { useAudioLessonContent } from './audio/useAudioLessonContent';
 import SpeakerRow from './audio/SpeakerRow';
 import Scrubber from './audio/Scrubber';
@@ -31,6 +31,8 @@ interface AudioDrivePlayerProps {
   courseTitle?: string | null;
   moduleTitle?: string | null;
   artworkUrl?: string | null;
+  /** content_blocks.audio_waveform_color (the admin's raw pick; null = default monochrome). */
+  waveformColor?: string | null;
   completionThreshold?: number | null;
   isAlreadyCompleted: boolean;
   onComplete: () => void;
@@ -57,6 +59,7 @@ export default function AudioDrivePlayer({
   courseTitle,
   moduleTitle,
   artworkUrl,
+  waveformColor,
   completionThreshold,
   isAlreadyCompleted,
   onComplete,
@@ -81,7 +84,7 @@ export default function AudioDrivePlayer({
   }, [registerFullView, contentBlockId]);
 
   const buildTrack = (): AudioTrack => ({
-    assetId, contentBlockId, courseId, lessonId, title, courseTitle, artworkUrl, completionThreshold,
+    assetId, contentBlockId, courseId, lessonId, title, courseTitle, artworkUrl, waveformColor, completionThreshold,
   });
 
   // Loads once resumePositionSeconds has resolved (or is confirmed absent) so a real saved
@@ -94,10 +97,10 @@ export default function AudioDrivePlayer({
     const current = player.track;
     if (current && current.contentBlockId !== contentBlockId) return;
     player.load(buildTrack(), { resumeAt: content.resumePositionSeconds ?? undefined });
-    // artworkUrl is a dep so a replaced/removed image reaches the mini bar's track too — safe:
+    // artworkUrl/waveformColor are deps so a changed image or colour reaches the mini bar's track too — safe:
     // load() short-circuits for the same assetId (metadata update only, never touches audio.src).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assetId, content.loading, artworkUrl]);
+  }, [assetId, content.loading, artworkUrl, waveformColor]);
 
   // One player at a time per provider (matches the student page's single shared element): this
   // block becomes the loaded track and plays — inside the user's click, so play() is allowed.
@@ -295,7 +298,7 @@ export default function AudioDrivePlayer({
                 (an absolutely-positioned canvas can't be sized by insets and would grow to its
                 backing-store width). */}
             <div className="flex h-12 min-w-[80px] flex-1 items-center rounded-xl border border-player-border bg-player-raised px-3">
-              <LiveWaveformVisualizer active={isActiveTrack} color={PLAYER.ink} bars="auto" className="h-8 w-full" />
+              <LiveWaveformVisualizer active={isActiveTrack} color={waveformColorFor(waveformColor)} bars="auto" className="h-8 w-full" />
             </div>
           </div>
 

@@ -182,6 +182,7 @@ export const LessonBlockNode = (allProps: LessonBlockNodeProps & any) => {
               blockId={block.id}
               assetId={block.content.audio_asset_id}
               artworkUrl={block.audio_artwork_url ?? null}
+              waveformColor={block.audio_waveform_color ?? null}
               completionThreshold={block.completion_threshold ?? null}
             />
           ) : (

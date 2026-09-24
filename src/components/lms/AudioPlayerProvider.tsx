@@ -25,6 +25,9 @@ export interface AudioTrack {
   title: string;
   courseTitle?: string | null;
   artworkUrl?: string | null;
+  /** The block's admin-picked waveform colour (content_blocks.audio_waveform_color, raw pick —
+   *  surfaces render it through waveformColorFor). null = default monochrome. */
+  waveformColor?: string | null;
   /** The block's real completion_threshold (falls back to 90, same default used everywhere else). */
   completionThreshold?: number | null;
 }

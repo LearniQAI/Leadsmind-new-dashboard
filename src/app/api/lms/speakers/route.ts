@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { requireLmsInstructor } from '@/lib/lms/access';
 import { toClientError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger';
+import { advancedAuthoringLockedResponse } from '@/lib/lms/audio/advancedAuthoringGuard';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +30,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const locked = await advancedAuthoringLockedResponse();
+  if (locked) return locked;
   try {
     const { workspaceId } = await requireLmsInstructor();
     const adminClient = createAdminClient();

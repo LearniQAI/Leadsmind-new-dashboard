@@ -3,12 +3,15 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { requireLmsInstructor } from '@/lib/lms/access';
 import { NotFoundError, toClientError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger';
+import { advancedAuthoringLockedResponse } from '@/lib/lms/audio/advancedAuthoringGuard';
 
 export const dynamic = 'force-dynamic';
 
 // Reorder / re-timestamp / retype an existing line, or reassign its speaker — the Transcript
 // Editor's "edit in place" path (create+delete alone can't cheaply support drag-reorder).
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const locked = await advancedAuthoringLockedResponse();
+  if (locked) return locked;
   try {
     const { id } = await params;
     const { workspaceId } = await requireLmsInstructor();
@@ -48,6 +51,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const locked = await advancedAuthoringLockedResponse();
+  if (locked) return locked;
   try {
     const { id } = await params;
     const { workspaceId } = await requireLmsInstructor();
