@@ -31,7 +31,7 @@ function makeDb() {
 }
 
 vi.mock('@/lib/supabase/server', () => ({ createServerClient: async () => makeDb(), createAdminClient: () => makeDb() }));
-vi.mock('@/lib/auth', () => ({ requireWorkspaceAccess: async () => ({ workspaceId: 'w1' }), requireFormAccess: vi.fn() }));
+vi.mock('@/lib/auth', () => ({ requireWorkspaceAccess: async () => ({ workspaceId: 'w1' }), requireFormAccess: vi.fn(), requireModuleAccess: async () => {} }));
 vi.mock('@/lib/email/resolveConfig', () => ({ getWorkspaceEmailConfig: (...a: any[]) => getCfg(...a) }));
 vi.mock('@/lib/email', () => ({ sendEmail: (...a: any[]) => sendEmail(...a) }));
 vi.mock('@/lib/campaigns/testSendLimit', () => ({ claimTestSendSlot: (...a: any[]) => claim(...a) }));
