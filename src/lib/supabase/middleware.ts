@@ -229,9 +229,9 @@ async function moduleGate(
 ): Promise<NextResponse | null> {
  const pathname = request.nextUrl.pathname
  const isApi = pathname.startsWith('/api')
- const module = isApi ? moduleForApiPath(pathname) : getRequiredModule(pathname)
+ const requiredModule = isApi ? moduleForApiPath(pathname) : getRequiredModule(pathname)
  const isEmployeesPage = !isApi && (pathname === '/hr/employees' || pathname.startsWith('/hr/employees/'))
- if (!module) return null
+ if (!requiredModule) return null
 
  const workspaceId = request.cookies.get('active_workspace_id')?.value
  if (!workspaceId) return null
@@ -245,7 +245,7 @@ async function moduleGate(
  if (!member) return null
 
  const allowed =
-  canAccessModule(member.role, member.permissions, module) &&
+  canAccessModule(member.role, member.permissions, requiredModule) &&
   (!isEmployeesPage || hasFullAccess(member.role) || member.role === 'hr')
  if (allowed) return null
 
@@ -256,6 +256,6 @@ async function moduleGate(
   )
  }
  const url = new URL('/dashboard', request.url)
- url.searchParams.set('access_denied', module)
+ url.searchParams.set('access_denied', requiredModule)
  return NextResponse.redirect(url)
 }

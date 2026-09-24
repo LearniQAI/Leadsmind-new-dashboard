@@ -67,8 +67,8 @@ describe("filterNavByPermissions (module-level)", () => {
 
   it.each(scenarios)("%s: every visible link is one the page gate also allows (sidebar and gate agree)", (_l, role, permissions) => {
     for (const link of visible({ role, permissions }).links) {
-      const module = getRequiredModule(link);
-      if (module) expect(canAccessModule(role, permissions, module), link).toBe(true);
+      const requiredModule = getRequiredModule(link);
+      if (requiredModule) expect(canAccessModule(role, permissions, requiredModule), link).toBe(true);
     }
   });
 });
