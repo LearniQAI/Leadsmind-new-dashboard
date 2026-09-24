@@ -2,7 +2,7 @@
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
-import { getCurrentWorkspaceId } from '@/lib/auth';
+import { getCurrentWorkspaceId, requireModuleAccess } from '@/lib/auth';
 import { releaseHostFromVercel } from '@/lib/domains/verify';
 import { describeDns, normalizeHostnameInput } from '@/lib/domains/hostname';
 import { revalidatePath } from 'next/cache';
@@ -269,6 +269,7 @@ export async function addDomain(
   workspaceId: string,
   hostname: string
 ) {
+  await requireModuleAccess('settings');
   try {
     const supabaseAuth = await createServerClient();
     const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
@@ -427,6 +428,7 @@ export async function updateDomainRouting(domainId: string, routingConfig: any) 
 }
 
 export async function deleteDomain(domainId: string) {
+  await requireModuleAccess('settings');
   try {
     const supabase = await createServerClient();
     let workspaceId: string;

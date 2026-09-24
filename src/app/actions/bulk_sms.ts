@@ -12,7 +12,7 @@
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { requireWorkspaceAccess } from '@/lib/auth';
+import { requireWorkspaceAccess, requireModuleAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 import { SegmentationCompiler, RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
 import { validateRuleGroup } from '@/lib/segments/ruleValidation';
@@ -150,6 +150,7 @@ async function resolveAudience(
 // future scheduledAt real effect: the sms-dispatch worker's acquire_sms_jobs
 // RPC only picks up rows whose scheduled_for has passed.
 export async function createBulkSmsCampaign(payload: CreateBulkSmsPayload) {
+  await requireModuleAccess('marketing');
   try {
     const { workspaceId, userId } = await requireWorkspaceAccess();
     if (!payload.name?.trim()) return { success: false as const, error: 'Campaign name is required' };
@@ -231,6 +232,7 @@ export async function createBulkSmsCampaign(payload: CreateBulkSmsPayload) {
 }
 
 export async function cancelBulkSmsCampaign(id: string) {
+  await requireModuleAccess('marketing');
   try {
     const { workspaceId } = await requireWorkspaceAccess();
     const supabase = await createServerClient();

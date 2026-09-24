@@ -1,7 +1,7 @@
 'use server';
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
-import { requireWorkspaceAccess, requireFormAccess } from '@/lib/auth';
+import { requireWorkspaceAccess, requireFormAccess, requireModuleAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 import { getTemplateById } from '@/lib/builder/templates';
 import { inngest } from '@/lib/inngest';
@@ -177,6 +177,7 @@ export async function getForms() {
 }
 
 export async function getForm(id: string) {
+ await requireModuleAccess('marketing');
  try {
   try {
    await requireFormAccess(id, 'read');
@@ -204,6 +205,7 @@ export async function getForm(id: string) {
 // directly from the browser, gated only by the viewer's own workspace_id,
 // the same collaborator-blind bug as getForm above.
 export async function getFormSubmissionsData(formId: string) {
+ await requireModuleAccess('marketing');
  try {
   try {
    await requireFormAccess(formId, 'read');
@@ -241,6 +243,7 @@ export async function getFormSubmissionsData(formId: string) {
 // separately gated at 'write' so a viewer can't create/toggle/delete one. ──
 
 export async function getFormAutomationsData(formId: string) {
+ await requireModuleAccess('marketing');
  try {
   try {
    await requireFormAccess(formId, 'read');
@@ -271,6 +274,7 @@ export async function getFormAutomationsData(formId: string) {
 }
 
 export async function createFormWorkflow(formId: string, name: string) {
+ await requireModuleAccess('marketing');
  try {
   try {
    await requireFormAccess(formId, 'write');
@@ -303,6 +307,7 @@ export async function createFormWorkflow(formId: string, name: string) {
 }
 
 export async function toggleFormWorkflowActive(formId: string, workflowId: string, isActive: boolean) {
+ await requireModuleAccess('marketing');
  try {
   try {
    await requireFormAccess(formId, 'write');
@@ -321,6 +326,7 @@ export async function toggleFormWorkflowActive(formId: string, workflowId: strin
 }
 
 export async function deleteFormWorkflow(formId: string, workflowId: string) {
+ await requireModuleAccess('marketing');
  try {
   try {
    await requireFormAccess(formId, 'write');
@@ -342,6 +348,7 @@ export async function deleteFormWorkflow(formId: string, workflowId: string) {
 // actions (generate recovery link, discard) are separately 'write'-gated. ──
 
 export async function getPartialSubmissionsData(formId: string) {
+ await requireModuleAccess('marketing');
  try {
   try {
    await requireFormAccess(formId, 'read');
@@ -372,6 +379,7 @@ export async function getPartialSubmissionsData(formId: string) {
 }
 
 export async function generatePartialSubmissionRecoveryLink(formId: string, partialId: string, token: string, expiresAt: string) {
+ await requireModuleAccess('marketing');
  try {
   try {
    await requireFormAccess(formId, 'write');
@@ -394,6 +402,7 @@ export async function generatePartialSubmissionRecoveryLink(formId: string, part
 }
 
 export async function deletePartialSubmission(formId: string, partialId: string) {
+ await requireModuleAccess('marketing');
  try {
   try {
    await requireFormAccess(formId, 'write');
@@ -419,6 +428,7 @@ export async function deletePartialSubmission(formId: string, partialId: string)
 // the A/B testing page reads. ──
 
 export async function getFormAnalyticsData(formId: string, days: number = 30) {
+ await requireModuleAccess('marketing');
  try {
   try {
    await requireFormAccess(formId, 'read');
@@ -570,6 +580,7 @@ export async function getFormAnalyticsData(formId: string, days: number = 30) {
 // server-side at insert time. ──
 
 export async function getFormVariantsData(formId: string, days: number = 30) {
+ await requireModuleAccess('marketing');
  try {
   try {
    await requireFormAccess(formId, 'read');
@@ -646,6 +657,7 @@ export async function getFormVariantsData(formId: string, days: number = 30) {
 }
 
 export async function createFormVariant(formId: string, name: string, trafficWeight: number, fieldOverrides: Record<string, { label?: string }> = {}) {
+ await requireModuleAccess('marketing');
  try {
   try {
    await requireFormAccess(formId, 'write');
@@ -700,6 +712,7 @@ export async function createFormVariant(formId: string, name: string, trafficWei
 }
 
 export async function updateFormVariantWeight(formId: string, variantId: string, trafficWeight: number) {
+ await requireModuleAccess('marketing');
  try {
   try {
    await requireFormAccess(formId, 'write');
@@ -721,6 +734,7 @@ export async function updateFormVariantWeight(formId: string, variantId: string,
 }
 
 export async function archiveFormVariant(formId: string, variantId: string) {
+ await requireModuleAccess('marketing');
  try {
   try {
    await requireFormAccess(formId, 'write');
@@ -746,6 +760,7 @@ export async function archiveFormVariant(formId: string, variantId: string) {
 // per the confirmed role mapping. ──
 
 export async function getFormForGovernance(formId: string) {
+ await requireModuleAccess('marketing');
  try {
   try {
    await requireFormAccess(formId, 'manage');
@@ -1022,6 +1037,7 @@ export async function deleteFunnelAction(id: string) {
 class CampaignUserError extends Error {}
 
 export async function updateCampaign(id: string, updates: any) {
+ await requireModuleAccess('marketing');
  let previousState: { status: string; scheduled_for: string | null } | null = null;
  let directEmailConfig: Awaited<ReturnType<typeof getWorkspaceEmailConfig>> = null;
  let audienceLookupFailed = false;
@@ -1447,6 +1463,7 @@ export async function deleteCampaignAction(id: string) {
 }
 
 export async function updateForm(id: string, updates: any) {
+ await requireModuleAccess('marketing');
  try {
   try {
    await requireFormAccess(id, 'write');
@@ -1497,6 +1514,7 @@ export async function updateForm(id: string, updates: any) {
 }
 
 export async function deleteFormAction(id: string) {
+ await requireModuleAccess('marketing');
  try {
   try {
    await requireFormAccess(id, 'manage');
@@ -1615,6 +1633,7 @@ export async function getWorkspaceApiKey() {
 }
 
 export async function sendTestEmailAction(campaignId: string, testEmail: string, compiledHtml: string) {
+ await requireModuleAccess('marketing');
  try {
   const supabase = await createServerClient();
   let workspaceId: string;

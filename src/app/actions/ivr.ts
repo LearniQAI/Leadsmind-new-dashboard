@@ -7,6 +7,7 @@
 // at the webhook in src/app/api/webhooks/twilio/voice. Everything else here is plain
 // workspace-scoped CRUD guarded by RLS + requireWorkspaceRole.
 
+import { requireModuleAccess } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
@@ -63,6 +64,7 @@ function appUrl(): string {
 // LIST — menus plus which numbers (if any) each is currently assigned to, so the builder UI can
 // show assignment state without a second round trip per menu.
 export async function listIvrMenus(): Promise<{ data?: IvrMenu[]; error?: string }> {
+  await requireModuleAccess('settings');
   const { workspaceId } = await requireWorkspaceRole(['admin', 'owner']);
   const adminClient = createAdminClient();
 
@@ -96,6 +98,7 @@ export async function listIvrMenus(): Promise<{ data?: IvrMenu[]; error?: string
 
 // GET ONE — menu + its options, for the builder screen.
 export async function getIvrMenu(menuId: string): Promise<{ data?: IvrMenu; error?: string }> {
+  await requireModuleAccess('settings');
   const { workspaceId } = await requireWorkspaceRole(['admin', 'owner']);
   const adminClient = createAdminClient();
 
@@ -205,6 +208,7 @@ export async function updateIvrMenu(menuId: string, input: {
 }
 
 export async function deleteIvrMenu(menuId: string): Promise<{ success?: boolean; error?: string }> {
+  await requireModuleAccess('settings');
   const { workspaceId } = await requireWorkspaceRole(['admin', 'owner']);
   const adminClient = createAdminClient();
 
@@ -337,6 +341,7 @@ export async function upsertMenuOption(input: {
 }
 
 export async function deleteMenuOption(optionId: string, menuId: string): Promise<{ success?: boolean; error?: string }> {
+  await requireModuleAccess('settings');
   const { workspaceId } = await requireWorkspaceRole(['admin', 'owner']);
   const adminClient = createAdminClient();
 
@@ -422,6 +427,7 @@ export async function assignMenuToNumber(phoneNumberId: string, menuId: string |
 
 // CALL LOGS — read-only listing for the Phone & IVR settings area.
 export async function listCallLogs(params: { phoneNumberId?: string; limit?: number } = {}): Promise<{ data?: CallLog[]; error?: string }> {
+  await requireModuleAccess('settings');
   const { workspaceId } = await requireWorkspaceRole(['admin', 'owner']);
   const adminClient = createAdminClient();
 

@@ -1,5 +1,6 @@
 'use server';
 
+import { requireModuleAccess } from '@/lib/auth';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireLmsInstructor } from '@/lib/lms/access';
 import { logger } from '@/shared/logger';
@@ -31,6 +32,7 @@ export interface GradingQueueItem {
 export async function getWorkspacePendingGradingQueue(): Promise<
   { data: GradingQueueItem[] } | { error: string }
 > {
+  await requireModuleAccess('learning');
   try {
     const { workspaceId } = await requireLmsInstructor();
     const db = createAdminClient();

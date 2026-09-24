@@ -15,7 +15,7 @@
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { requireWorkspaceAccess } from '@/lib/auth';
+import { requireWorkspaceAccess, requireModuleAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 import { decrypt } from '@/lib/encryption';
 import { SegmentationCompiler, RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
@@ -198,6 +198,7 @@ async function resolveAudience(
 }
 
 export async function createWhatsAppBroadcastCampaign(payload: CreateWhatsAppBroadcastPayload) {
+  await requireModuleAccess('marketing');
   try {
     const { workspaceId, userId } = await requireWorkspaceAccess();
     if (!payload.name?.trim()) return { success: false as const, error: 'Campaign name is required' };
@@ -279,6 +280,7 @@ export async function createWhatsAppBroadcastCampaign(payload: CreateWhatsAppBro
 }
 
 export async function cancelWhatsAppBroadcastCampaign(id: string) {
+  await requireModuleAccess('marketing');
   try {
     const { workspaceId } = await requireWorkspaceAccess();
     const supabase = await createServerClient();

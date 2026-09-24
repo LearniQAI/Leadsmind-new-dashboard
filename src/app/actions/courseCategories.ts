@@ -1,5 +1,6 @@
 'use server';
 
+import { requireModuleAccess } from '@/lib/auth';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireLmsInstructor } from '@/lib/lms/access';
 import { logger } from '@/shared/logger';
@@ -19,6 +20,7 @@ export interface CourseCategory {
 export async function getWorkspaceCourseCategories(): Promise<
   { data: CourseCategory[] } | { error: string }
 > {
+  await requireModuleAccess('learning');
   try {
     const { workspaceId } = await requireLmsInstructor();
     const db = createAdminClient();
@@ -79,6 +81,7 @@ export async function createCourseCategory(input: {
 /** Deleting a category never deletes or hides its courses — ON DELETE SET NULL, they just
  *  become uncategorized again. */
 export async function deleteCourseCategory(categoryId: string): Promise<{ success: true } | { error: string }> {
+  await requireModuleAccess('learning');
   try {
     const { workspaceId } = await requireLmsInstructor();
     const db = createAdminClient();

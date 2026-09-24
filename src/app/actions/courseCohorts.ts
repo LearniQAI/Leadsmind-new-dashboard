@@ -1,5 +1,6 @@
 'use server';
 
+import { requireModuleAccess } from '@/lib/auth';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireLmsInstructor } from '@/lib/lms/access';
 import { logger } from '@/shared/logger';
@@ -131,6 +132,7 @@ export async function updateCohort(
   cohortId: string,
   patch: { name?: string; start_date?: string; end_date?: string | null; seat_cap?: number }
 ) {
+  await requireModuleAccess('learning');
   try {
     const { workspaceId } = await requireLmsInstructor();
     const admin = createAdminClient();
@@ -176,6 +178,7 @@ export async function updateCohort(
 }
 
 export async function deleteCohort(cohortId: string) {
+  await requireModuleAccess('learning');
   try {
     const { workspaceId } = await requireLmsInstructor();
     const admin = createAdminClient();

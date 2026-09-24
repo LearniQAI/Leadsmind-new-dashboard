@@ -1,5 +1,6 @@
 'use server';
 
+import { requireModuleAccess } from '@/lib/auth';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
@@ -35,6 +36,7 @@ function rethrowSafe(err: unknown, logEvent: string, context?: Record<string, un
  * rather than implying a real refund happened.
  */
 export async function refundInvoice(invoiceId: string, reason: string, amount?: number): Promise<RefundResult> {
+  await requireModuleAccess('finance');
   try {
     const { workspaceId, userId } = await requireWorkspaceRole(ALLOWED_REFUND_ROLES);
     const supabase = createAdminClient();

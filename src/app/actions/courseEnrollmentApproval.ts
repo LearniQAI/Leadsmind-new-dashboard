@@ -1,5 +1,6 @@
 'use server';
 
+import { requireModuleAccess } from '@/lib/auth';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireLmsInstructor } from '@/lib/lms/access';
 import { logger } from '@/shared/logger';
@@ -22,6 +23,7 @@ export interface PendingEnrollmentItem {
 export async function getPendingEnrollmentsForCourse(
   courseId: string
 ): Promise<{ data: PendingEnrollmentItem[] } | { error: string }> {
+  await requireModuleAccess('learning');
   try {
     const { workspaceId } = await requireLmsInstructor();
     const db = createAdminClient();
@@ -77,6 +79,7 @@ export async function getPendingEnrollmentsForCourse(
 export async function approvePendingEnrollment(
   enrollmentId: string
 ): Promise<{ success: true } | { error: string }> {
+  await requireModuleAccess('learning');
   try {
     const { workspaceId } = await requireLmsInstructor();
     const db = createAdminClient();
@@ -135,6 +138,7 @@ export async function approvePendingEnrollment(
 export async function rejectPendingEnrollment(
   enrollmentId: string
 ): Promise<{ success: true } | { error: string }> {
+  await requireModuleAccess('learning');
   try {
     const { workspaceId } = await requireLmsInstructor();
     const db = createAdminClient();

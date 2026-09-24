@@ -1,5 +1,6 @@
 'use server'
 
+import { requireModuleAccess } from '@/lib/auth';
 import { createAdminClient, createServerClient } from '@/lib/supabase/server'
 import { encrypt, decrypt } from '@/lib/encryption'
 import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig'
@@ -25,6 +26,7 @@ async function requireWorkspaceMember(workspaceId: string): Promise<boolean> {
 }
 
 export async function getEmailProvider(workspaceId: string) {
+  await requireModuleAccess('settings');
   if (!workspaceId) return { success: false, error: 'Workspace ID is required' }
   if (!(await requireWorkspaceMember(workspaceId))) {
     return { success: false, error: 'Unauthorized' }
@@ -77,6 +79,7 @@ export async function saveEmailProvider(
     fromName?: string
   }
 ) {
+  await requireModuleAccess('settings');
   if (!workspaceId) return { success: false, error: 'Workspace ID is required' }
   if (!payload.fromEmail) {
     return { success: false, error: 'From Email is required' }
@@ -116,6 +119,7 @@ export async function saveEmailProvider(
 }
 
 export async function verifyEmailProvider(workspaceId: string) {
+  await requireModuleAccess('settings');
   if (!workspaceId) return { success: false, error: 'Workspace ID is required' }
   if (!(await requireWorkspaceMember(workspaceId))) {
     return { success: false, error: 'Unauthorized' }

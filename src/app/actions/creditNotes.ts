@@ -2,7 +2,7 @@
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { requireWorkspaceAccess } from '@/lib/auth';
+import { requireWorkspaceAccess, requireModuleAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 import { ValidationError, toClientError } from '@/shared/errors/AppError';
 
@@ -51,6 +51,7 @@ async function generateCreditNumber(supabase: any, workspaceId: string): Promise
 }
 
 export async function createCreditNote(data: { invoiceId: string; amount: number; reason: string }) {
+  await requireModuleAccess('finance');
   const { workspaceId, userId } = await requireWorkspaceAccess();
   const supabase = await createServerClient();
 
@@ -129,6 +130,7 @@ export async function createCreditNote(data: { invoiceId: string; amount: number
 }
 
 export async function deleteCreditNote(id: string) {
+  await requireModuleAccess('finance');
   const { workspaceId } = await requireWorkspaceAccess();
 
   // Delete + invoice-balance restore as a single atomic transaction — see

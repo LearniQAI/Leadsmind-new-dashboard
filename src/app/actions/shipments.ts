@@ -1,5 +1,6 @@
 'use server'
 
+import { requireModuleAccess } from '@/lib/auth';
 import { createAdminClient, createServerClient } from '@/lib/supabase/server'
 import { detectCourier } from '@/lib/courier/detect'
 import { createTracking } from '@/lib/courier/aftership'
@@ -35,6 +36,7 @@ export async function createShipment(
     courier_slug?: string
   }
 ) {
+  await requireModuleAccess('commerce');
   // Previously had zero auth/membership check — any caller (no login
   // required) could burn another workspace's tracking quota by supplying an
   // arbitrary workspaceId, since this uses the admin client (bypasses RLS).
@@ -200,6 +202,7 @@ export async function getShipmentEvents(shipmentId: string) {
 }
 
 export async function updateTrackingBrand(workspaceId: string, brandSettings: any) {
+  await requireModuleAccess('commerce');
   if (!(await requireWorkspaceMember(workspaceId))) {
     return { success: false, error: 'Unauthorized' }
   }
@@ -230,6 +233,7 @@ export async function updateTrackingBrand(workspaceId: string, brandSettings: an
 }
 
 export async function uploadBrandLogo(formData: FormData) {
+  await requireModuleAccess('commerce');
   const supabase = createAdminClient()
   const file = formData.get('file') as File | null
   const workspaceId = formData.get('workspaceId') as string | null
@@ -401,6 +405,7 @@ export async function updateShipmentStatus(
     location?: string
   }
 ) {
+  await requireModuleAccess('commerce');
   const supabase = createAdminClient()
   const now = new Date().toISOString()
 
@@ -467,6 +472,7 @@ export async function updateShipmentStatus(
 }
 
 export async function syncShipmentTracking(shipmentId: string) {
+  await requireModuleAccess('commerce');
   const supabase = createAdminClient()
   
   const { data: shipment, error: fetchErr } = await supabase

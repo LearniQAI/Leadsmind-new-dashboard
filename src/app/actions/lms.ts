@@ -1,7 +1,7 @@
 'use server';
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
-import { getCurrentWorkspaceId, getUser } from '@/lib/auth';
+import { getCurrentWorkspaceId, getUser, requireModuleAccess } from '@/lib/auth';
 import { sanitizeSlug } from '@/lib/slug';
 import { isReservedCoursePath } from '@/lib/domains/customDomainRoutes';
 import { logger } from '@/shared/logger';
@@ -118,6 +118,7 @@ export async function getCourse(courseId: string) {
 // domain_configurations.id for a connected custom domain, or null/omitted (legacy "skip for
 // now" callers, still supported so nothing that already calls this function breaks).
 export async function createCourseWithDomain(title: string, domainId?: string | null, urlPath?: string | null) {
+ await requireModuleAccess('learning');
  try {
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
@@ -542,6 +543,7 @@ export async function completeLessonAction(lessonId: string) {
  * progress details, and quiz attempt logs for a specific course.
  */
 export async function getCourseAnalytics(courseId: string) {
+  await requireModuleAccess('learning');
   try {
     const workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };

@@ -2,7 +2,7 @@
 
 import { createAdminClient, createServerClient } from '@/lib/supabase/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getCurrentWorkspaceId } from '@/lib/auth';
+import { getCurrentWorkspaceId, requireModuleAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 import { toClientError } from '@/shared/errors/AppError';
 
@@ -10,6 +10,7 @@ import { toClientError } from '@/shared/errors/AppError';
  * Seeds the 5 core automation templates directly to the user dashboard canvas.
  */
 export async function seedCourseBlueprints(courseId: string) {
+  await requireModuleAccess('learning');
   try {
     const authClient = await createServerClient();
     const { data: { user }, error: authError } = await authClient.auth.getUser();
@@ -156,6 +157,7 @@ export async function seedCertificateDeliveryBlueprint(
   workspaceId: string,
   adminClient?: SupabaseClient,
 ): Promise<{ created: boolean }> {
+  await requireModuleAccess('learning');
   const db = adminClient ?? createAdminClient();
 
   const { data: existing } = await db
