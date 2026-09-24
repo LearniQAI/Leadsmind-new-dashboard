@@ -12,6 +12,7 @@ import { revalidatePath } from 'next/cache';
 import { createHash, randomBytes } from 'crypto';
 import { logger, safeLog } from '@/shared/logger';
 import { configureInboundSmsWebhook, describeWebhookFailure } from '@/lib/twilio/inboundWebhook';
+import { normalizePermissions } from '@/lib/permissions/modules';
 
 async function getActiveWorkspaceId() {
   const id = await getWsId();
@@ -171,6 +172,8 @@ export async function inviteTeamMember(
  options?: { directCreate?: boolean; fullName?: string; password?: string }
 ) {
  let workspaceId: string | null = null;
+ // Only real module keys are stored (legacy keys mapped, unknown values dropped).
+ permissions = normalizePermissions(permissions);
  try {
   workspaceId = await getActiveWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
@@ -338,6 +341,7 @@ export async function inviteTeamMember(
 }
 
 export async function updateMemberPermissions(memberId: string, role: string, permissions: string[]) {
+  permissions = normalizePermissions(permissions);
   try {
     const workspaceId = await getActiveWorkspaceId();
     if (!workspaceId) {

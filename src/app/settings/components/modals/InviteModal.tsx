@@ -1,6 +1,7 @@
 "use client";
 import React from 'react';
 import { Users, X, User as UserIcon, Globe, ShieldCheck, Check } from 'lucide-react';
+import { lockedModulesForRole, type PermissionModuleOption } from '@/lib/permissions/permissionModules';
 
 interface InviteModalProps {
   isOpen: boolean;
@@ -19,7 +20,7 @@ interface InviteModalProps {
   togglePermission: (id: string) => void;
   isSaving: boolean;
   onSubmit: (e: React.FormEvent) => void;
-  permissionModules: any[];
+  permissionModules: PermissionModuleOption[];
 }
 
 export default function InviteModal({
@@ -156,22 +157,23 @@ export default function InviteModal({
               <label className="text-[11px] font-bold !text-dash-textMuted block">Module permissions</label>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {permissionModules.map((module) => {
-                  const Icon = module.icon;
-                  const isSelected = selectedPermissions.includes(module.id);
+                  const locked = lockedModulesForRole(inviteRole).includes(module.id);
+                  const isSelected = locked || selectedPermissions.includes(module.id);
                   return (
                     <button
                       key={module.id}
                       type="button"
-                      disabled={inviteRole === 'admin'}
+                      disabled={inviteRole === 'admin' || locked}
+                      title={locked && inviteRole !== 'admin' ? 'Always included for this role' : undefined}
                       onClick={() => togglePermission(module.id)}
-                      className={`flex items-center gap-2 p-3 rounded-xl border transition-colors motion-reduce:transition-none text-left ${inviteRole === 'admin'
+                      className={`flex items-center gap-2 p-3 rounded-xl border transition-colors motion-reduce:transition-none text-left ${inviteRole === 'admin' || locked
                         ? "bg-dash-accent/5 border-dash-accent/20 text-dash-accent opacity-60 cursor-not-allowed"
                         : isSelected
                           ? "bg-dash-accent/10 border-dash-accent/30 text-dash-accent shadow-sm"
                           : "bg-dash-surface border-dash-border !text-dash-textMuted hover:border-dash-accent/30 hover:!text-dash-text"
                         }`}
                     >
-                      <Icon size={14} />
+                      <i className={`${module.icon} text-[14px] w-4 text-center shrink-0`} aria-hidden="true" />
                       <span className="text-[11px] font-bold truncate">{module.label}</span>
                       {isSelected && <Check size={12} className="ml-auto" />}
                     </button>

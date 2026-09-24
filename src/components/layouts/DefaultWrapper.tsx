@@ -8,7 +8,8 @@ import useGlobalContext from "@/hooks/use-context";
 import { useDashboardContext } from "./DashboardProvider";
 import GlobalSearchModal from "../dashboard/GlobalSearchModal";
 import AccessDenied from "../auth/AccessDenied";
-import { getRequiredPermission } from "@/lib/nav/deriveRouteMap";
+import { getRequiredModule } from "@/lib/nav/deriveRouteMap";
+import { canAccessModule, hasFullAccess } from "@/lib/permissions/modules";
 import { resolveActiveNav } from "@/lib/nav/matchActiveNav";
 import dashboardNav from "@/data/dashboard-nav";
 import LENAChat from "../support/LENAChat";
@@ -30,30 +31,22 @@ const Wrapper: React.FC<WrapperProps> = ({ children }) => {
   setIsLoading(false);
  }, []);
 
-  // Simple path to permission mapping
+  // UX mirror of the real, server-side module gate in src/lib/supabase/middleware.ts
+  // (which runs before the page's data is fetched). This only covers client-side
+  // navigations that the middleware already allowed or skipped.
   const hasPermission = () => {
-    if (role === 'admin' || role === 'owner') return true;
-    if (pathName === '/dashboard' || pathName === '/' || pathName.startsWith('/auth')) return true;
-    
-    // Explicit role-based checks for HR and Payroll sections
-    if (pathName.startsWith('/hr')) {
-      if (pathName.startsWith('/hr/employees')) {
-        return role === 'admin' || role === 'owner' || role === 'hr';
-      }
-      // /hr/payroll itself is now open to any workspace member (Task 47: the page
-      // branches internally -- admin/owner/hr/payroll get the full payroll-run
-      // management view, everyone else gets a self-service "my payslips" view). The
-      // real access boundary between those two is enforced by the API routes
-      // (GET /api/hr/payroll stays admin/owner/hr/payroll-only; the new
-      // GET /api/hr/payslips/me is scoped to the caller's own record), not by this gate.
-      // Allow any workspace member to access basic HR pages (Leave, Time Tracking, Payroll)
-      return true;
-    }
+    if (hasFullAccess(role)) return true;
+    if (pathName === '/' || pathName.startsWith('/auth')) return true;
 
-    const requiredPermission = getRequiredPermission(pathName);
-    if (!requiredPermission) return true;
+    // Inside HR & Payroll, Employees additionally needs the hr role. The payroll page
+    // branches internally (admin/owner/hr/payroll get the payroll-run view, everyone else
+    // their own payslips); that boundary is enforced by the API routes.
+    if (pathName.startsWith('/hr/employees') && role !== 'hr') return false;
 
-    return permissions.includes(requiredPermission);
+    const requiredModule = getRequiredModule(pathName);
+    if (!requiredModule) return true;
+
+    return canAccessModule(role, permissions, requiredModule);
   };
 
  const accessGranted = hasPermission();

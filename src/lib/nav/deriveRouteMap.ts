@@ -1,68 +1,39 @@
 import dashboardNav from "@/data/dashboard-nav";
-
-interface PermissionEntry {
-  link: string;
-  permission?: string;
-}
-
-/**
- * These routes carry a `permission` in dashboard-nav.ts (used to hide them from the
- * nav for unauthorized roles) but were never gated for direct-URL access in the old
- * DefaultWrapper.tsx routeMap. Confirmed with the user to preserve that — deriving
- * the access gate from the nav permission would newly lock these off for roles that
- * can reach them today. Nav-level hiding (filterNavByPermissions.ts) is unaffected.
- */
-const PAGE_ACCESS_UNGATED = new Set([
-  "/shipments",
-  "/affiliates",
-  "/affiliate-portal",
-  "/affiliate-marketplace",
-  "/admin/compliance",
-]);
+import {
+  EXTRA_MODULE_ROUTES,
+  isUngatedRoute,
+  longestPrefixModule,
+  type ModuleKey,
+} from "@/lib/permissions/modules";
 
 /**
- * Routes that used to live in dashboardNav -- and so got their permission gate
- * for free via the loop below -- but have since moved out of the sidebar
- * entirely (Help Center moved to the top bar, DashboardHeader.tsx, next to the
- * workspace switcher). Their access gate must survive here, or removing the
- * nav entry would silently make the page ungated for direct-URL access.
+ * Page route → module index. Every sidebar link belongs to the module of the section it sits
+ * in (so granting "CRM & Sales" covers Contacts, Pipelines, Quotes, ... alike), plus the
+ * off-nav sibling routes in EXTRA_MODULE_ROUTES.
+ *
+ * Previously /shipments, /affiliates and /admin/compliance were deliberately left ungated
+ * for direct-URL access even though the nav hid them. Module-level permissions now gate them
+ * like every other page in their section; only the self-service routes in UNGATED_ROUTES
+ * (student view, affiliate portal/marketplace, dashboard, help articles) stay open.
  */
-const EXTRA_PERMISSION_ENTRIES: PermissionEntry[] = [
-  { link: "/articles", permission: "business" },
-];
-
-function buildPermissionIndex(): PermissionEntry[] {
-  const entries: PermissionEntry[] = [...EXTRA_PERMISSION_ENTRIES];
+function buildModuleIndex(): Array<[string, ModuleKey]> {
+  const entries: Array<[string, ModuleKey]> = Object.entries(EXTRA_MODULE_ROUTES);
 
   dashboardNav.forEach((module) => {
-    if (module.link) {
-      entries.push({ link: module.link, permission: module.permission });
-    }
-
+    if (module.link) entries.push([module.link, module.module]);
     module.items?.forEach((item) => {
-      if (item.link) {
-        entries.push({
-          link: item.link,
-          permission: PAGE_ACCESS_UNGATED.has(item.link) ? undefined : item.permission,
-        });
-      }
-      item.subItems?.forEach((sub) => {
-        entries.push({
-          link: sub.link,
-          permission: PAGE_ACCESS_UNGATED.has(sub.link) ? undefined : sub.permission ?? item.permission,
-        });
-      });
+      if (item.link) entries.push([item.link, module.module]);
+      item.subItems?.forEach((sub) => entries.push([sub.link, module.module]));
     });
   });
 
-  return entries.sort((a, b) => b.link.length - a.link.length);
+  return entries;
 }
 
-const permissionIndex = buildPermissionIndex();
+const moduleIndex = buildModuleIndex();
 
-export function getRequiredPermission(pathname: string): string | undefined {
-  const match = permissionIndex.find(
-    (entry) => pathname === entry.link || pathname.startsWith(`${entry.link}/`)
-  );
-  return match?.permission;
+/** The module a page route belongs to, or null when the route isn't module-gated. */
+export function getRequiredModule(pathname: string): ModuleKey | null {
+  if (isUngatedRoute(pathname)) return null;
+  return longestPrefixModule(pathname, moduleIndex);
 }

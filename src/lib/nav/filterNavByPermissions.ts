@@ -1,53 +1,36 @@
 import { NavModule, NavItem } from "@/interface";
+import { canAccessModule, isUngatedRoute } from "@/lib/permissions/modules";
 
 export interface NavRoleContext {
   role: string;
   permissions: string[];
 }
 
-interface PermissionedEntry {
-  link?: string;
-  permission?: string;
-}
-
-function isItemAllowed(item: PermissionedEntry, ctx: NavRoleContext): boolean {
-  if (ctx.role === "admin" || ctx.role === "owner") return true;
-  // HR & Payroll is now a flat list (no subItems), so its per-page role gating lives here
-  // rather than in isSubItemAllowed. Employees stays HR-role-restricted, matching
-  // DefaultWrapper's page-level gate; every other /hr/* page is open to any workspace
-  // member (Payroll's own page branches into an admin view or a self-service view, see
-  // src/app/hr/payroll/page.tsx).
+// Employees is HR-role-restricted inside the HR module (matches DefaultWrapper's page gate):
+// having the HR & Payroll module gives the self-service pages (Leave, Time Tracking, own
+// payslips); managing employee records additionally needs the hr role.
+function isItemAllowed(item: NavItem, ctx: NavRoleContext): boolean {
   if (item.link === "/hr/employees") {
-    return ctx.role === "hr";
+    return ctx.role === "admin" || ctx.role === "owner" || ctx.role === "hr";
   }
-  if (item.link?.startsWith("/hr")) return true;
-  const requiredPermission = item.permission;
-  if (!requiredPermission) return true;
-  return ctx.permissions.includes(requiredPermission);
-}
-
-// No subItems-level role restrictions remain (HR & Payroll's were the only ones and moved
-// to isItemAllowed above once it became a flat list) -- kept as a named predicate so a
-// future module's subItems can add one without re-deriving the filter shape.
-function isSubItemAllowed(_sub: { link: string }, _ctx: NavRoleContext): boolean {
   return true;
 }
 
+/**
+ * Module-level: a section is shown iff the member holds its module (admin/owner hold all),
+ * with every page in it. Self-service links (UNGATED_ROUTES, e.g. Student Portal) stay
+ * visible inside a section the member otherwise lacks.
+ */
 export function filterNavByPermissions(modules: NavModule[], ctx: NavRoleContext): NavModule[] {
   return modules
     .map((module): NavModule | null => {
-      if (!module.items) {
-        // Direct-link module (Dashboard, Help Center) — gate itself using the item-level rule.
-        return isItemAllowed(module, ctx) ? module : null;
-      }
+      const granted = canAccessModule(ctx.role, ctx.permissions, module.module);
 
-      const filteredItems: NavItem[] = module.items
-        .filter((item) => isItemAllowed(item, ctx))
-        .map((item) =>
-          item.subItems
-            ? { ...item, subItems: item.subItems.filter((sub) => isSubItemAllowed(sub, ctx)) }
-            : item
-        );
+      if (!module.items) return granted ? module : null;
+
+      const filteredItems: NavItem[] = module.items.filter((item) =>
+        granted ? isItemAllowed(item, ctx) : Boolean(item.link && isUngatedRoute(item.link))
+      );
 
       if (filteredItems.length === 0) return null;
 
