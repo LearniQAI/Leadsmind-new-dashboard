@@ -9,6 +9,7 @@ import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
 import { SandboxedHtml } from '@/components/lms/SandboxedHtml';
 import { VoiceNotePlayer } from '@/components/common/VoiceNotePlayer';
 import { isSafeEmbedUrl } from '@/lib/security/isSafeEmbedUrl';
+import { driveVideoUrls } from '@/lib/lms/video/driveVideoUrls';
 
 export const BLOCK_TYPE_META: Record<string, { label: string; icon: any; color: string }> = {
   video: { label: 'Video', icon: Video, color: 'bg-blue-500' },
@@ -32,6 +33,10 @@ export const BLOCK_TYPE_META: Record<string, { label: string; icon: any; color: 
 export function BlockCanvasPreview({ block }: { block: any }) {
   switch (block.type) {
     case 'video':
+      if (block.video_provider === 'gdrive') {
+        const drive = driveVideoUrls(block);
+        return drive ? <DriveVideoCanvasPreview posterUrl={drive.poster} /> : <EmptyPreview label="No Drive link validated yet" />;
+      }
       return block.content?.thumbnail_url ? (
         <div
           className="relative rounded-lg overflow-hidden aspect-video bg-black bg-cover bg-center"
@@ -152,6 +157,27 @@ export function BlockCanvasPreview({ block }: { block: any }) {
     default:
       return <EmptyPreview label="Unconfigured block" />;
   }
+}
+
+// Drive's own thumbnail via the gated poster route (staff always pass its access check). Drive
+// has no thumbnail for a file it's still processing — then this degrades to a plain dark card
+// with the Drive label rather than a broken-image icon.
+function DriveVideoCanvasPreview({ posterUrl }: { posterUrl: string }) {
+  const [posterFailed, setPosterFailed] = React.useState(false);
+  return (
+    <div className="relative rounded-lg overflow-hidden aspect-video bg-black">
+      {!posterFailed && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={posterUrl} alt="" className="absolute inset-0 h-full w-full object-cover" onError={() => setPosterFailed(true)} />
+      )}
+      <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+        <PlayCircle size={28} className="text-white" />
+      </div>
+      <span className="absolute bottom-2 left-2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white">
+        Google Drive
+      </span>
+    </div>
+  );
 }
 
 function EmptyPreview({ label }: { label: string }) {

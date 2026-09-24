@@ -3,62 +3,53 @@ import { AlertTriangle } from 'lucide-react';
 
 interface VideoPlayerProps {
   videoUrl: string;
-  onComplete: () => void;
+  /** Receives the real watched percentage that crossed the threshold — passed straight through
+   *  to recordBlockCompletion, which re-checks it against the block's completion_threshold. */
+  onComplete: (percentage: number) => void;
   isAlreadyCompleted: boolean;
   lowBandwidthMode: boolean;
+  /** The block's completion_threshold (percent). Defaults to 90 when the block has none. */
+  completionThreshold?: number | null;
+  /** Play `videoUrl` in a native <video> regardless of URL shape — for same-origin proxied
+   *  sources (the Google Drive stream route) that URL-sniffing can't classify. */
+  forceDirect?: boolean;
+  poster?: string;
   onVideoRegister?: (el: HTMLVideoElement | null, isPlaying: boolean) => void;
   onProgressUpdate?: (seconds: number) => void;
 }
 
-function getEmbedUrl(url: string): string {
-  if (!url) return '';
+// The embedded providers this player supports: YouTube and Vimeo, each with a real JS player API
+// for watch tracking. Google Drive video isn't classified here at all — its callers pass the gated
+// stream URL with forceDirect and it plays in a native <video>. Wistia (fake completion), Bunny.net
+// and AWS (no integration) were removed as providers on 2026-09-24, along with the old catch-all
+// that treated any other http URL as a playable file. A URL that isn't YouTube or Vimeo is now
+// unsupported: the player says so and never guesses a <video>/<iframe> or auto-completes it.
+type EmbedSource = { provider: 'youtube' | 'vimeo'; embedUrl: string };
+
+function resolveEmbed(url: string): EmbedSource | null {
+  if (!url) return null;
   try {
-    if (url.includes('youtube.com/embed/')) return url;
+    if (url.includes('youtube.com/embed/')) return { provider: 'youtube', embedUrl: url };
     if (url.includes('youtu.be/')) {
-      const parts = url.split('youtu.be/');
-      if (parts[1]) {
-        const videoId = parts[1].split(/[?#]/)[0];
-        return `https://www.youtube.com/embed/${videoId}`;
-      }
+      const videoId = url.split('youtu.be/')[1]?.split(/[?#]/)[0];
+      if (videoId) return { provider: 'youtube', embedUrl: `https://www.youtube.com/embed/${videoId}` };
     }
     if (url.includes('youtube.com/watch')) {
-      const urlObj = new URL(url);
-      const videoId = urlObj.searchParams.get('v');
-      if (videoId) return `https://www.youtube.com/embed/${videoId}`;
+      const videoId = new URL(url).searchParams.get('v');
+      if (videoId) return { provider: 'youtube', embedUrl: `https://www.youtube.com/embed/${videoId}` };
     }
-    if (url.includes('player.vimeo.com/video/')) return url;
+    if (url.includes('player.vimeo.com/video/')) return { provider: 'vimeo', embedUrl: url };
     if (url.includes('vimeo.com/')) {
+      // KNOWN LIMITATION (not fixed): only the numeric id is kept. An unlisted video's privacy hash
+      // (vimeo.com/{id}/{hash}) is dropped, so the embed fails for unlisted videos. Public Vimeo
+      // videos, and pasted player.vimeo.com URLs (which keep their ?h= param), work.
       const match = url.match(/vimeo\.com\/(?:video\/)?([0-9]+)/);
-      if (match && match[1]) return `https://player.vimeo.com/video/${match[1]}`;
-    }
-    if (url.includes('fast.wistia.net/embed/iframe/')) return url;
-    if (url.includes('wistia.com/') || url.includes('wi.st/')) {
-      const match = url.match(/(?:medias|embed)\/(?:iframe\/)?([a-z0-9]+)/i);
-      if (match && match[1]) return `https://fast.wistia.net/embed/iframe/${match[1]}`;
+      if (match && match[1]) return { provider: 'vimeo', embedUrl: `https://player.vimeo.com/video/${match[1]}` };
     }
   } catch (e) {
     console.error('[EmbedURL] Parsing error:', e);
   }
-  return url;
-}
-
-function isDirectVideo(url: string): boolean {
-  if (!url) return false;
-  return (
-    url.match(/\.(mp4|webm|ogg|mov|mkv)($|\?)/i) !== null ||
-    (url.startsWith('http') &&
-      !url.includes('youtube.com') && !url.includes('youtu.be') &&
-      !url.includes('vimeo.com') &&
-      !url.includes('wistia.com') && !url.includes('wi.st') && !url.includes('wistia.net'))
-  );
-}
-
-type EmbedProvider = 'youtube' | 'vimeo' | 'other';
-
-function detectEmbedProvider(embedUrl: string): EmbedProvider {
-  if (embedUrl.includes('youtube.com')) return 'youtube';
-  if (embedUrl.includes('vimeo.com')) return 'vimeo';
-  return 'other';
+  return null;
 }
 
 let youtubeApiPromise: Promise<any> | null = null;
@@ -96,17 +87,41 @@ export default function VideoPlayer({
   onComplete,
   isAlreadyCompleted,
   lowBandwidthMode,
+  completionThreshold,
+  forceDirect = false,
+  poster,
   onVideoRegister,
   onProgressUpdate
 }: VideoPlayerProps) {
   const [watchedPercent, setWatchedPercent] = useState(0);
-  const [trackingMode, setTrackingMode] = useState<'real' | 'untracked' | null>(null);
+  const [isTracking, setIsTracking] = useState(false);
+  const [playbackError, setPlaybackError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const iframeIdRef = useRef(`yt-player-${Math.random().toString(36).slice(2)}`);
-  const directVideo = isDirectVideo(videoUrl);
-  const embedUrl = getEmbedUrl(videoUrl);
-  const provider = detectEmbedProvider(embedUrl);
+  // One completion call per source: the native timeupdate handler would otherwise re-fire it on
+  // every tick past the threshold until the server round-trip lands.
+  const completionFiredRef = useRef(false);
+  const directVideo = forceDirect;
+  const embed = directVideo ? null : resolveEmbed(videoUrl);
+  // Previously every tracker hardcoded 90 AND the caller always reported {percentage: 90}, so the
+  // instructor's threshold slider did nothing below 90 and made the block uncompletable above it
+  // (the server rejects 90 < threshold). Now the real threshold drives every tracker and the real
+  // percentage is what gets reported.
+  const threshold = completionThreshold ?? 90;
+
+  useEffect(() => {
+    completionFiredRef.current = false;
+    setPlaybackError(false);
+  }, [videoUrl]);
+
+  const fireComplete = (percentage: number) => {
+    if (completionFiredRef.current) return;
+    completionFiredRef.current = true;
+    onComplete(percentage);
+  };
+  const provider = embed?.provider ?? null;
+  const embedUrl = embed?.embedUrl ?? '';
 
   // Monitor playing state for native video
   useEffect(() => {
@@ -133,25 +148,28 @@ export default function VideoPlayer({
     };
   }, [videoUrl, directVideo, onVideoRegister]);
 
-  // Real playback-percentage tracking for embedded providers with a public JS player API
-  // (YouTube, Vimeo) — replaces a prior bug where any embedded video auto-completed after a
-  // fixed 18-second client-side timer regardless of whether it was actually being watched.
-  // Providers with no such public API (Wistia's requires its own script/queue lifecycle not
-  // yet integrated here, Bunny.net/AWS are typically direct files already handled above, or
-  // an unrecognized iframe) fall back to 'opened' semantics — completion fires once on a
-  // real render of the block, not on a timer — rather than either faking a watch percentage
-  // or leaving the lesson permanently uncompletable.
+  // Real playback-percentage tracking through each embedded provider's public JS player API —
+  // replaces a prior bug where any embedded video auto-completed after a fixed 18-second
+  // client-side timer regardless of whether it was actually being watched.
   useEffect(() => {
-    if (directVideo || isAlreadyCompleted) return;
+    setIsTracking(false);
+    if (directVideo || isAlreadyCompleted || !provider) return;
     let cancelled = false;
     let cleanup: (() => void) | undefined;
 
+    setIsTracking(true);
     if (provider === 'youtube') {
-      setTrackingMode('real');
       loadYouTubeIframeApi().then((YT) => {
         if (cancelled || !iframeRef.current) return;
         const player = new YT.Player(iframeRef.current, {
           events: {
+            // Polling can miss the last second; the ENDED state is the reliable 100%.
+            onStateChange: (e: { data: number }) => {
+              if (e.data === YT.PlayerState?.ENDED) {
+                setWatchedPercent(100);
+                fireComplete(100);
+              }
+            },
             onReady: () => {
               const poll = setInterval(() => {
                 try {
@@ -161,9 +179,9 @@ export default function VideoPlayer({
                     const pct = Math.min(100, Math.round((current / duration) * 100));
                     setWatchedPercent(pct);
                     onProgressUpdate?.(Math.floor(current));
-                    if (pct >= 90) {
+                    if (pct >= threshold) {
                       clearInterval(poll);
-                      onComplete();
+                      fireComplete(pct);
                     }
                   }
                 } catch {
@@ -175,8 +193,7 @@ export default function VideoPlayer({
           }
         });
       });
-    } else if (provider === 'vimeo') {
-      setTrackingMode('real');
+    } else {
       loadVimeoPlayerApi().then((Vimeo) => {
         if (cancelled || !iframeRef.current) return;
         const player = new Vimeo.Player(iframeRef.current);
@@ -184,20 +201,22 @@ export default function VideoPlayer({
           const pct = Math.round(data.percent * 100);
           setWatchedPercent(pct);
           onProgressUpdate?.(Math.floor(data.seconds));
-          if (pct >= 90) {
+          if (pct >= threshold) {
             player.off('timeupdate', handler);
-            onComplete();
+            fireComplete(pct);
           }
         };
+        const onEnded = () => {
+          setWatchedPercent(100);
+          fireComplete(100);
+        };
         player.on('timeupdate', handler);
-        cleanup = () => player.off('timeupdate', handler);
+        player.on('ended', onEnded);
+        cleanup = () => {
+          player.off('timeupdate', handler);
+          player.off('ended', onEnded);
+        };
       });
-    } else {
-      // No real watch-time API available for this provider — honestly downgraded to
-      // 'opened' semantics (fires once, on real render) rather than faking a percentage.
-      setTrackingMode('untracked');
-      setWatchedPercent(100);
-      onComplete();
     }
 
     return () => {
@@ -205,19 +224,23 @@ export default function VideoPlayer({
       cleanup?.();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videoUrl, directVideo, isAlreadyCompleted, provider]);
+  }, [videoUrl, directVideo, isAlreadyCompleted, provider, threshold]);
 
   // Handle native video element progress
   const handleTimeUpdate = () => {
     const video = videoRef.current;
     if (!video || isAlreadyCompleted) return;
 
-    if (video.duration) {
-      const percentage = (video.currentTime / video.duration) * 100;
-      if (percentage >= 90) {
-        onComplete();
+    if (video.duration && isFinite(video.duration)) {
+      const percentage = Math.min(100, Math.floor((video.currentTime / video.duration) * 100));
+      if (percentage >= threshold) {
+        fireComplete(percentage);
       }
     }
+  };
+
+  const handleEnded = () => {
+    if (!isAlreadyCompleted) fireComplete(100);
   };
 
   if (!videoUrl) {
@@ -238,12 +261,16 @@ export default function VideoPlayer({
           <video
             ref={videoRef}
             src={videoUrl}
+            poster={poster}
             controls
+            playsInline
             onTimeUpdate={handleTimeUpdate}
-            className="w-full h-full object-cover"
+            onEnded={handleEnded}
+            onError={() => setPlaybackError(true)}
+            className="w-full h-full object-contain"
             preload="metadata"
           />
-        ) : (
+        ) : embed ? (
           <iframe
             ref={iframeRef}
             id={iframeIdRef.current}
@@ -254,10 +281,17 @@ export default function VideoPlayer({
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />
+        ) : (
+          <div className="text-center space-y-2 px-6">
+            <AlertTriangle className="text-white/30 mx-auto" size={32} />
+            <span className="text-xs text-white/50 block">
+              This video link isn&apos;t supported. Videos can come from YouTube, Vimeo, or Google Drive.
+            </span>
+          </div>
         )}
       </div>
 
-      {!directVideo && !isAlreadyCompleted && trackingMode === 'real' && (
+      {!directVideo && !isAlreadyCompleted && isTracking && (
         <div className="bg-dash-surface border border-dash-border rounded-xl p-3.5 space-y-2">
           <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-dash-textMuted">
             <span>Watch Progress</span>
@@ -270,15 +304,16 @@ export default function VideoPlayer({
             />
           </div>
           <span className="text-[9px] text-dash-textMuted block leading-tight">
-            Marks complete automatically at 90% watched.
+            Marks complete automatically at {threshold}% watched.
           </span>
         </div>
       )}
 
-      {!directVideo && !isAlreadyCompleted && trackingMode === 'untracked' && (
-        <div className="bg-dash-surface border border-dash-border rounded-xl p-3.5">
-          <span className="text-[9px] text-dash-textMuted block leading-tight">
-            This provider doesn't support real watch-time tracking yet — marked as viewed.
+      {directVideo && playbackError && (
+        <div className="flex items-start gap-2 bg-dash-surface border border-dash-border rounded-xl p-3.5">
+          <AlertTriangle size={14} className="shrink-0 mt-0.5 text-amber-500" />
+          <span className="text-[11px] text-dash-textMuted leading-snug">
+            This video couldn&apos;t be loaded. If it keeps happening, let the course team know — the source file may have been moved or unshared.
           </span>
         </div>
       )}

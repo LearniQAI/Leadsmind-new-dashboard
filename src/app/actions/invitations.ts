@@ -9,6 +9,7 @@
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { logger } from '@/shared/logger';
+import { escapeLikePattern } from '@/lib/campaigns/emailSuppression';
 
 export interface InvitationDetails {
   id: string;
@@ -71,7 +72,14 @@ export async function getInvitationByToken(token: string): Promise<InvitationLoo
 export async function checkAccountExists(email: string): Promise<boolean> {
   try {
     const adminClient = createAdminClient();
-    const { data } = await adminClient.from('users').select('id').ilike('email', email).maybeSingle();
+    // Escaped: '_' is a LIKE wildcard and common in addresses, and a wildcard hit on a
+    // second row would make maybeSingle() error out and report "no account".
+    const { data } = await adminClient
+      .from('users')
+      .select('id')
+      .ilike('email', escapeLikePattern(email.trim()))
+      .limit(1)
+      .maybeSingle();
     return !!data;
   } catch (err) {
     logger.error({ err, email }, 'invitations.check_account_exists.failed');
@@ -103,6 +111,13 @@ export async function acceptInviteNewAccount(token: string, password: string, fu
       email_confirm: true,
       user_metadata: { full_name: fullName },
     });
+
+    // An auth account can exist without a public.users profile row (one does in prod), which
+    // checkAccountExists can't see — treat GoTrue's "already registered" as the sign-in case
+    // instead of a generic failure.
+    if (authError && ((authError as { code?: string }).code === 'email_exists' || /already (been )?registered/i.test(authError.message))) {
+      return { error: 'account_exists' as const };
+    }
 
     if (authError || !authData.user) {
       logger.error({ err: authError, email: invitation.email }, 'invitations.accept_new.auth_create.failed');

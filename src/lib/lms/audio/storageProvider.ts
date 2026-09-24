@@ -26,7 +26,7 @@ export interface StreamRange {
 }
 
 export interface StreamResult {
-  status: 200 | 206;
+  status: 200 | 206 | 416;
   headers: Record<string, string>;
   body: ReadableStream<Uint8Array>;
 }

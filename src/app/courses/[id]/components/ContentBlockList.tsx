@@ -15,6 +15,8 @@ export interface ContentBlock {
   type: string;
   video_provider: string | null;
   file_url: string | null;
+  /** Set only for video_provider 'gdrive', by the server-side validate route (never PATCHed). */
+  video_asset_id?: string | null;
   completion_rule: string;
   completion_threshold: number | null;
   content: Record<string, any>;

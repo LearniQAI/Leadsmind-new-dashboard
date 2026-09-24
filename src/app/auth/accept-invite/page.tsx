@@ -15,6 +15,7 @@ import {
 } from '@/app/actions/invitations';
 import { setActiveWorkspace } from '@/app/actions/auth';
 import { Eye, EyeOff } from 'lucide-react';
+import { inviteRoleLabel } from '@/lib/email/templates/workspaceInvite';
 
 const inputClass =
   'w-full px-4 py-3 border-[1.5px] border-[#E2E8F0] rounded-[10px] text-[15px] text-[#0F172A] bg-white outline-none transition-colors duration-150 focus:border-[#4F46E5] focus:ring-4 focus:ring-[#4F46E5]/10 disabled:opacity-60 disabled:bg-[#F8FAFC]';
@@ -31,6 +32,7 @@ type PageState =
   | { kind: 'joining' }
   | { kind: 'joined'; workspaceName: string }
   | { kind: 'wrong_account'; invitation: InvitationDetails; signedInEmail: string }
+  | { kind: 'confirm'; invitation: InvitationDetails; signedInEmail: string }
   | { kind: 'existing_account'; invitation: InvitationDetails }
   | { kind: 'new_account'; invitation: InvitationDetails };
 
@@ -105,19 +107,10 @@ function AcceptInviteInner() {
           return;
         }
 
-        setState({ kind: 'joining' });
-        const result = await acceptInviteExistingUser(token);
-        if (cancelled) return;
-        if (result?.success) {
-          await setActiveWorkspace(result.workspaceId);
-          setState({ kind: 'joined', workspaceName: invitation.workspaceName });
-          setTimeout(() => {
-            window.location.href = '/dashboard';
-          }, 900);
-        } else {
-          toast.error('Could not accept this invitation. Please try again.');
-          setState({ kind: 'existing_account', invitation });
-        }
+        // Already signed in as the invited address: joining still waits for an explicit
+        // "Accept invitation" click (handleAcceptSignedIn). Simply loading this URL —
+        // a mail scanner's prefetch, a preview pane, an accidental open — never joins.
+        setState({ kind: 'confirm', invitation, signedInEmail: user.email || '' });
         return;
       }
 
@@ -132,6 +125,25 @@ function AcceptInviteInner() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
+
+  async function handleAcceptSignedIn(invitation: InvitationDetails) {
+    setSubmitting(true);
+    try {
+      const result = await acceptInviteExistingUser(token);
+      if (!result?.success) {
+        toast.error('Could not accept this invitation. Please try again.');
+        return;
+      }
+      await setActiveWorkspace(result.workspaceId);
+      setState({ kind: 'joined', workspaceName: invitation.workspaceName });
+      window.location.href = '/dashboard';
+    } catch (err) {
+      console.error(err);
+      toast.error('Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   async function handleSignInToAccept(invitation: InvitationDetails) {
     if (!password) {
@@ -185,8 +197,13 @@ function AcceptInviteInner() {
     try {
       const result = await acceptInviteNewAccount(token, password, fullName.trim());
       if (!result?.success) {
+        if (result?.error === 'account_exists') {
+          toast.error('You already have a LeadsMind account for this email. Sign in to accept.');
+          setPassword('');
+          setState({ kind: 'existing_account', invitation });
+          return;
+        }
         const messages: Record<string, string> = {
-          account_exists: 'An account with this email already exists — refresh this page to sign in instead.',
           expired: 'This invitation has expired.',
           accepted: 'This invitation has already been accepted.',
           invalid: 'This invitation link is invalid.',
@@ -289,6 +306,24 @@ function AcceptInviteInner() {
     );
   }
 
+  if (state.kind === 'confirm') {
+    const { invitation: confirmInvitation } = state;
+    return (
+      <AuthSplitLayout
+        headline={<>Join {confirmInvitation.workspaceName}</>}
+        formHeading="Accept your invitation"
+        formSubheading={`You've been invited to join ${confirmInvitation.workspaceName} as ${inviteRoleLabel(confirmInvitation.role)}.`}
+      >
+        <p className="text-center text-sm !text-[#64748B] mb-5">
+          Signed in as <strong className="!text-[#0F172A]">{state.signedInEmail}</strong>
+        </p>
+        <button className={buttonClass} style={buttonStyle} disabled={submitting} onClick={() => handleAcceptSignedIn(confirmInvitation)}>
+          {submitting ? 'Joining…' : 'Accept invitation'}
+        </button>
+      </AuthSplitLayout>
+    );
+  }
+
   const invitation = state.invitation;
   const nextUrl = `/auth/accept-invite?token=${encodeURIComponent(token)}`;
 
@@ -339,7 +374,7 @@ function AcceptInviteInner() {
     <AuthSplitLayout
       headline={<>Join {invitation.workspaceName}</>}
       formHeading="Create your account"
-      formSubheading={`You've been invited to join ${invitation.workspaceName} as ${invitation.role}.`}
+      formSubheading={`You've been invited to join ${invitation.workspaceName} as ${inviteRoleLabel(invitation.role)}.`}
     >
       <div className="from__input-box mb-3">
         <label className={labelClass}>Email</label>
