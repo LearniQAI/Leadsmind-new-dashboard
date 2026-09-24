@@ -1,5 +1,6 @@
 'use server';
 
+import { requireModuleAccess } from '@/lib/auth';
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/shared/logger';
@@ -25,6 +26,7 @@ async function requireWorkspaceMember(supabase: any, workspaceId: string): Promi
 // view (src/components/invoices/InvoiceDetailClient.tsx) — was previously a
 // hardened-but-orphaned Server Action with zero UI callers.
 export async function applyRetainerToInvoice(invoiceId: string, contactId: string, workspaceId: string) {
+  await requireModuleAccess('finance');
   const supabase = await createServerClient();
   if (!(await requireWorkspaceMember(supabase, workspaceId))) {
     return { success: false, error: 'Unauthorized' };

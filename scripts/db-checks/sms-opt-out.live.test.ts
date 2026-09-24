@@ -4,6 +4,7 @@
 import { config as loadEnv } from 'dotenv';
 loadEnv({ path: '.env.local', override: false });
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { deleteTestWorkspaces, sweepStaleTestWorkspaces, testRunPatterns } from './liveCleanup';
 import { randomUUID } from 'crypto';
 
 vi.mock('next/cache', () => ({ revalidatePath: () => {}, revalidateTag: () => {} }));
@@ -59,6 +60,9 @@ beforeAll(async () => {
     worker: await import('@/app/api/cron/workers/sms-dispatch/route'),
   };
   db = M.createAdminClient();
+  // Remove what earlier KILLED runs of this test left behind (a killed run never reaches afterAll).
+  const swept = await sweepStaleTestWorkspaces(db, testRunPatterns('sms'));
+  if (swept) console.warn(`[cleanup] removed ${swept} stale workspace(s) left by earlier runs of this test`);
 
   const mkWs = async (tag: string) => {
     const { data, error } = await db.auth.admin.createUser({ email: `sms-${runId}-${tag}-owner@example.com`, password: randomUUID(), email_confirm: true });
@@ -76,12 +80,8 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await db.from('webhook_dead_letters').delete().like('payload->>MessageSid', 'SMLIVE%');
-  for (const w of [ws1, ws2].filter(Boolean)) {
-    for (const t of ['workflow_step_logs', 'workflow_executions', 'workflow_edges', 'workflow_steps', 'workflows', 'sms_dispatch_queue', 'bulk_sms_campaigns', 'sms_suppression_list', 'contact_activities', 'conversations', 'messages', 'contacts']) {
-      await db.from(t).delete().eq('workspace_id', w);
-    }
-  }
-  for (const id of userIds) await db.auth.admin.deleteUser(id).catch(() => {});
+  // Deletes the workspaces themselves (and any others this run's users own) and fails loudly if anything is left.
+  await deleteTestWorkspaces(db, [ws1, ws2], userIds);
 });
 
 describe('phone normalisation: SQL and TypeScript agree', () => {

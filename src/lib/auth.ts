@@ -7,6 +7,7 @@ import { cookies } from 'next/headers';
 import { logger } from '@/shared/logger';
 import { ForbiddenError, UnauthorizedError } from '@/lib/errors';
 import { PlanTier } from '@/types/planTier.types';
+import { canAccessModule, type ModuleKey } from '@/lib/permissions/modules';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Session & User
@@ -123,6 +124,33 @@ export interface Workspace {
 export async function getCurrentWorkspaceId(): Promise<string | null> {
  const cookieStore = cookies();
  return cookieStore.get('active_workspace_id')?.value ?? null;
+}
+
+/**
+ * Module-permission guard for server actions that use the service-role client (which
+ * bypasses the module_access RLS policies). Throws ForbiddenError when the caller is a member
+ * of the active workspace whose role/permissions don't include `module`.
+ *
+ * Deliberately a no-op for callers with no session (cron, webhooks) and for non-members
+ * (students, portal clients, form collaborators): their access is decided by the action's own
+ * checks exactly as before — the same "only narrows staff access" rule as the RLS policies.
+ */
+export async function requireModuleAccess(module: ModuleKey): Promise<void> {
+ const supabase = await createServerClient();
+ const { data: { user } } = await supabase.auth.getUser();
+ if (!user) return;
+ const workspaceId = await getCurrentWorkspaceId();
+ if (!workspaceId) return;
+ const { data: member } = await supabase
+  .from('workspace_members')
+  .select('role, permissions')
+  .eq('workspace_id', workspaceId)
+  .eq('user_id', user.id)
+  .maybeSingle();
+ if (!member) return;
+ if (!canAccessModule(member.role, member.permissions, module)) {
+  throw new ForbiddenError('Your role in this workspace does not include access to this module');
+ }
 }
 
 // Confirms the caller is authenticated and a member of the active workspace.

@@ -60,7 +60,7 @@ export const LessonBlockNode = (allProps: LessonBlockNodeProps & any) => {
           try {
             const thumbRes = await fetch(`/api/lms/video-thumbnail?provider=${presetVideoProvider}&url=${encodeURIComponent(presetFileUrl)}`);
             const thumbData = await thumbRes.json();
-            if (!thumbData.unsupported && !thumbData.error) {
+            if (!thumbData.error) {
               presetContent = { thumbnail_url: thumbData.thumbnailUrl, title: thumbData.title, duration_seconds: thumbData.durationSeconds ?? null };
             }
           } catch {

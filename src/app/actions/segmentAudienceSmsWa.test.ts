@@ -7,7 +7,7 @@ const state = { segment: null as any, workspace: CONNECTED as any };
 
 vi.mock('@/shared/logger', () => ({ logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
-vi.mock('@/lib/auth', () => ({ requireWorkspaceAccess: async () => ({ workspaceId: 'w1', userId: 'u1' }) }));
+vi.mock('@/lib/auth', () => ({ requireWorkspaceAccess: async () => ({ workspaceId: 'w1', userId: 'u1' }), requireModuleAccess: async () => {} }));
 vi.mock('@/lib/encryption', () => ({ decrypt: (s: string) => s }));
 vi.mock('@/lib/intelligence/SegmentationCompiler', async () => {
   const actual: any = await vi.importActual('@/lib/intelligence/SegmentationCompiler');

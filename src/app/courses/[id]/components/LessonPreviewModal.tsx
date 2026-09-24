@@ -13,6 +13,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import VideoPlayer from "@/app/student/courses/[id]/components/VideoPlayer";
+import { driveVideoUrls } from "@/lib/lms/video/driveVideoUrls";
 import { VoiceNotePlayer } from "@/components/common/VoiceNotePlayer";
 import { sanitizeRichTextHtml } from "@/lib/security/sanitizeHtml";
 import { SandboxedHtml } from "@/components/lms/SandboxedHtml";
@@ -209,7 +210,17 @@ export default function LessonPreviewModal({
                 <BlockTag>
                   Block {i + 1} · {block.type.replace("_", " ")}
                 </BlockTag>
-                {block.type === "video" && block.file_url && (
+                {block.type === "video" && driveVideoUrls(block) && (
+                  <VideoPlayer
+                    videoUrl={driveVideoUrls(block)!.src}
+                    poster={driveVideoUrls(block)!.poster}
+                    forceDirect
+                    onComplete={() => {}}
+                    isAlreadyCompleted
+                    lowBandwidthMode={false}
+                  />
+                )}
+                {block.type === "video" && block.video_provider !== "gdrive" && block.file_url && (
                   <VideoPlayer videoUrl={block.file_url} onComplete={() => {}} isAlreadyCompleted lowBandwidthMode={false} />
                 )}
                 {block.type === "audio" && block.content?.mode === "embed" && block.content?.embed_html && (

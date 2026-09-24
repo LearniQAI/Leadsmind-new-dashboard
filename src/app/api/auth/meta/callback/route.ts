@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { encrypt } from '@/lib/encryption'
 import { consumeOAuthStateNonce } from '@/lib/oauth/stateNonce'
 import { logger } from '@/shared/logger'
-import { subscribePageToMetaWebhook } from '@/lib/meta/subscribeWebhook'
+import { subscribePageToMetaWebhook, subscribeWabaToMetaWebhook } from '@/lib/meta/subscribeWebhook'
 
 export const dynamic = 'force-dynamic';
 
@@ -319,6 +319,7 @@ export async function GET(req: Request) {
     }
     logger.info({ wabaId }, 'meta_oauth.whatsapp.after_business_fallback_2')
 
+    let waWebhookSubscriptionFailed = false
     if (wabaId) {
       try {
         const phoneRes = await fetch(
@@ -328,6 +329,12 @@ export async function GET(req: Request) {
         const phone = phoneData.data?.[0]
 
         if (phone) {
+          // Without this per-WABA subscription Meta delivers no WhatsApp events for this account.
+          const wabaSubscription = await subscribeWabaToMetaWebhook(wabaId, userToken)
+          if (!wabaSubscription.success) {
+            logger.error({ wabaId, error: wabaSubscription.error }, 'meta_oauth.whatsapp.webhook_subscription_failed')
+            waWebhookSubscriptionFailed = true
+          }
           logger.info({ wabaId, phoneId: phone?.id }, 'meta_oauth.whatsapp.saving')
           await supabase.from('platform_connections').upsert({
             workspace_id: workspaceId,
@@ -338,9 +345,10 @@ export async function GET(req: Request) {
               waba_name: wabaName ?? 'WhatsApp Business',
               phone_number_id: phone.id,
               phone_number: phone.display_phone_number,
-              health_status: 'connected',
+              health_status: wabaSubscription.success ? 'connected' : 'webhook_subscription_failed',
+              ...(wabaSubscription.success ? {} : { webhook_subscription_error: wabaSubscription.error }),
             },
-            status: 'connected',
+            status: wabaSubscription.success ? 'connected' : 'error',
             last_sync_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           }, { onConflict: 'workspace_id,platform' })
@@ -358,6 +366,7 @@ export async function GET(req: Request) {
     if (!igId) redirectParams.set('needs_instagram', 'true')
     if (!wabaId) redirectParams.set('needs_whatsapp', 'true')
     if (!webhookSubscription.success) redirectParams.set('webhook_subscription_error', 'true')
+    if (waWebhookSubscriptionFailed) redirectParams.set('whatsapp_webhook_subscription_error', 'true')
 
     return NextResponse.redirect(
       `${REDIRECT_BASE}${INTEGRATIONS_REDIRECT_PATH}&${redirectParams.toString()}`

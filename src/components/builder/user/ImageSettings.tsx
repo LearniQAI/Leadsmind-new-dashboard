@@ -4,10 +4,8 @@ import React, { useRef, useState } from 'react';
 import { useNode } from '@craftjs/core';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Upload, Loader2, Image as ImageIcon } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
-import { getActiveWorkspaceId } from '@/lib/workspace/activeWorkspaceClient';
-import { toast } from 'sonner';
+import { Upload, Loader2, Image as ImageIcon, AlertTriangle, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
+import { useBuilderImageUpload } from './useImageUpload';
 import { MediaVaultModal } from '../MediaVaultModal';
 import { SectionHeader, type Corners } from '../inspector/panelControls';
 import { ShadowSection, BorderSection } from '../inspector/frameSections';
@@ -16,37 +14,25 @@ import { SEGMENT_WRAP, segmentBtn, FIELD_CLS, MICRO_LABEL } from '../inspector/p
 export const ImageSettings = () => {
   const { actions: { setProp }, props } = useNode((node) => ({ props: node.data.props }));
   const {
-    src, alt, objectFit, width, height, shape,
+    src, alt, objectFit, width, height, shape, align, decorative,
     boxShadow, borderRadius, borderRadiusIndividual, borderStyle, borderWidth, borderColor,
   } = props;
 
-  const [isUploading, setIsUploading] = useState(false);
   const [isVaultOpen, setIsVaultOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const set = (key: string, value: any) => setProp((p: any) => { p[key] = value; });
   const del = (...keys: string[]) => setProp((p: any) => keys.forEach((k) => delete p[k]));
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const { upload, isUploading, accept } = useBuilderImageUpload((url) => set('src', url));
+
+  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      setIsUploading(true);
-      const supabase = createClient();
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.floor(Math.random() * 10000)}.${fileExt}`;
-      const filePath = `${getActiveWorkspaceId()}/builder/${fileName}`;
-      const { error } = await supabase.storage.from('builder-media').upload(filePath, file, { cacheControl: '3600', upsert: false });
-      if (error) throw error;
-      const { data: { publicUrl } } = supabase.storage.from('builder-media').getPublicUrl(filePath);
-      set('src', publicUrl);
-    } catch (err) {
-      console.error('Upload failed', err);
-      toast.error('Failed to upload image. Please try again.');
-    } finally {
-      setIsUploading(false);
-    }
+    if (file) upload(file);
+    e.target.value = '';
   };
+
+  const missingAlt = !!src && !decorative && !(typeof alt === 'string' && alt.trim());
 
   const radiusMode: 'uniform' | 'individual' = borderRadiusIndividual ? 'individual' : 'uniform';
   const corners: Partial<Corners> = {
@@ -68,7 +54,7 @@ export const ImageSettings = () => {
               onChange={(e) => set('src', e.target.value)}
               className={`${FIELD_CLS} flex-1 font-mono`}
             />
-            <input type="file" ref={fileInputRef} onChange={handleUpload} accept="image/*" className="hidden" />
+            <input type="file" ref={fileInputRef} onChange={handleUpload} accept={accept} className="hidden" />
             <Button
               variant="secondary"
               size="icon"
@@ -91,14 +77,71 @@ export const ImageSettings = () => {
           </div>
         </div>
 
+        {/* Alt text is prompted, not silently optional: an image with neither alt text nor the
+            explicit "decorative" flag shows a warning here and a badge on the canvas. */}
         <div className="space-y-2">
-          <Label className={`${MICRO_LABEL} block`}>Alt text (SEO)</Label>
+          <Label htmlFor="image-alt-text" className={`${MICRO_LABEL} block`}>
+            Alt text {!decorative && <span className="text-red-500">*</span>}
+          </Label>
           <input
-            value={alt || ''}
-            placeholder="Describe image..."
+            id="image-alt-text"
+            value={decorative ? '' : (alt || '')}
+            placeholder={decorative ? 'Decorative — hidden from screen readers' : 'Describe what the image shows…'}
+            disabled={!!decorative}
+            aria-invalid={missingAlt}
+            aria-describedby={missingAlt ? 'image-alt-text-hint' : undefined}
             onChange={(e) => set('alt', e.target.value)}
-            className={FIELD_CLS}
+            className={`${FIELD_CLS} disabled:bg-slate-50 disabled:text-slate-400 ${missingAlt ? '!border-amber-400 focus:!ring-amber-100' : ''}`}
           />
+          {missingAlt && (
+            <p id="image-alt-text-hint" className="flex items-start gap-1.5 text-[11px] leading-snug text-amber-700">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-px" />
+              Describe this image for students using screen readers, or mark it as decorative.
+            </p>
+          )}
+          <label className="flex items-center gap-2 text-[11px] text-slate-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={!!decorative}
+              onChange={(e) => (e.target.checked ? set('decorative', true) : del('decorative'))}
+              className="h-3.5 w-3.5 rounded border-slate-300 accent-slate-900"
+            />
+            Decorative image (no alt text needed)
+          </label>
+        </div>
+
+        <div className="space-y-2">
+          <Label className={`${MICRO_LABEL} block`}>Alignment</Label>
+          <div className={`${SEGMENT_WRAP} grid grid-cols-3`}>
+            {([['left', AlignLeft], ['center', AlignCenter], ['right', AlignRight]] as const).map(([a, Icon]) => (
+              <button
+                key={a}
+                type="button"
+                title={`Align ${a}`}
+                aria-label={`Align ${a}`}
+                onClick={() => set('align', a)}
+                className={`${segmentBtn((align || 'left') === a)} flex items-center justify-center`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label className={`${MICRO_LABEL} block`}>Size</Label>
+          <div className={`${SEGMENT_WRAP} grid grid-cols-4`}>
+            {([['100%', 'Full'], ['75%', '75%'], ['50%', '50%'], ['33%', '33%']] as const).map(([w, label]) => (
+              <button
+                key={w}
+                type="button"
+                onClick={() => set('width', w)}
+                className={segmentBtn((width || '100%') === w)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">

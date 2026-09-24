@@ -4,6 +4,7 @@
 import { config as loadEnv } from 'dotenv';
 loadEnv({ path: '.env.local', override: false });
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { deleteTestWorkspaces, sweepStaleTestWorkspaces, testRunPatterns } from './liveCleanup';
 import { randomUUID, randomBytes } from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 
@@ -90,6 +91,9 @@ beforeAll(async () => {
     webhook: await import('@/app/api/webhooks/email/deliverability/route'),
   };
   db = M.createAdminClient();
+  // Remove what earlier KILLED runs of this test left behind (a killed run never reaches afterAll).
+  const swept = await sweepStaleTestWorkspaces(db, testRunPatterns('s245'));
+  if (swept) console.warn(`[cleanup] removed ${swept} stale workspace(s) left by earlier runs of this test`);
 
   const mkUser = async (tag: string) => {
     const password = randomUUID();
@@ -111,12 +115,8 @@ beforeAll(async () => {
 
 afterAll(async () => {
   globalThis.fetch = realFetch;
-  for (const w of [ws, ws2].filter(Boolean)) {
-    for (const t of ['workflow_step_logs', 'workflow_executions', 'workflow_edges', 'workflow_steps', 'email_tracking_logs', 'workflows', 'global_suppression_list', 'contact_activities', 'workspace_email_providers', 'contacts']) {
-      await db.from(t).delete().eq('workspace_id', w);
-    }
-  }
-  for (const id of userIds) await db.auth.admin.deleteUser(id).catch(() => {});
+  // Deletes the workspaces themselves (and any others this run's users own) and fails loudly if anything is left.
+  await deleteTestWorkspaces(db, [ws, ws2], userIds);
 });
 
 // ───────────────────────────── S2 ─────────────────────────────

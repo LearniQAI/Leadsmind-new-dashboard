@@ -2,11 +2,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Globe, Users, Code2, CreditCard, ShieldCheck, Zap, Activity, Target, BarChart3, TrendingUp, Settings as SettingsIcon, Sparkles, Brain, Mail, Wallet, Phone
+  Globe, Users, Code2, CreditCard, ShieldCheck, Zap, BarChart3, TrendingUp, Sparkles, Brain, Mail, Wallet, Phone
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { PERMISSION_MODULES } from '@/lib/permissions/permissionModules';
+import { normalizePermissions } from '@/lib/permissions/modules';
 import { createClient } from '@/lib/supabase/client';
 import { getActiveWorkspaceId } from '@/lib/workspace/activeWorkspaceClient';
 
@@ -102,19 +104,6 @@ export default function SettingsClient({
   } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const PERMISSION_MODULES = [
-    { id: 'dashboard', label: 'Dashboard', icon: Zap },
-    { id: 'contacts', label: 'Contacts', icon: Users },
-    { id: 'pipelines', label: 'Pipelines', icon: Activity },
-    { id: 'invoices', label: 'Invoices', icon: CreditCard },
-    { id: 'marketing', label: 'Marketing', icon: Target },
-    { id: 'commerce', label: 'Commerce & Ops', icon: CreditCard },
-    { id: 'business', label: 'Business Ops', icon: Globe },
-    { id: 'learning', label: 'Learning & Courses', icon: Brain },
-    { id: 'automation', label: 'Automations', icon: Zap },
-    { id: 'settings', label: 'Settings', icon: SettingsIcon },
-  ];
 
   const menuGroups = [
     {
@@ -479,7 +468,7 @@ export default function SettingsClient({
               onEditMember={(member) => {
                 setEditingMember(member);
                 setEditRole(member.role || 'member');
-                setEditPermissions(member.permissions || ['dashboard']);
+                setEditPermissions(normalizePermissions(member.permissions));
                 setIsEditModalOpen(true);
               }}
               onDeleteMember={async (member) => {

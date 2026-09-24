@@ -30,7 +30,7 @@ vi.mock('@/lib/supabase/server', () => ({
       : { data: null, error: null, count: 0 }),
   }),
 }));
-vi.mock('@/lib/auth', () => ({ getUser: async () => ({ id: 'u1' }), getCurrentWorkspaceId: async () => 'w1' }));
+vi.mock('@/lib/auth', () => ({ getUser: async () => ({ id: 'u1' }), getCurrentWorkspaceId: async () => 'w1', requireModuleAccess: async () => {} }));
 vi.mock('@/lib/api/workspaceAuth', async () => {
   const actual: any = await vi.importActual('@/lib/api/workspaceAuth');
   return { ...actual, requireWorkspaceRole: async (allowed?: string[]) => {

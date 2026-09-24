@@ -7,6 +7,7 @@
 import { config as loadEnv } from 'dotenv';
 loadEnv({ path: '.env.local', override: false });
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { deleteTestWorkspaces, sweepStaleTestWorkspaces, testRunPatterns } from './liveCleanup';
 import { randomUUID } from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 
@@ -84,6 +85,9 @@ beforeAll(async () => {
     statusRoute: await import('@/app/api/webhooks/twilio/sms-status/route'),
   };
   db = M.createAdminClient();
+  // Remove what earlier KILLED runs of this test left behind (a killed run never reaches afterAll).
+  const swept = await sweepStaleTestWorkspaces(db, testRunPatterns('smsi'));
+  if (swept) console.warn(`[cleanup] removed ${swept} stale workspace(s) left by earlier runs of this test`);
 
   const password = randomUUID();
   const em = `smsi-${runId}-owner@example.com`;
@@ -101,10 +105,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  for (const t of ['workflow_step_logs', 'workflow_executions', 'workflow_edges', 'workflow_steps', 'workflows', 'sms_dispatch_queue', 'bulk_sms_campaigns', 'segments', 'sms_suppression_list', 'contacts']) {
-    await db.from(t).delete().eq('workspace_id', ws1);
-  }
-  await db.auth.admin.deleteUser(ownerId).catch(() => {});
+  // Deletes the workspace itself (and any other this run's user owns) and fails loudly if anything is left.
+  await deleteTestWorkspaces(db, [ws1], [ownerId]);
 });
 
 describe('a single permanent-shaped failure never flags invalid (Twilio hedges every one of these codes)', () => {

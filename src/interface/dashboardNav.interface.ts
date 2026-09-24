@@ -1,7 +1,8 @@
+import type { ModuleKey } from "@/lib/permissions/modules";
+
 export interface NavSubItem {
   label: string;
   link: string;
-  permission?: string; // optional override; falls back to parent NavItem's permission
 }
 
 export interface NavItem {
@@ -9,7 +10,6 @@ export interface NavItem {
   label: string;
   icon: string; // FA/icomoon class string, e.g. "fa-light fa-users"
   link?: string; // omitted when the item is purely a subItems container (e.g. Finance)
-  permission?: string;
   subItems?: NavSubItem[];
 }
 
@@ -19,5 +19,8 @@ export interface NavModule {
   icon: string;
   link?: string; // present for a direct-link module with no sub-nav (e.g. Dashboard, Help Center)
   items?: NavItem[]; // absent for a direct-link module (e.g. Dashboard, Help Center)
-  permission?: string;
+  // The permission that gates this whole module and every page under it. Also the list
+  // the Team invite / edit-member modals render, so the two can't drift apart.
+  // See src/lib/permissions/modules.ts.
+  module: ModuleKey;
 }

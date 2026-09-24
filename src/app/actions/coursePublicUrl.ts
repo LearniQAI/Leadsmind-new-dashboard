@@ -1,5 +1,6 @@
 'use server';
 
+import { requireModuleAccess } from '@/lib/auth';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
 
@@ -10,6 +11,7 @@ import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
  * Workspace-scoped.
  */
 export async function getCourseDomainBinding(courseId: string): Promise<{ hostname: string | null; urlPath: string | null }> {
+  await requireModuleAccess('learning');
   const none = { hostname: null, urlPath: null };
   try {
     const { workspaceId } = await requireWorkspaceRole();

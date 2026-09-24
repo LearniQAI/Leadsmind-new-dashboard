@@ -1,5 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { getRequiredModule } from '@/lib/nav/deriveRouteMap'
+import { canAccessModule, hasFullAccess, moduleForApiPath } from '@/lib/permissions/modules'
 
 export async function updateSession(request: NextRequest) {
  const host = request.headers.get('host') || ''
@@ -198,5 +200,62 @@ export async function updateSession(request: NextRequest) {
   return NextResponse.redirect(new URL('/auth/signin-basic', request.url))
  }
 
+ // 3. Module permissions, enforced server-side BEFORE the page/route runs. The old gate lived
+ // only in the client DefaultWrapper, so a restricted member's server component still fetched
+ // and serialized the module's full data into the RSC payload even while <AccessDenied/> was
+ // on screen, and every /api route ignored permissions entirely.
+ if (user) {
+  const denied = await moduleGate(request, supabase, user.id)
+  if (denied) {
+   response.cookies.getAll().forEach((c) => denied.cookies.set(c))
+   return denied
+  }
+ }
+
  return response
+}
+
+/**
+ * Returns a deny response when the signed-in user is a member of the active workspace and
+ * their role/permissions don't include the module this path belongs to; null otherwise.
+ * Non-members (students, portal clients, affiliates of other workspaces) are never gated
+ * here — their access is decided by the route's own auth and RLS, exactly as before.
+ * The database enforces the same rule independently (module_access RLS policies).
+ */
+async function moduleGate(
+ request: NextRequest,
+ supabase: ReturnType<typeof createServerClient>,
+ userId: string
+): Promise<NextResponse | null> {
+ const pathname = request.nextUrl.pathname
+ const isApi = pathname.startsWith('/api')
+ const requiredModule = isApi ? moduleForApiPath(pathname) : getRequiredModule(pathname)
+ const isEmployeesPage = !isApi && (pathname === '/hr/employees' || pathname.startsWith('/hr/employees/'))
+ if (!requiredModule) return null
+
+ const workspaceId = request.cookies.get('active_workspace_id')?.value
+ if (!workspaceId) return null
+
+ const { data: member } = await supabase
+  .from('workspace_members')
+  .select('role, permissions')
+  .eq('workspace_id', workspaceId)
+  .eq('user_id', userId)
+  .maybeSingle()
+ if (!member) return null
+
+ const allowed =
+  canAccessModule(member.role, member.permissions, requiredModule) &&
+  (!isEmployeesPage || hasFullAccess(member.role) || member.role === 'hr')
+ if (allowed) return null
+
+ if (isApi) {
+  return NextResponse.json(
+   { error: 'Your role in this workspace does not include access to this module.' },
+   { status: 403 }
+  )
+ }
+ const url = new URL('/dashboard', request.url)
+ url.searchParams.set('access_denied', requiredModule)
+ return NextResponse.redirect(url)
 }

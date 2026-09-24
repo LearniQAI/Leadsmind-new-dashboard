@@ -5,6 +5,7 @@
 import { config as loadEnv } from 'dotenv';
 loadEnv({ path: '.env.local', override: false });
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { deleteTestWorkspaces, sweepStaleTestWorkspaces, testRunPatterns } from './liveCleanup';
 import { randomUUID } from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 
@@ -108,6 +109,9 @@ beforeAll(async () => {
     statusRoute: await import('@/app/api/webhooks/twilio/sms-status/route'),
   };
   db = M.createAdminClient();
+  // Remove what earlier KILLED runs of this test left behind (a killed run never reaches afterAll).
+  const swept = await sweepStaleTestWorkspaces(db, testRunPatterns('smsr'));
+  if (swept) console.warn(`[cleanup] removed ${swept} stale workspace(s) left by earlier runs of this test`);
 
   const mkWs = async (tag: string) => {
     const password = randomUUID(); const em = `smsr-${runId}-${tag}-owner@example.com`;
@@ -134,12 +138,8 @@ beforeAll(async () => {
 afterAll(async () => {
   h.afterSend = null;
   await db.from('webhook_dead_letters').delete().eq('provider', 'twilio_sms_status').like('payload->>MessageSid', 'SMLIVE%');
-  for (const w of [ws1, ws2].filter(Boolean)) {
-    for (const t of ['sms_dispatch_queue', 'bulk_sms_campaigns', 'segments', 'sms_suppression_list', 'contact_activities', 'contacts']) {
-      await db.from(t).delete().eq('workspace_id', w);
-    }
-  }
-  for (const id of userIds) await db.auth.admin.deleteUser(id).catch(() => {});
+  // Deletes the workspaces themselves (and any others this run's users own) and fails loudly if anything is left.
+  await deleteTestWorkspaces(db, [ws1, ws2], userIds);
 });
 
 describe('C: merge tags are resolved per recipient', () => {

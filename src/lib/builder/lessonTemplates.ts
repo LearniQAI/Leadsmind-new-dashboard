@@ -94,7 +94,17 @@ const section = (nodes: string[], padTop = 8, padBottom = 16) => ({
   custom: {},
 });
 
-const container = (nodes: string[], maxWidth = '760px', extra: Record<string, any> = {}) => ({
+// ONE content width for every section of every lesson template. Each top-level Section wraps
+// its content in a centered `fixed` Container of exactly this max-width (inside the Section's
+// own 24px side padding), so single-column text, the 2-column text+image rows, the framed
+// video and the ContentBox callout all share the same left and right edge. Previously the
+// 2-column sections used 1000px while the rest used 820px, which put their text column up to
+// 90px further left than the headings/paragraphs above and below it (and the image up to
+// 90px further right) on any canvas wider than ~868px. Below that (tablet/mobile) every
+// Container clamps to the Section's padded width, so no per-breakpoint override is needed.
+const LESSON_CONTENT_WIDTH = '820px';
+
+const container = (nodes: string[], maxWidth = LESSON_CONTENT_WIDTH, extra: Record<string, any> = {}) => ({
   type: { resolvedName: 'Container' },
   isCanvas: true,
   props: { layoutType: 'fixed', maxWidth, padding: 0, backgroundColor: 'transparent', ...extra },
@@ -107,7 +117,7 @@ const framedVideoContainer = (nodes: string[]) => ({
   isCanvas: true,
   props: {
     layoutType: 'fixed',
-    maxWidth: '820px',
+    maxWidth: LESSON_CONTENT_WIDTH,
     padding: 8,
     backgroundColor: '#FFFFFF',
     className: 'rounded-2xl shadow-xl border border-slate-200',
@@ -263,7 +273,7 @@ const standardLessonTree = {
 
   // Section 1 — full width
   s1: section(['c1'], 48, 40),
-  c1: container(['heading1', 'para1'], '820px'),
+  c1: container(['heading1', 'para1']),
   heading1: cloneHeading('h1', 'Course Introduction: Warm-up Activity'),
   para1: cloneParagraph(
     "Before diving deep into any learning or working session, it's crucial to <em>prepare your mind and body</em> — just like an athlete would stretch before a game. That's exactly what warm-up activities are for. They help you focus, be creative, and prepare to make the most of your day or learning experience."
@@ -273,7 +283,7 @@ const standardLessonTree = {
   // standard even 2-column layout; no 55/45 preset exists on the real Columns component,
   // confirmed via its own source — flagged rather than fabricated).
   s2: section(['c2'], 8, 40),
-  c2: container(['cols1'], '1000px'),
+  c2: container(['cols1']),
   cols1: columns(['colLeft', 'colRight']),
   colLeft: col(['heading2', 'lead1', 'list1']),
   heading2: cloneHeading('h2', "What You'll Learn in This Course"),
@@ -289,7 +299,7 @@ const standardLessonTree = {
   colRight: {
     type: { resolvedName: 'Container' },
     isCanvas: true,
-    props: { layoutType: 'fixed', padding: 0, paddingTop: 56, backgroundColor: 'transparent' },
+    props: { layoutType: 'fixed', padding: 0, paddingTop: '56px', backgroundColor: 'transparent' },
     nodes: ['image1'],
     custom: {},
   },
@@ -298,7 +308,7 @@ const standardLessonTree = {
 
   // Section 3 — full width, no side image
   s3: section(['c3'], 8, 64),
-  c3: container(['heading3', 'lead2', 'list2', 'para2'], '820px'),
+  c3: container(['heading3', 'lead2', 'list2', 'para2']),
   heading3: cloneHeading('h2', 'How to Get the Most Out of This Course'),
   lead2: cloneParagraph('To really benefit from this module, I encourage you to do three things:'),
   list2: cloneChecklist([
@@ -337,13 +347,13 @@ const deepDiveLessonTree = {
 
   // Header
   s1: section(['c1'], 48, 8),
-  c1: container(['heading1', 'para1'], '820px'),
+  c1: container(['heading1', 'para1']),
   heading1: cloneEmojiHeading('h1', '📘 TEFL Lesson: <strong>Adjectives</strong>'),
   para1: cloneParagraph("Welcome to today's lesson — we're diving into <strong>Adjectives</strong>!"),
 
   // Step 1 — full width, real Video block
   s2: section(['c2', 'c2video'], 32, 40),
-  c2: container(['heading2', 'para2'], '820px'),
+  c2: container(['heading2', 'para2']),
   heading2: cloneEmojiHeading('h3', '🎥 Step 1: Watch the Lesson Video'),
   para2: cloneParagraph(
     'Start by watching the lesson video. It breaks down what adjectives are, why we use them, and how they help make our sentences more interesting and descriptive. Make sure to take notes—especially on the examples we go over.'
@@ -353,7 +363,7 @@ const deepDiveLessonTree = {
 
   // Step 2 — 2-column
   s3: section(['c3'], 8, 8),
-  c3: container(['cols1'], '1000px'),
+  c3: container(['cols1']),
   cols1: columns(['colLeft', 'colRight']),
   colLeft: col(['heading3', 'para3', 'heading4', 'para4']),
   heading3: cloneEmojiHeading('h3', '📖 Step 2: Read the Supporting Material'),
@@ -370,7 +380,7 @@ const deepDiveLessonTree = {
 
   // Content Box — orange-red header, blue CTA, wired to a real download block
   s4: section(['c4'], 24, 40),
-  c4: container(['callout1'], '820px'),
+  c4: container(['callout1']),
   callout1: contentBox(
     'READING MATERIAL',
     '📚 Why Reading the Material Matters —<br/><em>Understanding Adjectives</em>',
@@ -382,7 +392,7 @@ const deepDiveLessonTree = {
 
   // Up Next — 2-column, 5 separate bold spans in one paragraph
   s5: section(['c5'], 8, 64),
-  c5: container(['cols2'], '1000px'),
+  c5: container(['cols2']),
   cols2: columns(['colLeft2', 'colRight2']),
   colLeft2: col(['heading5', 'para5']),
   heading5: cloneHeading('h3', 'Up Next: <strong>Adverbs</strong>'),

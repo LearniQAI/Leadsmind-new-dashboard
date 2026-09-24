@@ -15,6 +15,7 @@ import {
 import { recordBlockCompletion, getCompletedBlockIdsForLesson, getLessonBlockCompletionStatus, getLessonReadingGateStatus, recordLessonReadingCompletion } from '@/app/actions/blockCompletion';
 import SyllabusSidebar from './components/SyllabusSidebar';
 import VideoPlayer from './components/VideoPlayer';
+import { driveVideoUrls } from '@/lib/lms/video/driveVideoUrls';
 import AudioDrivePlayer from './components/AudioDrivePlayer';
 import { useHeartbeat } from '@/hooks/useHeartbeat';
 import { getLessonLockReason } from './components/lock-utils';
@@ -26,6 +27,7 @@ import { VoiceNotePlayer } from '@/components/common/VoiceNotePlayer';
 import ReadingModal from './components/ReadingModal';
 import { isSafeEmbedUrl } from '@/lib/security/isSafeEmbedUrl';
 import { SandboxedHtml } from '@/components/lms/SandboxedHtml';
+import { CanvasLessonImage } from '@/components/lms/CanvasLessonImage';
 import { getCourseTheme } from '@/lib/courses/courseThemeTokens';
 
 function getEmbeddablePdfUrl(url: string): string {
@@ -785,10 +787,24 @@ export default function StudentPlayerClient({
   // flat-list lesson render AND the canvas-lesson render below, so the two never drift.
   const renderBlockBody = (block: any) => (
     <>
-      {block.type === 'video' && block.file_url && (
+      {block.type === 'video' && driveVideoUrls(block) && (
+        // Google Drive video: a native <video> fed by the access-gated same-origin stream proxy,
+        // so it rides VideoPlayer's native-element completion path (real currentTime/duration).
+        <VideoPlayer
+          videoUrl={driveVideoUrls(block)!.src}
+          poster={driveVideoUrls(block)!.poster}
+          forceDirect
+          completionThreshold={block.completion_threshold}
+          onComplete={(pct) => markBlockComplete(block.id, { percentage: pct })}
+          isAlreadyCompleted={completedBlockIds.has(block.id)}
+          lowBandwidthMode={lowBandwidthMode}
+        />
+      )}
+      {block.type === 'video' && block.video_provider !== 'gdrive' && block.file_url && (
         <VideoPlayer
           videoUrl={block.file_url}
-          onComplete={() => markBlockComplete(block.id, { percentage: 90 })}
+          completionThreshold={block.completion_threshold}
+          onComplete={(pct) => markBlockComplete(block.id, { percentage: pct })}
           isAlreadyCompleted={completedBlockIds.has(block.id)}
           lowBandwidthMode={lowBandwidthMode}
         />
@@ -973,15 +989,7 @@ export default function StudentPlayerClient({
       );
     }
     if (item.kind === 'image') {
-      return (
-        <img
-          key={idx}
-          src={item.src}
-          alt={item.alt}
-          className="w-full object-cover"
-          style={{ borderRadius: `${item.radius ?? 12}px` }}
-        />
-      );
+      return <CanvasLessonImage key={idx} item={item} />;
     }
     if (item.kind === 'divider') {
       return <hr key={idx} className="border-dash-border" />;

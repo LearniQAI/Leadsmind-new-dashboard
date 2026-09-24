@@ -6,10 +6,13 @@ import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
 import { mintWorkspaceApiKey } from '@/lib/api/apiKeys';
 import { encrypt } from '@/lib/encryption';
 import { sendEmail } from '@/lib/email';
+import { renderWorkspaceInviteEmail } from '@/lib/email/templates/workspaceInvite';
+import { escapeLikePattern } from '@/lib/campaigns/emailSuppression';
 import { revalidatePath } from 'next/cache';
 import { createHash, randomBytes } from 'crypto';
 import { logger, safeLog } from '@/shared/logger';
 import { configureInboundSmsWebhook, describeWebhookFailure } from '@/lib/twilio/inboundWebhook';
+import { normalizePermissions } from '@/lib/permissions/modules';
 
 async function getActiveWorkspaceId() {
   const id = await getWsId();
@@ -169,6 +172,8 @@ export async function inviteTeamMember(
  options?: { directCreate?: boolean; fullName?: string; password?: string }
 ) {
  let workspaceId: string | null = null;
+ // Only real module keys are stored (legacy keys mapped, unknown values dropped).
+ permissions = normalizePermissions(permissions);
  try {
   workspaceId = await getActiveWorkspaceId();
   if (!workspaceId) return { error: 'No workspace active' };
@@ -235,12 +240,43 @@ export async function inviteTeamMember(
    return { data: authData.user };
   } else {
    const adminSupabase = createAdminClient();
+   const inviteEmail = email.trim().toLowerCase();
+   const emailPattern = escapeLikePattern(inviteEmail);
+
+   // Already a member of this workspace — nothing to invite them to.
+   const { data: existingUser } = await adminSupabase
+    .from('users')
+    .select('id')
+    .ilike('email', emailPattern)
+    .limit(1)
+    .maybeSingle();
+   if (existingUser) {
+    const { data: existingMember } = await adminSupabase
+     .from('workspace_members')
+     .select('id')
+     .eq('workspace_id', workspaceId)
+     .eq('user_id', existingUser.id)
+     .maybeSingle();
+    if (existingMember) return { error: 'This person is already a member of this workspace.' };
+   }
+
+   // workspace_invitations has UNIQUE (workspace_id, email), and expired/accepted rows are
+   // hidden from the Team page (getWorkspaceInvitations), so a stale row used to make every
+   // re-invite of that address fail with "Failed to create invitation." with nothing the
+   // admin could remove. Inviting again now replaces any previous invitation for this
+   // address: a fresh token and a fresh 7-day expiry, and the older link stops working.
+   await adminSupabase
+    .from('workspace_invitations')
+    .delete()
+    .eq('workspace_id', workspaceId)
+    .ilike('email', emailPattern);
+
    // Invitation Logic via Admin to bypass RLS
    const { data, error } = await adminSupabase
     .from('workspace_invitations')
     .insert({
      workspace_id: workspaceId,
-     email,
+     email: inviteEmail,
      role,
      permissions,
      invited_by: currentUser?.id
@@ -261,6 +297,13 @@ export async function inviteTeamMember(
     .eq('id', workspaceId)
     .single();
 
+   const { data: inviter } = await adminSupabase
+    .from('users')
+    .select('first_name, last_name')
+    .eq('id', currentUser?.id)
+    .maybeSingle();
+   const inviterName = [inviter?.first_name, inviter?.last_name].filter(Boolean).join(' ').trim() || null;
+
    const acceptUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/accept-invite?token=${data.id}`;
 
    // The invitation row above is already committed — a failed send here (a
@@ -270,27 +313,20 @@ export async function inviteTeamMember(
    // and reported separately so the UI can fall back to "copy this link and
    // send it yourself" instead of a bare failure.
    try {
+     // Platform email (no `config`): always LeadsMind's sender and branding, never the
+     // workspace's white-label settings. See renderWorkspaceInviteEmail.
+     const inviteMail = renderWorkspaceInviteEmail({
+       workspaceName: workspace?.name || '',
+       inviterName,
+       role,
+       acceptUrl,
+     });
      await sendEmail({
-       to: email,
-       subject: `Join ${workspace?.name || 'LeadsMind'} Workspace`,
-       html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #2563eb; border-radius: 16px; background-color: #04091a; color: #eef2ff;">
-         <h2 style="color: #3b82f6; font-size: 24px;">Workspace <span style="color: #ffffff;">Invitation</span></h2>
-         <p style="color: #94a3c8; font-size: 14px;">You have been authorized to join <strong>${workspace?.name}</strong>.</p>
-         <div style="margin: 24px 0; padding: 20px; background-color: rgba(255,255,255,0.05); border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
-           <p style="margin: 0; font-size: 12px; color: #4a5a82; text-transform: uppercase; letter-spacing: 1px;">Access Protocol</p>
-           <p style="margin: 8px 0 0; font-size: 16px; font-weight: bold; color: #3b82f6;">${role.toUpperCase()}</p>
-         </div>
-         <p style="color: #94a3c8;">Accept the invitation below to initialize your node:</p>
-         <div style="margin: 30px 0;">
-          <a href="${acceptUrl}"
-            style="display: inline-block; padding: 14px 40px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">
-           Accept Invitation
-          </a>
-         </div>
-        </div>
-       `
-      });
+       to: inviteEmail,
+       subject: inviteMail.subject,
+       html: inviteMail.html,
+       text: inviteMail.text,
+     });
    } catch (emailError) {
      logger.error({ err: emailError, workspaceId, invitationId: data.id }, 'settings.team_invitation.email_send.failed');
      return { data, emailFailed: true, acceptUrl };
@@ -305,6 +341,7 @@ export async function inviteTeamMember(
 }
 
 export async function updateMemberPermissions(memberId: string, role: string, permissions: string[]) {
+  permissions = normalizePermissions(permissions);
   try {
     const workspaceId = await getActiveWorkspaceId();
     if (!workspaceId) {

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { RESOLVER } from '@/lib/builder/resolver';
+import { EMPTY_IMAGE_PROPS } from '@/lib/builder/imageDefaults';
 import { DraggableItem } from './Sidebar';
 import { BLOCK_TYPE_META } from './user/LessonBlockPreviews';
 import {
@@ -11,6 +12,7 @@ import {
   Columns as ColumnsIcon,
   Layout as SectionIcon,
   Rows as RowIcon,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 // Lesson Builder Elements tab (Systeme-parity Master Prompt, Part 1, Step 3; restyled per the
@@ -41,6 +43,14 @@ import {
 const TEXT_ELEMENTS = [
   { name: 'Text', icon: Type, component: <RESOLVER.Text text="Custom Text" fontSize={16} /> },
   { name: 'Headline', icon: HeadingIcon, component: <RESOLVER.Heading level="h2" text="Heading" fontWeight="bold" textAlign="left" color="#111827" /> },
+];
+
+// Image reuses the Website/Funnel builder's existing Image component (already in RESOLVER, already
+// used by the lesson templates and already rendered for students by flattenLessonCanvas) — it
+// was simply never listed here. Dropped with the shared EMPTY_IMAGE_PROPS (upload placeholder,
+// empty alt) — the same defaults the Website/Funnel command palette inserts.
+const MEDIA_ELEMENTS = [
+  { name: 'Image', icon: ImageIcon, component: <RESOLVER.Image {...EMPTY_IMAGE_PROPS} /> },
 ];
 
 const LAYOUT_ELEMENTS = [
@@ -91,6 +101,11 @@ export const LessonBuilderSidebar = () => {
           <>
             <SidebarSection title="Text">
               {TEXT_ELEMENTS.map((el) => (
+                <DraggableItem key={el.name} name={el.name} icon={el.icon} component={el.component} variant="lesson" />
+              ))}
+            </SidebarSection>
+            <SidebarSection title="Media">
+              {MEDIA_ELEMENTS.map((el) => (
                 <DraggableItem key={el.name} name={el.name} icon={el.icon} component={el.component} variant="lesson" />
               ))}
             </SidebarSection>

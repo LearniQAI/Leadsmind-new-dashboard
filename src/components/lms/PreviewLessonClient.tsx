@@ -2,6 +2,9 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { CanvasLessonImage } from './CanvasLessonImage';
+import VideoPlayer from '@/app/student/courses/[id]/components/VideoPlayer';
+import { driveVideoUrls } from '@/lib/lms/video/driveVideoUrls';
 import { Lock, ArrowRight, Eye, PlayCircle, FileText, Download as DownloadIcon } from 'lucide-react';
 
 // Course Start Method 3 (free preview lessons, then paywall) — the real "no enrollment at
@@ -27,10 +30,22 @@ interface PreviewLessonClientProps {
 
 function PreviewBlock({ block }: { block: any }) {
   switch (block.type) {
-    case 'video':
-      return block.file_url ? (
-        <video controls className="w-full rounded-xl border border-dash-border" src={block.file_url} />
+    case 'video': {
+      // Same player as the enrolled view, but isAlreadyCompleted keeps it from ever tracking or
+      // writing completion (no contactId exists here). This used to be a bare <video src=file_url>,
+      // which can't play a YouTube/Vimeo page URL — every embed-provider video was a dead
+      // player on the free-preview page. A Drive video streams through the gated proxy, which
+      // admits free-preview lessons (see resolveVideoAccess).
+      const drive = driveVideoUrls(block);
+      if (drive) {
+        return (
+          <VideoPlayer videoUrl={drive.src} poster={drive.poster} forceDirect onComplete={() => {}} isAlreadyCompleted lowBandwidthMode={false} />
+        );
+      }
+      return block.video_provider !== 'gdrive' && block.file_url ? (
+        <VideoPlayer videoUrl={block.file_url} onComplete={() => {}} isAlreadyCompleted lowBandwidthMode={false} />
       ) : null;
+    }
     case 'rich_text':
       return block.content?.text ? (
         <div
@@ -171,7 +186,7 @@ export default function PreviewLessonClient({
                         );
                       }
                       if (item.kind === 'image') {
-                        return <img key={idx} src={item.src} alt={item.alt} className="max-w-full rounded-xl" />;
+                        return <CanvasLessonImage key={idx} item={item} />;
                       }
                       if (item.kind === 'divider') {
                         return <hr key={idx} className="border-dash-border" />;

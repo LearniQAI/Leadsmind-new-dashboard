@@ -5,17 +5,13 @@ import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
-// Live thumbnail preview for the admin video block editor (PRD Section 6). YouTube, Vimeo,
-// and Wistia all expose a public, credential-free oEmbed endpoint that returns a real
-// thumbnail_url — fetched server-side here to avoid browser CORS restrictions and to keep
-// any future provider credentials off the client. Bunny.net and AWS have no such public,
-// account-agnostic thumbnail API (Bunny needs the workspace's own pull-zone hostname; AWS/S3
-// has no thumbnail concept at all without server-side frame extraction) — both are reported
-// as unsupported rather than faking a preview.
+// Live thumbnail preview for the admin video block editor (PRD Section 6). YouTube and Vimeo
+// both expose a public, credential-free oEmbed endpoint that returns a real thumbnail_url —
+// fetched server-side here to avoid browser CORS restrictions. (Google Drive, the third video
+// provider, doesn't come through here: it has its own validate route and gated poster route.)
 const OEMBED_ENDPOINTS: Record<string, (canonicalUrl: string) => string> = {
   youtube: (u) => `https://www.youtube.com/oembed?url=${encodeURIComponent(u)}&format=json`,
-  vimeo: (u) => `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(u)}`,
-  wistia: (u) => `https://fast.wistia.com/oembed?url=${encodeURIComponent(u)}`
+  vimeo: (u) => `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(u)}`
 };
 
 function toCanonicalUrl(provider: string, idOrUrl: string): string {
@@ -28,8 +24,6 @@ function toCanonicalUrl(provider: string, idOrUrl: string): string {
       return `https://www.youtube.com/watch?v=${trimmed}`;
     case 'vimeo':
       return `https://vimeo.com/${trimmed}`;
-    case 'wistia':
-      return `https://home.wistia.com/medias/${trimmed}`;
     default:
       return trimmed;
   }
@@ -49,14 +43,7 @@ export async function GET(req: NextRequest) {
 
     const buildEndpoint = OEMBED_ENDPOINTS[provider];
     if (!buildEndpoint) {
-      return NextResponse.json({
-        unsupported: true,
-        reason: provider === 'bunny'
-          ? "Bunny.net thumbnails require the workspace's own Stream pull-zone hostname, which isn't configured yet."
-          : provider === 'aws'
-          ? 'AWS-hosted raw video files have no thumbnail API — a frame would need to be server-side extracted, which is not wired up.'
-          : `Unknown provider: ${provider}`
-      });
+      return NextResponse.json({ error: `Unsupported video provider: ${provider}` }, { status: 400 });
     }
 
     const canonicalUrl = toCanonicalUrl(provider, idOrUrl);
@@ -76,7 +63,7 @@ export async function GET(req: NextRequest) {
       thumbnailUrl: data.thumbnail_url,
       title: data.title || null,
       // Real duration, only when the provider's oEmbed response actually includes one
-      // (Vimeo/Wistia do, in seconds; YouTube's oEmbed does not) — never fabricated.
+      // (Vimeo's does, in seconds; YouTube's oEmbed does not) — never fabricated.
       durationSeconds: typeof data.duration === 'number' ? Math.round(data.duration) : null,
       canonicalUrl
     });

@@ -15,6 +15,7 @@ const invoiceRow = {
 const updates: Record<string, any>[] = [];
 const inserted: Record<string, any>[] = [];
 
+vi.mock('@/lib/auth', () => ({ requireModuleAccess: async () => {} }));
 vi.mock('@/lib/stripe', () => ({
   stripe: { refunds: { create: (...args: unknown[]) => refundsCreate(...args) } },
 }));

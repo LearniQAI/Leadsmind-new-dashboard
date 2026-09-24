@@ -2,7 +2,7 @@
 
 import { randomBytes } from 'crypto';
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
-import { requireWorkspaceAccess } from '@/lib/auth';
+import { requireWorkspaceAccess, requireModuleAccess } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { renderCraftToHtml } from '@/lib/builder/renderer';
 import { logger } from '@/shared/logger';
@@ -110,6 +110,7 @@ export async function publishPageStatic(pageId: string) {
  * --- SPRINT 23: CUSTOM DOMAIN PROXY MANAGER ---
  */
 export async function addCustomDomain(websiteId: string, domainName: string) {
+  await requireModuleAccess('marketing');
   return executeAction(async (supabase, workspaceId) => {
     const cleanDomain = normalizeHostnameInput(domainName);
     if (!cleanDomain) throw new ValidationError('Domain is required.');
