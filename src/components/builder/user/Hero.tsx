@@ -1,7 +1,11 @@
 "use client";
 
 import React from 'react';
-import { useNode, Element } from '@craftjs/core';
+import { useNode, useEditor, Element } from '@craftjs/core';
+import { resolveLink } from '@/lib/builder/utils';
+import { BUTTON_SIZE_CLASSES, buttonInlineStyle } from '@/lib/builder/buttonStyle';
+
+const SECONDARY_ALIGN: Record<string, string> = { left: 'justify-start', center: 'justify-center', right: 'justify-end' };
 import { useGlobalSync, useResponsiveValue } from '@/lib/builder/hooks';
 import { useBuilder } from '../BuilderContext';
 import { HeroSettings } from './HeroSettings';
@@ -51,6 +55,14 @@ export const Hero = (allProps: HeroProps & any) => {
   heightPreset,
   animation,
   showSecondaryButton,
+  secondaryButtonText,
+  secondaryButtonLink,
+  secondaryButtonVariant,
+  secondaryButtonColor,
+  secondaryButtonTextColor,
+  secondaryButtonRadius,
+  secondaryButtonSize,
+  secondaryButtonAlign,
   showBackgroundBlobs = true,
   // Style Props (Catch these so they don't leak to DOM)
   padding: _padding,
@@ -72,7 +84,9 @@ export const Hero = (allProps: HeroProps & any) => {
  } = allProps;
 
  const { connectors: { connect, drag } } = useNode();
- const { viewMode } = useBuilder();
+ const { viewMode, websiteData } = useBuilder();
+ const { enabled } = useEditor((state) => ({ enabled: state.options.enabled }));
+ const basePath = (websiteData?.workspaceSlug && websiteData?.subdomain) ? `/p/${websiteData.workspaceSlug}/${websiteData.subdomain}` : '';
 
  // Responsive values
  const padding = useResponsiveValue(allProps, 'padding', 80);
@@ -162,6 +176,24 @@ export const Hero = (allProps: HeroProps & any) => {
      style={{ maxWidth: layout === 'split' ? 'none' : `${contentMaxWidth}px` }}
     >
      {children}
+     {/* Secondary button — the "Show secondary button" setting used to save with nothing
+         rendering it. Styled exactly like a Button block (lib/builder/buttonStyle), linked via
+         the same LinkSelector/resolveLink. Placed under the Hero's content (whose primary CTA
+         is whatever Button block the admin dropped in), aligned with it; full width on phones.
+         Not rendered at all when the setting is off. */}
+     {showSecondaryButton && (
+      <div className={`mt-6 flex ${SECONDARY_ALIGN[secondaryButtonAlign === 'left' || secondaryButtonAlign === 'center' || secondaryButtonAlign === 'right' ? secondaryButtonAlign : (layout === 'split' ? 'left' : 'center')]}`}>
+       <a
+        href={resolveLink(secondaryButtonLink, { basePath })}
+        onClick={(e) => { if (enabled) e.preventDefault(); }}
+        data-hero-secondary-button=""
+        className={`inline-flex ${enabled && viewMode === 'mobile' ? 'w-full' : 'w-full sm:w-auto'} items-center justify-center gap-2 no-underline transition-all hover:scale-[1.02] active:scale-[0.98] motion-reduce:transition-none motion-reduce:hover:scale-100 ${BUTTON_SIZE_CLASSES[secondaryButtonSize] || BUTTON_SIZE_CLASSES.md}`}
+        style={buttonInlineStyle({ variant: secondaryButtonVariant, color: secondaryButtonColor, textColor: secondaryButtonTextColor, borderRadius: secondaryButtonRadius })}
+       >
+        {secondaryButtonText || 'Learn more'}
+       </a>
+      </div>
+     )}
     </div>
    </div>
 
@@ -198,6 +230,14 @@ Hero.craft = {
   heightPreset: 'large',
   animation: 'fade-in',
   showSecondaryButton: false,
+  secondaryButtonText: 'Learn more',
+  secondaryButtonLink: '#',
+  secondaryButtonVariant: 'outline',
+  secondaryButtonColor: '#6c47ff',
+  secondaryButtonTextColor: '#6c47ff',
+  secondaryButtonRadius: 12,
+  secondaryButtonSize: 'md',
+  secondaryButtonAlign: 'auto',
   showBackgroundBlobs: true,
  },
  related: {
