@@ -3,8 +3,17 @@
 // Audio player signature identity — single source of truth (base hues + AA-derived variants).
 // Tailwind loads its config through jiti, which transpiles this TS module on require.
 const { PLAYER } = require('./src/lib/lms/audio/playerIdentity.ts');
+// Container "Tailwind class inspector" vocabulary (lib/builder/customClassVocabulary.json).
+// Classes typed into that field only exist in the CSS if Tailwind sees them at build time, and
+// admins type them at runtime — so the accepted vocabulary is safelisted here, with the hover:/
+// focus: variants the field applies. The panel accepts exactly this list (customClasses.ts).
+const CUSTOM_CLASS_VOCAB = require('./src/lib/builder/customClassVocabulary.json');
+const CUSTOM_CLASS_SAFELIST = CUSTOM_CLASS_VOCAB.groups
+  .flatMap((g) => g.classes)
+  .flatMap((c) => [c, ...CUSTOM_CLASS_VOCAB.variants.map((v) => `${v}:${c}`)]);
 
 module.exports = {
+  safelist: CUSTOM_CLASS_SAFELIST,
   // mode: 'jit',
   // purge: ['./src/**/*.{js,ts,jsx,tsx}'],
   content: [

@@ -10,7 +10,8 @@ import { useBuilder } from '../BuilderContext';
 import { useLessonBuilder } from '../LessonBuilderContext';
 import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
 import { pickBoxStyle, stripBoxStyleKeys } from '@/lib/builder/boxStyle';
-import { RICH_TEXT_CLASS } from '@/lib/builder/blockTypography';
+import { RICH_TEXT_CLASS, BLOCK_FONT_ATTR, BLOCK_FONT_VAR, fontStack } from '@/lib/builder/blockTypography';
+import { loadGoogleFontFamily } from '@/lib/builder/loadGoogleFont';
 
 export interface ParagraphProps {
  text: string;
@@ -75,6 +76,7 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
  const color = useResponsiveValue(allProps, 'color', _color);
  const fontFamily = useResponsiveValue(allProps, 'fontFamily', _ff);
  const letterSpacing = useResponsiveValue(allProps, 'letterSpacing', _ls);
+ React.useEffect(() => { if (fontFamily) loadGoogleFontFamily(fontFamily); }, [fontFamily]);
 
  const alignments = {
   left: 'text-left',
@@ -122,11 +124,15 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
     }
    }}
    className={`w-full ${enabled ? 'outline-dashed outline-1 outline-transparent hover:outline-blue-500/50 transition-all' : ''} ${weights[fontWeight as keyof typeof weights] || ''} ${alignments[textAlign as keyof typeof alignments]} ${lineHeights[lineHeight as keyof typeof lineHeights]} ${themeFontClass} ${props.className || ''}`}
+   // An explicit font outranks the page theme's !important font (themeFontCss / BLOCK_FONT_ATTR);
+   // its inner <p> then inherits it.
+   {...(fontFamily ? { [BLOCK_FONT_ATTR]: '' } : {})}
    style={{
     ...boxStyle,
     color,
     fontSize: `${fontSize}px`,
-    fontFamily: fontFamily ? `'${fontFamily}', sans-serif` : undefined,
+    fontFamily: fontFamily ? fontStack(fontFamily) : undefined,
+    ...(fontFamily ? { [BLOCK_FONT_VAR]: fontStack(fontFamily) } : {}),
     letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined,
    }}
   >

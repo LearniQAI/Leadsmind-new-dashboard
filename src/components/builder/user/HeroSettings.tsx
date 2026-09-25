@@ -9,6 +9,7 @@ import { ColorPicker } from '../ColorPicker';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { SliderWithInput } from '../inspector/primitives';
+import { LinkSelector } from '../LinkSelector';
 
 import { useResponsiveSetProp } from '@/lib/builder/hooks';
 import { useBuilder } from '../BuilderContext';
@@ -140,6 +141,7 @@ export const HeroSettings = () => {
             <Label className="text-[12px] font-medium text-slate-700">Secondary button</Label>
             <Switch checked={showSecondaryButton} onCheckedChange={(val) => setProp((p: any) => p.showSecondaryButton = val)} />
           </div>
+          {showSecondaryButton && <SecondaryButtonFields props={props} setProp={setProp} />}
           <div className="flex items-center justify-between">
             <Label className="text-[12px] font-medium text-slate-700">Use glassmorphism</Label>
             <Switch checked={useGlassmorphism} onCheckedChange={(val) => setProp((p: any) => p.useGlassmorphism = val)} />
@@ -228,3 +230,52 @@ export const HeroSettings = () => {
     </Tabs>
   );
 };
+
+// The Hero's secondary button: the same options as a Button block (text, link, style, colours,
+// corners, size), plus where it sits under the Hero's content.
+const SEG = (active: boolean) =>
+  `py-1.5 rounded-xl text-[11px] font-medium capitalize border transition-all motion-reduce:transition-none ${active ? 'bg-slate-900 text-white border-transparent' : 'bg-slate-100 border-transparent text-slate-600 hover:bg-slate-200'}`;
+
+function SecondaryButtonFields({ props, setProp }: { props: any; setProp: (cb: (p: any) => void) => void }) {
+  const set = (key: string) => (val: any) => setProp((p: any) => { p[key] = val; });
+  return (
+    <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="hero-secondary-button-fields">
+      <div className="space-y-1.5">
+        <Label className="text-[12px] font-medium text-slate-700 block">Button text</Label>
+        <Input value={props.secondaryButtonText ?? ''} onChange={(e) => set('secondaryButtonText')(e.target.value)} className="h-9 text-xs bg-white" placeholder="Learn more" />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-[12px] font-medium text-slate-700 block">Link destination</Label>
+        <LinkSelector value={props.secondaryButtonLink} onChange={set('secondaryButtonLink')} />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-[12px] font-medium text-slate-700 block">Style</Label>
+        <div className="grid grid-cols-3 gap-1.5">
+          {['primary', 'outline', 'ghost'].map((v) => (
+            <button key={v} type="button" className={SEG((props.secondaryButtonVariant ?? 'outline') === v)} onClick={() => set('secondaryButtonVariant')(v)}>{v === 'primary' ? 'solid' : v}</button>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-[12px] font-medium text-slate-700 block">Size</Label>
+        <div className="grid grid-cols-4 gap-1.5">
+          {['sm', 'md', 'lg', 'xl'].map((v) => (
+            <button key={v} type="button" className={SEG((props.secondaryButtonSize ?? 'md') === v)} onClick={() => set('secondaryButtonSize')(v)}>{v}</button>
+          ))}
+        </div>
+      </div>
+      <ColorPicker label="Button colour (fill, or border for outline)" value={props.secondaryButtonColor} onChange={set('secondaryButtonColor')} />
+      <ColorPicker label="Text colour" value={props.secondaryButtonTextColor} onChange={set('secondaryButtonTextColor')} />
+      <SliderWithInput label="Corner radius" value={props.secondaryButtonRadius ?? 12} onChange={set('secondaryButtonRadius')} min={0} max={50} numeric />
+      <div className="space-y-1.5">
+        <Label className="text-[12px] font-medium text-slate-700 block">Position</Label>
+        <div className="grid grid-cols-4 gap-1.5">
+          {['auto', 'left', 'center', 'right'].map((v) => (
+            <button key={v} type="button" className={SEG((props.secondaryButtonAlign ?? 'auto') === v)} onClick={() => set('secondaryButtonAlign')(v)}>{v}</button>
+          ))}
+        </div>
+        <p className="text-[10px] text-slate-500">Auto follows the Hero layout: left for split, centred otherwise. Full width on phones.</p>
+      </div>
+    </div>
+  );
+}

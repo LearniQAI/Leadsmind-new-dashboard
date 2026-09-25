@@ -4,7 +4,8 @@ import React from 'react';
 import { useNode } from '@craftjs/core';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
+import { CUSTOM_CLASS_GROUPS, checkCustomClasses } from '@/lib/builder/customClasses';
 
 export const CustomClassControl = () => {
   const { actions: { setProp }, props } = useNode((node) => ({
@@ -22,6 +23,14 @@ export const CustomClassControl = () => {
     if (pseudoState === 'hover') return hoverClasses;
     if (pseudoState === 'focus') return focusClasses;
     return customClasses;
+  };
+
+  const check = checkCustomClasses(getActiveValue(), pseudoState);
+  const activeSet = new Set(getActiveValue().split(/s+/).filter(Boolean).map((c: string) => c.replace(/^(hover|focus):/, '')));
+  const toggleClass = (cls: string) => {
+    const current = getActiveValue().split(/s+/).filter(Boolean);
+    const without = current.filter((c: string) => c.replace(/^(hover|focus):/, '') !== cls);
+    handleValueChange((without.length === current.length ? [...current, cls] : without).join(' '));
   };
 
   const handleValueChange = (val: string) => {
@@ -87,8 +96,43 @@ export const CustomClassControl = () => {
             />
           </div>
 
+          {check.unsupported.length > 0 && (
+            <p className="flex items-start gap-1.5 rounded-lg bg-amber-50 px-2 py-1.5 text-[10px] leading-snug text-amber-800">
+              <AlertTriangle className="mt-px h-3 w-3 shrink-0" />
+              <span>
+                Won&apos;t apply on live pages: <strong>{check.unsupported.join(' ')}</strong>. Only the classes
+                below are included in the site&apos;s stylesheet.
+              </span>
+            </p>
+          )}
+
+          {/* The accepted vocabulary (customClassVocabulary.json) — the exact list tailwind.config.js
+              safelists, so anything picked here is guaranteed to exist in the built CSS. */}
+          <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
+            {CUSTOM_CLASS_GROUPS.map((g) => (
+              <div key={g.label} className="space-y-1">
+                <span className="block text-[9px] font-bold uppercase tracking-wide text-slate-500">{g.label}</span>
+                <div className="flex flex-wrap gap-1">
+                  {g.classes.map((cls) => (
+                    <button
+                      key={cls}
+                      type="button"
+                      onClick={() => toggleClass(cls)}
+                      aria-pressed={activeSet.has(cls)}
+                      className={`rounded border px-1.5 py-0.5 font-mono text-[9px] transition-colors motion-reduce:transition-none ${
+                        activeSet.has(cls) ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400'
+                      }`}
+                    >
+                      {cls}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
           <span className="text-[10px] text-slate-500 block leading-tight">
-            Tailwind classes will merge into the element style tree. Hover/focus states are automatically prefixed.
+            Classes apply to this container; hover/focus states are prefixed automatically.
           </span>
         </div>
       )}

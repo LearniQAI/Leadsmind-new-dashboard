@@ -6,6 +6,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { ColumnsSettings } from './ColumnsSettings';
 import { useBuilder } from '../BuilderContext';
+import { columnCountFor, ensureColumnSlots } from '@/lib/builder/columnSlots';
 
 function cn(...inputs: ClassValue[]) {
  return twMerge(clsx(inputs));
@@ -28,10 +29,20 @@ export const Columns = ({
   dragRef,
   ...props 
 }: ColumnsProps & any) => {
- const { connectors: { connect, drag } } = useNode();
- const { enabled } = useEditor((state) => ({
+ const { id, connectors: { connect, drag } } = useNode();
+ const { enabled, actions, query } = useEditor((state) => ({
    enabled: state.options.enabled
  }));
+
+ // A Columns block with no children has nothing for its grid to lay out — every preset showed
+ // "EMPTY COLUMNS GRID". In the editor, give an empty one real column slots for its preset
+ // (the same Column containers the templates use). Only when EMPTY, so a column the admin
+ // deletes on purpose isn't forced back; the settings presets top slots up.
+ React.useEffect(() => {
+  if (!enabled) return;
+  if (query.node(id).get()?.data.nodes.length === 0) ensureColumnSlots(actions, query, id, columnCountFor(layout));
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- mount/enable only (see above)
+ }, [enabled, id]);
  const { viewMode } = useBuilder();
 
  // Real Tailwind breakpoint classes (md:/lg:) — correct on every real device, since they key

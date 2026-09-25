@@ -5,6 +5,7 @@ import { useNode } from '@craftjs/core';
 import { AlignLeft, AlignCenter, AlignRight, AlignJustify } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { useResponsiveSetProp } from '@/lib/builder/hooks';
+import { containerFont, CONTAINER_FONT_EXPLICIT } from '@/lib/builder/blockTypography';
 import { useBuilder } from '../BuilderContext';
 import { ColorPicker } from '../ColorPicker';
 import { SliderWithInput, PropertySelect } from './primitives';
@@ -28,7 +29,8 @@ export const TypographyControl = ({
    *  duplicate spacing / background controls. */
   withLayoutSections?: boolean;
 } = {}) => {
-  const { actions: { setProp }, props } = useNode((node) => ({ props: node.data.props }));
+  const { actions: { setProp }, props, nodeName } = useNode((node) => ({ props: node.data.props, nodeName: node.data.name }));
+  const isContainer = nodeName === 'Container';
   const { viewMode } = useBuilder();
   const { setResponsiveValue } = useResponsiveSetProp();
   const pageFontName = usePageFontName();
@@ -39,7 +41,11 @@ export const TypographyControl = ({
     return props[propName] ?? baseValue;
   };
 
-  const fontFamily = getDisplayValue('fontFamily');            // undefined => inheriting
+  // Container: an unmarked 'Inter' is its old default, which renders as the page font — show it
+  // as such (see containerFont in lib/builder/blockTypography).
+  const fontFamily = isContainer
+    ? containerFont(props, viewMode).explicit ? containerFont(props, viewMode).family : undefined
+    : getDisplayValue('fontFamily');            // undefined => inheriting
   const fontSize = getDisplayValue('fontSize', '');
   const textAlign = getDisplayValue('textAlign', 'left');
   const lineHeight = getDisplayValue('lineHeight', '');
@@ -117,6 +123,12 @@ export const TypographyControl = ({
             } else {
               setResponsiveValue('fontFamily', undefined);
               setResponsiveValue('fontWeight', undefined);
+            }
+            // Container: record that the Desktop font is a real choice (so it overrides the page
+            // theme), or that it was cleared (so the 'Inter' default Craft refills on reload
+            // stays "page font"). Tablet/Mobile fonts are always explicit.
+            if (isContainer && viewMode === 'desktop') {
+              setProp((p: any) => { if (family) p[CONTAINER_FONT_EXPLICIT] = true; else delete p[CONTAINER_FONT_EXPLICIT]; });
             }
           }}
         />

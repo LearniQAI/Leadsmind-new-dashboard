@@ -1,0 +1,213 @@
+{
+  "$comment": "Custom Tailwind classes a Container's class inspector accepts. The ONE source for tailwind.config.js's safelist (base + hover: + focus:) and the panel's validation (lib/builder/customClasses.ts), so every accepted class is guaranteed to exist in the built CSS. Add classes here, never to the safelist directly. Colours are limited to what this project's theme defines (red/amber/green/purple/pink are single values here, so no shades); batch5.test.tsx builds every class to prove it exists.",
+  "variants": [
+    "hover",
+    "focus"
+  ],
+  "groups": [
+    {
+      "label": "Shadow",
+      "classes": [
+        "shadow-none",
+        "shadow-sm",
+        "shadow",
+        "shadow-md",
+        "shadow-lg",
+        "shadow-xl",
+        "shadow-2xl",
+        "shadow-inner"
+      ]
+    },
+    {
+      "label": "Corners",
+      "classes": [
+        "rounded-none",
+        "rounded-sm",
+        "rounded",
+        "rounded-md",
+        "rounded-lg",
+        "rounded-xl",
+        "rounded-2xl",
+        "rounded-3xl",
+        "rounded-full"
+      ]
+    },
+    {
+      "label": "Border",
+      "classes": [
+        "border",
+        "border-0",
+        "border-2",
+        "border-4",
+        "border-solid",
+        "border-dashed",
+        "border-dotted"
+      ]
+    },
+    {
+      "label": "Ring",
+      "classes": [
+        "ring-0",
+        "ring-1",
+        "ring-2",
+        "ring-4",
+        "ring-offset-2"
+      ]
+    },
+    {
+      "label": "Opacity",
+      "classes": [
+        "opacity-0",
+        "opacity-25",
+        "opacity-50",
+        "opacity-75",
+        "opacity-90",
+        "opacity-100"
+      ]
+    },
+    {
+      "label": "Transition",
+      "classes": [
+        "transition",
+        "transition-all",
+        "transition-colors",
+        "transition-opacity",
+        "transition-transform",
+        "duration-150",
+        "duration-200",
+        "duration-300",
+        "duration-500",
+        "duration-700",
+        "ease-in",
+        "ease-out",
+        "ease-in-out"
+      ]
+    },
+    {
+      "label": "Transform",
+      "classes": [
+        "scale-95",
+        "scale-100",
+        "scale-105",
+        "scale-110",
+        "-translate-y-1",
+        "-translate-y-2",
+        "translate-y-1",
+        "rotate-1",
+        "-rotate-1",
+        "rotate-2",
+        "-rotate-2"
+      ]
+    },
+    {
+      "label": "Effects",
+      "classes": [
+        "blur-sm",
+        "backdrop-blur-sm",
+        "backdrop-blur-md",
+        "grayscale",
+        "grayscale-0",
+        "overflow-hidden",
+        "cursor-pointer"
+      ]
+    },
+    {
+      "label": "Colours",
+      "classes": [
+        "bg-slate-100",
+        "bg-slate-500",
+        "bg-slate-700",
+        "bg-gray-100",
+        "bg-gray-500",
+        "bg-gray-700",
+        "bg-orange-100",
+        "bg-orange-500",
+        "bg-orange-700",
+        "bg-blue-100",
+        "bg-blue-500",
+        "bg-blue-700",
+        "bg-indigo-100",
+        "bg-indigo-500",
+        "bg-indigo-700",
+        "bg-red",
+        "bg-amber",
+        "bg-green",
+        "bg-purple",
+        "bg-pink",
+        "text-slate-100",
+        "text-slate-500",
+        "text-slate-700",
+        "text-gray-100",
+        "text-gray-500",
+        "text-gray-700",
+        "text-orange-100",
+        "text-orange-500",
+        "text-orange-700",
+        "text-blue-100",
+        "text-blue-500",
+        "text-blue-700",
+        "text-indigo-100",
+        "text-indigo-500",
+        "text-indigo-700",
+        "text-red",
+        "text-amber",
+        "text-green",
+        "text-purple",
+        "text-pink",
+        "border-slate-100",
+        "border-slate-500",
+        "border-slate-700",
+        "border-gray-100",
+        "border-gray-500",
+        "border-gray-700",
+        "border-orange-100",
+        "border-orange-500",
+        "border-orange-700",
+        "border-blue-100",
+        "border-blue-500",
+        "border-blue-700",
+        "border-indigo-100",
+        "border-indigo-500",
+        "border-indigo-700",
+        "border-red",
+        "border-amber",
+        "border-green",
+        "border-purple",
+        "border-pink",
+        "ring-slate-100",
+        "ring-slate-500",
+        "ring-slate-700",
+        "ring-gray-100",
+        "ring-gray-500",
+        "ring-gray-700",
+        "ring-orange-100",
+        "ring-orange-500",
+        "ring-orange-700",
+        "ring-blue-100",
+        "ring-blue-500",
+        "ring-blue-700",
+        "ring-indigo-100",
+        "ring-indigo-500",
+        "ring-indigo-700",
+        "ring-red",
+        "ring-amber",
+        "ring-green",
+        "ring-purple",
+        "ring-pink",
+        "bg-white",
+        "bg-black",
+        "bg-transparent",
+        "bg-primary",
+        "text-white",
+        "text-black",
+        "text-transparent",
+        "text-primary",
+        "border-white",
+        "border-black",
+        "border-transparent",
+        "border-primary",
+        "ring-primary"
+      ]
+    }
+  ]
+}

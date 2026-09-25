@@ -5,6 +5,7 @@ import { useNode, useEditor } from '@craftjs/core';
 import { Button as ShadcnButton } from '@/components/ui/button';
 import * as LucideIcons from 'lucide-react';
 import { resolveLink } from '@/lib/builder/utils';
+import { BUTTON_SIZE_CLASSES, buttonInlineStyle } from '@/lib/builder/buttonStyle';
 import { useBuilder } from '../BuilderContext';
 
 
@@ -49,12 +50,7 @@ export const UserButton = (allProps: ButtonProps & any) => {
  const IconComponent = icon ? (LucideIcons as any)[icon] : null;
 
 
- const sizeClasses = {
-   sm: 'px-3 py-1.5 text-xs',
-   md: 'px-5 py-2.5 text-sm',
-   lg: 'px-8 py-4 text-base font-bold',
-   xl: 'px-10 py-5 text-lg font-black uppercase tracking-tighter',
- };
+ const sizeClasses = BUTTON_SIZE_CLASSES; // shared with the Hero's secondary button
 
  const getAction = () => {
   if (typeof link === 'object' && link.type === 'action') return (link as any).value;
@@ -158,17 +154,8 @@ export const UserButton = (allProps: ButtonProps & any) => {
       // classes to fight with — see the comment on 'unstyled' in components/ui/button.tsx.
       variant="unstyled"
       className={`w-full transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 group ${sizeClasses[(size || 'md') as keyof typeof sizeClasses]}`}
-      style={{
-        borderRadius: `${borderRadius}px`,
-        // 'color' is the "Background" field in ButtonSettings — but for outline/ghost/link
-        // variants it also doubles as the border/text color (matching the template-authoring
-        // convention already in use), so it must NOT also become the background fill for
-        // those variants, or a black-bordered/black-text outline button renders as a solid
-        // black box with invisible black-on-black text.
-        backgroundColor: (variant === 'outline' || variant === 'ghost' || variant === 'link') ? 'transparent' : (color || undefined),
-        color: textColor || undefined,
-        border: variant === 'outline' ? `2px solid ${color}` : undefined,
-      }}
+      // Background/text/border rules shared with the Hero's secondary button (lib/builder/buttonStyle).
+      style={buttonInlineStyle({ variant, color, textColor, borderRadius })}
     >
       {loading ? (
         <span className="flex items-center gap-2">

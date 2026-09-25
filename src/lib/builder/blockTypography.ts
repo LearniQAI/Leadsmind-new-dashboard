@@ -31,7 +31,9 @@ const BODY_TEXT = ['p', 'span', 'a', 'button', 'input', 'textarea'];
 /**
  * Theme heading/body fonts (forced, as before) plus the overrides that let a block's own font
  * and stored rich text win. `scope` prefixes every selector — each override is exactly one
- * class/attribute more specific than the theme rule it has to beat, at equal !important.
+ * class/attribute more specific than the theme rule it has to beat, at equal !important. The
+ * block's own font uses a doubled attribute (0,2,0) so it also beats an ancestor Container's
+ * "descendants inherit my font" rule (`.node-x :is(p, …)`, 0,1,1) — a block's own font wins.
  */
 export function themeFontCss(scope: string): string {
   const s = (sel: string) => (scope ? `${scope} ${sel}` : sel);
@@ -43,7 +45,7 @@ export function themeFontCss(scope: string): string {
   ${list(BODY_TEXT)} {
     font-family: var(--font-body) !important;
   }
-  ${list([`[${BLOCK_FONT_ATTR}]`])} {
+  ${list([`[${BLOCK_FONT_ATTR}][${BLOCK_FONT_ATTR}]`])} {
     font-family: var(${BLOCK_FONT_VAR}) !important;
   }
   ${list([`[${BLOCK_FONT_ATTR}] :is(h1, h2, h3, h4, h5, h6, p, span, a)`, `.${RICH_TEXT_CLASS} :is(p, span)`, '.tiptap p'])} {
@@ -70,4 +72,26 @@ export function inlineRichText(value: unknown): string {
     .replace(/<\/p>\s*<p\b[^>]*>/gi, '<br>')
     .replace(/<\/?p\b[^>]*>/gi, '')
     .trim();
+}
+
+// ---- Container font family ----
+// Container.craft.props has always defaulted fontFamily to 'Inter', so every Container carries
+// it (Craft fills defaults in on load; 290 live nodes store it). The theme's !important font
+// has hidden it on the text elements; only non-text elements (labels, list items outside text
+// blocks, …) actually show it. So a stored 'Inter' can't be told apart from a real choice:
+// a Desktop font counts as the admin's choice only when CONTAINER_FONT_EXPLICIT is set (the
+// panel sets it when a font is picked at Desktop). Tablet/Mobile fonts only ever come from the
+// panel, so they're always explicit. Unmarked 'Inter' keeps rendering exactly as before.
+export const CONTAINER_LEGACY_DEFAULT_FONT = 'Inter';
+export const CONTAINER_FONT_EXPLICIT = 'fontFamilyExplicit';
+
+/** The Container font a breakpoint resolves to (Container's own mobile → tablet → base
+ *  cascade), and whether it's an explicit choice that should override the page theme. */
+export function containerFont(props: Record<string, any>, device: 'desktop' | 'tablet' | 'mobile'): { family?: string; explicit: boolean } {
+  const tablet = props.fontFamily_tablet || undefined;
+  const mobile = props.fontFamily_mobile || undefined;
+  if (device === 'mobile' && (mobile || tablet)) return { family: mobile ?? tablet, explicit: true };
+  if (device === 'tablet' && tablet) return { family: tablet, explicit: true };
+  const base = props.fontFamily || undefined;
+  return { family: base, explicit: !!base && (!!props[CONTAINER_FONT_EXPLICIT] || base !== CONTAINER_LEGACY_DEFAULT_FONT) };
 }
