@@ -193,18 +193,26 @@ export const FontInheritSelect = ({
 
 export type BoxSides = { top: string; right: string; bottom: string; left: string };
 
-const NumCell = ({
+export const NumCell = ({
   icon,
   value,
   onChange,
   testid,
   title,
+  placeholder = '0',
+  min,
+  max,
+  ariaLabel,
 }: {
   icon?: React.ReactNode;
   value: string;
   onChange: (v: string) => void;
   testid?: string;
   title?: string;
+  placeholder?: string;
+  min?: number;
+  max?: number;
+  ariaLabel?: string;
 }) => (
   <div className={CELL_CLS} title={title}>
     {icon && <span className="text-slate-500 shrink-0">{icon}</span>}
@@ -213,7 +221,10 @@ const NumCell = ({
       data-testid={testid}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      placeholder="0"
+      placeholder={placeholder}
+      min={min}
+      max={max}
+      aria-label={ariaLabel}
       className="w-full h-full text-[11px] text-slate-700 bg-transparent outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
     />
   </div>
@@ -223,10 +234,14 @@ export const SpacingControl = ({
   label,
   value,
   onChange,
+  axes = 'all',
 }: {
   label: string;
   value: Partial<BoxSides>;
   onChange: (next: BoxSides) => void;
+  /** 'horizontal' = left/right only — top/bottom belong to the universal Spacing section
+   *  (inspector/SpacingControls) that every block's panel shares. */
+  axes?: 'all' | 'horizontal';
 }) => {
   const [expanded, setExpanded] = useState(false);
   const v: BoxSides = {
@@ -235,7 +250,9 @@ export const SpacingControl = ({
     bottom: value.bottom ?? '',
     left: value.left ?? '',
   };
-  const symmetric = v.top === v.bottom && v.left === v.right;
+  const horizontalOnly = axes === 'horizontal';
+  const symmetric = horizontalOnly ? v.left === v.right : v.top === v.bottom && v.left === v.right;
+  const sides = horizontalOnly ? (['left', 'right'] as const) : (['top', 'right', 'bottom', 'left'] as const);
 
   const setSide = (side: keyof BoxSides, val: string) => onChange({ ...v, [side]: val });
   const setVertical = (val: string) => onChange({ ...v, top: val, bottom: val });
@@ -246,13 +263,15 @@ export const SpacingControl = ({
       <Label className={`${MICRO_LABEL} block`}>{label}</Label>
       {!expanded ? (
         <div className="flex items-center gap-2">
-          <NumCell
-            icon={<MoveVertical className="w-3.5 h-3.5" />}
-            value={symmetric ? v.top : ''}
-            onChange={setVertical}
-            testid={`${label.toLowerCase()}-vertical`}
-            title={`${label} top & bottom`}
-          />
+          {!horizontalOnly && (
+            <NumCell
+              icon={<MoveVertical className="w-3.5 h-3.5" />}
+              value={symmetric ? v.top : ''}
+              onChange={setVertical}
+              testid={`${label.toLowerCase()}-vertical`}
+              title={`${label} top & bottom`}
+            />
+          )}
           <NumCell
             icon={<MoveHorizontal className="w-3.5 h-3.5" />}
             value={symmetric ? v.left : ''}
@@ -272,8 +291,8 @@ export const SpacingControl = ({
         </div>
       ) : (
         <div className="space-y-2">
-          <div className="grid grid-cols-4 gap-1.5">
-            {(['top', 'right', 'bottom', 'left'] as const).map((side) => (
+          <div className={`grid ${horizontalOnly ? 'grid-cols-2' : 'grid-cols-4'} gap-1.5`}>
+            {sides.map((side) => (
               <div key={side} className="space-y-1">
                 <span className="text-[8px] font-bold text-slate-500 block text-center capitalize">
                   {side}
@@ -292,7 +311,7 @@ export const SpacingControl = ({
             onClick={() => setExpanded(false)}
             className="text-[10px] font-bold text-slate-700 hover:underline"
           >
-            Use one value for each axis
+            {horizontalOnly ? "Use one value for left & right" : "Use one value for each axis"}
           </button>
         </div>
       )}

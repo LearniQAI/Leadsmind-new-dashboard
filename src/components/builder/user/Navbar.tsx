@@ -8,6 +8,7 @@ import { useBuilder } from '../BuilderContext';
 import { resolveLink } from '@/lib/builder/utils';
 import { InlineTextEditor } from './InlineTextEditor';
 import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
+import { inlineRichText } from '@/lib/builder/blockTypography';
 import { MediaVaultModal } from '../MediaVaultModal';
 import type { LinkObject } from '../LinkSelector';
 
@@ -47,7 +48,8 @@ export interface NavbarProps {
  globalId?: string;
 }
 
-import { useGlobalSync } from '@/lib/builder/hooks';
+import { useGlobalSync, useSpacingStyle } from '@/lib/builder/hooks';
+import { omitSpacingProps } from '@/lib/builder/spacing';
 
 export const Navbar = ({
  logo,
@@ -91,6 +93,10 @@ export const Navbar = ({
  // Force the mobile layout in the editor's mobile/tablet preview only; production always
  // uses the real breakpoint classes.
  const previewMobile = enabled && (viewMode === 'mobile' || viewMode === 'tablet');
+ // Self-spaced (lib/builder/spacing.ts SELF_SPACED_BLOCKS): the universal spacing is painted on
+ // this <nav> itself. A wrapper element would become the sticky nav's parent box — exactly the
+ // nav's own height — leaving it no room to stick, so `sticky top-0` silently stopped working.
+ const spacing = useSpacingStyle(props);
  const [isOpen, setIsOpen] = useState(false);
  const [isScrolled, setIsScrolled] = useState(false);
  const [isLogoVaultOpen, setIsLogoVaultOpen] = useState(false);
@@ -130,7 +136,7 @@ export const Navbar = ({
 
  return (
   <nav
-   {...props}
+   {...omitSpacingProps(props)}
    ref={(ref) => {
     if (ref) {
      connect(ref);
@@ -145,7 +151,13 @@ export const Navbar = ({
    style={{
     backgroundColor: isScrolled ? backgroundColor : backgroundColor,
     color: textColor,
-    padding: `${padding}px 24px`,
+    // Top/bottom: the universal spacing controls when set, else the Navbar's own padding.
+    paddingTop: spacing.paddingTop ?? `${padding}px`,
+    paddingBottom: spacing.paddingBottom ?? `${padding}px`,
+    paddingLeft: '24px',
+    paddingRight: '24px',
+    marginTop: spacing.marginTop,
+    marginBottom: spacing.marginBottom,
     borderBottom: `${borderBottomWidth}px solid ${borderBottomColor}`
    }}
   >
@@ -182,7 +194,9 @@ export const Navbar = ({
      ) : (
       <span
        className="font-black tracking-tighter text-xl uppercase"
-       dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(brandName) }}
+       // Inline slot: inlineRichText drops the <p> the inline editor wraps text in, which
+       // otherwise took the global `p` rule (14px, weight 400, body colour) here.
+       dangerouslySetInnerHTML={{ __html: inlineRichText(brandName) }}
       />
      )}
     </div>
@@ -214,9 +228,9 @@ export const Navbar = ({
         }}
         onMouseOver={(e: any) => e.target.style.color = linkHoverColor}
         onMouseOut={(e: any) => e.target.style.color = 'inherit'}
-       >
-        {link.label}
-       </a>
+        // The inline editor saves labels as `<p>Home</p>`; as React text that showed the tags.
+        dangerouslySetInnerHTML={{ __html: inlineRichText(link.label) }}
+       />
       )
      ))}
 
@@ -272,9 +286,8 @@ export const Navbar = ({
         href={resolveLink(link.href, { basePath })}
         onClick={(e) => { if (enabled) e.preventDefault(); }}
         className="text-sm font-black uppercase tracking-widest"
-       >
-        {link.label}
-       </a>
+        dangerouslySetInnerHTML={{ __html: inlineRichText(link.label) }}
+       />
       )
      ))}
      {showButton && (

@@ -7,10 +7,13 @@ import { TextSettings } from './TextSettings';
 import { replaceMergeTags } from '@/lib/builder/utils';
 import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
 import { pickBoxStyle, stripBoxStyleKeys } from '@/lib/builder/boxStyle';
+import { RICH_TEXT_CLASS } from '@/lib/builder/blockTypography';
+import { useBuilder } from '../BuilderContext';
 
 export const Text = ({ text, fontSize, textAlign, color, fontFamily, fontWeight, lineHeight, letterSpacing, dragRef, ...props }: any) => {
  // Part 2 Color / Size-and-position sections — apply, then strip so they don't hit the DOM.
- const boxStyle = pickBoxStyle(props);
+ const { viewMode } = useBuilder();
+ const boxStyle = pickBoxStyle(props, viewMode);
  stripBoxStyleKeys(props);
  const { connectors: { connect, drag }, actions: { setProp } } = useNode();
  const { enabled } = useEditor((state) => ({
@@ -61,7 +64,7 @@ export const Text = ({ text, fontSize, textAlign, color, fontFamily, fontWeight,
         />
       </span>
     ) : (
-      <span style={{ color: 'inherit' }} dangerouslySetInnerHTML={{ __html: displayText }} />
+      <span className={RICH_TEXT_CLASS} style={{ color: 'inherit' }} dangerouslySetInnerHTML={{ __html: displayText }} />
     )}
   </div>
  );

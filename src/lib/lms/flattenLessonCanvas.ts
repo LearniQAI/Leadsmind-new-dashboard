@@ -19,9 +19,35 @@
 // markBlockComplete) it already uses for legacy lessons. Those same blockIds are what
 // getBlockIdsForLesson() derives the completion gate from, so gating is unaffected.
 
-export type LessonCanvasItem =
-  | { kind: 'heading'; level: string; html: string; align: string }
-  | { kind: 'richtext'; html: string; align: string }
+import {
+  DEVICES, SPACING_DEFAULTS, cssLength as toCssLength, hasSpacing, readResponsive, spacingStyle,
+  type Device, type SpacingKey,
+} from '@/lib/builder/spacing';
+import { textBlockCss, type TextCss } from '@/lib/builder/textBlockStyle';
+import { frameBorderStyle } from '@/lib/builder/frameStyle';
+
+/** A value resolved per breakpoint with the builder's own resolver; a missing device = unset. */
+export type CanvasResponsive = Partial<Record<Device, string>>;
+
+/** Per-breakpoint text CSS (see lib/builder/textBlockStyle). Absent = nothing set. */
+export type CanvasTextStyle = Partial<Record<Device, TextCss>>;
+
+/** Universal top/bottom spacing, fully resolved per breakpoint (CSS lengths). Absent = none. */
+export type CanvasSpacing = Record<Device, Partial<Record<SpacingKey, string>>>;
+
+export type LessonCanvasItem = { spacing?: CanvasSpacing } & (
+  | {
+      kind: 'heading';
+      level: string;
+      html: string;
+      align: string;
+      /** Per-breakpoint letter spacing (CSS length) and font family (family name), when set. */
+      letterSpacing?: CanvasResponsive;
+      fontFamily?: CanvasResponsive;
+      /** The builder's own typography for this block, per breakpoint (textBlockStyle). */
+      textStyle?: CanvasTextStyle;
+    }
+  | { kind: 'richtext'; html: string; align: string; textStyle?: CanvasTextStyle }
   | {
       kind: 'image';
       src: string;
@@ -33,8 +59,10 @@ export type LessonCanvasItem =
       align?: 'left' | 'center' | 'right';
       objectFit?: 'cover' | 'contain' | 'fill' | 'none';
       shape?: 'square' | 'circle';
+      /** Shadow / border / corner radii exactly as the builder's frameBorderStyle() computes them. */
+      frame?: Record<string, string>;
     }
-  | { kind: 'divider' }
+  | { kind: 'divider'; weight: number; color: string; width: string; alignment: 'left' | 'center' | 'right' }
   | { kind: 'block'; blockId: string; blockType: string }
   | {
       kind: 'contentbox';
@@ -45,7 +73,10 @@ export type LessonCanvasItem =
       headline: string;
       body: string;
       ctaText: string;
-    };
+      /** CTA fill: its own colour, else the header colour (same fallback as the builder). */
+      ctaColorHex: string;
+    }
+);
 
 type CraftNode = {
   type?: { resolvedName?: string };
@@ -75,14 +106,97 @@ function nodeToItems(
   const p = node.props || {};
 
   if (name && CONTAINER_TYPES.has(name)) {
+    const start = out.length;
     for (const childId of node.nodes || []) {
       if (seen.has(childId)) continue;
       seen.add(childId);
       nodeToItems(tree[childId], tree, out, seen);
     }
+    applyContainerMargins(out, start, p);
     return;
   }
 
+  const start = out.length;
+  emitLeaf(name, p, out);
+  const spacing = leafSpacing(name, p);
+  if (spacing) for (let i = start; i < out.length; i++) out[i] = { ...out[i], spacing };
+}
+
+// ---- Universal spacing (lib/builder/spacing.ts) in the flattened reading view ----
+// Leaf blocks carry all four values, resolved per breakpoint with the builder's own resolver.
+// Containers are not drawn here (no box, background or max-width), so their PADDING — space
+// inside a box that doesn't exist in this view — is not applied; their MARGIN (space outside
+// the box) is, carried onto the first/last item they contain. Existing lessons only have
+// container padding (template Sections), so they render exactly as before.
+
+function leafSpacing(name: string | undefined, p: Record<string, any>): CanvasSpacing | undefined {
+  const defaults = (name && SPACING_DEFAULTS[name]) || {};
+  if (!hasSpacing(p) && Object.keys(defaults).length === 0) return undefined;
+  const out = {} as CanvasSpacing;
+  let any = false;
+  for (const device of DEVICES) {
+    out[device] = spacingStyle(p, device, defaults) as Partial<Record<SpacingKey, string>>;
+    if (Object.keys(out[device]).length) any = true;
+  }
+  return any ? out : undefined;
+}
+
+/** a + b as a CSS length: plain px sums numerically, anything else via calc(). */
+function addLength(a: string | undefined, b: string | undefined): string | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  const pa = /^(-?\d*\.?\d+)px$/.exec(a);
+  const pb = /^(-?\d*\.?\d+)px$/.exec(b);
+  return pa && pb ? `${Number(pa[1]) + Number(pb[1])}px` : `calc(${a} + ${b})`;
+}
+
+function applyContainerMargins(out: LessonCanvasItem[], start: number, p: Record<string, any>): void {
+  if (out.length === start || !hasSpacing(p)) return;
+  const first = start;
+  const last = out.length - 1;
+  for (const device of DEVICES) {
+    const s = spacingStyle(p, device) as Partial<Record<SpacingKey, string>>;
+    for (const [idx, key] of [[first, 'marginTop'], [last, 'marginBottom']] as const) {
+      if (!s[key]) continue;
+      const item = out[idx];
+      const spacing: CanvasSpacing = item.spacing
+        ? { desktop: { ...item.spacing.desktop }, tablet: { ...item.spacing.tablet }, mobile: { ...item.spacing.mobile } }
+        : { desktop: {}, tablet: {}, mobile: {} };
+      spacing[device][key] = addLength(spacing[device][key], s[key]);
+      out[idx] = { ...item, spacing };
+    }
+  }
+}
+
+/** `{ [key]: {desktop?, tablet?, mobile?} }` for a responsive prop, or `{}` when unset everywhere. */
+function responsiveField(
+  key: 'letterSpacing' | 'fontFamily',
+  p: Record<string, any>,
+  normalise: (v: unknown) => string | undefined,
+): { letterSpacing?: CanvasResponsive; fontFamily?: CanvasResponsive } {
+  const out: CanvasResponsive = {};
+  for (const device of DEVICES) {
+    const v = normalise(readResponsive(p, key, device));
+    if (v !== undefined) out[device] = v;
+  }
+  // The canvas treats a 0 letter spacing as "not set" (keeps the heading's default), so a field
+  // that is 0 everywhere is omitted; a 0 that overrides a non-zero breakpoint is kept.
+  const values = Object.values(out);
+  if (!values.length || values.every((v) => v === '0px')) return {};
+  return { [key]: out };
+}
+
+/** textBlockCss() for every breakpoint, or undefined when the block sets nothing. */
+function textStyleFor(name: string, p: Record<string, any>): { textStyle?: CanvasTextStyle } {
+  const out: CanvasTextStyle = {};
+  for (const device of DEVICES) {
+    const css = textBlockCss(name, p, device);
+    if (Object.keys(css).length) out[device] = css;
+  }
+  return Object.keys(out).length ? { textStyle: out } : {};
+}
+
+function emitLeaf(name: string | undefined, p: Record<string, any>, out: LessonCanvasItem[]): void {
   switch (name) {
     case 'Heading': {
       let html = typeof p.text === 'string' ? p.text : '';
@@ -98,6 +212,12 @@ function nodeToItems(
           level: /^h[1-6]$/.test(p.level) ? p.level : 'h2',
           html,
           align: p.textAlign || 'left',
+          // Same two settings the canvas applies to the heading element itself; the reading
+          // view previously dropped them, so they never reached students.
+          ...responsiveField('letterSpacing', p, (v) => toCssLength(v)),
+          ...responsiveField('fontFamily', p, (v) => (typeof v === 'string' && v.trim() ? v.trim() : undefined)),
+          // Size / weight / colour / line height / alignment / background, as the builder renders them.
+          ...textStyleFor('Heading', p),
         });
       }
       return;
@@ -106,7 +226,7 @@ function nodeToItems(
     case 'Text': {
       const html = typeof p.text === 'string' ? p.text : '';
       if (html.trim()) {
-        out.push({ kind: 'richtext', html, align: p.textAlign || 'left' });
+        out.push({ kind: 'richtext', html, align: p.textAlign || 'left', ...textStyleFor(name, p) });
       }
       return;
     }
@@ -124,12 +244,20 @@ function nodeToItems(
           align: p.align === 'left' || p.align === 'center' || p.align === 'right' ? p.align : undefined,
           objectFit: ['cover', 'contain', 'fill', 'none'].includes(p.objectFit) ? p.objectFit : undefined,
           shape: p.shape === 'circle' ? 'circle' : undefined,
+          frame: frameBorderStyle(p) as Record<string, string>,
         });
       }
       return;
     }
     case 'Divider': {
-      out.push({ kind: 'divider' });
+      // Divider.tsx reads these base values (weight/colour/width/alignment are not responsive).
+      out.push({
+        kind: 'divider',
+        weight: typeof p.weight === 'number' && p.weight > 0 ? p.weight : 1,
+        color: typeof p.color === 'string' && p.color ? p.color : '#e5e7eb',
+        width: cssLength(p.width) ?? '100%',
+        alignment: p.alignment === 'left' || p.alignment === 'right' ? p.alignment : 'center',
+      });
       return;
     }
     case 'LessonBlockNode': {
@@ -150,6 +278,9 @@ function nodeToItems(
         headline: typeof p.headline === 'string' ? p.headline : '',
         body: typeof p.body === 'string' ? p.body : '',
         ctaText: typeof p.ctaText === 'string' ? p.ctaText : 'Open',
+        ctaColorHex:
+          (typeof p.ctaColorHex === 'string' && p.ctaColorHex) ||
+          (typeof p.headerColorHex === 'string' && p.headerColorHex) || '#1359FF',
       });
       return;
     }

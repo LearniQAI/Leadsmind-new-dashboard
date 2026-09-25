@@ -676,4 +676,107 @@
   color: inherit;
   margin: 0;
 }
-
+
+/* The same reset for LIVE pages. The inline editor saves text as `<p>…</p>`, and published
+   blocks inject that HTML into their own text element (Heading's <h*>, Paragraph's <p>, Text's
+   <span>), marked RICH_TEXT_CLASS (lib/builder/blockTypography.ts). Without this, that inner
+   <p> took the template's bare `p` rule above and rendered at 14px / 22px / weight 400 with a
+   15px bottom margin, whatever the block's settings said — the .tiptap fix only ever covered
+   the editor. `.builder-rich-text p` (0,1,1) outranks `p` (0,0,1); font-family is also
+   reset against the theme-font !important rules in themeFontCss(). */
+.builder-rich-text p {
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  font-style: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  margin: 0;
+}
+
+/* Universal top/bottom block spacing in the flattened student lesson view
+   (components/lms/CanvasItemSpacing). Values are resolved per breakpoint server-side; the
+   breakpoints are the builder's own (autoDetectViewport: mobile <= 767px, tablet <= 1023px). */
+.lm-canvas-spacing {
+  display: flow-root;
+}
+.lm-canvas-spacing__inner {
+  padding-top: var(--lm-pt-d, 0);
+  padding-bottom: var(--lm-pb-d, 0);
+  margin-top: var(--lm-mt-d, 0);
+  margin-bottom: var(--lm-mb-d, 0);
+}
+@media (max-width: 1023px) {
+  .lm-canvas-spacing__inner {
+    padding-top: var(--lm-pt-t, 0);
+    padding-bottom: var(--lm-pb-t, 0);
+    margin-top: var(--lm-mt-t, 0);
+    margin-bottom: var(--lm-mb-t, 0);
+  }
+}
+@media (max-width: 767px) {
+  .lm-canvas-spacing__inner {
+    padding-top: var(--lm-pt-m, 0);
+    padding-bottom: var(--lm-pb-m, 0);
+    margin-top: var(--lm-mt-m, 0);
+    margin-bottom: var(--lm-mb-m, 0);
+  }
+}
+
+/* Heading letter spacing / font family in the flattened student lesson view
+   (components/lms/canvasHeadingType). A class is only present for a breakpoint whose value was
+   resolved, so an unset breakpoint keeps the renderer's own styling. Placed after the Tailwind
+   utilities so an equal-specificity .tracking-tight / .font-display on the same element loses. */
+.lm-ls-d { letter-spacing: var(--lm-ls-d); }
+.lm-ff-d { font-family: var(--lm-ff-d); }
+@media (max-width: 1023px) {
+  .lm-ls-t { letter-spacing: var(--lm-ls-t); }
+  .lm-ff-t { font-family: var(--lm-ff-t); }
+}
+@media (max-width: 767px) {
+  .lm-ls-m { letter-spacing: var(--lm-ls-m); }
+  .lm-ff-m { font-family: var(--lm-ff-m); }
+}
+
+/* Builder typography for Heading / Paragraph / Text in the student lesson view
+   (components/lms/canvasHeadingType canvasTextStyleProps; values from lib/builder/textBlockStyle).
+   Same scheme as .lm-ls-* / .lm-ff-* above: a class only exists for a breakpoint whose value
+   was resolved, at the builder's 1023px / 767px breakpoints, after the Tailwind utilities. */
+.lm-fs-d { font-size: var(--lm-fs-d); }
+.lm-fw-d { font-weight: var(--lm-fw-d); }
+.lm-fst-d { font-style: var(--lm-fst-d); }
+.lm-lh-d { line-height: var(--lm-lh-d); }
+.lm-c-d { color: var(--lm-c-d); }
+.lm-ta-d { text-align: var(--lm-ta-d); }
+.lm-bg-d { background-color: var(--lm-bg-d); }
+.lm-pl-d { padding-left: var(--lm-pl-d); }
+.lm-pr-d { padding-right: var(--lm-pr-d); }
+.lm-ml-d { margin-left: var(--lm-ml-d); }
+.lm-mr-d { margin-right: var(--lm-mr-d); }
+@media (max-width: 1023px) {
+  .lm-fs-t { font-size: var(--lm-fs-t); }
+  .lm-fw-t { font-weight: var(--lm-fw-t); }
+  .lm-fst-t { font-style: var(--lm-fst-t); }
+  .lm-lh-t { line-height: var(--lm-lh-t); }
+  .lm-c-t { color: var(--lm-c-t); }
+  .lm-ta-t { text-align: var(--lm-ta-t); }
+  .lm-bg-t { background-color: var(--lm-bg-t); }
+  .lm-pl-t { padding-left: var(--lm-pl-t); }
+  .lm-pr-t { padding-right: var(--lm-pr-t); }
+  .lm-ml-t { margin-left: var(--lm-ml-t); }
+  .lm-mr-t { margin-right: var(--lm-mr-t); }
+}
+@media (max-width: 767px) {
+  .lm-fs-m { font-size: var(--lm-fs-m); }
+  .lm-fw-m { font-weight: var(--lm-fw-m); }
+  .lm-fst-m { font-style: var(--lm-fst-m); }
+  .lm-lh-m { line-height: var(--lm-lh-m); }
+  .lm-c-m { color: var(--lm-c-m); }
+  .lm-ta-m { text-align: var(--lm-ta-m); }
+  .lm-bg-m { background-color: var(--lm-bg-m); }
+  .lm-pl-m { padding-left: var(--lm-pl-m); }
+  .lm-pr-m { padding-right: var(--lm-pr-m); }
+  .lm-ml-m { margin-left: var(--lm-ml-m); }
+  .lm-mr-m { margin-right: var(--lm-mr-m); }
+}

@@ -28,6 +28,11 @@ import ReadingModal from './components/ReadingModal';
 import { isSafeEmbedUrl } from '@/lib/security/isSafeEmbedUrl';
 import { SandboxedHtml } from '@/components/lms/SandboxedHtml';
 import { CanvasLessonImage } from '@/components/lms/CanvasLessonImage';
+import { CanvasItemSpacing } from '@/components/lms/CanvasItemSpacing';
+import { CANVAS_INLINE_HTML, canvasBlockTypeProps, useCanvasHeadingFonts } from '@/components/lms/canvasHeadingType';
+import { CanvasDivider } from '@/components/lms/CanvasDivider';
+import { CanvasContentBox, contentBoxCta } from '@/components/lms/CanvasContentBox';
+import { HEADING_BASE_SIZES } from '@/lib/builder/textBlockStyle';
 import { getCourseTheme } from '@/lib/courses/courseThemeTokens';
 
 function getEmbeddablePdfUrl(url: string): string {
@@ -134,6 +139,8 @@ export default function StudentPlayerClient({
   const [flashcardFlipped, setFlashcardFlipped] = useState(false);
 
   const [openReadingId, setOpenReadingId] = useState<string | null>(null);
+  // ContentBox CTAs whose assignment panel the student has opened (canvas lessons).
+  const [openCtaPanels, setOpenCtaPanels] = useState<Set<string>>(() => new Set());
 
   const [completedBlockIds, setCompletedBlockIds] = useState<Set<string>>(new Set());
   const [isCheckingAdvance, setIsCheckingAdvance] = useState(false);
@@ -929,6 +936,8 @@ export default function StudentPlayerClient({
     for (const b of activeLesson?.contentBlocks || []) m.set(b.id, b);
     return m;
   }, [activeLesson]);
+  // Load any per-heading font families this lesson uses (canvas Heading font setting).
+  useCanvasHeadingFonts(activeLesson?.canvasItems);
 
   /**
    * SYSTEMIC FIX for the recurring faded-text bug.
@@ -947,43 +956,38 @@ export default function StudentPlayerClient({
    * force every text descendant to inherit size/weight/line-height/colour from its properly
    * styled container; class-carrying accent glyphs (blue ✓ etc.) keep their own colour.
    */
-  const CANVAS_INLINE_HTML =
-    '[&_p]:![font-size:inherit] [&_p]:![font-weight:inherit] [&_p]:![line-height:inherit] ' +
-    '[&_p]:![color:inherit] [&_li]:![color:inherit] [&_span]:![color:inherit] ' +
-    '[&_h1]:![color:inherit] [&_h2]:![color:inherit] [&_h3]:![color:inherit] ' +
-    '[&_h4]:![color:inherit] [&_h5]:![color:inherit] [&_h6]:![color:inherit] ' +
-    '[&_strong]:font-semibold [&_strong]:![color:inherit] [&_em]:italic [&_em]:![color:inherit] ' +
-    '[&_a]:!text-sky-600 [&_a]:underline ' +
-    '[&_.text-blue-600]:!text-blue-600 [&_.text-sky-500]:!text-sky-500 [&_.text-amber-500]:!text-amber-500';
+  // (Defined in components/lms/canvasHeadingType so the public preview shares it.)
 
   const renderCanvasItem = (item: any, idx: number) => {
     if (item.kind === 'heading') {
-      const sizes: Record<string, string> = {
-        h1: 'text-[28px] md:text-[34px]',
-        h2: 'text-[22px] md:text-[26px]',
-        h3: 'text-[18px] md:text-[20px]',
-        h4: 'text-[16px]',
-        h5: 'text-[15px]',
-        h6: 'text-[14px]',
-      };
+      // The builder's own typography (size — its level default when none is set — weight,
+      // colour, line height, alignment, letter spacing, font; canvasBlockTypeProps), not the
+      // reading view's fixed heading style.
       const Tag = (/^h[1-6]$/.test(item.level) ? item.level : 'h2') as keyof JSX.IntrinsicElements;
+      const type = canvasBlockTypeProps(item);
       return (
         <Tag
           key={idx}
-          className={`font-display font-bold leading-tight tracking-tight !text-dash-text ${sizes[item.level] || sizes.h2} ${CANVAS_INLINE_HTML} ${
+          style={type.style}
+          className={`font-display font-bold leading-tight tracking-tight ${type.setsColor ? '' : '!text-dash-text'} ${HEADING_BASE_SIZES[item.level] || HEADING_BASE_SIZES.h2} ${CANVAS_INLINE_HTML} ${
             item.align === 'center' ? 'text-center' : item.align === 'right' ? 'text-right' : ''
-          }`}
+          } ${type.className}`}
           dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(item.html) }}
         />
       );
     }
     if (item.kind === 'richtext') {
+      // Paragraph / Text: the builder's size, weight, colour, line height, letter spacing,
+      // alignment and background (canvasBlockTypeProps); paragraphs inside one block sit flush,
+      // as they do in the builder.
+      const type = canvasBlockTypeProps(item);
       return (
         <div
           key={idx}
-          className={`text-[15px] leading-relaxed !text-dash-text ${CANVAS_INLINE_HTML} [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 ${
+          style={type.style}
+          className={`text-[15px] leading-relaxed ${type.setsColor ? '' : '!text-dash-text'} ${CANVAS_INLINE_HTML} [&_p]:my-0 [&_ul]:my-0 [&_ol]:my-0 [&_ol]:list-decimal [&_ol]:pl-5 ${
             item.align === 'center' ? 'text-center' : item.align === 'right' ? 'text-right' : ''
-          }`}
+          } ${type.className}`}
           dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(item.html) }}
         />
       );
@@ -992,7 +996,7 @@ export default function StudentPlayerClient({
       return <CanvasLessonImage key={idx} item={item} />;
     }
     if (item.kind === 'divider') {
-      return <hr key={idx} className="border-dash-border" />;
+      return <CanvasDivider key={idx} item={item} />;
     }
     if (item.kind === 'block') {
       const block = contentBlocksById.get(item.blockId);
@@ -1000,31 +1004,19 @@ export default function StudentPlayerClient({
       return <div key={idx}>{renderBlockBody(block)}</div>;
     }
     if (item.kind === 'contentbox') {
+      // The configured CTA (its text, colour and the linked block's real action), as in the
+      // builder — previously the linked block's own body was shown instead of the button.
       const block = item.blockId ? contentBlocksById.get(item.blockId) : null;
+      const panelOpen = !!block && openCtaPanels.has(block.id);
+      const cta = contentBoxCta(block, 'student', {
+        openReading: (id) => { setOpenReadingId(id); markBlockComplete(id, { opened: true }); },
+        togglePanel: (id) => setOpenCtaPanels((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; }),
+        quizHref: `/student/courses/${course.id}/quiz/${activeLesson.id}`,
+      });
       return (
-        <div key={idx} className="overflow-hidden rounded-2xl border border-dash-border bg-white">
-          <div
-            className="px-5 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-white"
-            style={{ background: item.headerColorHex || '#1359FF' }}
-          >
-            {item.headerLabel}
-          </div>
-          <div className="space-y-3 p-5">
-            {item.headline && (
-              <div
-                className={`font-display text-[16px] font-semibold !text-dash-text ${CANVAS_INLINE_HTML}`}
-                dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(item.headline) }}
-              />
-            )}
-            {item.body && (
-              <div
-                className={`text-[13px] leading-relaxed !text-dash-text ${CANVAS_INLINE_HTML} [&_p]:my-1.5`}
-                dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(item.body) }}
-              />
-            )}
-            {block && renderBlockBody(block)}
-          </div>
-        </div>
+        <CanvasContentBox key={idx} item={item} cta={cta}>
+          {panelOpen && <div className="pt-2 text-left">{renderAssignmentPanel(block.content?.instructions)}</div>}
+        </CanvasContentBox>
       );
     }
     return null;
@@ -1227,7 +1219,9 @@ export default function StudentPlayerClient({
                      pages.content, flattened server-side. Renders as one continuous article;
                      interactive blocks hand off to the shared renderBlockBody(). */
                   <div className="space-y-6">
-                    {activeLesson.canvasItems.map((item: any, idx: number) => renderCanvasItem(item, idx))}
+                    {activeLesson.canvasItems.map((item: any, idx: number) => (
+                      <CanvasItemSpacing key={idx} spacing={item.spacing}>{renderCanvasItem(item, idx)}</CanvasItemSpacing>
+                    ))}
                   </div>
                 ) : activeLesson.contentBlocks && activeLesson.contentBlocks.length > 0 ? (
                   /* Legacy flat-list lesson — content blocks flow in order like an article,

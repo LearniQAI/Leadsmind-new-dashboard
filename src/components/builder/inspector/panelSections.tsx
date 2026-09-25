@@ -86,8 +86,10 @@ export const SizePositionSection = ({
 }) => (
   <div className="space-y-3">
     <SectionHeader title="Size and position" onReset={onReset} />
-    <SpacingControl label="Padding" value={padding} onChange={onPadding} />
-    <SpacingControl label="Margin" value={margin} onChange={onMargin} />
+    {/* Left/right only: top/bottom are the universal Spacing section (SpacingControls) that
+        ElementProperties mounts for every block — one editor per prop, no duplicate. */}
+    <SpacingControl label="Padding" value={padding} onChange={onPadding} axes="horizontal" />
+    <SpacingControl label="Margin" value={margin} onChange={onMargin} axes="horizontal" />
     <div className="space-y-2">
       <Label className={`${MICRO_LABEL} block`}>Alignment</Label>
       <div className={`${SEGMENT_WRAP} max-w-fit`}>

@@ -72,14 +72,13 @@ export const TypographyControl = ({
 
   const handleBoxReset = () =>
     setProp((p: any) => {
-      ['Top', 'Right', 'Bottom', 'Left'].forEach((s) => forEachViewport(p, [`padding${s}`, `margin${s}`]));
+      // Left/right only — top/bottom belong to the universal Spacing section (its own reset).
+      ['Right', 'Left'].forEach((s) => forEachViewport(p, [`padding${s}`, `margin${s}`]));
       forEachViewport(p, ['textAlign']);
     });
 
   const writeSides = (prefix: 'padding' | 'margin') => (v: BoxSides) => {
-    setResponsiveValue(`${prefix}Top`, v.top);
     setResponsiveValue(`${prefix}Right`, v.right);
-    setResponsiveValue(`${prefix}Bottom`, v.bottom);
     setResponsiveValue(`${prefix}Left`, v.left);
   };
 

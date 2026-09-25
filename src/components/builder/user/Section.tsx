@@ -5,7 +5,8 @@ import { useNode, useEditor } from '@craftjs/core';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { SectionSettings } from './SectionSettings';
-import { useResponsiveValue } from '@/lib/builder/hooks';
+import { useResponsiveValue, useSpacingStyle } from '@/lib/builder/hooks';
+import { omitSpacingProps, SPACING_DEFAULTS } from '@/lib/builder/spacing';
 import { useBuilder } from '../BuilderContext';
 import { formatPseudoClasses } from '@/lib/builder/utils';
 
@@ -50,14 +51,15 @@ export const Section = (allProps: SectionProps & any) => {
  }));
 
  // Responsive values
- const paddingTop = useResponsiveValue(allProps, 'paddingTop', 64);
- const paddingBottom = useResponsiveValue(allProps, 'paddingBottom', 64);
+ // Top/bottom padding + margins: the universal spacing controls (shared resolver, same
+ // 64px historical default as before). Left/right stay Section's own horizontal padding.
+ const spacing = useSpacingStyle(allProps, SPACING_DEFAULTS.Section);
  const paddingLeft = useResponsiveValue(allProps, 'paddingLeft', 24);
  const paddingRight = useResponsiveValue(allProps, 'paddingRight', 24);
  
  return (
   <section
-   {...props}
+   {...omitSpacingProps(props)}
    ref={(el) => {
     if (el) {
      connect(el);
@@ -78,8 +80,7 @@ export const Section = (allProps: SectionProps & any) => {
       formatPseudoClasses(allProps.customClasses, allProps.hoverClasses, allProps.focusClasses)
     )}
    style={{
-    paddingTop: `${paddingTop}px`,
-    paddingBottom: `${paddingBottom}px`,
+    ...spacing,
     paddingLeft: `${paddingLeft}px`,
     paddingRight: `${paddingRight}px`,
     backgroundColor,

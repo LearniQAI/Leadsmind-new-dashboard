@@ -4,7 +4,9 @@ import React, { useEffect, useCallback, useState } from 'react';
 import { useNode, useEditor } from '@craftjs/core';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { toast } from 'sonner';
 import { useBuilder } from './BuilderContext';
+import { useNodeSpacing } from './NodeSpacingBox';
 import { Save, Copy, Trash2, RefreshCw, Settings, Move, Plus, MoreHorizontal, ChevronDown } from 'lucide-react';
 
 function cn(...inputs: ClassValue[]) {
@@ -52,10 +54,23 @@ export const RenderNode = ({ render }: { render: React.ReactNode }) => {
     }
   };
 
+  // Same contract as ElementProperties' header delete: Craft throws when it refuses a delete,
+  // so surface that instead of a dead click, and only clean up an LMS block's owned
+  // content_blocks row (LessonBlockNode/ContentBox) once the canvas node is really gone —
+  // otherwise deleting from this toolbar orphaned that row.
   const handleDelete = () => {
-    if (id !== 'ROOT') {
+    if (id === 'ROOT') return;
+    const blockId = query.node(id).get()?.data.props?.blockId ?? null;
+    setContextMenu(null);
+    try {
       editorActions.delete(id);
-      setContextMenu(null);
+    } catch (err) {
+      console.error('Delete failed:', err);
+      toast.error("Couldn't delete this element");
+      return;
+    }
+    if (blockId) {
+      fetch(`/api/lms/content-blocks/${blockId}`, { method: 'DELETE' }).catch(() => {});
     }
   };
 
@@ -86,9 +101,12 @@ export const RenderNode = ({ render }: { render: React.ReactNode }) => {
   }, [dom, isActive, isHovered, isEnabled]);
 
   const { connectors: { connect, drag } } = useNode();
+  // Universal top/bottom spacing for blocks that do not paint it on their own box — the same
+  // hook live pages use (PublishedNodeRender), applied to this always-present wrapper.
+  const { active: wrapperSpaced, style: spacingStyle } = useNodeSpacing();
 
   if (!isEnabled) {
-    return <>{render}</>;
+    return wrapperSpaced ? <div style={spacingStyle}>{render}</div> : <>{render}</>;
   }
 
   return (
@@ -100,6 +118,7 @@ export const RenderNode = ({ render }: { render: React.ReactNode }) => {
         }
       }}
       className="relative group"
+      style={spacingStyle}
       onContextMenu={(e) => {
         if (!isEnabled) return;
         e.preventDefault();

@@ -4,6 +4,8 @@ import React from 'react';
 import { useNode } from '@craftjs/core';
 
 import { DividerSettings } from './DividerSettings';
+import { useSpacingStyle } from '@/lib/builder/hooks';
+import { omitSpacingProps, SPACING_DEFAULTS } from '@/lib/builder/spacing';
 
 export interface DividerProps {
  weight: number;
@@ -25,6 +27,8 @@ export const Divider = ({
   ...props 
 }: DividerProps & any) => {
  const { connectors: { connect, drag } } = useNode();
+ // Universal spacing controls (shared resolver); 16px top/bottom is Divider's historical default.
+ const spacing = useSpacingStyle({ ...props, paddingTop, paddingBottom }, SPACING_DEFAULTS.Divider);
  
  let alignStyle = 'mx-auto';
  if (alignment === 'left') alignStyle = 'ml-0 mr-auto';
@@ -32,7 +36,7 @@ export const Divider = ({
 
  return (
   <div
-   {...props}
+   {...omitSpacingProps(props)}
    ref={(ref) => {
     if (ref) {
       connect(ref);
@@ -44,10 +48,7 @@ export const Divider = ({
     }
    }}
    className={`w-full outline-dashed outline-1 outline-transparent hover:outline-blue-500/50 transition-all ${props.className || ''}`}
-   style={{
-    paddingTop: `${paddingTop}px`,
-    paddingBottom: `${paddingBottom}px`,
-   }}
+   style={spacing}
   >
     <div 
       className={alignStyle}

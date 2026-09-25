@@ -3,6 +3,12 @@
 import React from 'react';
 import Link from 'next/link';
 import { CanvasLessonImage } from './CanvasLessonImage';
+import { CanvasItemSpacing } from './CanvasItemSpacing';
+import { CANVAS_INLINE_HTML, canvasBlockTypeProps, useCanvasHeadingFonts } from './canvasHeadingType';
+import { CanvasDivider } from './CanvasDivider';
+import { CanvasContentBox, contentBoxCta } from './CanvasContentBox';
+import { HEADING_BASE_SIZES } from '@/lib/builder/textBlockStyle';
+import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
 import VideoPlayer from '@/app/student/courses/[id]/components/VideoPlayer';
 import { driveVideoUrls } from '@/lib/lms/video/driveVideoUrls';
 import { Lock, ArrowRight, Eye, PlayCircle, FileText, Download as DownloadIcon } from 'lucide-react';
@@ -110,6 +116,55 @@ export default function PreviewLessonClient({
 }: PreviewLessonClientProps) {
   const contentBlocksById = new Map((activeLesson?.contentBlocks || []).map((b: any) => [b.id, b]));
 
+  useCanvasHeadingFonts(activeLesson?.canvasItems);
+
+  const renderPreviewCanvasItem = (item: any, idx: number): React.ReactNode => {
+    // Same typography as the student view (canvasBlockTypeProps: the builder's size, weight,
+    // colour, line height, letter spacing, font), and sanitised like it — this page is public.
+    if (item.kind === 'heading') {
+      const type = canvasBlockTypeProps(item);
+      return (
+        <div
+          key={idx}
+          role="heading"
+          aria-level={Number(String(item.level).replace('h', '')) || 2}
+          className={`font-display font-bold leading-tight tracking-tight ${type.setsColor ? '' : '!text-dash-text'} ${HEADING_BASE_SIZES[item.level] || HEADING_BASE_SIZES.h2} ${CANVAS_INLINE_HTML} ${type.className}`}
+          style={{ textAlign: item.align, ...type.style }}
+          dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(item.html) }}
+        />
+      );
+    }
+    if (item.kind === 'richtext') {
+      const type = canvasBlockTypeProps(item);
+      return (
+        <div
+          key={idx}
+          className={`text-[15px] leading-relaxed ${type.setsColor ? '' : '!text-dash-text'} ${CANVAS_INLINE_HTML} [&_p]:my-0 [&_ul]:my-0 [&_ol]:my-0 [&_ol]:list-decimal [&_ol]:pl-5 ${type.className}`}
+          style={{ textAlign: item.align, ...type.style }}
+          dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(item.html) }}
+        />
+      );
+    }
+    if (item.kind === 'image') {
+      return <CanvasLessonImage key={idx} item={item} />;
+    }
+    if (item.kind === 'divider') {
+      return <CanvasDivider key={idx} item={item} />;
+    }
+    if (item.kind === 'block') {
+      const block = contentBlocksById.get(item.blockId);
+      return block ? <PreviewBlock key={idx} block={block} /> : null;
+    }
+    if (item.kind === 'contentbox') {
+      // The builder's ContentBox: header colour + label, headline/body as real (sanitised) HTML
+      // — the body used to print its <p> tags as text — and the CTA. On this public page the CTA
+      // opens a reading/download file like PreviewBlock does; quiz/assignment need enrolment.
+      const block: any = item.blockId ? contentBlocksById.get(item.blockId) : null;
+      return <CanvasContentBox key={idx} item={item} cta={contentBoxCta(block, 'preview')} />;
+    }
+    return null;
+  };
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex items-center gap-2 rounded-xl border border-dash-accent/20 bg-dash-accent/5 px-4 py-3 text-[13px] !text-dash-text">
@@ -164,48 +219,9 @@ export default function PreviewLessonClient({
               <h1 className="font-display text-xl font-bold !text-dash-text">{activeLesson.title}</h1>
               <div className="space-y-5">
                 {activeLesson.canvasItems && activeLesson.canvasItems.length > 0
-                  ? activeLesson.canvasItems.map((item: any, idx: number) => {
-                      if (item.kind === 'heading') {
-                        return (
-                          <div
-                            key={idx}
-                            className="text-lg font-bold !text-dash-text"
-                            style={{ textAlign: item.align }}
-                            dangerouslySetInnerHTML={{ __html: item.html }}
-                          />
-                        );
-                      }
-                      if (item.kind === 'richtext') {
-                        return (
-                          <div
-                            key={idx}
-                            className="prose prose-slate max-w-none text-[14px] leading-relaxed !text-dash-text"
-                            style={{ textAlign: item.align }}
-                            dangerouslySetInnerHTML={{ __html: item.html }}
-                          />
-                        );
-                      }
-                      if (item.kind === 'image') {
-                        return <CanvasLessonImage key={idx} item={item} />;
-                      }
-                      if (item.kind === 'divider') {
-                        return <hr key={idx} className="border-dash-border" />;
-                      }
-                      if (item.kind === 'block') {
-                        const block = contentBlocksById.get(item.blockId);
-                        return block ? <PreviewBlock key={idx} block={block} /> : null;
-                      }
-                      if (item.kind === 'contentbox') {
-                        return (
-                          <div key={idx} className="rounded-xl border border-dash-border bg-dash-surface p-5">
-                            <div className="text-[11px] font-semibold uppercase !text-dash-textMuted">{item.headerLabel}</div>
-                            <div className="mt-1 font-semibold !text-dash-text">{item.headline}</div>
-                            <p className="mt-1 text-[13px] !text-dash-textMuted">{item.body}</p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    })
+                  ? activeLesson.canvasItems.map((item: any, idx: number) => (
+                      <CanvasItemSpacing key={idx} spacing={item.spacing}>{renderPreviewCanvasItem(item, idx)}</CanvasItemSpacing>
+                    ))
                   : (activeLesson.contentBlocks || []).map((block: any) => (
                       <PreviewBlock key={block.id} block={block} />
                     ))}
