@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { CanvasLessonImage } from './CanvasLessonImage';
+import { CanvasItemSpacing } from './CanvasItemSpacing';
 import VideoPlayer from '@/app/student/courses/[id]/components/VideoPlayer';
 import { driveVideoUrls } from '@/lib/lms/video/driveVideoUrls';
 import { Lock, ArrowRight, Eye, PlayCircle, FileText, Download as DownloadIcon } from 'lucide-react';
@@ -110,6 +111,49 @@ export default function PreviewLessonClient({
 }: PreviewLessonClientProps) {
   const contentBlocksById = new Map((activeLesson?.contentBlocks || []).map((b: any) => [b.id, b]));
 
+  const renderPreviewCanvasItem = (item: any, idx: number): React.ReactNode => {
+    if (item.kind === 'heading') {
+      return (
+        <div
+          key={idx}
+          className="text-lg font-bold !text-dash-text"
+          style={{ textAlign: item.align }}
+          dangerouslySetInnerHTML={{ __html: item.html }}
+        />
+      );
+    }
+    if (item.kind === 'richtext') {
+      return (
+        <div
+          key={idx}
+          className="prose prose-slate max-w-none text-[14px] leading-relaxed !text-dash-text"
+          style={{ textAlign: item.align }}
+          dangerouslySetInnerHTML={{ __html: item.html }}
+        />
+      );
+    }
+    if (item.kind === 'image') {
+      return <CanvasLessonImage key={idx} item={item} />;
+    }
+    if (item.kind === 'divider') {
+      return <hr key={idx} className="border-dash-border" />;
+    }
+    if (item.kind === 'block') {
+      const block = contentBlocksById.get(item.blockId);
+      return block ? <PreviewBlock key={idx} block={block} /> : null;
+    }
+    if (item.kind === 'contentbox') {
+      return (
+        <div key={idx} className="rounded-xl border border-dash-border bg-dash-surface p-5">
+          <div className="text-[11px] font-semibold uppercase !text-dash-textMuted">{item.headerLabel}</div>
+          <div className="mt-1 font-semibold !text-dash-text">{item.headline}</div>
+          <p className="mt-1 text-[13px] !text-dash-textMuted">{item.body}</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex items-center gap-2 rounded-xl border border-dash-accent/20 bg-dash-accent/5 px-4 py-3 text-[13px] !text-dash-text">
@@ -164,48 +208,9 @@ export default function PreviewLessonClient({
               <h1 className="font-display text-xl font-bold !text-dash-text">{activeLesson.title}</h1>
               <div className="space-y-5">
                 {activeLesson.canvasItems && activeLesson.canvasItems.length > 0
-                  ? activeLesson.canvasItems.map((item: any, idx: number) => {
-                      if (item.kind === 'heading') {
-                        return (
-                          <div
-                            key={idx}
-                            className="text-lg font-bold !text-dash-text"
-                            style={{ textAlign: item.align }}
-                            dangerouslySetInnerHTML={{ __html: item.html }}
-                          />
-                        );
-                      }
-                      if (item.kind === 'richtext') {
-                        return (
-                          <div
-                            key={idx}
-                            className="prose prose-slate max-w-none text-[14px] leading-relaxed !text-dash-text"
-                            style={{ textAlign: item.align }}
-                            dangerouslySetInnerHTML={{ __html: item.html }}
-                          />
-                        );
-                      }
-                      if (item.kind === 'image') {
-                        return <CanvasLessonImage key={idx} item={item} />;
-                      }
-                      if (item.kind === 'divider') {
-                        return <hr key={idx} className="border-dash-border" />;
-                      }
-                      if (item.kind === 'block') {
-                        const block = contentBlocksById.get(item.blockId);
-                        return block ? <PreviewBlock key={idx} block={block} /> : null;
-                      }
-                      if (item.kind === 'contentbox') {
-                        return (
-                          <div key={idx} className="rounded-xl border border-dash-border bg-dash-surface p-5">
-                            <div className="text-[11px] font-semibold uppercase !text-dash-textMuted">{item.headerLabel}</div>
-                            <div className="mt-1 font-semibold !text-dash-text">{item.headline}</div>
-                            <p className="mt-1 text-[13px] !text-dash-textMuted">{item.body}</p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    })
+                  ? activeLesson.canvasItems.map((item: any, idx: number) => (
+                      <CanvasItemSpacing key={idx} spacing={item.spacing}>{renderPreviewCanvasItem(item, idx)}</CanvasItemSpacing>
+                    ))
                   : (activeLesson.contentBlocks || []).map((block: any) => (
                       <PreviewBlock key={block.id} block={block} />
                     ))}

@@ -45,15 +45,14 @@ export const HeadingSettings = () => {
     delete p.color_mobile; delete p.color_tablet;
   });
   const resetBox = () => setProp((p: any) => {
-    ['Top', 'Right', 'Bottom', 'Left'].forEach((s) => forEachViewport(p, [`padding${s}`, `margin${s}`]));
+    // Left/right only — top/bottom belong to the universal Spacing section (its own reset).
+      ['Right', 'Left'].forEach((s) => forEachViewport(p, [`padding${s}`, `margin${s}`]));
     p.textAlign = 'left';
     delete p.textAlign_mobile; delete p.textAlign_tablet;
   });
 
   const writeSides = (prefix: 'padding' | 'margin') => (v: BoxSides) => {
-    setResponsiveValue(`${prefix}Top`, v.top);
     setResponsiveValue(`${prefix}Right`, v.right);
-    setResponsiveValue(`${prefix}Bottom`, v.bottom);
     setResponsiveValue(`${prefix}Left`, v.left);
   };
 

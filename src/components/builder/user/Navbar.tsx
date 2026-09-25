@@ -47,7 +47,8 @@ export interface NavbarProps {
  globalId?: string;
 }
 
-import { useGlobalSync } from '@/lib/builder/hooks';
+import { useGlobalSync, useSpacingStyle } from '@/lib/builder/hooks';
+import { omitSpacingProps } from '@/lib/builder/spacing';
 
 export const Navbar = ({
  logo,
@@ -91,6 +92,10 @@ export const Navbar = ({
  // Force the mobile layout in the editor's mobile/tablet preview only; production always
  // uses the real breakpoint classes.
  const previewMobile = enabled && (viewMode === 'mobile' || viewMode === 'tablet');
+ // Self-spaced (lib/builder/spacing.ts SELF_SPACED_BLOCKS): the universal spacing is painted on
+ // this <nav> itself. A wrapper element would become the sticky nav's parent box — exactly the
+ // nav's own height — leaving it no room to stick, so `sticky top-0` silently stopped working.
+ const spacing = useSpacingStyle(props);
  const [isOpen, setIsOpen] = useState(false);
  const [isScrolled, setIsScrolled] = useState(false);
  const [isLogoVaultOpen, setIsLogoVaultOpen] = useState(false);
@@ -130,7 +135,7 @@ export const Navbar = ({
 
  return (
   <nav
-   {...props}
+   {...omitSpacingProps(props)}
    ref={(ref) => {
     if (ref) {
      connect(ref);
@@ -145,7 +150,13 @@ export const Navbar = ({
    style={{
     backgroundColor: isScrolled ? backgroundColor : backgroundColor,
     color: textColor,
-    padding: `${padding}px 24px`,
+    // Top/bottom: the universal spacing controls when set, else the Navbar's own padding.
+    paddingTop: spacing.paddingTop ?? `${padding}px`,
+    paddingBottom: spacing.paddingBottom ?? `${padding}px`,
+    paddingLeft: '24px',
+    paddingRight: '24px',
+    marginTop: spacing.marginTop,
+    marginBottom: spacing.marginBottom,
     borderBottom: `${borderBottomWidth}px solid ${borderBottomColor}`
    }}
   >

@@ -28,6 +28,7 @@ import ReadingModal from './components/ReadingModal';
 import { isSafeEmbedUrl } from '@/lib/security/isSafeEmbedUrl';
 import { SandboxedHtml } from '@/components/lms/SandboxedHtml';
 import { CanvasLessonImage } from '@/components/lms/CanvasLessonImage';
+import { CanvasItemSpacing } from '@/components/lms/CanvasItemSpacing';
 import { getCourseTheme } from '@/lib/courses/courseThemeTokens';
 
 function getEmbeddablePdfUrl(url: string): string {
@@ -1227,7 +1228,9 @@ export default function StudentPlayerClient({
                      pages.content, flattened server-side. Renders as one continuous article;
                      interactive blocks hand off to the shared renderBlockBody(). */
                   <div className="space-y-6">
-                    {activeLesson.canvasItems.map((item: any, idx: number) => renderCanvasItem(item, idx))}
+                    {activeLesson.canvasItems.map((item: any, idx: number) => (
+                      <CanvasItemSpacing key={idx} spacing={item.spacing}>{renderCanvasItem(item, idx)}</CanvasItemSpacing>
+                    ))}
                   </div>
                 ) : activeLesson.contentBlocks && activeLesson.contentBlocks.length > 0 ? (
                   /* Legacy flat-list lesson — content blocks flow in order like an article,

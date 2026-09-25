@@ -19,7 +19,15 @@
 // markBlockComplete) it already uses for legacy lessons. Those same blockIds are what
 // getBlockIdsForLesson() derives the completion gate from, so gating is unaffected.
 
-export type LessonCanvasItem =
+import {
+  DEVICES, SPACING_DEFAULTS, hasSpacing, spacingStyle,
+  type Device, type SpacingKey,
+} from '@/lib/builder/spacing';
+
+/** Universal top/bottom spacing, fully resolved per breakpoint (CSS lengths). Absent = none. */
+export type CanvasSpacing = Record<Device, Partial<Record<SpacingKey, string>>>;
+
+export type LessonCanvasItem = { spacing?: CanvasSpacing } & (
   | { kind: 'heading'; level: string; html: string; align: string }
   | { kind: 'richtext'; html: string; align: string }
   | {
@@ -45,7 +53,8 @@ export type LessonCanvasItem =
       headline: string;
       body: string;
       ctaText: string;
-    };
+    }
+);
 
 type CraftNode = {
   type?: { resolvedName?: string };
@@ -75,14 +84,69 @@ function nodeToItems(
   const p = node.props || {};
 
   if (name && CONTAINER_TYPES.has(name)) {
+    const start = out.length;
     for (const childId of node.nodes || []) {
       if (seen.has(childId)) continue;
       seen.add(childId);
       nodeToItems(tree[childId], tree, out, seen);
     }
+    applyContainerMargins(out, start, p);
     return;
   }
 
+  const start = out.length;
+  emitLeaf(name, p, out);
+  const spacing = leafSpacing(name, p);
+  if (spacing) for (let i = start; i < out.length; i++) out[i] = { ...out[i], spacing };
+}
+
+// ---- Universal spacing (lib/builder/spacing.ts) in the flattened reading view ----
+// Leaf blocks carry all four values, resolved per breakpoint with the builder's own resolver.
+// Containers are not drawn here (no box, background or max-width), so their PADDING — space
+// inside a box that doesn't exist in this view — is not applied; their MARGIN (space outside
+// the box) is, carried onto the first/last item they contain. Existing lessons only have
+// container padding (template Sections), so they render exactly as before.
+
+function leafSpacing(name: string | undefined, p: Record<string, any>): CanvasSpacing | undefined {
+  const defaults = (name && SPACING_DEFAULTS[name]) || {};
+  if (!hasSpacing(p) && Object.keys(defaults).length === 0) return undefined;
+  const out = {} as CanvasSpacing;
+  let any = false;
+  for (const device of DEVICES) {
+    out[device] = spacingStyle(p, device, defaults) as Partial<Record<SpacingKey, string>>;
+    if (Object.keys(out[device]).length) any = true;
+  }
+  return any ? out : undefined;
+}
+
+/** a + b as a CSS length: plain px sums numerically, anything else via calc(). */
+function addLength(a: string | undefined, b: string | undefined): string | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  const pa = /^(-?\d*\.?\d+)px$/.exec(a);
+  const pb = /^(-?\d*\.?\d+)px$/.exec(b);
+  return pa && pb ? `${Number(pa[1]) + Number(pb[1])}px` : `calc(${a} + ${b})`;
+}
+
+function applyContainerMargins(out: LessonCanvasItem[], start: number, p: Record<string, any>): void {
+  if (out.length === start || !hasSpacing(p)) return;
+  const first = start;
+  const last = out.length - 1;
+  for (const device of DEVICES) {
+    const s = spacingStyle(p, device) as Partial<Record<SpacingKey, string>>;
+    for (const [idx, key] of [[first, 'marginTop'], [last, 'marginBottom']] as const) {
+      if (!s[key]) continue;
+      const item = out[idx];
+      const spacing: CanvasSpacing = item.spacing
+        ? { desktop: { ...item.spacing.desktop }, tablet: { ...item.spacing.tablet }, mobile: { ...item.spacing.mobile } }
+        : { desktop: {}, tablet: {}, mobile: {} };
+      spacing[device][key] = addLength(spacing[device][key], s[key]);
+      out[idx] = { ...item, spacing };
+    }
+  }
+}
+
+function emitLeaf(name: string | undefined, p: Record<string, any>, out: LessonCanvasItem[]): void {
   switch (name) {
     case 'Heading': {
       let html = typeof p.text === 'string' ? p.text : '';

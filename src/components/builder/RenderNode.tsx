@@ -6,6 +6,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { toast } from 'sonner';
 import { useBuilder } from './BuilderContext';
+import { useNodeSpacing } from './NodeSpacingBox';
 import { Save, Copy, Trash2, RefreshCw, Settings, Move, Plus, MoreHorizontal, ChevronDown } from 'lucide-react';
 
 function cn(...inputs: ClassValue[]) {
@@ -100,9 +101,12 @@ export const RenderNode = ({ render }: { render: React.ReactNode }) => {
   }, [dom, isActive, isHovered, isEnabled]);
 
   const { connectors: { connect, drag } } = useNode();
+  // Universal top/bottom spacing for blocks that do not paint it on their own box — the same
+  // hook live pages use (PublishedNodeRender), applied to this always-present wrapper.
+  const { active: wrapperSpaced, style: spacingStyle } = useNodeSpacing();
 
   if (!isEnabled) {
-    return <>{render}</>;
+    return wrapperSpaced ? <div style={spacingStyle}>{render}</div> : <>{render}</>;
   }
 
   return (
@@ -114,6 +118,7 @@ export const RenderNode = ({ render }: { render: React.ReactNode }) => {
         }
       }}
       className="relative group"
+      style={spacingStyle}
       onContextMenu={(e) => {
         if (!isEnabled) return;
         e.preventDefault();

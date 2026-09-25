@@ -4,6 +4,7 @@ import React from 'react';
 import { Editor, Frame } from '@craftjs/core';
 import { RESOLVER } from '@/lib/builder/resolver';
 import { BuilderProvider } from './BuilderContext';
+import { PublishedNodeRender } from './NodeSpacingBox';
 
 export default function PublishedPageRenderer({
  content,
@@ -179,6 +180,7 @@ export default function PublishedPageRenderer({
      <Editor
       resolver={RESOLVER}
       enabled={false}
+      onRender={PublishedNodeRender}
      >
       <Frame data={validContent} />
      </Editor>

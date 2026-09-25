@@ -8,13 +8,11 @@ import { ColorPicker } from '../ColorPicker';
 import { SliderWithInput } from '../inspector/primitives';
 
 export const DividerSettings = () => {
-  const { actions: { setProp }, weight, color, width, alignment, paddingTop, paddingBottom } = useNode((node) => ({
+  const { actions: { setProp }, weight, color, width, alignment } = useNode((node) => ({
     weight: node.data.props.weight,
     color: node.data.props.color,
     width: node.data.props.width,
     alignment: node.data.props.alignment,
-    paddingTop: node.data.props.paddingTop,
-    paddingBottom: node.data.props.paddingBottom,
   }));
 
   return (
@@ -63,29 +61,9 @@ export const DividerSettings = () => {
         </div>
       </div>
 
-      <div className="mb-7 last:mb-0 pt-4 border-t border-slate-200 space-y-4">
-        <Label className="text-[13px] font-bold text-slate-900">Vertical spacing</Label>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label className="text-[12px] font-medium text-slate-700">Top (px)</Label>
-            <Input
-              type="number"
-              value={paddingTop || 0}
-              onChange={(e) => setProp((props: any) => props.paddingTop = Number(e.target.value))}
-              className="h-8 text-xs bg-white border-slate-200 rounded-xl text-slate-700 focus-visible:border-slate-300"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-[12px] font-medium text-slate-700">Bottom (px)</Label>
-            <Input
-              type="number"
-              value={paddingBottom || 0}
-              onChange={(e) => setProp((props: any) => props.paddingBottom = Number(e.target.value))}
-              className="h-8 text-xs bg-white border-slate-200 rounded-xl text-slate-700 focus-visible:border-slate-300"
-            />
-          </div>
-        </div>
-      </div>
+      {/* Top/bottom spacing: the universal Spacing section below (inspector/SpacingControls,
+          mounted by ElementProperties for every block) edits the same paddingTop/Bottom props,
+          now per breakpoint — this panel's old desktop-only inputs were removed, not duplicated. */}
     </div>
   );
 };

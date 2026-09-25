@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBuilder } from './BuilderContext';
+import { SpacingControls } from './inspector/SpacingControls';
 
 // Map component display names to icons
 const COMPONENT_ICONS: Record<string, any> = {
@@ -222,6 +223,13 @@ export const ElementProperties = ({ nodeId }: { nodeId: string }) => {
             </div>
             <p className="text-[12px] font-semibold text-slate-700 mb-1">No settings available</p>
             <p className="text-[11px] text-slate-500">This element does not have configurable properties.</p>
+          </div>
+        )}
+        {/* Universal top/bottom spacing — mounted here, once, for EVERY node, so no block type
+            can end up without it or with its own variant (ROOT is the page canvas itself). */}
+        {nodeId !== 'ROOT' && (
+          <div className="mt-6 pt-5 border-t border-slate-200">
+            <SpacingControls nodeId={nodeId} />
           </div>
         )}
       </div>

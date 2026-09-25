@@ -676,4 +676,32 @@
   color: inherit;
   margin: 0;
 }
-
+
+/* Universal top/bottom block spacing in the flattened student lesson view
+   (components/lms/CanvasItemSpacing). Values are resolved per breakpoint server-side; the
+   breakpoints are the builder's own (autoDetectViewport: mobile <= 767px, tablet <= 1023px). */
+.lm-canvas-spacing {
+  display: flow-root;
+}
+.lm-canvas-spacing__inner {
+  padding-top: var(--lm-pt-d, 0);
+  padding-bottom: var(--lm-pb-d, 0);
+  margin-top: var(--lm-mt-d, 0);
+  margin-bottom: var(--lm-mb-d, 0);
+}
+@media (max-width: 1023px) {
+  .lm-canvas-spacing__inner {
+    padding-top: var(--lm-pt-t, 0);
+    padding-bottom: var(--lm-pb-t, 0);
+    margin-top: var(--lm-mt-t, 0);
+    margin-bottom: var(--lm-mb-t, 0);
+  }
+}
+@media (max-width: 767px) {
+  .lm-canvas-spacing__inner {
+    padding-top: var(--lm-pt-m, 0);
+    padding-bottom: var(--lm-pb-m, 0);
+    margin-top: var(--lm-mt-m, 0);
+    margin-bottom: var(--lm-mb-m, 0);
+  }
+}

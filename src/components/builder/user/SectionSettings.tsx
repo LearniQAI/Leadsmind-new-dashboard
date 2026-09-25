@@ -15,7 +15,9 @@ import { SliderWithInput, PropertyGroup } from '../inspector/primitives';
 // raw <input type="number"> fields (no slider, inconsistent with the rest of this panel) are
 // swapped to the same SliderWithInput used everywhere else, and every section now sits under
 // a real PropertyGroup title for visual consistency with the Text panel. Real prop wiring
-// (paddingTop/Bottom/Left/Right/backgroundColor) is unchanged.
+// (paddingTop/Bottom/Left/Right/backgroundColor) is unchanged. Top/bottom padding is edited in
+// the universal Spacing section every block shares (inspector/SpacingControls, mounted by
+// ElementProperties) — same props, one editor.
 export const SectionSettings = () => {
   const { actions: { setProp }, props } = useNode((node) => ({
     props: node.data.props,
@@ -23,7 +25,7 @@ export const SectionSettings = () => {
   const { viewMode } = useBuilder();
   const { setResponsiveValue } = useResponsiveSetProp();
 
-  const { paddingTop, paddingBottom, paddingLeft, paddingRight, backgroundColor } = props;
+  const { paddingLeft, paddingRight, backgroundColor } = props;
 
   // Helper to get current display value for a prop
   const getDisplayValue = (propName: string, baseValue: any) => {
@@ -50,27 +52,6 @@ export const SectionSettings = () => {
         <ColorPicker
           value={backgroundColor === 'transparent' ? '' : backgroundColor}
           onChange={(val) => setProp((props: any) => props.backgroundColor = val)}
-        />
-      </PropertyGroup>
-
-      <PropertyGroup title="Vertical spacing">
-        <SliderWithInput
-          label="Top padding"
-          value={getDisplayValue('paddingTop', paddingTop) || 0}
-          onChange={(val) => setResponsiveValue('paddingTop', val)}
-          min={0}
-          max={256}
-          step={8}
-          numeric
-        />
-        <SliderWithInput
-          label="Bottom padding"
-          value={getDisplayValue('paddingBottom', paddingBottom) || 0}
-          onChange={(val) => setResponsiveValue('paddingBottom', val)}
-          min={0}
-          max={256}
-          step={8}
-          numeric
         />
       </PropertyGroup>
 

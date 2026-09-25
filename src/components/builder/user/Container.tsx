@@ -6,6 +6,8 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { ContainerSettings } from './ContainerSettings';
 import { useResponsiveValue } from '@/lib/builder/hooks';
+import { cssLength, readResponsive, spacingStyle, omitSpacingProps } from '@/lib/builder/spacing';
+import { useBuilder } from '../BuilderContext';
 import { formatPseudoClasses } from '@/lib/builder/utils';
 
 function cn(...inputs: ClassValue[]) {
@@ -47,24 +49,13 @@ const getResponsiveStyles = (id: string, props: any) => {
       if (gap) rules += `gap: ${gap};`;
     }
 
-    // Box Model (Margin & Padding)
-    const mt = getVal('marginTop', device);
+    // Box Model — horizontal margins only. All padding and the top/bottom margins are resolved
+    // inline in the component below (shared spacing resolver, builder viewMode) so the
+    // universal spacing controls behave exactly as on every other block.
     const mr = getVal('marginRight', device);
-    const mb = getVal('marginBottom', device);
     const ml = getVal('marginLeft', device);
-    if (mt) rules += `margin-top: ${mt};`;
     if (mr) rules += `margin-right: ${mr};`;
-    if (mb) rules += `margin-bottom: ${mb};`;
     if (ml) rules += `margin-left: ${ml};`;
-
-    const pt = getVal('paddingTop', device);
-    const pr = getVal('paddingRight', device);
-    const pb = getVal('paddingBottom', device);
-    const pl = getVal('paddingLeft', device);
-    if (pt) rules += `padding-top: ${pt};`;
-    if (pr) rules += `padding-right: ${pr};`;
-    if (pb) rules += `padding-bottom: ${pb};`;
-    if (pl) rules += `padding-left: ${pl};`;
 
     // Typography
     const fontFamily = getVal('fontFamily', device);
@@ -211,6 +202,24 @@ export const Container = (allProps: ContainerProps & any) => {
   const cleanId = id.replace(/[^a-zA-Z0-9-]/g, '_');
   const cssRules = getResponsiveStyles(cleanId, allProps);
 
+  // Padding: each side is its own per-side value when set (top/bottom = the universal spacing
+  // controls, left/right = the panel's horizontal box model), otherwise the uniform "Internal
+  // padding". Previously ANY per-side value silently dropped the uniform padding on all four
+  // sides; the only live Containers with a per-side value have uniform padding 0, so existing
+  // pages render identically.
+  const { viewMode } = useBuilder();
+  const uniformPadding = _p !== undefined ? `${padding}px` : undefined;
+  const spacing = spacingStyle(allProps, viewMode);
+  const sidePadding = (side: 'Left' | 'Right') => cssLength(readResponsive(allProps, `padding${side}`, viewMode)) ?? uniformPadding;
+  const boxStyle: React.CSSProperties = {
+    paddingTop: spacing.paddingTop ?? uniformPadding,
+    paddingBottom: spacing.paddingBottom ?? uniformPadding,
+    paddingLeft: sidePadding('Left'),
+    paddingRight: sidePadding('Right'),
+    marginTop: spacing.marginTop,
+    marginBottom: spacing.marginBottom,
+  };
+
   let cleanClassName = props.className;
   if (isRoot && props.className) {
     cleanClassName = props.className.replace(/\bbg-\S+/g, '').trim();
@@ -220,7 +229,7 @@ export const Container = (allProps: ContainerProps & any) => {
     <>
       <style dangerouslySetInnerHTML={{ __html: cssRules }} />
       <div
-        {...props}
+        {...omitSpacingProps(props)}
         ref={(el) => {
           if (el) {
             connect(el);
@@ -241,7 +250,7 @@ export const Container = (allProps: ContainerProps & any) => {
         )}
         style={{
           maxWidth: layoutType === 'fixed' ? maxWidth : '100%',
-          padding: _p !== undefined && !allProps.paddingTop && !allProps.paddingRight && !allProps.paddingBottom && !allProps.paddingLeft ? `${padding}px` : undefined,
+          ...boxStyle,
           backgroundColor: isRoot ? 'var(--theme-bg)' : (!allProps.backgroundGradient && backgroundColor && !allProps.backgroundColor ? backgroundColor : undefined),
         }}
       >

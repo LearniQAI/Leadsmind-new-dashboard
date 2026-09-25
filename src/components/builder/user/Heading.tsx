@@ -65,10 +65,10 @@ export const Heading = (allProps: HeadingProps & any) => {
    ...props
   } = allProps;
   // Part 2 Color / Size-and-position sections — apply, then strip so they don't hit the DOM.
-  const boxStyle = pickBoxStyle(props);
-  stripBoxStyleKeys(props);
   const { connectors: { connect, drag }, actions: { setProp } } = useNode();
   const { viewMode } = useBuilder();
+  const boxStyle = pickBoxStyle(props, viewMode);
+  stripBoxStyleKeys(props);
   const { theme: lessonTheme } = useLessonBuilder();
   const themeFontClass = useThemeFont && lessonTheme ? lessonTheme.headingFontClass : '';
   const { enabled } = useEditor((state) => ({

@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef } from 'react';
+import type { CSSProperties } from 'react';
 import { useBuilder } from '@/components/builder/BuilderContext';
+import { spacingStyle, type SpacingKey } from './spacing';
 
 /**
  * Automatically syncs component props to the website's global config
@@ -55,6 +57,18 @@ export function useResponsiveValue<T>(props: any, propName: string, defaultValue
   }
   
   return props[propName] ?? defaultValue;
+}
+
+/**
+ * Universal top/bottom spacing at the current breakpoint (same viewMode source as
+ * useResponsiveValue). See lib/builder/spacing.ts for the prop convention.
+ */
+export function useSpacingStyle(
+  props: Record<string, any>,
+  defaults?: Partial<Record<SpacingKey, number | string>>,
+): CSSProperties {
+  const { viewMode } = useBuilder();
+  return spacingStyle(props, viewMode, defaults);
 }
 
 /**
