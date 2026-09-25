@@ -10,7 +10,7 @@ import { userSafeMessage } from '@/shared/errors/userSafe';
 import { validateRuleGroup } from '@/lib/segments/ruleValidation';
 import { loadSegmentRuleGroup, SegmentUnavailableError } from '@/lib/segments/resolveSegment';
 import type { RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
-import { resolveCampaignFromEmail, isUsableCampaignFromEmail, isPlatformSenderDomain, FROM_EMAIL_REQUIRED_MESSAGE } from '@/lib/campaigns/fromEmail';
+import { resolveCampaignFromEmail, isUsableCampaignFromEmail, isPlatformSenderDomain, FROM_EMAIL_REQUIRED_MESSAGE, NO_SENDER_MESSAGE } from '@/lib/campaigns/fromEmail';
 
 // FUNNELS
 export async function getFunnels() {
@@ -1117,13 +1117,14 @@ export async function updateCampaign(id: string, updates: any) {
 
    previousState = { status: campaign.status, scheduled_for: campaign.scheduled_for };
 
-   // Preflight BEFORE any state is mutated: sending needs the workspace's own
-   // Resend account (queue worker and direct path alike), so an unconfigured
+   // Preflight BEFORE any state is mutated: sending needs a verified sending
+   // domain or the workspace's own Resend account (queue worker and direct
+   // path alike), so an unconfigured
    // workspace must fail here with a clear message, not after the campaign has
    // been flipped to scheduled/sent and every queued row hard-fails later.
    const emailConfig = await getWorkspaceEmailConfig(workspaceId);
    if (!emailConfig?.apiKey) {
-    throw new CampaignUserError('Connect your Resend account in Settings before scheduling or sending campaigns.');
+    throw new CampaignUserError(NO_SENDER_MESSAGE);
    }
    if (updates.segment?.emails?.length > 0 && updates.body_html && !updates.scheduled_for) {
     directEmailConfig = emailConfig;
@@ -1140,26 +1141,14 @@ export async function updateCampaign(id: string, updates: any) {
    if (!fromEmail) throw new CampaignUserError(FROM_EMAIL_REQUIRED_MESSAGE);
    updates.from_email = fromEmail;
 
-   const domainName = fromEmail.split('@')[1].toLowerCase().trim();
-
-   // A platform-domain From only gets here if it matches the workspace's own
-   // provider From (see fromEmail.ts) — that provider is the proof of ownership,
-   // so the DNS-registration check applies to customer domains only.
-   if (!isPlatformSenderDomain(domainName)) {
-    const { data: domainRecord, error: domainError } = await supabase
-     .from('sender_domains')
-     .select('spf_status, dkim_status')
-     .eq('workspace_id', workspaceId)
-     .eq('domain_name', domainName)
-     .single();
-
-    if (domainError || !domainRecord) {
-     throw new CampaignUserError(`Hard Block: Domain '${domainName}' is not registered. Please register and authenticate this domain in Settings > Domains first.`);
-    }
-
-    if (!domainRecord.spf_status || !domainRecord.dkim_status) {
-     throw new CampaignUserError(`Hard Block: Domain '${domainName}' has unverified SPF/DKIM records. You must complete verification in Settings > Domains before scheduling or sending campaigns.`);
-    }
+   // Managed sending: the From domain must be one of this workspace's verified, un-paused
+   // LeadsMind sending domains (sendEmail re-checks this on every send; checking here fails the
+   // action before anything is queued). BYO-key workspaces are gated by their own Resend account,
+   // which rejects any From domain it has not verified.
+   if (emailConfig.mode === 'managed') {
+    const { checkManagedFromDomain } = await import('@/lib/email/managedSender');
+    const gate = await checkManagedFromDomain(createAdminClient() as any, workspaceId, fromEmail);
+    if (gate.ok === false) throw new CampaignUserError(gate.reason);
    }
   }
 
@@ -1338,7 +1327,7 @@ export async function updateCampaign(id: string, updates: any) {
    if (directEmailConfig?.apiKey && updates.segment?.emails?.length > 0 && updates.body_html && !updates.scheduled_for) {
     const { sendEmail } = await import('@/lib/email');
     const { parsePersonalTokens } = await import('@/lib/builder/emailRenderer');
-    const { buildUnsubscribeLink } = await import('@/lib/email/unsubscribeLink');
+    const { buildUnsubscribeLink, buildListUnsubscribeHeaders } = await import('@/lib/email/unsubscribeLink');
     const { loadSuppressedEmails, suppressionReason } = await import('@/lib/campaigns/emailSuppression');
 
     // Direct-list addresses aren't necessarily existing CRM contacts — look
@@ -1377,6 +1366,7 @@ export async function updateCampaign(id: string, updates: any) {
         apiKey: directEmailConfig.apiKey,
         fromEmail: updates.from_email,
         fromName: data.from_name || directEmailConfig.fromName || 'LeadsMind',
+        headers: buildListUnsubscribeHeaders(email, workspaceId),
         tags: [
          { name: 'campaign_id', value: id },
          ...(contact?.id ? [{ name: 'contact_id', value: contact.id }] : []),
@@ -1657,7 +1647,7 @@ export async function sendTestEmailAction(campaignId: string, testEmail: string,
   // actionable message instead of a generic failure.
   const emailConfig = await getWorkspaceEmailConfig(workspaceId);
   if (!emailConfig?.apiKey) {
-   return { error: 'Connect your Resend account in Settings before sending a test email.' };
+   return { error: NO_SENDER_MESSAGE };
   }
 
   const testFrom = resolveCampaignFromEmail(campaign.from_email, emailConfig.fromEmail);

@@ -6,6 +6,8 @@ import { sendEmail } from '@/lib/email';
 import { createAdminClient } from '@/lib/supabase/server';
 import { SpamValidator } from '@/lib/intelligence/SpamValidator';
 import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
+import { checkEmailSuppression } from '@/lib/campaigns/emailSuppression';
+import { NO_SENDER_MESSAGE } from '@/lib/campaigns/fromEmail';
 import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 import { logger } from '@/shared/logger';
 import { isUserSafeError } from '@/shared/errors/userSafe';
@@ -44,7 +46,7 @@ export const EmailAutomationService = {
     const fromEmail = providerConfig?.fromEmail || config.fromEmail || 'onboarding@resend.dev';
 
     if (!apiKey) {
-      return { success: false, error: 'Email service Resend API Key is missing in workspace config.' };
+      return { success: false, error: NO_SENDER_MESSAGE };
     }
 
     // 2. Interpolate dynamic variables
@@ -81,6 +83,14 @@ export const EmailAutomationService = {
         success: false, 
         error: `Outbound email blocked by Spam Validator (Score: ${spamResult.score}/100). Triggers: ${spamResult.triggers.join(', ')}` 
       };
+    }
+
+    // Opt-out check: a recipient on the workspace suppression list (unsubscribed, complained,
+    // erased, ...) is not emailed and not redirected to another channel. Fails closed.
+    const suppressed = await checkEmailSuppression(supabase as any, workspaceId, { email: emailTrimmed });
+    if (suppressed === 'suppressed') {
+      logger.info({ workspaceId }, 'email_automation.recipient_suppressed.skipped');
+      return { success: false, error: 'Recipient has opted out of email from this workspace.' };
     }
 
     // POPIA Check: Intercept invalid email addresses and redirect to WhatsApp

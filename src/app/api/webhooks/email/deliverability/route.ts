@@ -1,347 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { logger } from '@/shared/logger';
-import { recordVoiceNoteClick } from '@/lib/voicenotes/voiceClickTracking';
-import { verifyResendWebhookEvent } from '@/lib/email/verifyResendWebhook';
+import { ResendProvider } from '@/lib/email/provider/resend';
+import { handleDeliverabilityEvent } from '@/lib/email/deliverabilityWebhook';
 
 export const runtime = 'nodejs';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
+/**
+ * Resend delivery-lifecycle events (sent / delivered / delayed / bounced / complained / opened /
+ * clicked / failed) and domain.updated, for mail sent through the PLATFORM Resend account. One
+ * account means one webhook signing secret: RESEND_WEBHOOK_SECRET. The same events are also
+ * accepted on /api/webhooks/resend/inbound, so the platform's existing webhook can carry them.
+ */
 export async function POST(req: NextRequest) {
-  try {
-    const secret = process.env.RESEND_WEBHOOK_SECRET;
-    if (!secret) {
-      throw new Error('[FATAL] RESEND_WEBHOOK_SECRET is not configured');
-    }
-
-    const rawBody = await req.text();
-    const svixHeaders = {
-      'svix-id': req.headers.get('svix-id') || '',
-      'svix-timestamp': req.headers.get('svix-timestamp') || '',
-      'svix-signature': req.headers.get('svix-signature') || '',
-    };
-
-    let body: any;
-    try {
-      // svix 2.x's verify() returns void; this helper verifies the signature
-      // (still throws on failure) AND parses the body. See
-      // src/lib/email/verifyResendWebhook.ts.
-      body = verifyResendWebhookEvent(rawBody, svixHeaders, secret);
-    } catch (err: any) {
-      logger.warn({ err }, 'webhook.email_deliverability.signature.invalid');
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
-    }
-    if (!body || typeof body !== 'object') body = {};
-
-    logger.info({ body }, 'webhook.email_deliverability.received');
-
-    let eventType: 'open' | 'click' | 'reply' | 'bounce' | 'complaint' | null = null;
-    let campaignId: string | null = null;
-    // Set on sequence / automation emails (see send_email in actions_registry.ts) instead of
-    // campaign_id, so their bounces, complaints and opens can be attributed too.
-    let workflowId: string | null = null;
-    let contactId: string | null = null;
-    let linkUrl: string | null = null;
-    let userAgent: string | null = null;
-    let ipAddress: string | null = null;
-
-    // 1. Resend Webhook Payload Format
-    if (body.type && body.data) {
-      const typeStr = body.type;
-      if (typeStr === 'email.opened') eventType = 'open';
-      else if (typeStr === 'email.clicked') eventType = 'click';
-      else if (typeStr === 'email.bounced') eventType = 'bounce';
-      else if (typeStr === 'email.complained') eventType = 'complaint';
-
-      const tags = body.data.tags;
-      if (tags) {
-        if (typeof tags === 'object' && !Array.isArray(tags)) {
-          campaignId = tags.campaign_id;
-          workflowId = tags.workflow_id ?? null;
-          contactId = tags.contact_id;
-        } else if (Array.isArray(tags)) {
-          const cTag = tags.find((t: any) => t.name === 'campaign_id');
-          const wTag = tags.find((t: any) => t.name === 'workflow_id');
-          const ctTag = tags.find((t: any) => t.name === 'contact_id');
-          if (cTag) campaignId = cTag.value;
-          if (wTag) workflowId = wTag.value;
-          if (ctTag) contactId = ctTag.value;
-        }
-      }
-
-      if (body.data.click) {
-        linkUrl = body.data.click.url;
-      }
-      if (body.data.open) {
-        userAgent = body.data.open.user_agent;
-        ipAddress = body.data.open.ip_address;
-      }
-    }
-    // 2. AWS SES SNS Payload Format
-    else if (body.EventType) {
-      const typeStr = body.EventType;
-      if (typeStr === 'Open') eventType = 'open';
-      else if (typeStr === 'Click') eventType = 'click';
-      else if (typeStr === 'Bounce') eventType = 'bounce';
-      else if (typeStr === 'Complaint') eventType = 'complaint';
-
-      const tags = body.mail?.tags;
-      if (tags) {
-        campaignId = Array.isArray(tags.campaign_id) ? tags.campaign_id[0] : tags.campaign_id;
-        workflowId = (Array.isArray(tags.workflow_id) ? tags.workflow_id[0] : tags.workflow_id) ?? null;
-        contactId = Array.isArray(tags.contact_id) ? tags.contact_id[0] : tags.contact_id;
-      }
-      
-      if (body.click) {
-        linkUrl = body.click.link;
-      }
-      if (body.open) {
-        ipAddress = body.open.ipAddress;
-        userAgent = body.open.userAgent;
-      }
-    }
-    // 3. Generic Flat JSON Testing Format
-    else {
-      eventType = body.event_type;
-      campaignId = body.campaign_id;
-      workflowId = body.workflow_id ?? null;
-      contactId = body.contact_id;
-      linkUrl = body.link_url;
-      userAgent = body.user_agent;
-      ipAddress = body.ip_address;
-    }
-
-    // Voice-note waveform clicks are handled independently of the
-    // campaign-scoped path below — see recordVoiceNoteClick()'s comment.
-    if (eventType === 'click' && linkUrl) {
-      const handled = await recordVoiceNoteClick(linkUrl);
-      if (handled) {
-        return NextResponse.json({ received: true, status: 'processed' });
-      }
-    }
-
-    // Validation
-    if (!eventType || (!campaignId && !workflowId)) {
-      logger.warn({}, 'webhook.email_deliverability.payload.invalid');
-      try {
-        await supabaseAdmin.from('webhook_dead_letters').insert({
-           provider: 'email_deliverability', payload: body, error: 'Missing eventType or campaignId/workflowId', error_type: 'validation_failed', retry_state: 'dropped'
-        });
-      } catch (dbErr: any) {
-        logger.error({ err: dbErr, provider: 'email_deliverability' }, 'webhook.email_deliverability.dead_letter_insert.failed');
-      }
-      return NextResponse.json({ received: true, status: 'ignored' });
-    }
-
-    // 2. Resolve the workspace from OUR OWN row (campaign, else workflow) -- never from a
-    // payload field. The event is signature-verified above, and the tag values are ones we set.
-    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const { data: campaign, error: campaignError } = campaignId
-      ? await supabaseAdmin.from('email_campaigns').select('workspace_id').eq('id', campaignId).single()
-      : workflowId && UUID_RE.test(workflowId)
-        ? await supabaseAdmin.from('workflows').select('workspace_id').eq('id', workflowId).single()
-        : { data: null, error: { message: 'invalid workflow reference' } as any };
-
-    if (campaignError || !campaign) {
-      logger.error({ err: campaignError, campaignId }, 'webhook.email_deliverability.campaign_lookup.failed');
-      try {
-        await supabaseAdmin.from('webhook_dead_letters').insert({
-           provider: 'email_deliverability', payload: body, error: `Campaign/workflow not found: ${campaignId ?? workflowId}`, error_type: 'validation_failed', retry_state: 'dropped'
-        });
-      } catch (dbErr: any) {
-        logger.error({ err: dbErr, campaignId, provider: 'email_deliverability' }, 'webhook.email_deliverability.dead_letter_insert.failed');
-      }
-      return NextResponse.json({ received: true, error: 'Campaign or workflow reference not found.' }, { status: 200 });
-    }
-
-    // 3. Log event trace in email_tracking_logs
-    const { error: logError } = await supabaseAdmin
-      .from('email_tracking_logs')
-      .insert({
-        workspace_id: campaign.workspace_id,
-        campaign_id: campaignId || null,
-        workflow_id: campaignId ? null : workflowId,
-        contact_id: contactId || null,
-        event_type: eventType,
-        link_url: linkUrl || null,
-        user_agent: userAgent || null,
-        ip_address: ipAddress || null,
-      });
-
-    if (logError) {
-      logger.error({ err: logError, campaignId }, 'webhook.email_deliverability.tracking_log_insert.failed');
-      throw logError; // Bubble up to 500 to retry
-    }
-
-    // 3.5 Trigger Lead Scoring Pipeline
-    if (contactId && (eventType === 'open' || eventType === 'click' || eventType === 'reply')) {
-      const { LeadScoringEngine } = await import('@/lib/intelligence/LeadScoringEngine');
-      LeadScoringEngine.trackScoringEvent(contactId, eventType, {
-        linkUrl: linkUrl || undefined,
-        campaignId: campaignId ?? undefined
-      }).catch(err => logger.error({ err, contactId }, 'webhook.email_deliverability.scoring_trigger.failed'));
-    }
-
-    // 4. Atomically increment stats counter in email_campaigns via postgres RPC
-    // (campaign events only: a workflow email has no campaign row to count against).
-    const { error: rpcError } = campaignId
-      ? await supabaseAdmin.rpc('increment_campaign_metric', { c_id: campaignId, metric_name: eventType })
-      : { error: null };
-
-    if (rpcError) {
-      logger.error({ err: rpcError, campaignId }, 'webhook.email_deliverability.metric_increment.failed');
-      // Removed unsafe select()->update() fallback to prevent analytics race conditions.
-      // Metrics MUST be updated atomically via RPC.
-      // For now, we will log this as an infrastructure failure, but let the webhook complete so the bounce state is processed
-      try {
-        await supabaseAdmin.from('webhook_dead_letters').insert({
-           provider: 'email_deliverability', payload: body, error: `RPC increment failed: ${rpcError.message}`, error_type: 'infrastructure_failure', retry_state: 'dropped'
-        });
-      } catch (dbErr: any) {
-        logger.error({ err: dbErr, campaignId, provider: 'email_deliverability' }, 'webhook.email_deliverability.dead_letter_insert.failed');
-      }
-    }
-
-    // 5. Ingest bounce and delivery stats to contacts & crm_contacts
-    let recipientEmail: string | null = null;
-    if (body.type && body.data?.to) {
-      recipientEmail = Array.isArray(body.data.to) ? body.data.to[0] : body.data.to;
-    } else if (body.mail?.destination) {
-      recipientEmail = Array.isArray(body.mail.destination) ? body.mail.destination[0] : body.mail.destination;
-    } else if (body.email) {
-      recipientEmail = body.email;
-    }
-
-    if (recipientEmail) {
-      let isHardBounce = false;
-      let isSoftBounce = false;
-      let isDeliverySuccess = false;
-
-      if (eventType === 'bounce') {
-        const typeStr = body.type || '';
-        const eventTypeStr = body.EventType || '';
-        const genericType = body.bounce_type || body.sub_type || '';
-
-        if (typeStr === 'email.bounced') {
-          // Resend nests it as data.bounce.type ('Permanent' | 'Transient' | 'Undetermined');
-          // the older flat spellings are kept for other senders/tests.
-          const bounceType = body.data?.bounce?.type || body.data?.bounceType || body.data?.type || '';
-          if (bounceType.toLowerCase().includes('permanent') || bounceType.toLowerCase() === 'hard') {
-            isHardBounce = true;
-          } else {
-            isSoftBounce = true;
-          }
-        } else if (eventTypeStr === 'Bounce') {
-          const bounceType = body.bounce?.bounceType || '';
-          if (bounceType === 'Permanent') {
-            isHardBounce = true;
-          } else {
-            isSoftBounce = true;
-          }
-        } else {
-          if (genericType.toLowerCase() === 'hard' || genericType.toLowerCase() === 'permanent') {
-            isHardBounce = true;
-          } else {
-            isSoftBounce = true;
-          }
-        }
-      } else if (body.type === 'email.delivered' || body.EventType === 'Delivery' || body.event_type === 'delivered' || body.event_type === 'success') {
-        isDeliverySuccess = true;
-      }
-
-      if (isHardBounce || eventType === 'complaint') {
-        // Mark as invalid instantly
-        await supabaseAdmin
-          .from('contacts')
-          .update({ is_invalid_email: true })
-          .eq('workspace_id', campaign.workspace_id)
-          .eq('email', recipientEmail);
-
-        await supabaseAdmin
-          .from('crm_contacts')
-          .update({ is_invalid_email: true })
-          .eq('workspace_id', campaign.workspace_id)
-          .eq('email', recipientEmail);
-          
-      } else if (isSoftBounce) {
-        // Process soft bounce
-        const { data: matchedContacts } = await supabaseAdmin
-          .from('contacts')
-          .select('id, soft_bounce_count, consecutive_soft_bounces')
-          .eq('workspace_id', campaign.workspace_id)
-          .eq('email', recipientEmail);
-
-        if (matchedContacts) {
-          for (const c of matchedContacts) {
-            const nextConsecutive = (c.consecutive_soft_bounces || 0) + 1;
-            const nextTotal = (c.soft_bounce_count || 0) + 1;
-            const flagInvalid = nextConsecutive >= 3 || nextTotal >= 5;
-
-            await supabaseAdmin
-              .from('contacts')
-              .update({
-                soft_bounce_count: nextTotal,
-                consecutive_soft_bounces: nextConsecutive,
-                is_invalid_email: flagInvalid ? true : undefined
-              })
-              .eq('id', c.id);
-          }
-        }
-
-        const { data: matchedCrm } = await supabaseAdmin
-          .from('crm_contacts')
-          .select('id, soft_bounce_count, consecutive_soft_bounces')
-          .eq('workspace_id', campaign.workspace_id)
-          .eq('email', recipientEmail);
-
-        if (matchedCrm) {
-          for (const c of matchedCrm) {
-            const nextConsecutive = (c.consecutive_soft_bounces || 0) + 1;
-            const nextTotal = (c.soft_bounce_count || 0) + 1;
-            const flagInvalid = nextConsecutive >= 3 || nextTotal >= 5;
-
-            await supabaseAdmin
-              .from('crm_contacts')
-              .update({
-                soft_bounce_count: nextTotal,
-                consecutive_soft_bounces: nextConsecutive,
-                is_invalid_email: flagInvalid ? true : undefined
-              })
-              .eq('id', c.id);
-          }
-        }
-      } else if (isDeliverySuccess) {
-        // Reset consecutive soft bounces
-        await supabaseAdmin
-          .from('contacts')
-          .update({ consecutive_soft_bounces: 0 })
-          .eq('workspace_id', campaign.workspace_id)
-          .eq('email', recipientEmail);
-
-        await supabaseAdmin
-          .from('crm_contacts')
-          .update({ consecutive_soft_bounces: 0 })
-          .eq('workspace_id', campaign.workspace_id)
-          .eq('email', recipientEmail);
-      }
-    }
-
-    return NextResponse.json({ received: true, status: 'processed' });
-  } catch (error: any) {
-    logger.error({ err: error }, 'webhook.email_deliverability.failed');
-    try {
-      // Body may not be defined if parsing failed
-      await supabaseAdmin.from('webhook_dead_letters').insert({
-         provider: 'email_deliverability', payload: { error: error.message }, error: error.message, error_type: 'infrastructure_failure', retry_state: 'pending'
-      });
-    } catch(dbErr: any) {
-      logger.error({ err: dbErr, provider: 'email_deliverability' }, 'webhook.email_deliverability.dead_letter_insert.failed');
-    }
-    // Transient infrastructure failure -> return 500 to trigger webhook retry
-    return NextResponse.json({ error: 'Infrastructure failure' }, { status: 500 });
+  const secret = process.env.RESEND_WEBHOOK_SECRET;
+  if (!secret) {
+    logger.error({}, 'webhook.email_deliverability.secret.missing');
+    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
   }
+
+  const rawBody = await req.text();
+  const headers = {
+    'svix-id': req.headers.get('svix-id') || '',
+    'svix-timestamp': req.headers.get('svix-timestamp') || '',
+    'svix-signature': req.headers.get('svix-signature') || '',
+  };
+
+  let event;
+  try {
+    // Only the verifier is needed here, so any key works for constructing the provider.
+    event = new ResendProvider(process.env.RESEND_API_KEY || 'verify-only').parseWebhook(rawBody, headers, secret);
+  } catch (err: any) {
+    logger.warn({ err }, 'webhook.email_deliverability.signature.invalid');
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+  }
+
+  return handleDeliverabilityEvent(event);
 }

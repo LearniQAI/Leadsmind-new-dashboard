@@ -6,23 +6,27 @@ import { encrypt, decrypt } from '@/lib/encryption'
 import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig'
 import { sendEmail } from '@/lib/email'
 import { logger } from '@/shared/logger'
+import { isManagedSenderToken } from '@/lib/email/managedSender'
 
-// Confirms the caller is an authenticated member of the given workspace.
-// These actions use createAdminClient (bypasses RLS) and take workspaceId
-// directly from the client, so membership must be verified explicitly.
-async function requireWorkspaceMember(workspaceId: string): Promise<boolean> {
+// Replacing the workspace's sending key / From address is an admin action (same as sending domains).
+const PROVIDER_ADMIN_ROLES = ['admin', 'owner']
+
+// Confirms the caller is an authenticated member of the given workspace (optionally with one of
+// `roles`). These actions use createAdminClient (bypasses RLS) and take workspaceId directly from
+// the client, so membership must be verified explicitly.
+async function requireWorkspaceMember(workspaceId: string, roles?: string[]): Promise<boolean> {
   const authClient = await createServerClient()
   const { data: { user }, error } = await authClient.auth.getUser()
   if (error || !user) return false
 
   const { data: member } = await authClient
     .from('workspace_members')
-    .select('id')
+    .select('id, role')
     .eq('workspace_id', workspaceId)
     .eq('user_id', user.id)
     .maybeSingle()
 
-  return !!member
+  return !!member && (!roles || roles.includes(member.role))
 }
 
 export async function getEmailProvider(workspaceId: string) {
@@ -84,8 +88,8 @@ export async function saveEmailProvider(
   if (!payload.fromEmail) {
     return { success: false, error: 'From Email is required' }
   }
-  if (!(await requireWorkspaceMember(workspaceId))) {
-    return { success: false, error: 'Unauthorized' }
+  if (!(await requireWorkspaceMember(workspaceId, PROVIDER_ADMIN_ROLES))) {
+    return { success: false, error: 'Only workspace admins can change the email provider.' }
   }
 
   const supabase = createAdminClient()
@@ -96,6 +100,11 @@ export async function saveEmailProvider(
     from_email: payload.fromEmail.trim(),
     from_name: payload.fromName?.trim() || null,
     updated_at: new Date().toISOString()
+  }
+
+  // A LeadsMind managed-sender token is never a real Resend key (and must not be storable as one).
+  if (isManagedSenderToken(payload.apiKey?.trim())) {
+    return { success: false, error: 'Enter a Resend API key from your own Resend account.' }
   }
 
   // Only update API key if it's not the masked value
@@ -121,8 +130,8 @@ export async function saveEmailProvider(
 export async function verifyEmailProvider(workspaceId: string) {
   await requireModuleAccess('settings');
   if (!workspaceId) return { success: false, error: 'Workspace ID is required' }
-  if (!(await requireWorkspaceMember(workspaceId))) {
-    return { success: false, error: 'Unauthorized' }
+  if (!(await requireWorkspaceMember(workspaceId, PROVIDER_ADMIN_ROLES))) {
+    return { success: false, error: 'Only workspace admins can change the email provider.' }
   }
 
   const supabase = createAdminClient()

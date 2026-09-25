@@ -1,5 +1,6 @@
-// A campaign is sent through the WORKSPACE's own Resend account, and Resend only
-// accepts From addresses on a domain that account has verified. Platform-owned
+// A campaign is sent either through the workspace's LeadsMind-managed sending
+// domain or its own Resend account (BYO); both only accept From addresses on a
+// domain verified for that workspace. Platform-owned
 // domains therefore can't be assumed valid for a customer:
 //  - resend.dev is Resend's sandbox (delivers only to the account owner) — never valid.
 //  - leadsmind.io is valid ONLY for a workspace whose own Resend provider is
@@ -40,4 +41,7 @@ export function resolveCampaignFromEmail(
 }
 
 export const FROM_EMAIL_REQUIRED_MESSAGE =
-  "Set a From email on a domain you've verified with Resend (Settings › Email provider) before sending. Platform addresses like hello@leadsmind.io can't send through your Resend account.";
+  "Set a From email on your verified sending domain (Settings › Domains) before sending. Platform addresses like hello@leadsmind.io can't be used as your From address.";
+
+export const NO_SENDER_MESSAGE =
+  'Verify a sending domain in Settings › Domains (or connect your own Resend account) before sending email.';

@@ -1,6 +1,7 @@
 'use server';
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
+import { suppressEmail } from '@/lib/email/suppression';
 import { requireWorkspaceAccess } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/shared/logger';
@@ -87,11 +88,13 @@ export async function invokeRightToErasure(contactId: string): Promise<{ success
     const purgedQueueCount = deletedQueueItems?.length || 0;
 
     // 4. Drop onto immutable global suppression block list
-    // Check if already suppressed, if not insert
-    const { error: suppressionError } = await supabase
+    // Check if already suppressed, if not insert. Admin client: suppression rows are not
+    // client-writable (RLS allows only admin/owner INSERT and no UPDATE), and this erasure is
+    // already membership-checked above and scoped to that verified workspaceId.
+    const { error: suppressionError } = await createAdminClient()
       .from('global_suppression_list')
       .upsert(
-        { workspace_id: workspaceId, email: originalEmail, reason: 'right_to_erasure', suppressed_at: new Date().toISOString() },
+        { workspace_id: workspaceId, email: originalEmail?.trim().toLowerCase(), reason: 'right_to_erasure', source: 'erasure', suppressed_at: new Date().toISOString() },
         { onConflict: 'workspace_id,email' }
       );
 
@@ -218,37 +221,14 @@ export async function unsubscribeEmail(email: string, workspaceId: string, token
   const supabase = createAdminClient();
 
   try {
-    // 1. Add to global suppression list
-    const { error: suppressionError } = await supabase
-      .from('global_suppression_list')
-      .upsert(
-        { workspace_id: workspaceId, email: email, reason: 'unsubscribe', suppressed_at: new Date().toISOString() },
-        { onConflict: 'workspace_id,email' }
-      );
-
-    if (suppressionError) {
+    // 1. Opt-out = a suppression row (source 'unsubscribe'). It deliberately does NOT set
+    // contacts.is_invalid_email: that flag means the mailbox itself is broken (bounce evidence
+    // only), and conflating the two mislabelled every unsubscriber as an invalid address.
+    try {
+      await suppressEmail(supabase as any, workspaceId, email, 'unsubscribe');
+    } catch (suppressionError) {
       logger.error({ err: suppressionError, workspaceId }, 'popia.unsubscribe.suppression_list.failed');
-    }
-
-    // 2. Mark contacts as invalid
-    const { error: contactsError } = await supabase
-      .from('contacts')
-      .update({ is_invalid_email: true })
-      .eq('workspace_id', workspaceId)
-      .eq('email', email);
-
-    if (contactsError) {
-      logger.error({ err: contactsError, workspaceId }, 'popia.unsubscribe.contacts_update.failed');
-    }
-
-    const { error: crmContactsError } = await supabase
-      .from('crm_contacts')
-      .update({ is_invalid_email: true })
-      .eq('workspace_id', workspaceId)
-      .eq('email', email);
-
-    if (crmContactsError) {
-      logger.error({ err: crmContactsError, workspaceId }, 'popia.unsubscribe.crm_contacts_update.failed');
+      return { success: false, error: 'We could not process your unsubscribe request. Please try again.' };
     }
 
     // 2b. Stop any in-flight sequence/workflow that would email this address.

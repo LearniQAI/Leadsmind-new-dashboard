@@ -6,8 +6,20 @@ import { getCurrentWorkspaceId, requireModuleAccess } from '@/lib/auth';
 import { releaseHostFromVercel } from '@/lib/domains/verify';
 import { describeDns, normalizeHostnameInput } from '@/lib/domains/hostname';
 import { revalidatePath } from 'next/cache';
-import dns from 'dns';
 import { randomBytes } from 'crypto';
+import {
+  registerSendingDomain,
+  refreshSendingDomain,
+  removeSendingDomain,
+  updateSendingDomainIdentity,
+  SendingDomainError,
+} from '@/lib/email/sendingDomains';
+import { getDomainReputation, REPUTATION_POLICY } from '@/lib/email/reputation';
+import {
+  DEFAULT_DOMAIN_HOURLY_LIMIT,
+  DEFAULT_WORKSPACE_DAILY_LIMIT,
+  DEFAULT_WORKSPACE_HOURLY_LIMIT,
+} from '@/lib/email/managedSender';
 import { ENFORCE_PLAN_LIMITS } from '@/lib/config/flags';
 import { logger } from '@/shared/logger';
 import { ValidationError, toClientError } from '@/shared/errors/AppError';
@@ -19,226 +31,119 @@ import { ValidationError, toClientError } from '@/shared/errors/AppError';
 // Sender (email) domains only. Custom-domain actions are open to every workspace member.
 const ALLOWED_DOMAIN_ROLES = ['admin', 'owner'];
 
-// --- Promisified DNS TXT Resolver helper ---
-async function getDnsTxtRecords(hostname: string): Promise<string[][]> {
-  return new Promise((resolve) => {
-    dns.resolveTxt(hostname, (err, records) => {
-      if (err) {
-        // Log error and return empty array if record doesn't exist
-        logger.warn({ err, hostname }, 'domains.dns_txt_resolve.failed');
-        resolve([]);
-      } else {
-        resolve(records || []);
-      }
-    });
-  });
-}
-
-// --- Sender Domains Actions (Original) ---
+// --- Sender Domains Actions (LeadsMind-managed sending) ---
 //
 // Consolidation investigated per the triage's Duplicate Implementation
 // note #10: "Sender Domains" (this section, table sender_domains) and
 // "Custom Domain Connection" (addDomain/getDomains below, table
 // domain_configurations) are NOT two implementations of the same feature —
-// they're genuinely different features (email-sending domain/DKIM
-// verification vs. white-label custom domain routing) on different tables.
-// True consolidation (repoint one onto the other, delete the loser) isn't
-// viable. Applied the same requireWorkspaceRole(ALLOWED_DOMAIN_ROLES) fix to both
-// generations instead, so they share a security posture even though they
-// stay separate implementations.
+// they're genuinely different features (email-sending domain vs. white-label
+// custom domain routing) on different tables. See ADR-0004.
+//
+// Sending domains live in LeadsMind's own Resend account (lib/email/sendingDomains.ts): the
+// domain is created through Resend's API and Resend's own verification status is stored and
+// trusted. Every write goes through these admin/owner actions and the service role; sender_domains
+// has no client write policy.
+
+async function senderDomainAdmin(): Promise<string | null> {
+  try {
+    return (await requireWorkspaceRole(ALLOWED_DOMAIN_ROLES)).workspaceId;
+  } catch {
+    return null;
+  }
+}
+
+type SenderDomainResult = { data?: any; error?: string; success?: boolean };
+
+function senderDomainError(err: unknown, event: string, fallback: string, ctx: Record<string, unknown>): SenderDomainResult {
+  if (err instanceof SendingDomainError) return { error: err.message };
+  logger.error({ err, ...ctx }, event);
+  return { error: fallback };
+}
 
 export async function getSenderDomains() {
   try {
-    const supabase = await createServerClient();
-    let workspaceId: string;
-    try {
-      ({ workspaceId } = await requireWorkspaceRole(ALLOWED_DOMAIN_ROLES));
-    } catch {
-      return { error: 'Unauthorized' };
-    }
+    const workspaceId = await senderDomainAdmin();
+    if (!workspaceId) return { error: 'Unauthorized' };
+    const db = createAdminClient();
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('sender_domains')
       .select('*')
       .eq('workspace_id', workspaceId)
       .order('created_at', { ascending: false });
-
     if (error) throw error;
-    return { data };
+
+    // Reputation over the policy window, per domain (drives the auto-pause shown in the UI).
+    const withReputation = await Promise.all(
+      (data ?? []).map(async (d) => ({ ...d, reputation: await getDomainReputation(db as any, d.id).catch(() => null) })),
+    );
+    const { data: limits } = await db.from('email_sending_limits').select('hourly_limit, daily_limit').eq('workspace_id', workspaceId).maybeSingle();
+
+    return {
+      data: withReputation,
+      limits: {
+        workspaceHourly: limits?.hourly_limit ?? DEFAULT_WORKSPACE_HOURLY_LIMIT,
+        workspaceDaily: limits?.daily_limit ?? DEFAULT_WORKSPACE_DAILY_LIMIT,
+        domainHourlyDefault: DEFAULT_DOMAIN_HOURLY_LIMIT,
+      },
+      policy: REPUTATION_POLICY,
+    };
   } catch (error: any) {
     logger.error({ err: error }, 'domains.sender_domains.fetch.failed');
     return { error: 'Failed to fetch sender domains.' };
   }
 }
 
-export async function registerSenderDomain(domainName: string) {
+export async function registerSenderDomain(domainName: string): Promise<SenderDomainResult> {
+  const workspaceId = await senderDomainAdmin();
+  if (!workspaceId) return { error: 'Unauthorized' };
   try {
-    const supabase = await createServerClient();
-    let workspaceId: string;
-    try {
-      ({ workspaceId } = await requireWorkspaceRole(ALLOWED_DOMAIN_ROLES));
-    } catch {
-      return { error: 'Unauthorized' };
-    }
-
-    const cleanDomain = domainName.trim().toLowerCase();
-    if (!cleanDomain || !cleanDomain.includes('.')) {
-      return { error: 'Invalid domain name format.' };
-    }
-
-    const { data, error } = await supabase
-      .from('sender_domains')
-      .insert({
-        workspace_id: workspaceId,
-        domain_name: cleanDomain,
-        spf_status: false,
-        dkim_status: false,
-        dmarc_status: false,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      if (error.code === '23505') {
-        return { error: 'This domain is already registered for this workspace.' };
-      }
-      throw error;
-    }
-
+    const data = await registerSendingDomain(workspaceId, domainName);
     revalidatePath('/settings');
     return { data };
-  } catch (error: any) {
-    logger.error({ err: error, domainName }, 'domains.sender_domain.register.failed');
-    const clientError = toClientError(error);
-    return { error: clientError.error };
+  } catch (err) {
+    return senderDomainError(err, 'domains.sender_domain.register.failed', 'Failed to add sending domain.', { domainName });
   }
 }
 
-export async function deleteSenderDomain(domainId: string) {
+export async function deleteSenderDomain(domainId: string): Promise<SenderDomainResult> {
+  const workspaceId = await senderDomainAdmin();
+  if (!workspaceId) return { error: 'Unauthorized' };
   try {
-    const supabase = await createServerClient();
-    let workspaceId: string;
-    try {
-      ({ workspaceId } = await requireWorkspaceRole(ALLOWED_DOMAIN_ROLES));
-    } catch {
-      return { error: 'Unauthorized' };
-    }
-
-    const { error } = await supabase
-      .from('sender_domains')
-      .delete()
-      .eq('id', domainId)
-      .eq('workspace_id', workspaceId);
-
-    if (error) throw error;
-
+    await removeSendingDomain(workspaceId, domainId);
     revalidatePath('/settings');
     return { success: true };
-  } catch (error: any) {
-    logger.error({ err: error, domainId }, 'domains.sender_domain.delete.failed');
-    return { error: 'Failed to delete sender domain.' };
+  } catch (err) {
+    return senderDomainError(err, 'domains.sender_domain.delete.failed', 'Failed to delete sender domain.', { domainId });
   }
 }
 
-export async function verifySenderDomain(domainId: string) {
+/** Asks Resend to re-check the domain's DNS now and stores Resend's answer. */
+export async function verifySenderDomain(domainId: string): Promise<SenderDomainResult> {
+  const workspaceId = await senderDomainAdmin();
+  if (!workspaceId) return { error: 'Unauthorized' };
   try {
-    const supabase = await createServerClient();
-    let workspaceId: string;
-    try {
-      ({ workspaceId } = await requireWorkspaceRole(ALLOWED_DOMAIN_ROLES));
-    } catch {
-      return { error: 'Unauthorized' };
-    }
-
-    const { data: domain, error: fetchError } = await supabase
-      .from('sender_domains')
-      .select('*')
-      .eq('id', domainId)
-      .eq('workspace_id', workspaceId)
-      .single();
-
-    if (fetchError || !domain) {
-      return { error: 'Sender domain not found.' };
-    }
-
-    const domainName = domain.domain_name;
-
-    // Simulation / Bypass configuration for sandbox and local testing
-    const isMockBypass = 
-      domainName === 'test.com' || 
-      domainName === 'mock.com' ||
-      domainName.endsWith('.test') ||
-      process.env.MOCK_DNS_VERIFICATION === 'true';
-
-    let spfVerified = false;
-    let dkimVerified = false;
-    let dmarcVerified = false;
-
-    if (isMockBypass) {
-      logger.info({ domainName }, 'domains.dns_verify.mock_bypass');
-      spfVerified = true;
-      dkimVerified = true;
-      dmarcVerified = true;
-    } else {
-      // 1. Verify SPF: query TXT of root domain
-      const rootTxtRecords = await getDnsTxtRecords(domainName);
-      const rootRecordsFlattened = rootTxtRecords.map(r => r.join(''));
-      
-      const spfRecord = rootRecordsFlattened.find(rec => rec.startsWith('v=spf1'));
-      if (spfRecord) {
-        spfVerified = spfRecord.includes('spf.resend.com') || spfRecord.includes('amazonses.com') || spfRecord.includes('leadsmind');
-      }
-
-      // 2. Verify DKIM: query TXT for resend._domainkey.domainName
-      const dkimHost = `resend._domainkey.${domainName}`;
-      const dkimTxtRecords = await getDnsTxtRecords(dkimHost);
-      const dkimRecordsFlattened = dkimTxtRecords.map(r => r.join(''));
-
-      const dkimRecord = dkimRecordsFlattened.find(rec => rec.includes('k=rsa') || rec.startsWith('v=DKIM1'));
-      if (dkimRecord) {
-        dkimVerified = true;
-      }
-
-      // 3. Verify DMARC: query TXT for _dmarc.domainName
-      const dmarcHost = `_dmarc.${domainName}`;
-      const dmarcTxtRecords = await getDnsTxtRecords(dmarcHost);
-      const dmarcRecordsFlattened = dmarcTxtRecords.map(r => r.join(''));
-
-      const dmarcRecord = dmarcRecordsFlattened.find(rec => rec.startsWith('v=DMARC1'));
-      if (dmarcRecord) {
-        dmarcVerified = dmarcRecord.includes('p=quarantine') || dmarcRecord.includes('p=reject');
-      }
-    }
-
-    // 4. Update the DB record status
-    const verifiedAt = (spfVerified && dkimVerified) ? new Date().toISOString() : null;
-
-    const { data: updatedDomain, error: updateError } = await supabase
-      .from('sender_domains')
-      .update({
-        spf_status: spfVerified,
-        dkim_status: dkimVerified,
-        dmarc_status: dmarcVerified,
-        verified_at: verifiedAt
-      })
-      .eq("id", domainId).eq("workspace_id", workspaceId)
-      .select()
-      .single();
-
-    if (updateError) throw updateError;
-
+    const data = await refreshSendingDomain(workspaceId, domainId);
     revalidatePath('/settings');
-    return { 
-      data: updatedDomain, 
-      details: {
-        spf: spfVerified,
-        dkim: dkimVerified,
-        dmarc: dmarcVerified,
-      } 
-    };
-  } catch (error: any) {
-    logger.error({ err: error, domainId }, 'domains.sender_domain.verify.failed');
-    return { error: 'Failed to verify sender domain.' };
+    return { data };
+  } catch (err) {
+    return senderDomainError(err, 'domains.sender_domain.verify.failed', 'Failed to verify sender domain.', { domainId });
+  }
+}
+
+export async function updateSenderDomainIdentity(
+  domainId: string,
+  patch: { fromLocalPart?: string; fromName?: string | null; makeDefault?: boolean },
+): Promise<SenderDomainResult> {
+  const workspaceId = await senderDomainAdmin();
+  if (!workspaceId) return { error: 'Unauthorized' };
+  try {
+    const data = await updateSendingDomainIdentity(workspaceId, domainId, patch);
+    revalidatePath('/settings');
+    return { data };
+  } catch (err) {
+    return senderDomainError(err, 'domains.sender_domain.identity.failed', 'Failed to update the From identity.', { domainId });
   }
 }
 

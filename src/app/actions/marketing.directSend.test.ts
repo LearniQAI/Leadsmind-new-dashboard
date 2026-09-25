@@ -62,7 +62,7 @@ describe('updateCampaign direct-address path (B3)', () => {
   it('fails BEFORE mutating anything when the workspace has no provider', async () => {
     getCfg.mockResolvedValue(null);
     const r: any = await updateCampaign('c1', { ...base, segment: { emails: ['a@x.com'] } });
-    expect(r.error).toMatch(/Connect your Resend account/);
+    expect(r.error).toMatch(/Verify a sending domain/);
     expect(state.updates).toEqual([]);
     expect(sendEmail).not.toHaveBeenCalled();
   });
@@ -90,13 +90,13 @@ describe('From email (never a platform address)', () => {
   it('rejects an explicitly-set platform From with an actionable error and mutates nothing', async () => {
     getCfg.mockResolvedValue({ apiKey: 're_workspace', fromEmail: 'me@acme.com' });
     const r: any = await updateCampaign('c1', { ...base, from_email: 'hello@leadsmind.io' });
-    expect(r.error).toMatch(/verified with Resend/);
+    expect(r.error).toMatch(/verified sending domain/);
     expect(state.updates).toEqual([]);
   });
   it('errors when neither the campaign nor the provider has a usable From', async () => {
     getCfg.mockResolvedValue({ apiKey: 're_workspace', fromEmail: 'onboarding@resend.dev' });
     const r: any = await updateCampaign('c1', { ...base, segment: { emails: ['a@x.com'] } });
-    expect(r.error).toMatch(/verified with Resend/);
+    expect(r.error).toMatch(/verified sending domain/);
     expect(state.updates).toEqual([]);
   });
   it('self-heals a legacy stored hello@leadsmind.io by using the provider From', async () => {
@@ -110,7 +110,7 @@ describe('From email (never a platform address)', () => {
   it('refuses to schedule with no Resend account at all', async () => {
     getCfg.mockResolvedValue(null);
     const r: any = await updateCampaign('c1', { status: 'scheduled', segment: { tags: ['x'] } });
-    expect(r.error).toMatch(/Connect your Resend account/);
+    expect(r.error).toMatch(/Verify a sending domain/);
     expect(state.updates).toEqual([]);
   });
   it('test send uses the provider From and rejects a bad recipient', async () => {
@@ -134,7 +134,7 @@ describe('sendTestEmailAction (B3)', () => {
   it('returns an actionable error with no provider, and does not send', async () => {
     getCfg.mockResolvedValue(null);
     const r: any = await sendTestEmailAction('c1', 'me@example.com', '<p/>');
-    expect(r.error).toMatch(/Connect your Resend account/);
+    expect(r.error).toMatch(/Verify a sending domain/);
     expect(sendEmail).not.toHaveBeenCalled();
   });
 });
