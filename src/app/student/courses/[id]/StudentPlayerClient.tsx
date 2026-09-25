@@ -29,6 +29,7 @@ import { isSafeEmbedUrl } from '@/lib/security/isSafeEmbedUrl';
 import { SandboxedHtml } from '@/components/lms/SandboxedHtml';
 import { CanvasLessonImage } from '@/components/lms/CanvasLessonImage';
 import { CanvasItemSpacing } from '@/components/lms/CanvasItemSpacing';
+import { canvasHeadingTypeProps, useCanvasHeadingFonts } from '@/components/lms/canvasHeadingType';
 import { getCourseTheme } from '@/lib/courses/courseThemeTokens';
 
 function getEmbeddablePdfUrl(url: string): string {
@@ -930,6 +931,8 @@ export default function StudentPlayerClient({
     for (const b of activeLesson?.contentBlocks || []) m.set(b.id, b);
     return m;
   }, [activeLesson]);
+  // Load any per-heading font families this lesson uses (canvas Heading font setting).
+  useCanvasHeadingFonts(activeLesson?.canvasItems);
 
   /**
    * SYSTEMIC FIX for the recurring faded-text bug.
@@ -968,12 +971,14 @@ export default function StudentPlayerClient({
         h6: 'text-[14px]',
       };
       const Tag = (/^h[1-6]$/.test(item.level) ? item.level : 'h2') as keyof JSX.IntrinsicElements;
+      const type = canvasHeadingTypeProps(item); // the heading's own letter spacing / font
       return (
         <Tag
           key={idx}
+          style={type.style}
           className={`font-display font-bold leading-tight tracking-tight !text-dash-text ${sizes[item.level] || sizes.h2} ${CANVAS_INLINE_HTML} ${
             item.align === 'center' ? 'text-center' : item.align === 'right' ? 'text-right' : ''
-          }`}
+          } ${type.className}`}
           dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(item.html) }}
         />
       );

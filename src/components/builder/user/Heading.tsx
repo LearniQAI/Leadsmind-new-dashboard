@@ -10,6 +10,8 @@ import { useResponsiveValue } from '../../../lib/builder/hooks';
 import { useBuilder } from '../BuilderContext';
 import { useLessonBuilder } from '../LessonBuilderContext';
 import { pickBoxStyle, stripBoxStyleKeys } from '@/lib/builder/boxStyle';
+import { RICH_TEXT_CLASS, BLOCK_FONT_ATTR, BLOCK_FONT_VAR, fontStack } from '@/lib/builder/blockTypography';
+import { loadGoogleFontFamily } from '@/lib/builder/loadGoogleFont';
 
 export interface HeadingProps {
  text: string;
@@ -120,6 +122,31 @@ export const Heading = (allProps: HeadingProps & any) => {
   };
   const lineHeightClass = lineHeights[lineHeight as keyof typeof lineHeights] || 'leading-tight';
 
+  // Letter spacing and font family go on the heading element ITSELF, not the wrapper div: the
+  // <h*> carries its own `tracking-tight` and gets a font-family straight from the global h1-h6
+  // rules, and a value set on an element always beats one it would inherit — so on the wrapper
+  // both settings were silently overridden (canvas and live). Inline style beats the class;
+  // BLOCK_FONT_ATTR outranks the theme's !important heading font (themeFontCss).
+  // RICH_TEXT_CLASS resets the <p> the inline editor wraps text in (see blockTypography.ts).
+  const textProps = {
+   className: `outline-none w-full m-0 p-0 ${lineHeightClass} tracking-tight ${RICH_TEXT_CLASS}`,
+   style: {
+    color: 'inherit',
+    fontSize: 'inherit',
+    fontWeight: 'inherit',
+    letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined,
+    fontFamily: fontFamily ? fontStack(fontFamily) : undefined,
+    ...(fontFamily ? { [BLOCK_FONT_VAR]: fontStack(fontFamily) } : {}),
+   } as React.CSSProperties,
+   ...(fontFamily ? { [BLOCK_FONT_ATTR]: '' } : {}),
+  };
+
+  // Load the chosen family wherever the heading renders (the settings panel only loads it in
+  // the editor; live pages otherwise only load the site's two theme fonts).
+  React.useEffect(() => {
+   if (fontFamily) loadGoogleFontFamily(fontFamily);
+  }, [fontFamily]);
+
   return (
    <div
     {...props}
@@ -137,20 +164,18 @@ export const Heading = (allProps: HeadingProps & any) => {
     style={{
      color,
      fontSize: fontSize ? `${fontSize}px` : undefined,
-     fontFamily: fontFamily ? `'${fontFamily}', sans-serif` : undefined,
-     letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined,
      ...boxStyle,
     }}
    >
     {enabled ? (
-      <Tag className={`outline-none w-full m-0 p-0 ${lineHeightClass} tracking-tight`} style={{ color: 'inherit', fontSize: 'inherit', fontWeight: 'inherit' }}>
+      <Tag {...textProps}>
         <InlineTextEditor
           value={text}
           onChange={(val) => setProp((props: any) => { props.text = val; }, 500)}
         />
       </Tag>
     ) : (
-     <Tag className={`outline-none w-full m-0 p-0 ${lineHeightClass} tracking-tight`} style={{ color: 'inherit', fontSize: 'inherit', fontWeight: 'inherit' }} dangerouslySetInnerHTML={{ __html: displayText }} />
+     <Tag {...textProps} dangerouslySetInnerHTML={{ __html: displayText }} />
     )}
    </div>
   );

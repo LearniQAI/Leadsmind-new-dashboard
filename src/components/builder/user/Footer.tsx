@@ -8,6 +8,7 @@ import { useBuilder } from '../BuilderContext';
 import { useGlobalSync } from '@/lib/builder/hooks';
 import { InlineTextEditor } from './InlineTextEditor';
 import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
+import { inlineRichText, RICH_TEXT_CLASS } from '@/lib/builder/blockTypography';
 import { MediaVaultModal } from '../MediaVaultModal';
 
 export interface FooterProps {
@@ -150,7 +151,8 @@ export const Footer = ({
       <h2
        className="font-black text-2xl uppercase tracking-tighter"
        style={{ color: accentColor }}
-       dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(brandName) }}
+       // Inline slot: drop the inline editor's <p> wrapper (it took the global `p` rule).
+       dangerouslySetInnerHTML={{ __html: inlineRichText(brandName) }}
       />
      )}
      {enabled ? (
@@ -162,7 +164,12 @@ export const Footer = ({
       </p>
      ) : (
       <p
-       className="text-sm opacity-60 leading-relaxed max-w-xs"
+       // Block text: keep its paragraphs, but reset them to this element's own type
+       // (RICH_TEXT_CLASS) instead of the global `p` rule's 14px / body colour / 15px margin.
+       className={`text-sm opacity-60 leading-relaxed max-w-xs ${RICH_TEXT_CLASS}`}
+       // This <p> itself also matched the global `p` rule's colour (#878a99) on live pages,
+       // ignoring the Footer text colour; the canvas hid it with its own color:inherit rule.
+       style={{ color: 'inherit' }}
        dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(description) }}
       />
      )}
@@ -199,9 +206,9 @@ export const Footer = ({
            href={link.href}
            className="opacity-60 hover:opacity-100 transition-opacity text-inherit whitespace-nowrap"
            style={{ fontSize: `${linkFontSize}px` }}
-          >
-           {link.label}
-          </a>
+           // The inline editor saves labels as `<p>…</p>`; as React text that showed the tags.
+           dangerouslySetInnerHTML={{ __html: inlineRichText(link.label) }}
+          />
          )}
         </li>
        ))}
@@ -256,7 +263,7 @@ export const Footer = ({
    <div className="max-w-7xl mx-auto w-full mt-16 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6 text-[10px] uppercase font-bold tracking-widest opacity-40 text-center md:text-left">
     <span>
      © {new Date().getFullYear()}{' '}
-     <span dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(brandName) }} />. Built with Leadsmind.
+     <span dangerouslySetInnerHTML={{ __html: inlineRichText(brandName) }} />. Built with Leadsmind.
     </span>
     <div className="flex gap-8">
      <a href="#" className="hover:opacity-100 transition-opacity">Privacy Policy</a>

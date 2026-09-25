@@ -677,6 +677,24 @@
   margin: 0;
 }
 
+/* The same reset for LIVE pages. The inline editor saves text as `<p>…</p>`, and published
+   blocks inject that HTML into their own text element (Heading's <h*>, Paragraph's <p>, Text's
+   <span>), marked RICH_TEXT_CLASS (lib/builder/blockTypography.ts). Without this, that inner
+   <p> took the template's bare `p` rule above and rendered at 14px / 22px / weight 400 with a
+   15px bottom margin, whatever the block's settings said — the .tiptap fix only ever covered
+   the editor. `.builder-rich-text p` (0,1,1) outranks `p` (0,0,1); font-family is also
+   reset against the theme-font !important rules in themeFontCss(). */
+.builder-rich-text p {
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  font-style: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  margin: 0;
+}
+
 /* Universal top/bottom block spacing in the flattened student lesson view
    (components/lms/CanvasItemSpacing). Values are resolved per breakpoint server-side; the
    breakpoints are the builder's own (autoDetectViewport: mobile <= 767px, tablet <= 1023px). */
@@ -704,4 +722,19 @@
     margin-top: var(--lm-mt-m, 0);
     margin-bottom: var(--lm-mb-m, 0);
   }
+}
+
+/* Heading letter spacing / font family in the flattened student lesson view
+   (components/lms/canvasHeadingType). A class is only present for a breakpoint whose value was
+   resolved, so an unset breakpoint keeps the renderer's own styling. Placed after the Tailwind
+   utilities so an equal-specificity .tracking-tight / .font-display on the same element loses. */
+.lm-ls-d { letter-spacing: var(--lm-ls-d); }
+.lm-ff-d { font-family: var(--lm-ff-d); }
+@media (max-width: 1023px) {
+  .lm-ls-t { letter-spacing: var(--lm-ls-t); }
+  .lm-ff-t { font-family: var(--lm-ff-t); }
+}
+@media (max-width: 767px) {
+  .lm-ls-m { letter-spacing: var(--lm-ls-m); }
+  .lm-ff-m { font-family: var(--lm-ff-m); }
 }

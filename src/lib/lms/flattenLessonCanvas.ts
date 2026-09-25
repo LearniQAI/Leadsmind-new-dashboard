@@ -20,15 +20,26 @@
 // getBlockIdsForLesson() derives the completion gate from, so gating is unaffected.
 
 import {
-  DEVICES, SPACING_DEFAULTS, hasSpacing, spacingStyle,
+  DEVICES, SPACING_DEFAULTS, cssLength as toCssLength, hasSpacing, readResponsive, spacingStyle,
   type Device, type SpacingKey,
 } from '@/lib/builder/spacing';
+
+/** A value resolved per breakpoint with the builder's own resolver; a missing device = unset. */
+export type CanvasResponsive = Partial<Record<Device, string>>;
 
 /** Universal top/bottom spacing, fully resolved per breakpoint (CSS lengths). Absent = none. */
 export type CanvasSpacing = Record<Device, Partial<Record<SpacingKey, string>>>;
 
 export type LessonCanvasItem = { spacing?: CanvasSpacing } & (
-  | { kind: 'heading'; level: string; html: string; align: string }
+  | {
+      kind: 'heading';
+      level: string;
+      html: string;
+      align: string;
+      /** Per-breakpoint letter spacing (CSS length) and font family (family name), when set. */
+      letterSpacing?: CanvasResponsive;
+      fontFamily?: CanvasResponsive;
+    }
   | { kind: 'richtext'; html: string; align: string }
   | {
       kind: 'image';
@@ -146,6 +157,24 @@ function applyContainerMargins(out: LessonCanvasItem[], start: number, p: Record
   }
 }
 
+/** `{ [key]: {desktop?, tablet?, mobile?} }` for a responsive prop, or `{}` when unset everywhere. */
+function responsiveField(
+  key: 'letterSpacing' | 'fontFamily',
+  p: Record<string, any>,
+  normalise: (v: unknown) => string | undefined,
+): { letterSpacing?: CanvasResponsive; fontFamily?: CanvasResponsive } {
+  const out: CanvasResponsive = {};
+  for (const device of DEVICES) {
+    const v = normalise(readResponsive(p, key, device));
+    if (v !== undefined) out[device] = v;
+  }
+  // The canvas treats a 0 letter spacing as "not set" (keeps the heading's default), so a field
+  // that is 0 everywhere is omitted; a 0 that overrides a non-zero breakpoint is kept.
+  const values = Object.values(out);
+  if (!values.length || values.every((v) => v === '0px')) return {};
+  return { [key]: out };
+}
+
 function emitLeaf(name: string | undefined, p: Record<string, any>, out: LessonCanvasItem[]): void {
   switch (name) {
     case 'Heading': {
@@ -162,6 +191,10 @@ function emitLeaf(name: string | undefined, p: Record<string, any>, out: LessonC
           level: /^h[1-6]$/.test(p.level) ? p.level : 'h2',
           html,
           align: p.textAlign || 'left',
+          // Same two settings the canvas applies to the heading element itself; the reading
+          // view previously dropped them, so they never reached students.
+          ...responsiveField('letterSpacing', p, (v) => toCssLength(v)),
+          ...responsiveField('fontFamily', p, (v) => (typeof v === 'string' && v.trim() ? v.trim() : undefined)),
         });
       }
       return;

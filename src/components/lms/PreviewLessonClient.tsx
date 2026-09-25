@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { CanvasLessonImage } from './CanvasLessonImage';
 import { CanvasItemSpacing } from './CanvasItemSpacing';
+import { canvasHeadingTypeProps, useCanvasHeadingFonts } from './canvasHeadingType';
 import VideoPlayer from '@/app/student/courses/[id]/components/VideoPlayer';
 import { driveVideoUrls } from '@/lib/lms/video/driveVideoUrls';
 import { Lock, ArrowRight, Eye, PlayCircle, FileText, Download as DownloadIcon } from 'lucide-react';
@@ -111,13 +112,16 @@ export default function PreviewLessonClient({
 }: PreviewLessonClientProps) {
   const contentBlocksById = new Map((activeLesson?.contentBlocks || []).map((b: any) => [b.id, b]));
 
+  useCanvasHeadingFonts(activeLesson?.canvasItems);
+
   const renderPreviewCanvasItem = (item: any, idx: number): React.ReactNode => {
     if (item.kind === 'heading') {
+      const type = canvasHeadingTypeProps(item); // the heading's own letter spacing / font
       return (
         <div
           key={idx}
-          className="text-lg font-bold !text-dash-text"
-          style={{ textAlign: item.align }}
+          className={`text-lg font-bold !text-dash-text ${type.className}`}
+          style={{ textAlign: item.align, ...type.style }}
           dangerouslySetInnerHTML={{ __html: item.html }}
         />
       );

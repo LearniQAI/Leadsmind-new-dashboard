@@ -10,6 +10,7 @@ import { useBuilder } from '../BuilderContext';
 import { useLessonBuilder } from '../LessonBuilderContext';
 import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
 import { pickBoxStyle, stripBoxStyleKeys } from '@/lib/builder/boxStyle';
+import { RICH_TEXT_CLASS } from '@/lib/builder/blockTypography';
 
 export interface ParagraphProps {
  text: string;
@@ -141,7 +142,7 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
         />
       </p>
    ) : (
-    <p style={{ ...INHERIT_TYPOGRAPHY, margin: 0 }} dangerouslySetInnerHTML={{ __html: displayText }} />
+    <p className={RICH_TEXT_CLASS} style={{ ...INHERIT_TYPOGRAPHY, margin: 0 }} dangerouslySetInnerHTML={{ __html: displayText }} />
    )}
   </div>
  );

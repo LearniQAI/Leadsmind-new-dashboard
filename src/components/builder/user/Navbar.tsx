@@ -8,6 +8,7 @@ import { useBuilder } from '../BuilderContext';
 import { resolveLink } from '@/lib/builder/utils';
 import { InlineTextEditor } from './InlineTextEditor';
 import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
+import { inlineRichText } from '@/lib/builder/blockTypography';
 import { MediaVaultModal } from '../MediaVaultModal';
 import type { LinkObject } from '../LinkSelector';
 
@@ -193,7 +194,9 @@ export const Navbar = ({
      ) : (
       <span
        className="font-black tracking-tighter text-xl uppercase"
-       dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(brandName) }}
+       // Inline slot: inlineRichText drops the <p> the inline editor wraps text in, which
+       // otherwise took the global `p` rule (14px, weight 400, body colour) here.
+       dangerouslySetInnerHTML={{ __html: inlineRichText(brandName) }}
       />
      )}
     </div>
@@ -225,9 +228,9 @@ export const Navbar = ({
         }}
         onMouseOver={(e: any) => e.target.style.color = linkHoverColor}
         onMouseOut={(e: any) => e.target.style.color = 'inherit'}
-       >
-        {link.label}
-       </a>
+        // The inline editor saves labels as `<p>Home</p>`; as React text that showed the tags.
+        dangerouslySetInnerHTML={{ __html: inlineRichText(link.label) }}
+       />
       )
      ))}
 
@@ -283,9 +286,8 @@ export const Navbar = ({
         href={resolveLink(link.href, { basePath })}
         onClick={(e) => { if (enabled) e.preventDefault(); }}
         className="text-sm font-black uppercase tracking-widest"
-       >
-        {link.label}
-       </a>
+        dangerouslySetInnerHTML={{ __html: inlineRichText(link.label) }}
+       />
       )
      ))}
      {showButton && (

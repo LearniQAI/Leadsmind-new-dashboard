@@ -7,6 +7,7 @@ import { TextSettings } from './TextSettings';
 import { replaceMergeTags } from '@/lib/builder/utils';
 import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
 import { pickBoxStyle, stripBoxStyleKeys } from '@/lib/builder/boxStyle';
+import { RICH_TEXT_CLASS } from '@/lib/builder/blockTypography';
 import { useBuilder } from '../BuilderContext';
 
 export const Text = ({ text, fontSize, textAlign, color, fontFamily, fontWeight, lineHeight, letterSpacing, dragRef, ...props }: any) => {
@@ -63,7 +64,7 @@ export const Text = ({ text, fontSize, textAlign, color, fontFamily, fontWeight,
         />
       </span>
     ) : (
-      <span style={{ color: 'inherit' }} dangerouslySetInnerHTML={{ __html: displayText }} />
+      <span className={RICH_TEXT_CLASS} style={{ color: 'inherit' }} dangerouslySetInnerHTML={{ __html: displayText }} />
     )}
   </div>
  );

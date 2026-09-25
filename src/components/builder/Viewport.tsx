@@ -8,6 +8,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useBuilder } from './BuilderContext';
 import { useParams } from 'next/navigation';
+import { themeFontCss } from '@/lib/builder/blockTypography';
 
 function cn(...inputs: ClassValue[]) {
  return twMerge(clsx(inputs));
@@ -45,13 +46,7 @@ export const Viewport = ({ children }: { children?: React.ReactNode }) => {
      --font-body: '${bodyFont}', sans-serif;
    }
    
-   .node-canvas-area h1, .node-canvas-area h2, .node-canvas-area h3, .node-canvas-area h4, .node-canvas-area h5, .node-canvas-area h6 {
-     font-family: var(--font-heading) !important;
-   }
-
-   .node-canvas-area p, .node-canvas-area span, .node-canvas-area a, .node-canvas-area button, .node-canvas-area input, .node-canvas-area textarea {
-     font-family: var(--font-body) !important;
-   }
+   ${themeFontCss('.node-canvas-area')}
 
    /* The admin dashboard theme's global CSS (public/assets/scss/components/_theme.scss)
       applies its own color directly to bare h1-h6/p tag selectors — including

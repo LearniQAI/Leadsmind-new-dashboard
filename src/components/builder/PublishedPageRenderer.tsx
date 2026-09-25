@@ -5,6 +5,7 @@ import { Editor, Frame } from '@craftjs/core';
 import { RESOLVER } from '@/lib/builder/resolver';
 import { BuilderProvider } from './BuilderContext';
 import { PublishedNodeRender } from './NodeSpacingBox';
+import { themeFontCss } from '@/lib/builder/blockTypography';
 
 export default function PublishedPageRenderer({
  content,
@@ -40,13 +41,7 @@ export default function PublishedPageRenderer({
    --font-body: '${bodyFont}', sans-serif;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-   font-family: var(--font-heading) !important;
-  }
-
-  p, span, a, button, input, textarea {
-   font-family: var(--font-body) !important;
-  }
+  ${themeFontCss('')}
 
   /* Navbar/Footer links resolve a section target to a plain #id anchor href (see
      resolveLink's 'section' case) — native anchor navigation jumps instantly with no smooth
