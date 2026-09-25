@@ -60,3 +60,6 @@ next-env.d.ts
 **/.obsidian/workspace
 **/.obsidian/cache/
 **/.trash/
+
+# one-time canvas parent-link backfill snapshot (production lesson content)
+scripts/db-checks/.backfill-canvas-parent-links.backup.json
