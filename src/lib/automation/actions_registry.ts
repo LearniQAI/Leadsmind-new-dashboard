@@ -11,7 +11,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { sendEmail, EmailSendError } from "@/lib/email";
 import { checkEmailSuppression } from "@/lib/campaigns/emailSuppression";
 import { resolveCampaignFromEmail, FROM_EMAIL_REQUIRED_MESSAGE } from "@/lib/campaigns/fromEmail";
-import { buildUnsubscribeLink } from "@/lib/email/unsubscribeLink";
+import { buildUnsubscribeLink, buildListUnsubscribeHeaders } from "@/lib/email/unsubscribeLink";
 import { buildAutomationEmail, EmailSuppressedError, type StepContext } from "./automationEmail";
 import { getWorkspaceEmailConfig } from "@/lib/email/resolveConfig";
 import { sendSMS } from "@/lib/sms";
@@ -68,6 +68,8 @@ export const AutomationActions = {
     apiKey: emailConfig?.apiKey,
     fromEmail,
     fromName: emailConfig?.fromName,
+    // Sequence/workflow mail to contacts is bulk mail: RFC 8058 one-click unsubscribe.
+    headers: buildListUnsubscribeHeaders(contact.email, workspaceId),
     // Resend echoes these on every webhook event; the deliverability webhook keys off
     // workflow_id to attribute bounces/complaints/opens to this workflow (campaign sends
     // use campaign_id). Tag values must be [A-Za-z0-9_-]; UUIDs are.

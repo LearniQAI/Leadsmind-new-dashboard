@@ -63,13 +63,19 @@ export const PredictiveIntelligence = {
     const workspaceId = contact.workspace_id;
     const optimalHour = await this.evaluateHistoricalOpens(contact.id, workspaceId);
 
-    // 2. Set targeted send slot
-    const targetDate = new Date(baseDate);
-    targetDate.setHours(optimalHour, 0, 0, 0);
-
-    // If the optimal hour today is already in the past, schedule for tomorrow
-    if (targetDate.getTime() <= baseDate.getTime()) {
-      targetDate.setDate(targetDate.getDate() + 1);
+    // 2. Set targeted send slot. Already inside the optimal hour = send now. Without this the
+    // target was ALWAYS later: the worker picks a job deferred to HH:00 up at HH:00:xx, today's
+    // HH:00:00 has just passed, so it rolled to tomorrow and every campaign job was re-deferred
+    // forever (no campaign email could ever be sent).
+    let targetDate = new Date(baseDate);
+    if (baseDate.getHours() !== optimalHour) {
+      targetDate.setHours(optimalHour, 0, 0, 0);
+      // If the optimal hour today is already in the past, schedule for tomorrow
+      if (targetDate.getTime() <= baseDate.getTime()) {
+        targetDate.setDate(targetDate.getDate() + 1);
+      }
+    } else {
+      targetDate = new Date(baseDate);
     }
 
     // 3. Resolve Eskom Area ID
@@ -85,17 +91,10 @@ export const PredictiveIntelligence = {
     const eskomToken = process.env.ESKOM_API_KEY || process.env.ESKOM_TOKEN;
 
     if (!eskomToken || eskomToken === 'mock_key' || eskomToken.includes('PLACEHOLDER') || areaId === 'mock-shedding-area') {
-      logger.info({ areaId }, 'predictive_intelligence.mock_mode.active');
-      // Simulate an overlapping load shedding event: starts 30 mins before targetDate, ends 2.5 hours later
-      const mockStart = new Date(targetDate.getTime() - 30 * 60 * 1000);
-      const mockEnd = new Date(targetDate.getTime() + 150 * 60 * 1000);
-      events = [
-        {
-          start: mockStart.toISOString(),
-          end: mockEnd.toISOString(),
-          note: 'Stage 2 Mock Load Shedding'
-        }
-      ];
+      // No schedule source: assume no outage. (This used to invent a load-shedding block around
+      // every target time, which pushed every real send forward again on each worker run.)
+      logger.info({ areaId }, 'predictive_intelligence.load_shedding_schedule.unavailable');
+      events = [];
     } else {
       try {
         const res = await fetch(`https://api.sepush.co.za/business/2.0/area?id=${areaId}`, {

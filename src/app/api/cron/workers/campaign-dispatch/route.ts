@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { sendEmail } from '@/lib/email';
+import { sendEmail, EmailRateLimitError } from '@/lib/email';
 import { parsePersonalTokens } from '@/lib/builder/emailRenderer';
 import { buildUnsubscribeLink } from '@/lib/email/unsubscribeLink';
-import { decrypt } from '@/lib/encryption';
+import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
+import { buildListUnsubscribeHeaders } from '@/lib/email/unsubscribeLink';
 import { PredictiveIntelligence } from '@/lib/intelligence/PredictiveIntelligence';
 import { Observability } from '@/lib/observability';
 import { logger } from '@/shared/logger';
@@ -58,25 +59,15 @@ export async function GET(req: Request) {
       .select('id, workspace_id, subject, body_html, from_email, from_name')
       .in('id', campaignIds);
 
-    // Batched equivalent of getWorkspaceEmailConfig() (src/lib/email/resolveConfig.ts)
-    // — that helper is per-workspace, and this worker processes a batch of jobs
-    // spanning multiple workspaces per run, so the encrypted-key lookup and decrypt
-    // are done here in one query to keep the existing N+1 avoidance.
+    // Per-workspace send config through the shared resolver, so a campaign sends exactly like every
+    // other workspace-scoped path: the workspace's own Resend key, or its LeadsMind-managed verified
+    // domain (sendEmail re-checks that domain + the rate limit on every send). One lookup per
+    // workspace in the batch, not per job.
     const workspaceIds = [...new Set(campaigns?.map(c => c.workspace_id) || [])];
-    const { data: emailProviders } = await supabaseAdmin
-      .from('workspace_email_providers')
-      .select('workspace_id, encrypted_api_key, from_email, from_name')
-      .in('workspace_id', workspaceIds);
-
     const campaignsMap = new Map(campaigns?.map((c: any) => [c.id, c]));
-    const emailConfigMap = new Map((emailProviders || []).map((p: any) => {
-      try {
-        return [p.workspace_id, { apiKey: decrypt(p.encrypted_api_key), fromEmail: p.from_email, fromName: p.from_name }];
-      } catch (err) {
-        logger.error({ err, workspaceId: p.workspace_id }, 'cron.campaign_dispatch.email_provider_decrypt.failed');
-        return [p.workspace_id, null];
-      }
-    }));
+    const emailConfigMap = new Map(
+      await Promise.all(workspaceIds.map(async (ws) => [ws, await getWorkspaceEmailConfig(ws)] as const))
+    );
 
     // Pre-fetch contacts
     const contactIds = jobs.map((j: any) => j.contact_id);
@@ -132,7 +123,7 @@ export async function GET(req: Request) {
       // provider's From, else fail the row with a clear reason.
       const fromEmail = resolveCampaignFromEmail(campaign.from_email, emailConfig?.fromEmail);
       if (!fromEmail) {
-        updates.push({ id: job.id, status: 'failed', error_log: 'No usable From email: set one on a domain verified with your Resend account', locked_by: null });
+        updates.push({ id: job.id, status: 'failed', error_log: 'No usable From email: set one on your verified sending domain', locked_by: null });
         continue;
       }
 
@@ -158,14 +149,18 @@ export async function GET(req: Request) {
           unsubscribe_link: buildUnsubscribeLink(contact.email, job.workspace_id)
         });
 
-        await sendEmail({
+        const sent = await sendEmail({
           to: contact.email,
           subject: campaign.subject,
           html: personalizedHtml,
+          // One logical send per queue row: a worker crash after Resend accepted the email but
+          // before the row was marked sent is deduplicated by Resend on the retry.
+          idempotencyKey: `campaign-job-${job.id}`,
           config: {
             apiKey,
             fromEmail,
             fromName: campaign.from_name || 'LeadsMind',
+            headers: buildListUnsubscribeHeaders(contact.email, job.workspace_id),
             tags: [
               { name: 'campaign_id', value: campaign.id },
               { name: 'contact_id', value: contact.id },
@@ -174,10 +169,15 @@ export async function GET(req: Request) {
           }
         });
         
-        updates.push({ id: job.id, status: 'sent', locked_by: null });
+        updates.push({ id: job.id, status: 'sent', provider_message_id: sent?.id ?? null, locked_by: null });
         campaignSentIncrements[campaign.id] = (campaignSentIncrements[campaign.id] || 0) + 1;
         sentCount++;
       } catch (sendErr: any) {
+        // Quota for this hour/day is used up: defer to the next window without spending a retry.
+        if (sendErr instanceof EmailRateLimitError) {
+          updates.push({ id: job.id, status: 'deferred', scheduled_for: sendErr.retryAt.toISOString(), error_log: 'rate_limited', locked_by: null });
+          continue;
+        }
         const isHardFail = sendErr.message.includes('invalid') || sendErr.message.includes('auth') || sendErr.message.includes('not configured') || sendErr.message.includes('unavailable for this workspace');
         const nextRetryCount = job.retry_count + 1;
         

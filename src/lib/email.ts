@@ -1,21 +1,10 @@
-import { Resend } from 'resend'
 import { logger } from '@/shared/logger'
+import { EmailSendError, EmailRateLimitError } from '@/lib/email/errors'
+import { ResendProvider } from '@/lib/email/provider/resend'
+import { EmailProviderError } from '@/lib/email/provider/types'
+import { isManagedSenderToken } from '@/lib/email/managedSender'
 
-/**
- * An email failure whose message is safe to show an end user as-is: the provider
- * (Resend) rejected the request with a reason it chose (invalid recipient, rate
- * limit, unverified domain...), or our own config guard fired (no provider key).
- * Anything else thrown out of sendEmail (network failure, SDK/runtime exception)
- * is a plain Error and must NOT be echoed to users — it can carry internal
- * detail. Callers that surface errors check `userSafe`.
- */
-export class EmailSendError extends Error {
- readonly userSafe = true as const
- constructor(message: string) {
-  super(message)
-  this.name = 'EmailSendError'
- }
-}
+export { EmailSendError, EmailRateLimitError }
 
 interface SendEmailProps {
  to: string | string[]
@@ -62,7 +51,7 @@ interface SendEmailProps {
  }
 }
 
-export async function sendEmail({ to, subject, react, html, text, scheduledAt, replyTo, attachments, idempotencyKey, config }: SendEmailProps) {
+export async function sendEmail({ to, subject, react, html, text, scheduledAt, replyTo, attachments, idempotencyKey, config }: SendEmailProps): Promise<{ id: string }> {
  const isPlatformLevelSend = config === undefined || config.allowPlatformFallback === true
  const apiKey = isPlatformLevelSend ? (config?.apiKey || process.env.RESEND_API_KEY) : config?.apiKey
  const fromAddress = config?.fromEmail || process.env.RESEND_FROM_EMAIL || 'noreply@leadsmind.io'
@@ -76,23 +65,29 @@ export async function sendEmail({ to, subject, react, html, text, scheduledAt, r
   const error = new EmailSendError(
    isPlatformLevelSend
     ? 'Email delivery is unavailable: a valid Resend API key is not configured.'
-    : 'Email delivery is unavailable for this workspace — connect a Resend account before sending automated emails.'
+    : 'Email delivery is unavailable for this workspace — verify a sending domain in Settings › Domains (or connect your own Resend account) before sending.'
   );
   logger.error({ to, subject, scheduledAt, tags: config?.tags, attachmentCount: attachments?.length ?? 0 }, 'email.resend_config.invalid');
   throw error;
  }
 
- const resend = new Resend(normalizedApiKey)
+ // LeadsMind-managed sending (see lib/email/managedSender.ts): gate + quota + platform key.
+ const managed = isManagedSenderToken(normalizedApiKey)
+  ? await import('@/lib/email/managedSending').then((m) => m.prepareManagedSend(normalizedApiKey, fromAddress))
+  : null
+ const provider = new ResendProvider(managed ? managed.providerApiKey : normalizedApiKey)
+ const tags = managed ? [...(config?.tags ?? []), ...managed.tags] : config?.tags
+
  try {
-  const { data, error } = await resend.emails.send({
+  const { id } = await provider.send({
    from: `${fromName} <${fromAddress}>`,
    to,
    subject,
-   react: react as any,
-   html: html || undefined,
-   text: text || '',
-   replyTo: replyTo || undefined,
-   tags: config?.tags,
+   react,
+   html,
+   text,
+   replyTo,
+   tags,
    headers: config?.headers,
    // puppeteer-core's page.pdf() returns a Uint8Array, not a real Node
    // Buffer (htmlToPdf.ts casts it with `as Buffer`, but that's a
@@ -106,20 +101,18 @@ export async function sendEmail({ to, subject, react, html, text, scheduledAt, r
     filename: a.filename,
     content: typeof a.content === 'string' ? a.content : Buffer.from(a.content).toString('base64'),
    })),
-   scheduledAt: scheduledAt || undefined,
-  } as any, idempotencyKey ? { idempotencyKey } : undefined)
+   scheduledAt,
+   idempotencyKey,
+  })
 
-  if (error) {
-   logger.error({ err: error }, 'email.resend_api.failed');
-   throw new EmailSendError(error.message || 'Failed to send email via Resend');
-  }
-
-  return data;
+  if (managed) await managed.recordSent(id, Array.isArray(to) ? to[0] : to, tags)
+  return { id };
  } catch (error: any) {
   logger.error({ err: error }, 'email.service.exception');
-  // Provider rejections keep their class (safe to show); anything else is an
+  // Provider rejections keep a user-safe class; anything else is an
   // internal/transport failure — re-wrap as a plain Error, not user-safe.
   if (error instanceof EmailSendError) throw error;
+  if (error instanceof EmailProviderError) throw new EmailSendError(error.message || 'Failed to send email via Resend');
   throw new Error(error.message || 'Email service error');
  }
 }

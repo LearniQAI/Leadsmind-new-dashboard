@@ -15,7 +15,7 @@ vi.mock('@/lib/supabase/server', () => ({
   createAdminClient: () => ({
     from: () => {
       const q: any = {
-        insert: () => q, select: () => q, eq: () => q,
+        insert: () => q, select: () => q, eq: () => q, ilike: () => q, limit: () => q,
         single: () => Promise.resolve({ data: null }),
         maybeSingle: () => Promise.resolve({ data: null }),
         then: (r: any) => r({ data: null, error: null }),

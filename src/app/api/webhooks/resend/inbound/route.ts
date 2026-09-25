@@ -5,6 +5,8 @@ import { logger } from '@/shared/logger';
 import { extractWorkspaceSlugFromAddress } from '@/lib/email/inboundAddress';
 import { extractInboundToAddresses, extractInboundMessageId } from '@/lib/email/inboundPayload';
 import { verifyResendWebhookEvent } from '@/lib/email/verifyResendWebhook';
+import { normalizeResendEvent } from '@/lib/email/provider/resend';
+import { handleDeliverabilityEvent } from '@/lib/email/deliverabilityWebhook';
 import { resolveInboundEmailContent, deadLetterResendEvent, insertWebhookDeadLetter, handleInboundWorkspaceEmail } from '@/lib/email/inboundEmailProcessing';
 
 export const runtime = 'nodejs';
@@ -40,6 +42,12 @@ export async function POST(req: NextRequest) {
       logger.error({ err }, 'webhook.resend_inbound.verification.failed');
       await deadLetterResendEvent({ headers, body: payload }, err?.message || String(err), 'verification_failed', 'dropped');
       return NextResponse.json({ error: 'Verification failed' }, { status: 200 }); // Return 200 to drop
+    }
+
+    // Delivery-lifecycle + domain events from the SAME platform Resend webhook (same signing
+    // secret): handled by the deliverability processor instead of being silently dropped.
+    if (event && typeof event.type === 'string' && event.type !== 'email.received') {
+      return handleDeliverabilityEvent(normalizeResendEvent(event, headers['svix-id'] || null));
     }
 
     if (event && event.type === 'email.received') {
