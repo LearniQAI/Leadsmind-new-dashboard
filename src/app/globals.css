@@ -738,3 +738,45 @@
   .lm-ls-m { letter-spacing: var(--lm-ls-m); }
   .lm-ff-m { font-family: var(--lm-ff-m); }
 }
+
+/* Builder typography for Heading / Paragraph / Text in the student lesson view
+   (components/lms/canvasHeadingType canvasTextStyleProps; values from lib/builder/textBlockStyle).
+   Same scheme as .lm-ls-* / .lm-ff-* above: a class only exists for a breakpoint whose value
+   was resolved, at the builder's 1023px / 767px breakpoints, after the Tailwind utilities. */
+.lm-fs-d { font-size: var(--lm-fs-d); }
+.lm-fw-d { font-weight: var(--lm-fw-d); }
+.lm-fst-d { font-style: var(--lm-fst-d); }
+.lm-lh-d { line-height: var(--lm-lh-d); }
+.lm-c-d { color: var(--lm-c-d); }
+.lm-ta-d { text-align: var(--lm-ta-d); }
+.lm-bg-d { background-color: var(--lm-bg-d); }
+.lm-pl-d { padding-left: var(--lm-pl-d); }
+.lm-pr-d { padding-right: var(--lm-pr-d); }
+.lm-ml-d { margin-left: var(--lm-ml-d); }
+.lm-mr-d { margin-right: var(--lm-mr-d); }
+@media (max-width: 1023px) {
+  .lm-fs-t { font-size: var(--lm-fs-t); }
+  .lm-fw-t { font-weight: var(--lm-fw-t); }
+  .lm-fst-t { font-style: var(--lm-fst-t); }
+  .lm-lh-t { line-height: var(--lm-lh-t); }
+  .lm-c-t { color: var(--lm-c-t); }
+  .lm-ta-t { text-align: var(--lm-ta-t); }
+  .lm-bg-t { background-color: var(--lm-bg-t); }
+  .lm-pl-t { padding-left: var(--lm-pl-t); }
+  .lm-pr-t { padding-right: var(--lm-pr-t); }
+  .lm-ml-t { margin-left: var(--lm-ml-t); }
+  .lm-mr-t { margin-right: var(--lm-mr-t); }
+}
+@media (max-width: 767px) {
+  .lm-fs-m { font-size: var(--lm-fs-m); }
+  .lm-fw-m { font-weight: var(--lm-fw-m); }
+  .lm-fst-m { font-style: var(--lm-fst-m); }
+  .lm-lh-m { line-height: var(--lm-lh-m); }
+  .lm-c-m { color: var(--lm-c-m); }
+  .lm-ta-m { text-align: var(--lm-ta-m); }
+  .lm-bg-m { background-color: var(--lm-bg-m); }
+  .lm-pl-m { padding-left: var(--lm-pl-m); }
+  .lm-pr-m { padding-right: var(--lm-pr-m); }
+  .lm-ml-m { margin-left: var(--lm-ml-m); }
+  .lm-mr-m { margin-right: var(--lm-mr-m); }
+}

@@ -15,6 +15,7 @@ describe('flattenLessonCanvas — Image element', () => {
     expect(item).toEqual({
       kind: 'image', src: 'https://x/a.png', alt: 'Diagram', radius: 8,
       width: '50%', height: '240px', align: 'center', objectFit: 'contain', shape: undefined,
+      frame: { borderRadius: '8px' }, // the builder's frameBorderStyle() output (shadow/border/corners when set)
     });
   });
 

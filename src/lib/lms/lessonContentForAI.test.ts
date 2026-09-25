@@ -79,12 +79,12 @@ describe('assembleLessonContext (Batch 5 RAG rebuild)', () => {
   });
 
   it('a wired ContentBox (has blockId) is excluded from canvas text (its content lives in content_blocks)', () => {
-    const wired = { kind: 'contentbox' as const, blockId: 'cb-2', blockType: 'reading', headerLabel: '', headerColorHex: '#000', headline: 'Should not appear', body: 'nor this', ctaText: 'Open' };
+    const wired = { kind: 'contentbox' as const, blockId: 'cb-2', blockType: 'reading', headerLabel: '', headerColorHex: '#000', headline: 'Should not appear', body: 'nor this', ctaText: 'Open', ctaColorHex: '#000' };
     expect(textFromCanvasItem(wired)).toBe('');
   });
 
   it('an UNWIRED ContentBox placeholder (no blockId) contributes its own headline/body text', () => {
-    const placeholder = { kind: 'contentbox' as const, blockId: null, blockType: 'reading', headerLabel: '', headerColorHex: '#000', headline: 'Placeholder headline', body: '<p>placeholder body</p>', ctaText: 'Go' };
+    const placeholder = { kind: 'contentbox' as const, blockId: null, blockType: 'reading', headerLabel: '', headerColorHex: '#000', headline: 'Placeholder headline', body: '<p>placeholder body</p>', ctaText: 'Go', ctaColorHex: '#000' };
     const text = textFromCanvasItem(placeholder);
     expect(text).toContain('Placeholder headline');
     expect(text).toContain('placeholder body');

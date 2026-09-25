@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import { useBuilder } from '@/components/builder/BuilderContext';
-import { spacingStyle, type SpacingKey } from './spacing';
+import { responsiveValue, spacingStyle, type SpacingKey } from './spacing';
 
 /**
  * Automatically syncs component props to the website's global config
@@ -47,16 +47,8 @@ export function useGlobalSync(isGlobal: boolean, globalId: string, props: any) {
  */
 export function useResponsiveValue<T>(props: any, propName: string, defaultValue: T): T {
   const { viewMode } = useBuilder();
-  
-  if (viewMode === 'mobile' && props[`${propName}_mobile`] !== undefined) {
-    return props[`${propName}_mobile`];
-  }
-  
-  if (viewMode === 'tablet' && props[`${propName}_tablet`] !== undefined) {
-    return props[`${propName}_tablet`];
-  }
-  
-  return props[propName] ?? defaultValue;
+  // One rule for the builder and the student-view flattener (lib/builder/spacing.ts).
+  return responsiveValue(props, propName, viewMode, defaultValue);
 }
 
 /**

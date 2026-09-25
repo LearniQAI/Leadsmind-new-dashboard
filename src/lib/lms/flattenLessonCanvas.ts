@@ -23,9 +23,14 @@ import {
   DEVICES, SPACING_DEFAULTS, cssLength as toCssLength, hasSpacing, readResponsive, spacingStyle,
   type Device, type SpacingKey,
 } from '@/lib/builder/spacing';
+import { textBlockCss, type TextCss } from '@/lib/builder/textBlockStyle';
+import { frameBorderStyle } from '@/lib/builder/frameStyle';
 
 /** A value resolved per breakpoint with the builder's own resolver; a missing device = unset. */
 export type CanvasResponsive = Partial<Record<Device, string>>;
+
+/** Per-breakpoint text CSS (see lib/builder/textBlockStyle). Absent = nothing set. */
+export type CanvasTextStyle = Partial<Record<Device, TextCss>>;
 
 /** Universal top/bottom spacing, fully resolved per breakpoint (CSS lengths). Absent = none. */
 export type CanvasSpacing = Record<Device, Partial<Record<SpacingKey, string>>>;
@@ -39,8 +44,10 @@ export type LessonCanvasItem = { spacing?: CanvasSpacing } & (
       /** Per-breakpoint letter spacing (CSS length) and font family (family name), when set. */
       letterSpacing?: CanvasResponsive;
       fontFamily?: CanvasResponsive;
+      /** The builder's own typography for this block, per breakpoint (textBlockStyle). */
+      textStyle?: CanvasTextStyle;
     }
-  | { kind: 'richtext'; html: string; align: string }
+  | { kind: 'richtext'; html: string; align: string; textStyle?: CanvasTextStyle }
   | {
       kind: 'image';
       src: string;
@@ -52,8 +59,10 @@ export type LessonCanvasItem = { spacing?: CanvasSpacing } & (
       align?: 'left' | 'center' | 'right';
       objectFit?: 'cover' | 'contain' | 'fill' | 'none';
       shape?: 'square' | 'circle';
+      /** Shadow / border / corner radii exactly as the builder's frameBorderStyle() computes them. */
+      frame?: Record<string, string>;
     }
-  | { kind: 'divider' }
+  | { kind: 'divider'; weight: number; color: string; width: string; alignment: 'left' | 'center' | 'right' }
   | { kind: 'block'; blockId: string; blockType: string }
   | {
       kind: 'contentbox';
@@ -64,6 +73,8 @@ export type LessonCanvasItem = { spacing?: CanvasSpacing } & (
       headline: string;
       body: string;
       ctaText: string;
+      /** CTA fill: its own colour, else the header colour (same fallback as the builder). */
+      ctaColorHex: string;
     }
 );
 
@@ -175,6 +186,16 @@ function responsiveField(
   return { [key]: out };
 }
 
+/** textBlockCss() for every breakpoint, or undefined when the block sets nothing. */
+function textStyleFor(name: string, p: Record<string, any>): { textStyle?: CanvasTextStyle } {
+  const out: CanvasTextStyle = {};
+  for (const device of DEVICES) {
+    const css = textBlockCss(name, p, device);
+    if (Object.keys(css).length) out[device] = css;
+  }
+  return Object.keys(out).length ? { textStyle: out } : {};
+}
+
 function emitLeaf(name: string | undefined, p: Record<string, any>, out: LessonCanvasItem[]): void {
   switch (name) {
     case 'Heading': {
@@ -195,6 +216,8 @@ function emitLeaf(name: string | undefined, p: Record<string, any>, out: LessonC
           // view previously dropped them, so they never reached students.
           ...responsiveField('letterSpacing', p, (v) => toCssLength(v)),
           ...responsiveField('fontFamily', p, (v) => (typeof v === 'string' && v.trim() ? v.trim() : undefined)),
+          // Size / weight / colour / line height / alignment / background, as the builder renders them.
+          ...textStyleFor('Heading', p),
         });
       }
       return;
@@ -203,7 +226,7 @@ function emitLeaf(name: string | undefined, p: Record<string, any>, out: LessonC
     case 'Text': {
       const html = typeof p.text === 'string' ? p.text : '';
       if (html.trim()) {
-        out.push({ kind: 'richtext', html, align: p.textAlign || 'left' });
+        out.push({ kind: 'richtext', html, align: p.textAlign || 'left', ...textStyleFor(name, p) });
       }
       return;
     }
@@ -221,12 +244,20 @@ function emitLeaf(name: string | undefined, p: Record<string, any>, out: LessonC
           align: p.align === 'left' || p.align === 'center' || p.align === 'right' ? p.align : undefined,
           objectFit: ['cover', 'contain', 'fill', 'none'].includes(p.objectFit) ? p.objectFit : undefined,
           shape: p.shape === 'circle' ? 'circle' : undefined,
+          frame: frameBorderStyle(p) as Record<string, string>,
         });
       }
       return;
     }
     case 'Divider': {
-      out.push({ kind: 'divider' });
+      // Divider.tsx reads these base values (weight/colour/width/alignment are not responsive).
+      out.push({
+        kind: 'divider',
+        weight: typeof p.weight === 'number' && p.weight > 0 ? p.weight : 1,
+        color: typeof p.color === 'string' && p.color ? p.color : '#e5e7eb',
+        width: cssLength(p.width) ?? '100%',
+        alignment: p.alignment === 'left' || p.alignment === 'right' ? p.alignment : 'center',
+      });
       return;
     }
     case 'LessonBlockNode': {
@@ -247,6 +278,9 @@ function emitLeaf(name: string | undefined, p: Record<string, any>, out: LessonC
         headline: typeof p.headline === 'string' ? p.headline : '',
         body: typeof p.body === 'string' ? p.body : '',
         ctaText: typeof p.ctaText === 'string' ? p.ctaText : 'Open',
+        ctaColorHex:
+          (typeof p.ctaColorHex === 'string' && p.ctaColorHex) ||
+          (typeof p.headerColorHex === 'string' && p.headerColorHex) || '#1359FF',
       });
       return;
     }

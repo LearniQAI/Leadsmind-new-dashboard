@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNode, useEditor } from '@craftjs/core';
-import { ArrowRight, FileText, Download, CheckSquare, FileEdit, Loader2 } from 'lucide-react';
+import { ArrowRight, FileText, Loader2 } from 'lucide-react';
+import { CONTENT_BOX_ICONS } from '@/components/lms/CanvasContentBox';
 import { toast } from 'sonner';
 import { useLessonBuilder } from '../LessonBuilderContext';
 import { ContentBoxSettings } from './ContentBoxSettings';
@@ -24,7 +25,8 @@ export interface ContentBoxProps {
   useThemeFont?: boolean;
 }
 
-const ICONS: Record<string, any> = { reading: FileText, download: Download, quiz: CheckSquare, assignment: FileEdit };
+// One icon map for the builder and the student view (components/lms/CanvasContentBox).
+const ICONS: Record<string, any> = CONTENT_BOX_ICONS;
 
 // The "colored-header Content box" callout (Systeme-parity Master Prompt, Part 3, Step 1.4) —
 // a real, reusable component, not a one-off hack for a single template: a solid-color header

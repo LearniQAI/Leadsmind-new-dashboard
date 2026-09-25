@@ -12,6 +12,7 @@ import { useLessonBuilder } from '../LessonBuilderContext';
 import { pickBoxStyle, stripBoxStyleKeys } from '@/lib/builder/boxStyle';
 import { RICH_TEXT_CLASS, BLOCK_FONT_ATTR, BLOCK_FONT_VAR, fontStack } from '@/lib/builder/blockTypography';
 import { loadGoogleFontFamily } from '@/lib/builder/loadGoogleFont';
+import { HEADING_BASE_SIZES } from '@/lib/builder/textBlockStyle';
 
 export interface HeadingProps {
  text: string;
@@ -90,14 +91,8 @@ export const Heading = (allProps: HeadingProps & any) => {
   const letterSpacing = useResponsiveValue(allProps, 'letterSpacing', _ls);
 
   // Base scales for sizes based on level if fontSize is not strictly provided
-  const baseSizes = {
-   h1: 'text-5xl md:text-6xl',
-   h2: 'text-4xl md:text-5xl',
-   h3: 'text-3xl md:text-4xl',
-   h4: 'text-2xl md:text-3xl',
-   h5: 'text-xl md:text-2xl',
-   h6: 'text-lg md:text-xl',
-  };
+  // Shared with the student lesson view (lib/builder/textBlockStyle) so both size headings alike.
+  const baseSizes = HEADING_BASE_SIZES;
 
   const weights = {
    normal: 'font-normal',

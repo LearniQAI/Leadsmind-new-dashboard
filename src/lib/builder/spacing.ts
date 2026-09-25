@@ -55,6 +55,13 @@ export function responsivePropName(key: string, device: Device): string {
 
 const isSet = (v: unknown) => v !== undefined && v !== null && v !== '';
 
+/** useResponsiveValue()'s exact rule, as a pure function (usable server-side, e.g. by the
+ *  student-view flattener): Mobile/Tablet override if present (even ''), else base ?? default. */
+export function responsiveValue<T>(props: Record<string, any>, key: string, device: Device, defaultValue: T): any {
+  if (device !== 'desktop' && props[responsivePropName(key, device)] !== undefined) return props[responsivePropName(key, device)];
+  return props[key] ?? defaultValue;
+}
+
 /** The value that applies at `device` (override first, then Desktop), or undefined. */
 export function readResponsive(props: Record<string, any>, key: string, device: Device): any {
   if (device !== 'desktop') {
