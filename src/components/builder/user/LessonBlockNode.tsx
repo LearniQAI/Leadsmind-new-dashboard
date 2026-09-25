@@ -205,11 +205,9 @@ LessonBlockNode.craft = {
   },
   rules: {
     canDrag: () => true,
-    // Real bug found during the "Consistent Premium Settings Panels" pass: ElementProperties'
-    // shared header trash button calls the generic Craft.js actions.delete(), which only
-    // removes this canvas node — it never DELETEs the backing content_blocks row, orphaning it.
-    // The settings panel's own delete button (LessonBlockNodeSettings) does both correctly, so
-    // the generic header delete affordance is disabled here to force that single real path.
-    canDelete: () => false,
+    // No canDelete here: it is not a Craft.js rule (Craft only honours canDrag/canDrop/
+    // canMoveIn/canMoveOut), so it never hid anything. Instead, both generic delete paths —
+    // RenderNode's toolbar and ElementProperties' header — DELETE this node's content_blocks
+    // row themselves after the canvas delete succeeds, so neither orphans it.
   },
 };

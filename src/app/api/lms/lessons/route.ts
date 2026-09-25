@@ -4,6 +4,7 @@ import { requireLmsInstructor } from '@/lib/lms/access';
 import { ForbiddenError, NotFoundError, toClientError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger';
 import { getLessonTemplateById, BLANK_LESSON_CANVAS } from '@/lib/builder/lessonTemplates';
+import { withParentLinks } from '@/lib/builder/craftTree';
 import { recomputeCoursePreviewLessons } from '@/lib/lms/coursePreview';
 
 export const dynamic = 'force-dynamic';
@@ -129,7 +130,7 @@ export async function POST(req: NextRequest) {
         workspace_id: workspaceId,
         course_lesson_id: lesson.id,
         name: title,
-        content: JSON.parse(template?.content || BLANK_LESSON_CANVAS)
+        content: JSON.parse(withParentLinks(template?.content || BLANK_LESSON_CANVAS))
       });
       // Non-fatal: the lesson row itself is the primary result, and the Lesson Builder
       // route lazily creates a page on first open if this insert failed for any reason.

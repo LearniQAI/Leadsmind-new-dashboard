@@ -9,6 +9,7 @@ import {
   Navigation, FormInput, Timer, CreditCard, MessageCircle, LayoutGrid,
   Layers, ArrowLeft, ArrowUp, ArrowDown, Copy, Save, TrendingUp
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useBuilder } from './BuilderContext';
 
 // Map component display names to icons
@@ -59,9 +60,9 @@ export const ElementProperties = ({ nodeId }: { nodeId: string }) => {
         id: nodeId,
         name: node.data.custom?.displayName || node.data.displayName,
         settings: node.related && node.related.settings,
-        isDeletable: (node.data as any).rules?.canDelete
-          ? (node.data as any).rules.canDelete()
-          : true,
+        // Craft's own check (not ROOT, not a linked node) — the same invariant actions.delete
+        // enforces, so the button is only offered where the delete can actually succeed.
+        isDeletable: query.node(nodeId).isDeletable(),
         // Real bug found during the settings-panel design pass: ContentBox (like
         // LessonBlockNode) creates and owns its own content_blocks row (create-on-first-render,
         // same pattern). Deleting the canvas node alone would orphan that row forever — there
@@ -105,12 +106,20 @@ export const ElementProperties = ({ nodeId }: { nodeId: string }) => {
   // deleting the element from this shared header can never orphan its backing row. Fire-and
   // -forget is intentional — the canvas node removal must not be blocked by network latency,
   // and a failed cleanup here is a stale row, not data loss (same tolerance the rest of this
-  // codebase's best-effort cleanup calls already accept).
+  // codebase's best-effort cleanup calls already accept). The row is only cleaned up once the
+  // canvas delete has actually succeeded — Craft throws (rather than no-ops) when it refuses a
+  // delete, and a refused delete must not leave a live node pointing at a deleted row.
   const handleDelete = () => {
+    try {
+      actions.delete(selected!.id);
+    } catch (err) {
+      console.error('Delete failed:', err);
+      toast.error("Couldn't delete this element");
+      return;
+    }
     if (selected?.blockId) {
       fetch(`/api/lms/content-blocks/${selected.blockId}`, { method: 'DELETE' }).catch(() => {});
     }
-    actions.delete(selected!.id);
   };
 
   const ComponentIcon = COMPONENT_ICONS[selected.name] || Settings;

@@ -9,6 +9,7 @@ import { Search, Sparkles, LayoutGrid, CheckCircle } from 'lucide-react';
 import { BUILDER_TEMPLATES, BuilderTemplate } from '@/lib/builder/templates';
 import { toast } from 'sonner';
 import { useBuilder } from './BuilderContext';
+import { withParentLinks } from '@/lib/builder/craftTree';
 
 interface TemplateDirectoryModalProps {
   isOpen: boolean;
@@ -42,7 +43,7 @@ export const TemplateDirectoryModal = ({
         toast.error('Template content is empty.');
         return;
       }
-      actions.deserialize(template.content);
+      actions.deserialize(withParentLinks(template.content));
       toast.success(`Loaded template: ${template.name}`);
       onOpenChange(false);
     } catch (e) {

@@ -52,6 +52,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { withParentLinks } from '@/lib/builder/craftTree';
 
 class SafeFrameErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
     constructor(props: any) {
@@ -329,7 +330,7 @@ const BuilderEditorContent = ({
                 }
 
                 actions.clearEvents();
-                actions.deserialize(JSON.stringify(dataToLoad));
+                actions.deserialize(withParentLinks(dataToLoad));
                 hasDeserialized.current = initialContent;
                 setIsLoadingContent(false);
 
@@ -644,7 +645,7 @@ const BuilderEditorLayout = ({
                 toast.error('Invalid template: missing ROOT node');
                 return;
             }
-            editorActions.deserialize(importJsonText);
+            editorActions.deserialize(withParentLinks(parsed));
             setIsImportModalOpen(false);
             setImportJsonText('');
             toast.success('Template loaded successfully!');
