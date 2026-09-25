@@ -38,7 +38,7 @@ import { TemplateDirectoryModal } from './TemplateDirectoryModal';
 import { AILandingCopyModal } from './AILandingCopyModal';
 import LessonSettingsModal from './LessonSettingsModal';
 import { LessonBuilderProvider } from './LessonBuilderContext';
-import { LessonCanvasAudioScope } from './user/CanvasAudioPlayer';
+import { LessonCanvasMediaScope } from './user/canvasMedia';
 
 import { toast } from 'sonner';
 import { useParams, useRouter } from 'next/navigation';
@@ -515,7 +515,7 @@ const BuilderEditorContent = ({
             courseId={lessonData?.course_id || null}
             lessonTitle={lessonData?.title || null}
           >
-            <LessonCanvasAudioScope enabled={type === 'lesson'}>
+            <LessonCanvasMediaScope enabled={type === 'lesson'}>
             <BuilderEditorLayout
                 type={type}
                 websiteData={websiteData}
@@ -536,7 +536,7 @@ const BuilderEditorContent = ({
                 isPublishing={isPublishing}
                 pages={pages}
             />
-            </LessonCanvasAudioScope>
+            </LessonCanvasMediaScope>
           </LessonBuilderProvider>
         </BuilderProvider>
     );

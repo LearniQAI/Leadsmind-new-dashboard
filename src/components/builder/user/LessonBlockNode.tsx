@@ -7,6 +7,8 @@ import { useLessonBuilder } from '../LessonBuilderContext';
 import { LessonBlockNodeSettings } from './LessonBlockNodeSettings';
 import { BLOCK_TYPE_META, BlockCanvasPreview } from './LessonBlockPreviews';
 import { CanvasAudioPlayer } from './CanvasAudioPlayer';
+import { CanvasVideoPlayer } from './CanvasVideoPlayer';
+import { driveVideoUrls } from '@/lib/lms/video/driveVideoUrls';
 
 export interface LessonBlockNodeProps {
   blockId: string | null;
@@ -185,6 +187,11 @@ export const LessonBlockNode = (allProps: LessonBlockNodeProps & any) => {
               waveformColor={block.audio_waveform_color ?? null}
               completionThreshold={block.completion_threshold ?? null}
             />
+          ) : block.type === 'video' && driveVideoUrls(block) ? (
+            // Same pattern for a Drive video: the real player, playable in place. YouTube/Vimeo
+            // stay thumbnails — a cross-origin <iframe> swallows every mouse event (Craft could
+            // no longer select, drag, or drop over the block) and can't be shielded from outside.
+            <CanvasVideoPlayer src={driveVideoUrls(block)!.src} poster={driveVideoUrls(block)!.poster} />
           ) : (
             <BlockCanvasPreview block={block} />
           )

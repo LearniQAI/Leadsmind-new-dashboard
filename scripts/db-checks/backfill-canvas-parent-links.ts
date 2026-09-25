@@ -32,8 +32,15 @@ import { withParentLinks } from '../../src/lib/builder/craftTree';
 // "published" version (trigger_archive_version_on_publish). Every row is guarded on its
 // pre-read updated_at (pages) and the transaction aborts unless every guarded row updated.
 
-const BACKUP_TABLE = 'public._backup_canvas_parent_links_20260925';
-const BACKUP_FILE = join(process.cwd(), 'scripts', 'db-checks', '.backfill-canvas-parent-links.backup.json');
+// --only=<id,...>: restrict every mode to these rows (a targeted re-run for one page).
+// --tag=<suffix>: a separate backup table + local file for that run, so a later targeted run
+// never collides with (or overwrites) an earlier run's backup. No tag = the original 2026-09-25 run.
+const arg = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
+const ONLY = new Set((arg('only') ?? '').split(',').filter(Boolean));
+const TAG = arg('tag');
+if (TAG && !/^[a-z0-9_]+$/.test(TAG)) throw new Error('--tag must be [a-z0-9_]');
+const BACKUP_TABLE = `public._backup_canvas_parent_links_20260925${TAG ? `_${TAG}` : ''}`;
+const BACKUP_FILE = join(process.cwd(), 'scripts', 'db-checks', `.backfill-canvas-parent-links${TAG ? `.${TAG}` : ''}.backup.json`);
 
 type Tbl = 'pages' | 'page_versions';
 type Row = { tbl: Tbl; id: string; kind: string; raw: unknown; guard: string | null };
@@ -150,7 +157,8 @@ function report(rows: Row[]) {
 
 async function main() {
   const mode = process.argv[2] ?? 'dry-run';
-  const rows = await loadRows();
+  const rows = (await loadRows()).filter((r) => !ONLY.size || ONLY.has(r.id));
+  if (ONLY.size && rows.length !== ONLY.size) throw new Error(`--only matched ${rows.length} of ${ONLY.size} ids`);
 
   if (mode === 'dry-run') {
     report(rows);
@@ -168,6 +176,7 @@ async function main() {
     const { affected, unsafe } = report(rows);
     if (unsafe.length) throw new Error('unsafe rows — refusing to back up/write');
     if (!affected.length) { console.log('Nothing to back up.'); return; }
+    if (existsSync(BACKUP_FILE)) throw new Error(`${BACKUP_FILE} already exists — use a new --tag`);
     const snapshot = affected.map(({ r, a }) => ({ tbl: r.tbl, id: r.id, kind: r.kind, guard: r.guard, raw: r.raw, rawHash: sha(canon(r.raw)), strippedHash: a.strippedHash }));
     writeFileSync(BACKUP_FILE, JSON.stringify(snapshot, null, 1));
     const ids = (t: Tbl) => affected.filter(({ r }) => r.tbl === t).map(({ r }) => `'${r.id}'`).join(',') || 'NULL';

@@ -1,0 +1,708 @@
+[
+ {
+  "tbl": "pages",
+  "id": "c8d6750a-b792-42a6-8b72-9e388675ffff",
+  "kind": "lesson",
+  "guard": "2026-09-25T09:35:00.751439+00:00",
+  "raw": {
+   "c1": {
+    "type": {
+     "resolvedName": "Container"
+    },
+    "nodes": [
+     "heading1",
+     "1u967_MGPK",
+     "1u967_MGPK",
+     "para1"
+    ],
+    "props": {
+     "gap": "",
+     "color": "",
+     "display": "block",
+     "padding": 0,
+     "fontSize": "",
+     "maxWidth": "820px",
+     "boxShadow": "none",
+     "marginTop": "",
+     "textAlign": "left",
+     "alignItems": "stretch",
+     "fontFamily": "Inter",
+     "fontWeight": "normal",
+     "layoutType": "fixed",
+     "lineHeight": "",
+     "marginLeft": "",
+     "paddingTop": "",
+     "borderColor": "",
+     "borderStyle": "none",
+     "borderWidth": "",
+     "marginRight": "",
+     "paddingLeft": "",
+     "borderRadius": "",
+     "focusClasses": "",
+     "hoverClasses": "",
+     "marginBottom": "",
+     "paddingRight": "",
+     "customClasses": "",
+     "flexDirection": "row",
+     "gradientAngle": "90",
+     "letterSpacing": "",
+     "paddingBottom": "",
+     "gradientColor1": "#2563eb",
+     "gradientColor2": "#7c3aed",
+     "justifyContent": "flex-start",
+     "backgroundColor": "transparent",
+     "backgroundGradient": false,
+     "borderTopLeftRadius": "",
+     "borderTopRightRadius": "",
+     "borderBottomLeftRadius": "",
+     "borderRadiusIndividual": false,
+     "borderBottomRightRadius": ""
+    },
+    "custom": {},
+    "hidden": false,
+    "isCanvas": true,
+    "displayName": "Container",
+    "linkedNodes": {}
+   },
+   "c2": {
+    "type": {
+     "resolvedName": "Container"
+    },
+    "nodes": [
+     "cols1"
+    ],
+    "props": {
+     "gap": "",
+     "color": "",
+     "display": "block",
+     "padding": 0,
+     "fontSize": "",
+     "maxWidth": "1000px",
+     "boxShadow": "none",
+     "marginTop": "",
+     "textAlign": "left",
+     "alignItems": "stretch",
+     "fontFamily": "Inter",
+     "fontWeight": "normal",
+     "layoutType": "fixed",
+     "lineHeight": "",
+     "marginLeft": "",
+     "paddingTop": "",
+     "borderColor": "",
+     "borderStyle": "none",
+     "borderWidth": "",
+     "marginRight": "",
+     "paddingLeft": "",
+     "borderRadius": "",
+     "focusClasses": "",
+     "hoverClasses": "",
+     "marginBottom": "",
+     "paddingRight": "",
+     "customClasses": "",
+     "flexDirection": "row",
+     "gradientAngle": "90",
+     "letterSpacing": "",
+     "paddingBottom": "",
+     "gradientColor1": "#2563eb",
+     "gradientColor2": "#7c3aed",
+     "justifyContent": "flex-start",
+     "backgroundColor": "transparent",
+     "backgroundGradient": false,
+     "borderTopLeftRadius": "",
+     "borderTopRightRadius": "",
+     "borderBottomLeftRadius": "",
+     "borderRadiusIndividual": false,
+     "borderBottomRightRadius": ""
+    },
+    "custom": {},
+    "hidden": false,
+    "isCanvas": true,
+    "displayName": "Container",
+    "linkedNodes": {}
+   },
+   "c3": {
+    "type": {
+     "resolvedName": "Container"
+    },
+    "nodes": [
+     "heading3",
+     "lead2",
+     "list2",
+     "para2"
+    ],
+    "props": {
+     "gap": "",
+     "color": "",
+     "display": "block",
+     "padding": 0,
+     "fontSize": "",
+     "maxWidth": "820px",
+     "boxShadow": "none",
+     "marginTop": "",
+     "textAlign": "left",
+     "alignItems": "stretch",
+     "fontFamily": "Inter",
+     "fontWeight": "normal",
+     "layoutType": "fixed",
+     "lineHeight": "",
+     "marginLeft": "",
+     "paddingTop": "",
+     "borderColor": "",
+     "borderStyle": "none",
+     "borderWidth": "",
+     "marginRight": "",
+     "paddingLeft": "",
+     "borderRadius": "",
+     "focusClasses": "",
+     "hoverClasses": "",
+     "marginBottom": "",
+     "paddingRight": "",
+     "customClasses": "",
+     "flexDirection": "row",
+     "gradientAngle": "90",
+     "letterSpacing": "",
+     "paddingBottom": "",
+     "gradientColor1": "#2563eb",
+     "gradientColor2": "#7c3aed",
+     "justifyContent": "flex-start",
+     "backgroundColor": "transparent",
+     "backgroundGradient": false,
+     "borderTopLeftRadius": "",
+     "borderTopRightRadius": "",
+     "borderBottomLeftRadius": "",
+     "borderRadiusIndividual": false,
+     "borderBottomRightRadius": ""
+    },
+    "custom": {},
+    "hidden": false,
+    "isCanvas": true,
+    "displayName": "Container",
+    "linkedNodes": {}
+   },
+   "s1": {
+    "type": {
+     "resolvedName": "Section"
+    },
+    "nodes": [
+     "c1"
+    ],
+    "props": {
+     "paddingTop": 48,
+     "paddingLeft": 24,
+     "focusClasses": "",
+     "hoverClasses": "",
+     "paddingRight": 24,
+     "customClasses": "",
+     "paddingBottom": 40,
+     "backgroundColor": "transparent"
+    },
+    "custom": {},
+    "hidden": false,
+    "isCanvas": true,
+    "displayName": "Section",
+    "linkedNodes": {}
+   },
+   "s2": {
+    "type": {
+     "resolvedName": "Section"
+    },
+    "nodes": [
+     "ssGJPa2TWa",
+     "c2",
+     "DOgyZGYz86"
+    ],
+    "props": {
+     "paddingTop": 8,
+     "paddingLeft": 24,
+     "focusClasses": "",
+     "hoverClasses": "",
+     "paddingRight": 24,
+     "customClasses": "",
+     "paddingBottom": 40,
+     "backgroundColor": "transparent"
+    },
+    "custom": {},
+    "hidden": false,
+    "isCanvas": true,
+    "displayName": "Section",
+    "linkedNodes": {}
+   },
+   "s3": {
+    "type": {
+     "resolvedName": "Section"
+    },
+    "nodes": [
+     "c3"
+    ],
+    "props": {
+     "paddingTop": 8,
+     "paddingLeft": 24,
+     "focusClasses": "",
+     "hoverClasses": "",
+     "paddingRight": 24,
+     "customClasses": "",
+     "paddingBottom": 64,
+     "backgroundColor": "transparent"
+    },
+    "custom": {},
+    "hidden": false,
+    "isCanvas": true,
+    "displayName": "Section",
+    "linkedNodes": {}
+   },
+   "ROOT": {
+    "type": {
+     "resolvedName": "Container"
+    },
+    "nodes": [
+     "s1",
+     "s2",
+     "s3"
+    ],
+    "props": {
+     "gap": "",
+     "color": "",
+     "display": "block",
+     "padding": 16,
+     "fontSize": "",
+     "maxWidth": "1200px",
+     "boxShadow": "none",
+     "className": "min-h-screen bg-white",
+     "marginTop": "",
+     "textAlign": "left",
+     "alignItems": "stretch",
+     "fontFamily": "Inter",
+     "fontWeight": "normal",
+     "layoutType": "fixed",
+     "lineHeight": "",
+     "marginLeft": "",
+     "paddingTop": "",
+     "borderColor": "",
+     "borderStyle": "none",
+     "borderWidth": "",
+     "marginRight": "",
+     "paddingLeft": "",
+     "borderRadius": "",
+     "focusClasses": "",
+     "hoverClasses": "",
+     "marginBottom": "",
+     "paddingRight": "",
+     "customClasses": "",
+     "flexDirection": "row",
+     "gradientAngle": "90",
+     "letterSpacing": "",
+     "paddingBottom": "",
+     "gradientColor1": "#2563eb",
+     "gradientColor2": "#7c3aed",
+     "justifyContent": "flex-start",
+     "backgroundColor": "transparent",
+     "backgroundGradient": false,
+     "borderTopLeftRadius": "",
+     "borderTopRightRadius": "",
+     "borderBottomLeftRadius": "",
+     "borderRadiusIndividual": false,
+     "borderBottomRightRadius": ""
+    },
+    "custom": {},
+    "hidden": false,
+    "isCanvas": true,
+    "displayName": "Container",
+    "linkedNodes": {}
+   },
+   "cols1": {
+    "type": {
+     "resolvedName": "Columns"
+    },
+    "nodes": [
+     "colLeft",
+     "colRight"
+    ],
+    "props": {
+     "gap": 32,
+     "layout": "2",
+     "padding": 0
+    },
+    "custom": {},
+    "hidden": false,
+    "isCanvas": true,
+    "displayName": "Columns",
+    "linkedNodes": {}
+   },
+   "lead1": {
+    "type": {
+     "resolvedName": "Paragraph"
+    },
+    "nodes": [],
+    "props": {
+     "text": "In this quick module, we'll explore:",
+     "color": "#374151",
+     "fontSize": 16,
+     "className": "font-inter",
+     "textAlign": "left",
+     "fontWeight": "normal",
+     "lineHeight": "relaxed"
+    },
+    "custom": {},
+    "hidden": false,
+    "isCanvas": false,
+    "displayName": "Paragraph",
+    "linkedNodes": {}
+   },
+   "lead2": {
+    "type": {
+     "resolvedName": "Paragraph"
+    },
+    "nodes": [],
+    "props": {
+     "text": "To really benefit from this module, I encourage you to do three things:",
+     "color": "#374151",
+     "fontSize": 16,
+     "className": "font-inter",
+     "textAlign": "left",
+     "fontWeight": "normal",
+     "lineHeight": "relaxed"
+    },
+    "custom": {},
+    "hidden": false,
+    "isCanvas": false,
+    "displayName": "Paragraph",
+    "linkedNodes": {}
+   },
+   "list1": {
+    "type": {
+     "resolvedName": "Paragraph"
+    },
+    "nodes": [],
+    "props": {
+     "text": "<ul><li><p>✓ What warm-up activities are and <strong>why they matter</strong></p></li><li><p>✓ <strong>Different types of warm-up exercises</strong> — from energizers to mindfulness moments</p></li><li><p>✓ How warm-ups can improve <strong>concentration, motivation, and engagement</strong></p></li><li><p>✓ Real-life examples you can start using immediately, whether you're in class, running a business, or working alone</p></li></ul><p></p>",
+     "color": "#374151",
+     "fontSize": 15,
+     "className": "font-inter",
+     "textAlign": "left",
+     "fontWeight": "normal",
+     "lineHeight": "relaxed"
+    },
+    "custom": {},
+    "hidden": false,
+    "isCanvas": false,
+    "displayName": "Paragraph",
+    "linkedNodes": {}
+   },
+   "list2": {
+    "type": {
+     "resolvedName": "Paragraph"
+    },
+    "nodes": [],
+    "props": {
+     "text": "<ul><li><p>✓ <strong>Watch the course video carefully</strong> — I'll be walking you through the concepts with real-life examples.</p></li><li><p>✓ <strong>Read the course material</strong> — it goes deeper into the 'why' and gives you extra insight you might not catch in the video.</p></li><li><p>✓ <strong>Don't skip the quiz</strong> — it's not just a test; it's a learning tool. The questions are designed to help you reflect and remember.</p></li></ul><p></p>",
+     "color": "#374151",
+     "fontSize": 15,
+     "className": "font-inter",
+     "textAlign": "left",
+     "fontWeight": "normal",
+     "lineHeight": "relaxed"
+    },
+    "custom": {},
+    "hidden": false,
+    "isCanvas": false,
+    "displayName": "Paragraph",
+    "linkedNodes": {}
+   },
+   "para1": {
+    "type": {
+     "resolvedName": "Paragraph"
+    },
+    "nodes": [],
+    "props": {
+     "text": "Before diving deep into any learning or working session, it's crucial to <em>prepare your mind and body</em> — just like an athlete would stretch before a game. That's exactly what warm-up activities are for. They help you focus, be creative, and prepare to make the most of your day or learning experience.",
+     "color": "#374151",
+     "fontSize": 16,
+     "className": "font-inter",
+     "textAlign": "left",
+     "fontWeight": "normal",
+     "lineHeight": "relaxed"
+    },
+    "custom": {},
+    "hidden": false,
+    "isCanvas": false,
+    "displayName": "Paragraph",
+    "linkedNodes": {}
+   },
+   "para2": {
+    "type": {
+     "resolvedName": "Paragraph"
+    },
+    "nodes": [],
+    "props": {
+     "text": "Reading and watching together will give you the full picture — and help you succeed not only in this course but in whatever you apply this knowledge to.",
+     "color": "#374151",
+     "fontSize": 16,
+     "className": "font-inter",
+     "textAlign": "left",
+     "fontWeight": "normal",
+     "lineHeight": "relaxed"
+    },
+    "custom": {},
+    "hidden": false,
+    "isCanvas": false,
+    "displayName": "Paragraph",
+    "linkedNodes": {}
+   },
+   "image1": {
+    "type": {
+     "resolvedName": "Image"
+    },
+    "nodes": [],
+    "props": {
+     "alt": "",
+     "src": "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?q=80&w=1200&auto=format&fit=crop",
+     "shape": "square",
+     "objectFit": "cover",
+     "borderRadius": 16
+    },
+    "custom": {},
+    "hidden": false,
+    "isCanvas": false,
+    "displayName": "Image",
+    "linkedNodes": {}
+   },
+   "colLeft": {
+    "type": {
+     "resolvedName": "Container"
+    },
+    "nodes": [
+     "heading2",
+     "lead1",
+     "list1"
+    ],
+    "props": {
+     "gap": "",
+     "color": "",
+     "display": "block",
+     "padding": 0,
+     "fontSize": "",
+     "maxWidth": "1200px",
+     "boxShadow": "none",
+     "marginTop": "",
+     "textAlign": "left",
+     "alignItems": "stretch",
+     "fontFamily": "Inter",
+     "fontWeight": "normal",
+     "layoutType": "fixed",
+     "lineHeight": "",
+     "marginLeft": "",
+     "paddingTop": "",
+     "borderColor": "",
+     "borderStyle": "none",
+     "borderWidth": "",
+     "marginRight": "",
+     "paddingLeft": "",
+     "borderRadius": "",
+     "focusClasses": "",
+     "hoverClasses": "",
+     "marginBottom": "",
+     "paddingRight": "",
+     "customClasses": "",
+     "flexDirection": "row",
+     "gradientAngle": "90",
+     "letterSpacing": "",
+     "paddingBottom": "",
+     "gradientColor1": "#2563eb",
+     "gradientColor2": "#7c3aed",
+     "justifyContent": "flex-start",
+     "backgroundColor": "transparent",
+     "backgroundGradient": false,
+     "borderTopLeftRadius": "",
+     "borderTopRightRadius": "",
+     "borderBottomLeftRadius": "",
+     "borderRadiusIndividual": false,
+     "borderBottomRightRadius": ""
+    },
+    "custom": {},
+    "hidden": false,
+    "isCanvas": true,
+    "displayName": "Container",
+    "linkedNodes": {}
+   },
+   "colRight": {
+    "type": {
+     "resolvedName": "Container"
+    },
+    "nodes": [
+     "image1"
+    ],
+    "props": {
+     "gap": "",
+     "color": "",
+     "display": "block",
+     "padding": 0,
+     "fontSize": "",
+     "maxWidth": "1200px",
+     "boxShadow": "none",
+     "marginTop": "",
+     "textAlign": "left",
+     "alignItems": "stretch",
+     "fontFamily": "Inter",
+     "fontWeight": "normal",
+     "layoutType": "fixed",
+     "lineHeight": "",
+     "marginLeft": "",
+     "paddingTop": 56,
+     "borderColor": "",
+     "borderStyle": "none",
+     "borderWidth": "",
+     "marginRight": "",
+     "paddingLeft": "",
+     "borderRadius": "",
+     "focusClasses": "",
+     "hoverClasses": "",
+     "marginBottom": "",
+     "paddingRight": "",
+     "customClasses": "",
+     "flexDirection": "row",
+     "gradientAngle": "90",
+     "letterSpacing": "",
+     "paddingBottom": "",
+     "gradientColor1": "#2563eb",
+     "gradientColor2": "#7c3aed",
+     "justifyContent": "flex-start",
+     "backgroundColor": "transparent",
+     "backgroundGradient": false,
+     "borderTopLeftRadius": "",
+     "borderTopRightRadius": "",
+     "borderBottomLeftRadius": "",
+     "borderRadiusIndividual": false,
+     "borderBottomRightRadius": ""
+    },
+    "custom": {},
+    "hidden": false,
+    "isCanvas": true,
+    "displayName": "Container",
+    "linkedNodes": {}
+   },
+   "heading1": {
+    "type": {
+     "resolvedName": "Heading"
+    },
+    "nodes": [],
+    "props": {
+     "text": "Course Introduction: Warm-up Activity",
+     "color": "#0a0909",
+     "level": "h1",
+     "fontSize": 45,
+     "className": "font-poppins",
+     "textAlign": "center",
+     "fontWeight": "black",
+     "lineHeight": "tight",
+     "paddingTop": "",
+     "paddingLeft": "",
+     "paddingRight": "",
+     "letterSpacing": 2.8,
+     "paddingBottom": ""
+    },
+    "custom": {},
+    "hidden": false,
+    "isCanvas": false,
+    "displayName": "Heading",
+    "linkedNodes": {}
+   },
+   "heading2": {
+    "type": {
+     "resolvedName": "Heading"
+    },
+    "nodes": [],
+    "props": {
+     "text": "What You'll Learn in This Course",
+     "color": "#111111",
+     "level": "h2",
+     "className": "font-poppins",
+     "textAlign": "left",
+     "fontWeight": "bold",
+     "lineHeight": "tight"
+    },
+    "custom": {},
+    "hidden": false,
+    "isCanvas": false,
+    "displayName": "Heading",
+    "linkedNodes": {}
+   },
+   "heading3": {
+    "type": {
+     "resolvedName": "Heading"
+    },
+    "nodes": [],
+    "props": {
+     "text": "How to Get the Most Out of This Course",
+     "color": "#111111",
+     "level": "h2",
+     "className": "font-poppins",
+     "textAlign": "left",
+     "fontWeight": "bold",
+     "lineHeight": "tight"
+    },
+    "custom": {},
+    "hidden": false,
+    "isCanvas": false,
+    "displayName": "Heading",
+    "linkedNodes": {}
+   },
+   "1u967_MGPK": {
+    "type": {
+     "resolvedName": "LessonBlockNode"
+    },
+    "nodes": [],
+    "props": {
+     "blockId": "313d866e-a9d4-4e89-9c60-3f9510e378cb",
+     "blockType": "video"
+    },
+    "custom": {},
+    "hidden": false,
+    "parent": "c1",
+    "isCanvas": false,
+    "displayName": "LessonBlock",
+    "linkedNodes": {}
+   },
+   "DOgyZGYz86": {
+    "type": {
+     "resolvedName": "Columns"
+    },
+    "nodes": [],
+    "props": {
+     "gap": 16,
+     "canvas": true,
+     "layout": "3",
+     "padding": 16
+    },
+    "custom": {},
+    "hidden": false,
+    "parent": "s2",
+    "isCanvas": true,
+    "displayName": "Columns",
+    "linkedNodes": {}
+   },
+   "ssGJPa2TWa": {
+    "type": {
+     "resolvedName": "Image"
+    },
+    "nodes": [],
+    "props": {
+     "alt": "",
+     "src": "",
+     "align": "center",
+     "shape": "square",
+     "width": "100%",
+     "objectFit": "cover",
+     "borderRadius": 12
+    },
+    "custom": {},
+    "hidden": false,
+    "parent": "s2",
+    "isCanvas": false,
+    "displayName": "Image",
+    "linkedNodes": {}
+   }
+  },
+  "rawHash": "a90fb4309127a0c8d46b336693fd3c5ea70de02e55d51b9ddbc1d916509e7b85",
+  "strippedHash": "17f5b7380ce02a5048344ed51497dcc3ec89524ad19606d172cc7bde98070329"
+ }
+]
