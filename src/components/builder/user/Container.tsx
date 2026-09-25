@@ -8,6 +8,8 @@ import { ContainerSettings } from './ContainerSettings';
 import { useResponsiveValue } from '@/lib/builder/hooks';
 import { cssLength, readResponsive, spacingStyle, omitSpacingProps } from '@/lib/builder/spacing';
 import { useBuilder } from '../BuilderContext';
+import { containerFont } from '@/lib/builder/blockTypography';
+import { loadGoogleFontFamily } from '@/lib/builder/loadGoogleFont';
 import { formatPseudoClasses } from '@/lib/builder/utils';
 
 function cn(...inputs: ClassValue[]) {
@@ -22,7 +24,11 @@ export interface ContainerProps {
  children?: React.ReactNode;
 }
 
-const getResponsiveStyles = (id: string, props: any) => {
+// `editorDevice` (canvas only): emit just that breakpoint's rules, unconditionally. The canvas
+// isn't an iframe, so media queries follow the browser window, not the builder's
+// Desktop/Tablet/Mobile toggle — Tablet/Mobile values never showed while editing. Published
+// pages (no editorDevice) keep the real media queries, unchanged.
+export const getResponsiveStyles = (id: string, props: any, editorDevice?: 'desktop' | 'tablet' | 'mobile') => {
   const getVal = (propName: string, device: 'desktop' | 'tablet' | 'mobile') => {
     if (device === 'mobile') return props[`${propName}_mobile`] ?? props[`${propName}_tablet`] ?? props[propName];
     if (device === 'tablet') return props[`${propName}_tablet`] ?? props[propName];
@@ -136,19 +142,30 @@ const getResponsiveStyles = (id: string, props: any) => {
   };
 
   const cleanId = id.replace(/[^a-zA-Z0-9-]/g, '_');
+  // An explicitly chosen font must also reach the text inside, which the page theme forces
+  // with !important on h1-h6/p/span/a: make those inherit this Container's font. (A block with
+  // its own font still wins — themeFontCss' [data-block-font] rule is more specific.) Legacy
+  // unmarked 'Inter' gets no override, so it renders exactly as it always has.
+  const fontOverride = (device: 'desktop' | 'tablet' | 'mobile') =>
+    containerFont(props, device).explicit
+      ? ` .node-${cleanId} :is(h1, h2, h3, h4, h5, h6, p, span, a) { font-family: inherit !important; }`
+      : '';
+  if (editorDevice) {
+    return `.node-${cleanId} { ${getStyleRules(editorDevice)} }${fontOverride(editorDevice)}`;
+  }
   return `
     .node-${cleanId} {
       ${getStyleRules('desktop')}
-    }
+    }${fontOverride('desktop')}
     @media (max-width: 1024px) {
       .node-${cleanId} {
         ${getStyleRules('tablet')}
-      }
+      }${fontOverride('tablet')}
     }
     @media (max-width: 768px) {
       .node-${cleanId} {
         ${getStyleRules('mobile')}
-      }
+      }${fontOverride('mobile')}
     }
   `;
 };
@@ -180,6 +197,7 @@ export const Container = (allProps: ContainerProps & any) => {
     borderWidth, borderStyle, borderColor, borderRadius, borderRadiusIndividual,
     borderTopLeftRadius, borderTopRightRadius, borderBottomRightRadius, borderBottomLeftRadius,
     boxShadow, customClasses, hoverClasses, focusClasses,
+    fontFamilyExplicit,
     ...props
   } = allProps;
   
@@ -199,15 +217,23 @@ export const Container = (allProps: ContainerProps & any) => {
   const layoutType = isRoot ? 'fluid' : responsiveLayoutType;
   const maxWidth = isRoot ? '100%' : responsiveMaxWidth;
   
+  const { viewMode } = useBuilder();
   const cleanId = id.replace(/[^a-zA-Z0-9-]/g, '_');
-  const cssRules = getResponsiveStyles(cleanId, allProps);
+  const cssRules = getResponsiveStyles(cleanId, allProps, enabled ? viewMode : undefined);
+
+  // Load explicitly chosen fonts wherever this renders (live pages only load the theme fonts).
+  const explicitFonts = (['desktop', 'tablet', 'mobile'] as const)
+    .map((d) => containerFont(allProps, d)).filter((f) => f.explicit && f.family).map((f) => f.family as string);
+  const fontKey = Array.from(new Set(explicitFonts)).join('|');
+  React.useEffect(() => {
+    for (const family of fontKey ? fontKey.split('|') : []) loadGoogleFontFamily(family);
+  }, [fontKey]);
 
   // Padding: each side is its own per-side value when set (top/bottom = the universal spacing
   // controls, left/right = the panel's horizontal box model), otherwise the uniform "Internal
   // padding". Previously ANY per-side value silently dropped the uniform padding on all four
   // sides; the only live Containers with a per-side value have uniform padding 0, so existing
   // pages render identically.
-  const { viewMode } = useBuilder();
   const uniformPadding = _p !== undefined ? `${padding}px` : undefined;
   const spacing = spacingStyle(allProps, viewMode);
   const sidePadding = (side: 'Left' | 'Right') => cssLength(readResponsive(allProps, `padding${side}`, viewMode)) ?? uniformPadding;

@@ -76,17 +76,19 @@ export function textBlockCss(name: string, stored: Record<string, any>, device: 
     out.color = str(rv('color'));
     out.letterSpacing = px(rv('letterSpacing'));
   } else if (name === 'Text') {
-    // Text.tsx reads its BASE typography values only (its Tablet/Mobile values are ignored by
-    // the builder too — the audit's open item); mirrored as-is for parity.
-    out.fontSize = p.fontSize !== undefined && p.fontSize !== null && p.fontSize !== '' ? `${p.fontSize}px` : undefined;
-    if (ALIGN.has(p.textAlign)) out.textAlign = p.textAlign;
-    out.color = str(p.color);
-    const w = typeof p.fontWeight === 'string' ? p.fontWeight : p.fontWeight != null ? String(p.fontWeight) : '';
+    // Text.tsx: every typography value resolved for the breakpoint (it used to read only the
+    // base values — Batch 5 fixed the component; this mirrors the fix).
+    const size = rv('fontSize');
+    out.fontSize = size !== undefined && size !== null && size !== '' ? `${size}px` : undefined;
+    const align = rv('textAlign'); if (ALIGN.has(align)) out.textAlign = align;
+    out.color = str(rv('color'));
+    const rawW = rv('fontWeight');
+    const w = typeof rawW === 'string' ? rawW : rawW != null ? String(rawW) : '';
     const italic = /italic$/.test(w);
     out.fontWeight = str(italic ? w.replace(/italic$/, '') : w);
     if (italic) out.fontStyle = 'italic';
-    out.lineHeight = px(p.lineHeight);
-    out.letterSpacing = px(p.letterSpacing);
+    out.lineHeight = px(rv('lineHeight'));
+    out.letterSpacing = px(rv('letterSpacing'));
   } else {
     return out;
   }
