@@ -4,6 +4,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { NavModule } from "@/interface";
 import NavItemsList from "./NavItemsList";
 import HoverInfoTrigger from "./hover-info/HoverInfoTrigger";
+import CommunicationUnreadBadge from "./CommunicationUnreadBadge";
 import { level1Content, level1LenaQuestion } from "@/data/sidebar-hover-content";
 
 interface NavRailModuleProps {
@@ -131,7 +132,10 @@ const NavRailModule: React.FC<NavRailModuleProps> = ({
           : "!text-dash-textMuted hover:bg-dash-surface hover:!text-dash-text"
       }`}
     >
-      <i className={`${module.icon} text-[17px]`}></i>
+      <span className="relative inline-flex">
+        <i className={`${module.icon} text-[17px]`}></i>
+        {module.id === "communication" && <CommunicationUnreadBadge variant="corner" />}
+      </span>
     </button>
   ) : (
     <button
@@ -146,6 +150,7 @@ const NavRailModule: React.FC<NavRailModuleProps> = ({
     >
       <i className={`${module.icon} text-[16px] w-5 flex-shrink-0 text-center`}></i>
       <span className="text-[12px] font-bold uppercase tracking-tight truncate">{module.label}</span>
+      {module.id === "communication" && <CommunicationUnreadBadge variant="pill" />}
     </button>
   );
 

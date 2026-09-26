@@ -46,6 +46,10 @@
       "schedule": "* * * * *"
     },
     {
+      "path": "/api/cron/workers/gmail-sync",
+      "schedule": "* * * * *"
+    },
+    {
       "path": "/api/cron/workers/message-delivery-health",
       "schedule": "*/15 * * * *"
     },

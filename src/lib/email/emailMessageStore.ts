@@ -53,6 +53,8 @@ export interface EmailMessageInsert {
   status?: 'queued' | 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
   sentAt?: string | null;
   metadata?: Record<string, any>;
+  /** Past mail brought in by a history import: never notifies, never counts as unread. */
+  historicalImport?: boolean;
 }
 
 export type EmailMessageInsertResult =
@@ -93,6 +95,7 @@ export function buildEmailMessageRow(input: EmailMessageInsert): Record<string, 
     status: input.status ?? (input.direction === 'inbound' ? 'delivered' : 'sent'),
     sent_at: input.sentAt ?? new Date().toISOString(),
     metadata: input.metadata ?? {},
+    historical_import: input.historicalImport ?? false,
   };
 }
 

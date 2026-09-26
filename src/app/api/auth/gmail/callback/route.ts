@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { consumeOAuthStateNonce } from '@/lib/oauth/stateNonce';
 import { storeCalendarConnection, hasGmailScope } from '@/lib/calendar/connections';
 import { fetchGmailProfileEmail, linkGmailMailbox } from '@/lib/gmail/connection';
+import { ensureWatch } from '@/lib/gmail/sync';
 import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
@@ -85,7 +86,15 @@ export async function GET(request: Request) {
 
     // The mailbox identity messages link to (survives disconnect/reconnect).
     if (!profile.email) throw new Error('Gmail profile returned no email address');
-    await linkGmailMailbox(workspaceId, userId, profile.email);
+    const mailboxId = await linkGmailMailbox(workspaceId, userId, profile.email);
+
+    // Start ongoing sync (Pub/Sub watch when configured; otherwise the cron polls from the history
+    // cursor this sets). Best-effort: the gmail-sync cron retries it, and the connect has succeeded.
+    try {
+      await ensureWatch(mailboxId);
+    } catch (err) {
+      logger.warn({ err, mailboxId }, 'gmail_oauth.callback.watch_failed');
+    }
 
     settingsUrl.searchParams.set('gmail_connected', '1');
     return NextResponse.redirect(settingsUrl);

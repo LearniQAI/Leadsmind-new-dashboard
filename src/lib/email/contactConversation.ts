@@ -49,6 +49,19 @@ export async function findOrCreateContactByEmail(
     .select('id')
     .single();
 
+  // Lost a race with a concurrent create of the same address (contacts_workspace_id_email_key):
+  // the contact exists now — use it rather than failing the email that triggered this.
+  if (error && (error as any).code === '23505') {
+    const { data: winner } = await supabase
+      .from('contacts')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+      .eq('email', normalizedEmail)
+      .limit(1)
+      .maybeSingle();
+    if (winner) return { id: winner.id };
+  }
+
   if (error || !created) {
     logger.error({ err: error, workspaceId, email: normalizedEmail }, 'email.contact_conversation.contact_create_failed');
     return { error: error?.message || 'Failed to create contact' };
@@ -67,17 +80,26 @@ export async function findOrCreateEmailConversation(
   workspaceId: string,
   contactId: string,
   title?: string | null,
+  /**
+   * When the message being filed was sent. Defaults to now. An older time (Gmail history import)
+   * never moves an existing conversation's last_message_at backwards, so an imported old email
+   * doesn't jump its thread to the top of the inbox.
+   */
+  at?: string,
 ): Promise<{ id: string; isNew: boolean } | { error: string }> {
   const { data: existing } = await supabase
     .from('conversations')
-    .select('id')
+    .select('id, last_message_at')
     .eq('workspace_id', workspaceId)
     .eq('contact_id', contactId)
     .eq('platform', 'email')
     .maybeSingle();
 
   if (existing) {
-    await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', existing.id);
+    const stamp = at || new Date().toISOString();
+    if (!at || !existing.last_message_at || new Date(stamp) > new Date(existing.last_message_at)) {
+      await supabase.from('conversations').update({ last_message_at: stamp }).eq('id', existing.id);
+    }
     return { id: existing.id, isNew: false };
   }
 
@@ -88,10 +110,22 @@ export async function findOrCreateEmailConversation(
       contact_id: contactId,
       platform: 'email',
       title: title || 'Email conversation',
-      last_message_at: new Date().toISOString(),
+      last_message_at: at || new Date().toISOString(),
     })
     .select('id')
     .single();
+
+  // Lost a race with a concurrent create (conversations_one_email_per_contact): use the winner.
+  if (error && (error as any).code === '23505') {
+    const { data: winner } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+      .eq('contact_id', contactId)
+      .eq('platform', 'email')
+      .maybeSingle();
+    if (winner) return { id: winner.id, isNew: false };
+  }
 
   if (error || !created) {
     logger.error({ err: error, workspaceId, contactId }, 'email.contact_conversation.conversation_create_failed');

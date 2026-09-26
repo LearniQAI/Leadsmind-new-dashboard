@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import ConnectionCard from '@/components/settings/ConnectionCard'
+import GmailImportPanel from '@/components/settings/GmailImportPanel'
 
 // The signed-in user's OWN Gmail mailbox (Conversations). Unlike the other
 // cards on this page it is not a workspace-level row: it reads
@@ -54,22 +55,25 @@ export default function GmailConnectionCard({ refreshKey = 0 }: { refreshKey?: n
   const email = status && status.state !== 'not_connected' ? status.email : null
 
   return (
-    <ConnectionCard
-      name="Gmail"
-      shortName="GM"
-      color="#ea4335"
-      description="Connect your own Gmail inbox so you can send and receive email in Conversations"
-      connected={status?.state === 'connected'}
-      accountLabel={email ? `Connected as ${email}` : null}
-      needsReconnect={status?.state === 'needs_reconnect'}
-      reconnectHint={
-        status?.state === 'needs_reconnect'
-          ? `${email ? `${email}: ` : ''}${RECONNECT_HINTS[status.reason]}`
-          : undefined
-      }
-      loading={status === null || pending}
-      onConnect={() => { setPending(true); window.location.href = '/api/auth/gmail' }}
-      onDisconnect={handleDisconnect}
-    />
+    <div className="flex flex-col gap-2">
+      <ConnectionCard
+        name="Gmail"
+        shortName="GM"
+        color="#ea4335"
+        description="Connect your own Gmail inbox so you can send and receive email in Conversations"
+        connected={status?.state === 'connected'}
+        accountLabel={email ? `Connected as ${email}` : null}
+        needsReconnect={status?.state === 'needs_reconnect'}
+        reconnectHint={
+          status?.state === 'needs_reconnect'
+            ? `${email ? `${email}: ` : ''}${RECONNECT_HINTS[status.reason]}`
+            : undefined
+        }
+        loading={status === null || pending}
+        onConnect={() => { setPending(true); window.location.href = '/api/auth/gmail' }}
+        onDisconnect={handleDisconnect}
+      />
+      {status?.state === 'connected' && <GmailImportPanel />}
+    </div>
   )
 }

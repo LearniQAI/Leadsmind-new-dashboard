@@ -1,6 +1,9 @@
 "use client";
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { showMessageToast, safeInternalLink, type MessageNotification } from "@/components/conversations/MessageToast";
+import { PlatformBadge } from "@/components/conversations/platformMeta";
 import {
   Bell,
   X,
@@ -61,6 +64,10 @@ const Notification = ({ handleShowNotification, isOpenNotification }: TNotificat
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<TabType>("All");
+  // The realtime handler is bound once on mount; read the router through a ref so it never goes stale.
+  const router = useRouter();
+  const routerRef = useRef(router);
+  routerRef.current = router;
 
   useEffect(() => {
     const supabase = createClient();
@@ -98,7 +105,13 @@ const Notification = ({ handleShowNotification, isOpenNotification }: TNotificat
           (payload) => {
             if (payload.eventType === "INSERT") {
               setNotifications((prev) => [payload.new, ...prev]);
-              toast.info(payload.new.title, { description: payload.new.message });
+              // New inbound Communications message (any channel): the premium toast, deep-linked to
+              // the thread. Every other notification type keeps the standard toast.
+              if (payload.new.type === "message") {
+                showMessageToast(payload.new as MessageNotification, (href) => routerRef.current.push(href));
+              } else {
+                toast.info(payload.new.title, { description: payload.new.message });
+              }
             } else if (payload.eventType === "UPDATE") {
               setNotifications((prev) => prev.map((n) => (n.id === payload.new.id ? payload.new : n)));
             } else if (payload.eventType === "DELETE") {
@@ -313,7 +326,13 @@ const Notification = ({ handleShowNotification, isOpenNotification }: TNotificat
                                 {isNew && (
                                   <span className="absolute left-0 top-0 h-full w-[3px] bg-sky-500" />
                                 )}
-                                {renderIcon(notification.type, !isNew)}
+                                {notification.type === "message" && notification.metadata?.platform ? (
+                                  <span className="flex h-9 w-9 shrink-0 items-center justify-center">
+                                    <PlatformBadge platform={notification.metadata.platform} size={30} />
+                                  </span>
+                                ) : (
+                                  renderIcon(notification.type, !isNew)
+                                )}
 
                                 <div className="min-w-0 flex-1">
                                   <div className="flex items-start justify-between gap-3">
@@ -338,7 +357,7 @@ const Notification = ({ handleShowNotification, isOpenNotification }: TNotificat
                                 <div className="absolute right-4 top-3.5 flex items-center gap-0.5 rounded-lg border border-dash-border bg-white p-0.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
                                   {notification.link && (
                                     <Link
-                                      href={notification.link}
+                                      href={safeInternalLink(notification.link)}
                                       onClick={handleShowNotification}
                                       className="rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-dash-textMuted hover:bg-dash-surface hover:text-dash-text"
                                     >
