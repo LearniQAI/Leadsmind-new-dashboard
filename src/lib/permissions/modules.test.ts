@@ -85,7 +85,8 @@ describe("page routes resolve to their sidebar section's module", () => {
         ...(m.items ?? []).flatMap((i) => [i.link, ...(i.subItems ?? []).map((s) => s.link)]),
       ].filter(Boolean) as string[];
       for (const link of links) {
-        expect(getRequiredModule(link)).toBe(ungated.has(link) ? null : m.module);
+        const override = m.items?.find((i) => i.link === link)?.module;
+        expect(getRequiredModule(link)).toBe(ungated.has(link) ? null : override ?? m.module);
       }
     }
   });
@@ -110,6 +111,9 @@ describe("page routes resolve to their sidebar section's module", () => {
     ["/courses/needs-grading", "learning"],
     ["/blog/manage", "marketing"],
     ["/editor/website/1", "marketing"],
+    // Nav moved to CRM & Sales, permission deliberately still Marketing (see dashboard-nav.ts).
+    ["/campaigns", "marketing"],
+    ["/campaigns/abc/builder", "marketing"],
   ])("%s → %s", (route, module) => {
     expect(getRequiredModule(route)).toBe(module);
   });

@@ -27,6 +27,10 @@ const dashboardNav: NavModule[] = [
       { id: 2, label: "Tasks", icon: "fa-light fa-circle-check", link: "/tasks" },
       { id: 21, label: "Projects", icon: "icon-projects", link: "/projects" },
       { id: 23, label: "Automations", icon: "fa-light fa-bolt", link: "/automations" },
+      // Moved here from Marketing as a nav-location move only: route (/campaigns) unchanged,
+      // and still gated by the Marketing permission (page gate + the email_campaigns RLS),
+      // so nobody gains or loses access. Drop `module` once access is re-homed to crm.
+      { id: 13, label: "Campaigns", icon: "fa-light fa-paper-plane", link: "/campaigns", module: "marketing" },
     ],
   },
   {
@@ -35,7 +39,6 @@ const dashboardNav: NavModule[] = [
     label: "Marketing",
     icon: "fa-light fa-bullhorn",
     items: [
-      { id: 13, label: "Campaigns", icon: "fa-light fa-paper-plane", link: "/campaigns" },
       { id: 115, label: "Segments", icon: "fa-light fa-users-rectangle", link: "/segments" },
       { id: 114, label: "Email Sequences", icon: "fa-light fa-inbox-out", link: "/sequences" },
       { id: 116, label: "Bulk SMS", icon: "fa-light fa-comment-sms", link: "/sms" },

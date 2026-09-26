@@ -11,6 +11,10 @@ export interface NavItem {
   icon: string; // FA/icomoon class string, e.g. "fa-light fa-users"
   link?: string; // omitted when the item is purely a subItems container (e.g. Finance)
   subItems?: NavSubItem[];
+  // Rare override: the permission that gates THIS page when it differs from its section's
+  // `module` (e.g. Campaigns sits under CRM & Sales but is still granted by Marketing, whose
+  // RLS covers its tables). Omit to inherit the section's module.
+  module?: ModuleKey;
 }
 
 export interface NavModule {

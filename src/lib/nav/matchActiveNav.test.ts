@@ -13,7 +13,7 @@ describe("resolveActiveNav — every inventoried dashboard route resolves to its
     ["/projects", "crm-sales"],
     ["/automations", "crm-sales"],
 
-    ["/campaigns", "marketing"],
+    ["/campaigns", "crm-sales"],
     ["/funnels", "marketing"],
     ["/forms", "marketing"],
     ["/ads", "marketing"],
