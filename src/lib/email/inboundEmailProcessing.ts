@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { logger } from '@/shared/logger';
 import { parseFromHeader } from './inboundAddress';
 import { findOrCreateContactByEmail, findOrCreateEmailConversation } from './contactConversation';
+import { extractInboundEmailIdentity } from './inboundPayload';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,9 +18,10 @@ const supabaseAdmin = createClient(
 // itself carried, then strips quoted replies/signatures the same way for both
 // consumers. Kept out of the route file (not a route export) so it's a plain,
 // unit-testable module.
-export async function resolveInboundEmailContent(emailData: any): Promise<{ bodyText: string; rawText: string }> {
+export async function resolveInboundEmailContent(emailData: any): Promise<{ bodyText: string; rawText: string; html: string | null; fetched: any | null }> {
   let fetchedText = '';
   let fetchedHtml = '';
+  let fetchedJson: any = null;
   if (emailData.email_id) {
     try {
       const resendResponse = await fetch(`https://api.resend.com/emails/receiving/${emailData.email_id}`, {
@@ -28,6 +30,7 @@ export async function resolveInboundEmailContent(emailData: any): Promise<{ body
 
       if (resendResponse.ok) {
         const emailJson = await resendResponse.json();
+        fetchedJson = emailJson;
         fetchedText = emailJson.text || '';
         fetchedHtml = emailJson.html || '';
       } else {
@@ -69,7 +72,7 @@ export async function resolveInboundEmailContent(emailData: any): Promise<{ body
     rawText = `Subj: ${emailData.subject}`;
   }
 
-  return { bodyText, rawText };
+  return { bodyText, rawText, html: (fetchedHtml || emailData.html || '').trim() || null, fetched: fetchedJson };
 }
 
 export async function insertWebhookDeadLetter(provider: string, payload: any, error: string, error_type: string, retry_state: string) {
@@ -116,7 +119,7 @@ export async function handleInboundWorkspaceEmail(params: { emailData: any; from
     return;
   }
 
-  const { bodyText, rawText } = await resolveInboundEmailContent(emailData);
+  const { bodyText, rawText, html, fetched } = await resolveInboundEmailContent(emailData);
   if (!rawText) {
     logger.error({}, 'webhook.resend_inbound.email_channel.body_empty');
     await deadLetterResendEvent(emailData, 'Empty body after strip', 'validation_failed', 'dropped');
@@ -150,23 +153,43 @@ export async function handleInboundWorkspaceEmail(params: { emailData: any; from
   // publication (20260903000011) means this INSERT reaches
   // conversations-hub:${workspaceId} exactly like an inbound Instagram DM does.
   // No new realtime plumbing needed.
+  //
+  // Email identity columns (Conversations batch 4): the same rfc_message_id / headers / address
+  // columns the Gmail path writes, so an email that reaches BOTH paths (the contact replied to the
+  // Resend alias before the user connected Gmail, and the same reply is later synced from Gmail)
+  // is stored once — messages_conversation_rfc_message_id_key rejects the second copy.
+  const identity = extractInboundEmailIdentity(emailData, fetched);
   const { error: insertErr } = await supabaseAdmin.from('messages').insert({
     workspace_id: workspaceId,
     conversation_id: conversationId,
     direction: 'inbound',
     content: messageContent,
+    html_body: html,
     sender_handle: fromEmail,
+    email_from_address: fromEmail,
+    email_from_name: fromName || null,
+    email_to: identity.to,
+    email_cc: identity.cc,
+    rfc_message_id: identity.rfcMessageId,
+    in_reply_to: identity.inReplyTo,
+    email_references: identity.references.length ? identity.references : null,
     status: 'delivered',
     subject: emailData.subject || null,
     bridge_metadata: { resend_message_id: messageId, sender_email: from },
   });
 
   if (insertErr) {
-    // 23505 = the unique index on bridge_metadata->>resend_message_id fired: a
-    // prior (retried) delivery already stored this message. Not an error —
-    // return normally so Resend gets a 2xx and stops retrying.
+    // 23505 = this email is already stored: either the unique index on
+    // bridge_metadata->>resend_message_id (a retried Resend delivery) or
+    // messages_conversation_rfc_message_id_key (the same email already arrived
+    // through the Gmail path). Not an error — return normally so Resend gets a
+    // 2xx and stops retrying.
     if ((insertErr as any).code === '23505') {
-      logger.warn({ workspaceId, conversationId, messageId }, 'webhook.resend_inbound.email_channel.duplicate_insert_skipped');
+      const viaOtherPath = String((insertErr as any).message || '').includes('messages_conversation_rfc_message_id_key');
+      logger.warn(
+        { workspaceId, conversationId, messageId, rfcMessageId: identity.rfcMessageId, viaOtherPath },
+        'webhook.resend_inbound.email_channel.duplicate_insert_skipped',
+      );
       return;
     }
     logger.error(

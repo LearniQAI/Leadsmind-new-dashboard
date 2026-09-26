@@ -1,7 +1,7 @@
 // Task 62 — Calendar-provider OAuth connection store.
 //
 // SINGLE SOURCE OF TRUTH: public.user_calendar_connections (per-user rows,
-// provider IN ('google','outlook')). Confirmed decision — see the migration
+// provider IN ('google','outlook','zoom','gmail')). Confirmed decision — see the migration
 // 20260909000000_calendar_oauth_connection_store.sql for the full rationale.
 //
 // This module owns the read/write shape so every consumer (OAuth callbacks,
@@ -18,7 +18,23 @@ import { logger } from '@/shared/logger';
 // and connect/refresh/disconnect lifecycle, but it never participates in
 // busy-slot sync. Microsoft Teams meetings reuse the 'outlook' connection
 // (Graph /me/onlineMeetings) with one extra scope — there is no 'teams' provider.
-export type CalendarProvider = 'google' | 'outlook' | 'zoom';
+// 'gmail' is the Conversations mailbox connection: same Google OAuth client as
+// 'google', but its own row (own consent, own disconnect), and like Zoom it
+// never participates in calendar sync.
+export type CalendarProvider = 'google' | 'outlook' | 'zoom' | 'gmail';
+
+/** Providers whose tokens come from the shared GOOGLE_CLIENT_ID app. */
+const GOOGLE_CLIENT_PROVIDERS: CalendarProvider[] = ['google', 'gmail'];
+
+// Kept here (not in lib/gmail) so the workspace status row below and the Gmail
+// routes agree on what a usable Gmail connection is. gmail.modify covers
+// reading, labelling and sending (users.messages.send accepts it), so no
+// separate gmail.send scope is requested.
+export const GMAIL_REQUIRED_SCOPE = 'https://www.googleapis.com/auth/gmail.modify';
+
+export function hasGmailScope(scope: unknown): boolean {
+  return typeof scope === 'string' && scope.split(/\s+/).includes(GMAIL_REQUIRED_SCOPE);
+}
 
 export interface DecryptedCalendarCredentials {
   accessToken: string | null;
@@ -180,6 +196,7 @@ const PROVIDER_LABELS: Record<CalendarProvider, string> = {
   google: 'Google Calendar',
   outlook: 'Outlook & Microsoft 365',
   zoom: 'Zoom',
+  gmail: 'Gmail',
 };
 
 const TEAMS_LABEL = 'Microsoft Teams';
@@ -198,8 +215,16 @@ export async function syncWorkspaceCalendarIntegrationRow(
     .eq('workspace_id', workspaceId)
     .eq('provider', provider);
 
-  const active = (data || []).filter((r: any) => r.status === 'connected');
+  // A Gmail row only counts when the Gmail scope was actually granted — Google's
+  // granular consent lets the user untick it and still issues a token.
+  const active = (data || []).filter((r: any) =>
+    r.status === 'connected' && (provider !== 'gmail' || hasGmailScope((r.credentials as any)?.scope))
+  );
   const connected = active.length > 0;
+  // Same third state as the Teams row below: a Gmail connection exists but is
+  // revoked/expired (status 'error') or missing the scope — "Reconnect", never
+  // a false "Connected" or a bare "Connect".
+  const needsReconnect = provider === 'gmail' && !connected && (data || []).length > 0;
   const emails = active.map((r: any) => (r.credentials as any)?.email).filter(Boolean);
   const accountLabel = !connected
     ? null
@@ -215,7 +240,7 @@ export async function syncWorkspaceCalendarIntegrationRow(
       connected,
       account_label: accountLabel,
       connected_at: connected ? new Date().toISOString() : null,
-      needs_reconnect: false,
+      needs_reconnect: needsReconnect,
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'workspace_id,provider' }
@@ -312,7 +337,7 @@ export async function revokeProviderToken(
   if (!token) return;
 
   try {
-    if (provider === 'google') {
+    if (GOOGLE_CLIENT_PROVIDERS.includes(provider)) {
       await fetch('https://oauth2.googleapis.com/revoke', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -357,7 +382,16 @@ export async function deleteCalendarConnection(
     .maybeSingle();
 
   if (row) {
-    await revokeProviderToken(provider, decryptCalendarCredentials(row.credentials));
+    const creds = decryptCalendarCredentials(row.credentials);
+    if (await sharesGoogleGrant(userId, provider, creds.email)) {
+      // Google's revoke endpoint removes the app's WHOLE grant for that Google
+      // account (every scope, every token), not just this token — revoking the
+      // Gmail token would silently kill the same user's Calendar connection and
+      // vice versa. Remove only our row; the grant stays for the other one.
+      logger.info({ userId, provider }, 'calendar.connection.revoke.skipped_shared_google_grant');
+    } else {
+      await revokeProviderToken(provider, creds);
+    }
   }
 
   const { error } = await supabase
@@ -370,6 +404,27 @@ export async function deleteCalendarConnection(
   if (error) throw error;
 
   await syncWorkspaceCalendarIntegrationRow(workspaceId, provider);
+}
+
+/**
+ * True when the same user has ANOTHER connection on the shared Google OAuth
+ * client that may be the same Google account (same email, or an email we can't
+ * compare), in any workspace. Conservative on purpose: a skipped revoke only
+ * leaves a grant the user can remove in their Google account; a wrong revoke
+ * breaks a live connection.
+ */
+async function sharesGoogleGrant(userId: string, provider: CalendarProvider, email: string | null): Promise<boolean> {
+  if (!GOOGLE_CLIENT_PROVIDERS.includes(provider)) return false;
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from('user_calendar_connections')
+    .select('credentials')
+    .eq('user_id', userId)
+    .in('provider', GOOGLE_CLIENT_PROVIDERS.filter((p) => p !== provider));
+  return (data || []).some((r: any) => {
+    const other = (r.credentials as any)?.email;
+    return !email || !other || String(other).toLowerCase() === email.toLowerCase();
+  });
 }
 
 /** Marks a connection unhealthy (used by the token-refresh path on failure). */
@@ -411,7 +466,7 @@ export async function getFreshCalendarAccessToken(row: CalendarConnectionRow): P
   }
 
   const tokenUrl =
-    row.provider === 'google' ? GOOGLE_TOKEN_URL
+    GOOGLE_CLIENT_PROVIDERS.includes(row.provider) ? GOOGLE_TOKEN_URL
     : row.provider === 'zoom' ? ZOOM_TOKEN_URL
     : MICROSOFT_TOKEN_URL;
 
@@ -425,7 +480,7 @@ export async function getFreshCalendarAccessToken(row: CalendarConnectionRow): P
     ).toString('base64');
     headers.Authorization = `Basic ${basic}`;
   } else {
-    const isGoogle = row.provider === 'google';
+    const isGoogle = GOOGLE_CLIENT_PROVIDERS.includes(row.provider);
     body.set('client_id', (isGoogle ? process.env.GOOGLE_CLIENT_ID : process.env.OUTLOOK_CLIENT_ID) || '');
     body.set('client_secret', (isGoogle ? process.env.GOOGLE_CLIENT_SECRET : process.env.OUTLOOK_CLIENT_SECRET) || '');
     if (!isGoogle) body.set('scope', MICROSOFT_CALENDAR_SCOPES);

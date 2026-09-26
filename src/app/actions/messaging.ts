@@ -5,6 +5,7 @@ import { getCurrentWorkspaceId, requireWorkspaceAccess } from '@/lib/auth';
 import { createOAuthStateNonce } from '@/lib/oauth/stateNonce';
 import { sendEmail } from '@/lib/email';
 import { dispatchOutboundMessage } from '@/lib/messaging/dispatchOutboundMessage';
+import { resolveSenderGmailMailbox } from '@/lib/gmail/send';
 import { workspaceInboundAddress } from '@/lib/email/inboundAddress';
 import { withSmsConnectionStatus } from '@/lib/messaging/smsConnectionStatus';
 import { encrypt, decrypt } from '@/lib/encryption';
@@ -290,7 +291,7 @@ export async function sendMessage(
   // reading platform_connections credentials and dispatching to MetaAdapter (Facebook/
   // Instagram/WhatsApp send). RLS backstops this via check_workspace_access(), but this
   // brings the app-layer check in line with social/publish/route.ts and createSocialPost().
-  const { workspaceId } = await requireWorkspaceAccess();
+  const { workspaceId, userId } = await requireWorkspaceAccess();
 
   const supabase = await createServerClient();
 
@@ -394,7 +395,33 @@ export async function sendMessage(
 
   if (conv?.platform === 'email') {
    const contact = Array.isArray(conv.contacts) ? conv.contacts[0] : conv.contacts;
-   if (contact?.email) {
+   // Routing (Conversations batch 4): a sender with their OWN healthy connected Gmail sends
+   // through it (the contact sees their real address; retry queue + dead letters like Meta).
+   // Anyone else keeps the Resend inbox-address path below, unchanged. The mailbox is always
+   // the caller's own — never a teammate's, never one named on the message row. Voice notes keep
+   // their bespoke Resend template for now.
+   const gmailMailbox = contact?.email && !audioUrl ? await resolveSenderGmailMailbox(workspaceId, userId) : null;
+   if (contact?.email && gmailMailbox) {
+    const outcome = await dispatchOutboundMessage(
+      { messagesClient: supabase },
+      {
+        message: msgData,
+        platform: 'email',
+        recipient: contact.email,
+        credentials: null,
+        attemptNumber: 1,
+        context: 'inline',
+        email: { mailboxId: gmailMailbox.id, senderUserId: userId },
+      },
+    );
+    dispatchHandled = true;
+    if (outcome.outcome === 'failed') {
+      messageFailed = true;
+      errorMessage = outcome.error;
+    } else if (outcome.outcome === 'retrying') {
+      retryScheduled = true;
+    }
+   } else if (contact?.email) {
     // Email Channel: a Reply-To on this workspace's inbound receiving address
     // so a recipient's reply lands back in this conversation instead of at the
     // generic no-reply `From`. Must be passed as sendEmail's dedicated

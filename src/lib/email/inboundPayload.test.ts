@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractInboundToAddresses, extractInboundMessageId } from './inboundPayload';
+import { extractInboundToAddresses, extractInboundMessageId, extractInboundEmailIdentity } from './inboundPayload';
 
 // The exact payload captured from Resend event msg_3IwgEKHGmnj2LubcCvlg9Ooi8it
 // (2026-09-06) that returned 500 on /api/webhooks/resend/inbound. The old code
@@ -63,5 +63,37 @@ describe('extractInboundToAddresses', () => {
   it('handles a string (non-array) `to` and an empty payload', () => {
     expect(extractInboundToAddresses({ to: 'solo@x.com' })).toEqual(['solo@x.com']);
     expect(extractInboundToAddresses({})).toEqual([]);
+  });
+});
+
+describe('extractInboundEmailIdentity (batch 4: same identity columns as the Gmail path)', () => {
+  const payload = {
+    email_id: 'c5dfcddc-cb8d-4322-bacf-266f46a3c37e',
+    from: 'Client <client@example.com>',
+    message_id: '<CAEdX2dEh3Y_ZO=xJEPJhPhjrjK1nPr6hFYp=N8YKTBmu_L5t9A@mail.gmail.com>',
+    to: ['zain@inbox.leadsmind.io'],
+    cc: ['Boss <Boss@Example.com>'],
+  };
+
+  it('uses the RFC Message-ID, bare, and never falls back to Resend email_id', () => {
+    expect(extractInboundEmailIdentity(payload).rfcMessageId).toBe('CAEdX2dEh3Y_ZO=xJEPJhPhjrjK1nPr6hFYp=N8YKTBmu_L5t9A@mail.gmail.com');
+    expect(extractInboundEmailIdentity({ ...payload, message_id: undefined }).rfcMessageId).toBeNull();
+  });
+
+  it('reads In-Reply-To / References from the receiving API headers (object or array shape)', () => {
+    const obj = extractInboundEmailIdentity(payload, { headers: { 'in-reply-to': '<p2@x>', References: '<p1@x> <p2@x>' } });
+    expect(obj).toMatchObject({ inReplyTo: 'p2@x', references: ['p1@x', 'p2@x'] });
+    const arr = extractInboundEmailIdentity(payload, { headers: [{ name: 'In-Reply-To', value: '<p9@x>' }] });
+    expect(arr.inReplyTo).toBe('p9@x');
+  });
+
+  it('normalises to/cc addresses', () => {
+    const id = extractInboundEmailIdentity(payload);
+    expect(id.to).toEqual([{ address: 'zain@inbox.leadsmind.io', name: null }]);
+    expect(id.cc).toEqual([{ address: 'boss@example.com', name: 'Boss' }]);
+  });
+
+  it('missing headers stay null / empty', () => {
+    expect(extractInboundEmailIdentity(payload)).toMatchObject({ inReplyTo: null, references: [] });
   });
 });
