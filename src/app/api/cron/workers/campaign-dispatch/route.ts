@@ -127,8 +127,9 @@ export async function GET(req: Request) {
         continue;
       }
 
-      // Predictive Scheduling Check
-      const optimizedTime = await PredictiveIntelligence.getOptimizedSendTime(contact, now);
+      // Predictive Scheduling Check — scheduled campaigns only. A "Send now" row
+      // (send_immediately, set at enqueue) goes out at once, whichever run claims it.
+      const optimizedTime = job.send_immediately ? now : await PredictiveIntelligence.getOptimizedSendTime(contact, now);
       if (optimizedTime.getTime() > now.getTime()) {
         updates.push({ 
            id: job.id, 

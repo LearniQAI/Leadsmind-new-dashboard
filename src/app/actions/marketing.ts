@@ -1269,12 +1269,16 @@ export async function updateCampaign(id: string, updates: any) {
 
      if (uniqueContactIds.length > 0) {
      const queueScheduledFor = updates.scheduled_for || new Date().toISOString();
+     // "Send now" (no scheduled_for, not an auto-sender — the card, builder and Send dialog
+     // buttons) skips the worker's predictive send-time hold; scheduled campaigns keep it.
+     const sendImmediately = !updates.scheduled_for && !updates.segment?.is_automated;
      const queueRows = uniqueContactIds.map(contactId => ({
      campaign_id: id,
      workspace_id: data.workspace_id,
      contact_id: contactId,
      status: 'pending',
      scheduled_for: queueScheduledFor,
+     send_immediately: sendImmediately,
      }));
 
      // upsert + ignoreDuplicates -> ON CONFLICT (campaign_id, contact_id) DO NOTHING.
@@ -1293,7 +1297,7 @@ export async function updateCampaign(id: string, updates: any) {
      // rescheduling it) affects recipients already in the queue.
      const { error: rescheduleError } = await supabase
       .from('campaign_dispatch_queue')
-      .update({ scheduled_for: queueScheduledFor })
+      .update({ scheduled_for: queueScheduledFor, send_immediately: sendImmediately })
       .eq('campaign_id', id)
       .in('status', ['pending', 'deferred']);
      if (rescheduleError) throw rescheduleError;
@@ -1416,7 +1420,7 @@ export async function dispatchCampaignNow(campaignId: string) {
    .eq('id', campaignId)
    .eq('workspace_id', workspaceId)
    .single();
-  if (error || !campaign) throw new Error('Email campaign not found.');
+  if (error || !campaign) return { error: 'Email campaign not found.' };
 
   const { count, error: queueError } = await supabase
    .from('campaign_dispatch_queue')
@@ -1430,7 +1434,67 @@ export async function dispatchCampaignNow(campaignId: string) {
   return { success: true, queued: count ?? 0 };
  } catch (error: any) {
   logger.error({ err: error, campaignId }, 'campaign.immediate_dispatch.enqueue.failed');
-  return { error: error.message || 'Failed to start immediate campaign delivery.' };
+  return { error: userSafeMessage(error, 'Failed to start immediate campaign delivery.') };
+ }
+}
+
+/**
+ * One-click "Send now" for an already-saved campaign (the campaign card). Not a separate send
+ * path: it replays the builder's own "Send now" — updateCampaign(status 'scheduled',
+ * scheduled_for null) with the campaign's saved audience and body, which runs every guard
+ * (audience required, zero-match rollback, enqueue-time suppression, From address, managed
+ * domain verified/un-paused) and moves any future-scheduled queue rows to now — then
+ * dispatchCampaignNow, the Inngest event that runs the cron worker for this campaign at once.
+ * Rate limits apply in that worker as always: over-limit rows are deferred to the next window.
+ */
+export async function sendCampaignNow(campaignId: string) {
+ await requireModuleAccess('marketing');
+ try {
+  const supabase = await createServerClient();
+  const { workspaceId } = await requireWorkspaceAccess();
+  const { data: campaign, error } = await supabase
+   .from('email_campaigns')
+   .select('id, status, segment, subject, body_html')
+   .eq('id', campaignId)
+   .eq('workspace_id', workspaceId)
+   .maybeSingle();
+  if (error) throw error;
+  if (!campaign) return { error: 'Email campaign not found.' };
+  if (campaign.status === 'sent') return { error: 'This campaign has already been sent.' };
+  if (campaign.segment?.is_automated) {
+   return { error: 'This is an auto-sender campaign: it emails matching contacts automatically, so there is nothing to send now.' };
+  }
+  if (!campaign.subject?.trim()) return { error: 'Add a subject line before sending (Settings).' };
+  if (!campaign.body_html?.trim()) return { error: 'Design the email before sending (Design).' };
+
+  const result = await updateCampaign(campaignId, {
+   segment: campaign.segment,
+   body_html: campaign.body_html,
+   status: 'scheduled',
+   scheduled_for: null,
+  });
+  if (result.error) return { error: result.error };
+
+  const matched = result.matchedContactsCount || 0;
+  let dispatchWarning: string | undefined;
+  if (matched > 0) {
+   const dispatch = await dispatchCampaignNow(campaignId);
+   // Recipients are already queued and due now, so the dispatch cron still delivers them;
+   // only the instant start failed.
+   if (dispatch.error) dispatchWarning = `${matched} recipient(s) are queued, but instant delivery could not start (${dispatch.error}). They will go out on the next scheduled run.`;
+  }
+
+  return {
+   data: result.data,
+   matchedContactsCount: matched,
+   directSent: result.directSent ?? [],
+   directSkipped: result.directSkipped ?? [],
+   directFailed: result.directFailed ?? [],
+   dispatchWarning,
+  };
+ } catch (error: any) {
+  logger.error({ err: error, campaignId }, 'campaign.send_now.failed');
+  return { error: userSafeMessage(error, 'Could not send the campaign. Please try again.') };
  }
 }
 

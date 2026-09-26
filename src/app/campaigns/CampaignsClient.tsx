@@ -7,7 +7,7 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { createEmailCampaign } from '@/app/actions/marketing';
+import { createEmailCampaign, getEmailCampaigns, sendCampaignNow } from '@/app/actions/marketing';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { DashCard } from '@/components/dashboard-ui/Card';
@@ -27,6 +27,12 @@ import {
 import type { RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
 import { buildCampaignEditPayload, type EditInitial } from '@/lib/campaigns/editPayload';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+
+// Sent via "Send now" (card or builder) and still draining: status stays 'scheduled' with no
+// scheduled_for until the dispatch worker marks it 'sent'. Auto-senders share that shape but
+// never finish, so they're excluded.
+const isSendingNow = (c: any) => c.status === 'scheduled' && !c.scheduled_for && !c.segment?.is_automated;
+const canSendNow = (c: any) => (c.status === 'draft' || (c.status === 'scheduled' && !!c.scheduled_for)) && !c.segment?.is_automated;
 
 const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 
@@ -71,6 +77,43 @@ export default function CampaignsClient({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteCampaign, setDeleteCampaign] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
+
+  const [sendNowCampaign, setSendNowCampaign] = useState<any>(null);
+  const [sendingNowId, setSendingNowId] = useState<string | null>(null);
+
+  // While any card shows "Sending", re-read the campaigns (status, sent_at, total_sent) every
+  // few seconds so the badge and stats flip to the real result without a manual reload. Stops
+  // after ~2 minutes: rate-limited rows can legitimately wait for the next hour's window.
+  const anySending = campaigns.some(isSendingNow);
+  React.useEffect(() => {
+    if (!anySending) return;
+    let polls = 0;
+    const timer = setInterval(async () => {
+      polls++;
+      const res = await getEmailCampaigns();
+      if (res.data) setCampaigns(res.data);
+      if (polls >= 40) clearInterval(timer);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [anySending]);
+
+  const handleSendNow = async (campaign: any) => {
+    setSendingNowId(campaign.id);
+    try {
+      const res = await sendCampaignNow(campaign.id);
+      if (res.error) { toast.error(res.error); return; }
+      setCampaigns(prev => prev.map(c => c.id === campaign.id ? { ...c, ...(res.data ?? {}) } : c));
+      if (res.directFailed?.length) toast.warning(`${res.directFailed.length} direct address(es) failed to send: ${res.directFailed.map((f: { email: string }) => f.email).join(', ')}`);
+      if (res.directSkipped?.length) toast.info(`Skipped ${res.directSkipped.length} unsubscribed/invalid address(es).`);
+      const total = (res.matchedContactsCount || 0) + (res.directSent?.length || 0);
+      if (res.dispatchWarning) toast.warning(res.dispatchWarning);
+      else toast.success(`Sending now to ${total} recipient${total === 1 ? '' : 's'}.`);
+    } catch {
+      toast.error('Could not send the campaign. Please try again.');
+    } finally {
+      setSendingNowId(null);
+    }
+  };
 
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -270,7 +313,7 @@ export default function CampaignsClient({
                 <Mail size={18} />
               </div>
               <div className="flex items-center gap-2">
-                <DashStatusPill variant={statusVariant(campaign.status)}>{campaign.status}</DashStatusPill>
+                <DashStatusPill variant={statusVariant(campaign.status)}>{isSendingNow(campaign) ? 'sending' : campaign.status}</DashStatusPill>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button className="h-8 w-8 rounded-lg bg-dash-surface hover:bg-dash-border/60 flex items-center justify-center transition-colors motion-reduce:transition-none">
@@ -310,14 +353,26 @@ export default function CampaignsClient({
               ))}
             </div>
 
-            <div className="flex items-center justify-between pt-5 border-t border-dash-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-5 border-t border-dash-border">
               <div className="flex items-center gap-2 text-[11px] font-semibold !text-dash-textMuted">
                 <Calendar className="w-3.5 h-3.5" />
                 {campaign.status === 'scheduled' && campaign.scheduled_for
                   ? `Scheduled for ${new Date(campaign.scheduled_for).toLocaleString()}`
-                  : campaign.sent_at ? `Sent ${new Date(campaign.sent_at).toLocaleDateString()}` : 'Not sent'}
+                  : isSendingNow(campaign)
+                    ? `Sending now · ${campaign.total_sent || 0} sent`
+                    : campaign.sent_at ? `Sent ${new Date(campaign.sent_at).toLocaleDateString()}` : 'Not sent'}
               </div>
               <div className="flex gap-2">
+                {canSendNow(campaign) && (
+                  <DashButton
+                    onClick={() => setSendNowCampaign(campaign)}
+                    disabled={sendingNowId === campaign.id}
+                    variant="secondary"
+                    size="sm"
+                  >
+                    <Send className="w-3.5 h-3.5" /> {sendingNowId === campaign.id ? 'Sending...' : 'Send now'}
+                  </DashButton>
+                )}
                 <DashButton onClick={() => openEdit(campaign)} variant="secondary" size="sm">
                   Settings
                 </DashButton>
@@ -440,6 +495,18 @@ export default function CampaignsClient({
           </DashModalFooter>
         </DashModalContent>
       </DashModal>
+
+      <ConfirmDialog
+        isOpen={!!sendNowCampaign}
+        onClose={() => setSendNowCampaign(null)}
+        onConfirm={() => { if (sendNowCampaign) handleSendNow(sendNowCampaign); }}
+        title="Send this campaign now?"
+        description={sendNowCampaign?.status === 'scheduled' && sendNowCampaign?.scheduled_for
+          ? `"${sendNowCampaign?.name}" is scheduled for ${new Date(sendNowCampaign.scheduled_for).toLocaleString()}. Sending now skips that schedule and emails its whole audience immediately. This can't be undone.`
+          : `"${sendNowCampaign?.name}" will be emailed to its whole audience immediately. Unsubscribed and invalid addresses are skipped. This can't be undone.`}
+        confirmLabel="Send now"
+        variant="warning"
+      />
 
       <ConfirmDialog
         isOpen={deleteOpen}

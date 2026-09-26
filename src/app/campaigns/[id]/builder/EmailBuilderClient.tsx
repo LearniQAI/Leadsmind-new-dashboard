@@ -16,6 +16,7 @@ import { renderEmailLayout, compileCampaignHtml, EmailBlock, BrandKit } from '@/
 import { DashModal, DashModalContent, DashModalHeader, DashModalTitle, DashModalFooter } from '@/components/dashboard-ui/Modal';
 import { DashFormField, DashInput } from '@/components/dashboard-ui/FormField';
 import { DashButton } from '@/components/dashboard-ui/Button';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { SegmentRuleBuilder } from '@/components/crm/SegmentRuleBuilder';
@@ -75,6 +76,8 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
 
   // Deploy / Automate State
   const [deployModalOpen, setDeployModalOpen] = useState(false);
+  // Every immediate send (header "Send now" and the Send dialog's "Send now") confirms first.
+  const [confirmSendNowOpen, setConfirmSendNowOpen] = useState(false);
   const [deployTags, setDeployTags] = useState(() => {
     try {
       if (initialCampaign.segment && Array.isArray(initialCampaign.segment.tags)) {
@@ -595,6 +598,12 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
           <DashButton onClick={() => setTestModalOpen(true)} disabled={saving || blocks.length === 0} size="sm" variant="secondary">
             Send test email
           </DashButton>
+
+          {!isAutomated && initialCampaign.status !== 'sent' && (
+            <DashButton onClick={() => setConfirmSendNowOpen(true)} disabled={saving || blocks.length === 0} size="sm" variant="secondary">
+              Send now
+            </DashButton>
+          )}
 
           <button
             type="button"
@@ -1413,7 +1422,7 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
                 <DashButton variant="secondary" onClick={() => handleDeploy('schedule')} disabled={saving || !scheduledFor}>
                   {saving ? 'Processing...' : 'Schedule for later'}
                 </DashButton>
-                <DashButton onClick={() => handleDeploy('now')} disabled={saving}>
+                <DashButton onClick={() => setConfirmSendNowOpen(true)} disabled={saving}>
                   {saving ? 'Processing...' : 'Send now'}
                 </DashButton>
               </>
@@ -1421,6 +1430,20 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
           </DashModalFooter>
         </DashModalContent>
       </DashModal>
+
+      <ConfirmDialog
+        isOpen={confirmSendNowOpen}
+        onClose={() => setConfirmSendNowOpen(false)}
+        onConfirm={() => handleDeploy('now')}
+        title="Send this campaign now?"
+        description={`The current design will be saved and emailed immediately to this campaign's audience${
+          initialCampaign.status === 'scheduled' && initialCampaign.scheduled_for
+            ? `, skipping its schedule (${new Date(initialCampaign.scheduled_for).toLocaleString()})`
+            : ''
+        }. Unsubscribed and invalid addresses are skipped. This can't be undone.`}
+        confirmLabel="Send now"
+        variant="warning"
+      />
     </div>
   );
 }
