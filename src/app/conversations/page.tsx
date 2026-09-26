@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import MetaData from '@/hooks/useMetaData';
 import Wrapper from '@/components/layouts/DefaultWrapper';
 import ConversationsClient from './ConversationsClient';
@@ -17,11 +18,13 @@ export default async function ConversationsPage() {
         <div className="flex flex-col h-screen bg-dash-bg">
           {/* Main Content */}
           <div className="flex-1 overflow-hidden">
-            <ConversationsClient
-              initialConversations={conversations || []}
-              connectedPlatforms={connectedPlatforms || []}
-              workspaceId={workspaceId}
-            />
+            <Suspense fallback={null}>
+              <ConversationsClient
+                initialConversations={conversations || []}
+                connectedPlatforms={connectedPlatforms || []}
+                workspaceId={workspaceId}
+              />
+            </Suspense>
           </div>
         </div>
       </Wrapper>

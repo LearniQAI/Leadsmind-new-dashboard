@@ -780,3 +780,19 @@
   .lm-ml-m { margin-left: var(--lm-ml-m); }
   .lm-mr-m { margin-right: var(--lm-mr-m); }
 }
+
+/* Communications: unread nav badge + new-message toast entrance (see CommunicationUnreadBadge,
+   MessageToast). One short, eased entrance each; nothing loops, and reduced-motion users get none. */
+@keyframes lm-badge-in {
+  0% { transform: scale(0.4); opacity: 0; }
+  70% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); }
+}
+@keyframes lm-toast-in {
+  0% { transform: translateX(24px) scale(0.96); opacity: 0; }
+  100% { transform: translateX(0) scale(1); opacity: 1; }
+}
+@keyframes lm-toast-glow {
+  0% { box-shadow: 0 0 0 0 rgba(19, 89, 255, 0.45), 0 18px 40px -12px rgba(19, 89, 255, 0.45); }
+  100% { box-shadow: 0 0 0 10px rgba(19, 89, 255, 0), 0 18px 40px -12px rgba(19, 89, 255, 0.38); }
+}

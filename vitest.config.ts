@@ -8,6 +8,12 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     setupFiles: ['./src/test/setup.ts'],
+    // The default 5s budget flaked under full-suite parallel load (this suite runs inside the Vercel
+    // build, so a flake fails a deploy). Measured on a clean full run: jsdom render tests up to ~2.2s
+    // and some plain Node tests up to ~3.2s, with load spikes pushing single tests past 5s. 30s is a
+    // wide margin over real durations; a genuinely hung test still fails, just later.
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'libs/**/*.test.ts'],
     exclude: ['node_modules', '.next', 'src/scratch'],
     coverage: {

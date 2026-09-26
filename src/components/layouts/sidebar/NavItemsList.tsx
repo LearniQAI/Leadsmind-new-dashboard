@@ -5,6 +5,7 @@ import { ChevronDown } from "lucide-react";
 import { NavItem } from "@/interface";
 import { level2Content, level2LenaQuestion } from "@/data/sidebar-hover-content";
 import HoverInfoTrigger from "./hover-info/HoverInfoTrigger";
+import CommunicationUnreadBadge from "./CommunicationUnreadBadge";
 
 interface NavItemsListProps {
   items: NavItem[];
@@ -53,6 +54,7 @@ const NavItemsList: React.FC<NavItemsListProps> = ({ items, pathname, activeItem
                   <i className={`${item.icon} text-[13px]`}></i>
                 </div>
                 <span className="text-[13px] flex-1 truncate">{item.label}</span>
+                {item.link === "/conversations" && <CommunicationUnreadBadge variant="pill" />}
                 {item.subItems && (
                   <ChevronDown
                     size={13}

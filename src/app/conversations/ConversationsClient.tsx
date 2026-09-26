@@ -3,7 +3,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { sendMessage, getMetaAuthUrl } from '@/app/actions/messaging';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { markConversationsRead } from '@/app/actions/conversationReads';
+import { markReadLocally, setActiveConversationIds, startUnreadStore, useUnreadCounts } from '@/lib/conversations/unreadStore';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { AlertTriangle } from 'lucide-react';
@@ -344,7 +346,52 @@ export default function ConversationsClient({
     };
   }, [supabase, router, workspaceId]);
 
-  const filteredConversations = consolidatedConversations.filter(c => {
+  // ---- Read state (all channels) --------------------------------------------------------------
+  // Unread numbers come from the shared live store (real per-user read state), so the list, the nav
+  // badge and other tabs always agree. A consolidated contact entry spans several conversations.
+  const unread = useUnreadCounts();
+  useEffect(() => { startUnreadStore(workspaceId); }, [workspaceId]);
+  const convIdsOf = (entry: any): string[] =>
+    (entry?.availablePlatforms || []).map((p: any) => p.conversationId).filter(Boolean);
+
+  // Deep link from a notification: /conversations?c=<conversation id> opens that contact's thread.
+  const searchParams = useSearchParams();
+  const deepLinkId = searchParams.get('c');
+  useEffect(() => {
+    if (!deepLinkId) return;
+    const entry = consolidatedConversations.find((e: any) => e.id === deepLinkId || convIdsOf(e).includes(deepLinkId));
+    if (entry) {
+      setActiveConvId(entry.id);
+      setMobileView('thread');
+      router.replace('/conversations', { scroll: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepLinkId, consolidatedConversations]);
+
+  // Opening a thread reads every channel in it; a message landing in the thread you're looking at is
+  // read on arrival (only while the tab is actually visible).
+  const activeEntry = consolidatedConversations.find((c: any) => c.id === activeConvId);
+  const activeIdsKey = convIdsOf(activeEntry).join(',');
+  useEffect(() => {
+    const ids = activeIdsKey ? activeIdsKey.split(',') : [];
+    setActiveConversationIds(ids);
+    return () => setActiveConversationIds([]);
+  }, [activeIdsKey]);
+  useEffect(() => {
+    const ids = activeIdsKey ? activeIdsKey.split(',') : [];
+    if (!ids.length || document.visibilityState !== 'visible') return;
+    const hasUnread = !unread.loaded || ids.some((id) => (unread.byConversation[id] || 0) > 0);
+    if (!hasUnread) return;
+    markReadLocally(ids);
+    void markConversationsRead(ids);
+  }, [activeIdsKey, unread]);
+
+  const withUnread = (entry: any) =>
+    unread.loaded
+      ? { ...entry, unread_count: entry.id === activeConvId ? 0 : convIdsOf(entry).reduce((n, id) => n + (unread.byConversation[id] || 0), 0) }
+      : entry;
+
+  const filteredConversations = consolidatedConversations.map(withUnread).filter(c => {
     const matchesFilter = filter === 'all' || c.availablePlatforms.some((p: any) => p.platform === filter);
     const matchesSearch = !searchQuery || 
       c.contacts?.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||

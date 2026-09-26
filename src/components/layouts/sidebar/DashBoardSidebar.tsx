@@ -12,6 +12,7 @@ import NavRail from "./NavRail";
 import NavSubPanel from "./NavSubPanel";
 import NavItemsList from "./NavItemsList";
 import HoverInfoTrigger from "./hover-info/HoverInfoTrigger";
+import CommunicationUnreadBadge from "./CommunicationUnreadBadge";
 import { level1Content, level1LenaQuestion } from "@/data/sidebar-hover-content";
 
 const DashBoardSidebar = () => {
@@ -213,6 +214,7 @@ const DashBoardSidebar = () => {
                   >
                     <i className={`${module.icon} text-[15px] w-5 text-center`}></i>
                     <span className="text-[13px] flex-1 text-left">{module.label}</span>
+                    {module.id === "communication" && <CommunicationUnreadBadge variant="pill" />}
                     <ChevronDown
                       size={14}
                       className={`opacity-50 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}

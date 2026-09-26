@@ -262,9 +262,13 @@ export async function getConversations() {
    .order('last_message_at', { ascending: false });
 
   // Filter messages to just get the latest one per conversation if needed
-  
+
   if (error) throw error;
-  return { data };
+
+  // Real per-user unread counts (conversation_reads), feeding the list's existing unread UI.
+  const { data: unread } = await supabase.rpc('conversation_unread_counts', { p_workspace_id: workspaceId });
+  const unreadBy = new Map<string, number>(((unread || []) as { conversation_id: string; unread: number }[]).map((u) => [u.conversation_id, u.unread]));
+  return { data: (data || []).map((c: any) => ({ ...c, unread_count: unreadBy.get(c.id) || 0 })) };
  } catch (error: any) {
   logger.error({ err: error, workspaceId }, 'messaging.conversations.fetch.failed');
   return { error: 'Failed to fetch conversations' };
