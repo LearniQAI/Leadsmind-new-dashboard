@@ -48,7 +48,7 @@ export async function GET(req: Request) {
 
     const { data: messages } = await supabaseAdmin
       .from('messages')
-      .select('id, workspace_id, conversation_id, content, external_id, metadata, status')
+      .select('id, workspace_id, conversation_id, content, external_id, provider_message_id, metadata, status')
       .in('id', messageIds);
 
     const { data: conversations } = await supabaseAdmin
@@ -84,7 +84,10 @@ export async function GET(req: Request) {
         continue;
       }
 
-      if (!conversation || !connection?.credentials) {
+      // Email (Gmail) jobs need no platform_connections row: the sending mailbox + sender are on
+      // the queue row itself, and sendEmailViaGmail re-verifies they belong to the same user.
+      const isEmail = job.platform === 'email';
+      if (!conversation || (!isEmail && !connection?.credentials)) {
         await supabaseAdmin
           .from('messages')
           .update({
@@ -114,9 +117,10 @@ export async function GET(req: Request) {
           message,
           platform: job.platform,
           recipient: conversation.external_thread_id || '',
-          credentials: connection.credentials,
+          credentials: connection?.credentials ?? null,
           attemptNumber,
           context: 'worker',
+          ...(isEmail ? { email: { mailboxId: job.mailbox_id ?? null, senderUserId: job.sender_user_id ?? null } } : {}),
         },
       );
 

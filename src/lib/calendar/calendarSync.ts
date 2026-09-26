@@ -53,7 +53,11 @@ export async function getExternalBusySlots(
     .from('user_calendar_connections')
     .select('*')
     .eq('user_id', userId)
-    .eq('status', 'connected');
+    .eq('status', 'connected')
+    // Calendar providers only — Zoom (meetings) and Gmail (mailbox) rows share
+    // this table but have no calendar to read; refreshing them here is waste,
+    // and a failed refresh would wrongly flip that connection to 'error'.
+    .in('provider', ['google', 'outlook']);
 
   if (!connections || connections.length === 0) {
     return [];
@@ -164,7 +168,8 @@ export async function syncBookingToExternal(appointmentId: string): Promise<bool
     .from('user_calendar_connections')
     .select('*')
     .eq('user_id', appointment.user_id)
-    .eq('status', 'connected');
+    .eq('status', 'connected')
+    .in('provider', ['google', 'outlook']); // calendar providers only (see getExternalBusySlots)
 
   if (!connections || connections.length === 0) return false;
 

@@ -9,6 +9,18 @@ import { useDashboardContext } from "@/components/layouts/DashboardProvider"
 import { useWorkspaceIntegrations } from '@/hooks/useWorkspaceIntegrations'
 import ConnectionCard from '@/components/settings/ConnectionCard'
 import ConnectProviderModal from '@/components/settings/ConnectProviderModal'
+import GmailConnectionCard from '@/components/settings/GmailConnectionCard'
+
+const GMAIL_OAUTH_ERRORS: Record<string, string> = {
+  access_denied: 'Gmail connection was cancelled.',
+  missing_permission: 'Gmail was not connected: the permission to read and send email was not granted. Try again and tick it.',
+  invalid_state: 'That connection link expired or was already used. Please try connecting again.',
+  missing_params: 'Google did not return a valid response. Please try again.',
+  config_missing: 'Gmail connection is not configured on this environment yet.',
+  connection_failed: 'Could not complete the Gmail connection. Please try again.',
+  oauth_error: 'Google reported an error. Please try again.',
+  init_failed: 'Could not start the Gmail connection. Please try again.',
+}
 
 const CALENDAR_OAUTH_ERRORS: Record<string, string> = {
   access_denied: 'Calendar connection was cancelled.',
@@ -57,6 +69,22 @@ export default function IntegrationsHubPage() {
     }
     router.replace('/settings/integrations-hub')
   }, [searchParams, refetch, router])
+
+  // Same round-trip surfacing for the Gmail connect routes (/api/auth/gmail/*).
+  const [gmailRefreshKey, setGmailRefreshKey] = useState(0)
+  useEffect(() => {
+    const connected = searchParams.get('gmail_connected')
+    const errCode = searchParams.get('gmail_error')
+    if (!connected && !errCode) return
+
+    if (connected) {
+      toast.success('Gmail connected.')
+      setGmailRefreshKey(k => k + 1)
+    } else if (errCode) {
+      toast.error(GMAIL_OAUTH_ERRORS[errCode] || 'Gmail connection failed. Please try again.')
+    }
+    router.replace('/settings/integrations-hub')
+  }, [searchParams, router])
 
   const [connectingProvider, setConnectingProvider] = useState<{
     provider: string
@@ -165,6 +193,8 @@ export default function IntegrationsHubPage() {
               Email & calendar
             </p>
             <div className="flex flex-col gap-3 mb-8">
+              {/* Per-user mailbox, not a workspace row — its own status source. */}
+              <GmailConnectionCard refreshKey={gmailRefreshKey} />
               {[
                 { name: 'Google Calendar', shortName: 'GC', color: '#4285f4',
                   desc: 'Your calendar syncs with LeadsMind, letting contacts book meetings directly', status: 'available', category: 'email_calendar' },
