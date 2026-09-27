@@ -16,8 +16,8 @@ interface StudentQuizClientProps {
   settings: any;
   attemptsCount: number;
   hasPassedRemedial: boolean;
-  /** Module-Level Quiz pass — submits via submitModuleQuizAttempt against this module
-   *  instead of submitQuizAttempt against quiz.id as a lesson. Same UI either way. */
+  /** Module-Level Quiz pass — when set, quiz.id is a module_quizzes id and the attempt goes
+   *  through submitModuleQuizAttempt instead of submitQuizAttempt (lesson). Same UI either way. */
   moduleId?: string;
 }
 
@@ -113,7 +113,7 @@ export default function StudentQuizClient({
     startTransition(async () => {
       try {
         const res = isModuleScope
-          ? await submitModuleQuizAttempt({ courseId, moduleId: moduleId!, answers })
+          ? await submitModuleQuizAttempt({ courseId, quizId: quiz.id, answers })
           : await submitQuizAttempt({ courseId, lessonId: quiz.id, answers });
 
         if (res.error) {

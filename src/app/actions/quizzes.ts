@@ -148,8 +148,9 @@ export async function getQuizSubmissionsAction(lessonId: string) {
 // Module-Level Quiz — real counterpart to getQuizSubmissionsAction above, reading
 // module_quiz_attempts (Step 1 schema decision) instead of quiz_attempts, shaped identically
 // so it's a genuine drop-in for QuizAnalyticsConsole (Step 4: reuse the existing results view
-// rather than building a separate dashboard).
-export async function getModuleQuizSubmissionsAction(moduleId: string) {
+// rather than building a separate dashboard). Scoped to ONE module quiz (quiz_id): a module
+// can hold several since migration 20260930000015.
+export async function getModuleQuizSubmissionsAction(quizId: string) {
   try {
     const workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
@@ -158,7 +159,7 @@ export async function getModuleQuizSubmissionsAction(moduleId: string) {
     const { data, error } = await supabase
       .from('module_quiz_attempts')
       .select('*')
-      .eq('module_id', moduleId)
+      .eq('quiz_id', quizId)
       .eq('workspace_id', workspaceId)
       .order('submitted_at', { ascending: false });
 
@@ -216,7 +217,9 @@ export async function gradeQuizAttemptManualReview(input: {
     const attemptTable = input.scope === 'module' ? 'module_quiz_attempts' : 'quiz_attempts';
     const qTable = input.scope === 'module' ? 'module_quiz_questions' : 'quiz_questions';
     const sTable = input.scope === 'module' ? 'module_quiz_settings' : 'quiz_settings';
-    const scopeCol = input.scope === 'module' ? 'module_id' : 'lesson_id';
+    // A lesson quiz is identified by its lesson; a module quiz by its own quiz_id (a module can
+    // hold several quizzes). Events still carry the module/lesson id below.
+    const scopeCol = input.scope === 'module' ? 'quiz_id' : 'lesson_id';
 
     const { data: attempt, error: aErr } = await db
       .from(attemptTable)
@@ -231,6 +234,7 @@ export async function gradeQuizAttemptManualReview(input: {
     }
 
     const scopeId = attempt[scopeCol];
+    if (!scopeId) return { error: 'This quiz has been deleted, so the attempt can no longer be graded.' };
     const [{ data: questions }, { data: settings }] = await Promise.all([
       db.from(qTable).select('*').eq(scopeCol, scopeId),
       db.from(sTable).select('pass_percentage').eq(scopeCol, scopeId).maybeSingle(),
@@ -315,7 +319,7 @@ export async function gradeQuizAttemptManualReview(input: {
       const { data: courseModule } = await db
         .from('course_modules')
         .select('course_id')
-        .eq('id', scopeId)
+        .eq('id', attempt.module_id)
         .maybeSingle();
       if (courseModule?.course_id) {
         try {
@@ -324,11 +328,17 @@ export async function gradeQuizAttemptManualReview(input: {
             workspaceId,
             contactId: attempt.student_id,
             courseId: courseModule.course_id,
-            moduleId: scopeId,
-            metadata: { score: result.score, maxScore: result.maxScore, quizScope: 'module', reviewed: true },
+            moduleId: attempt.module_id,
+            metadata: { score: result.score, maxScore: result.maxScore, quizScope: 'module', moduleQuizId: scopeId, reviewed: true },
           });
         } catch (evtErr) {
           logger.error({ err: evtErr, attemptId: input.attemptId }, 'quiz.manual_review.lms_event.failed');
+        }
+        // Same trigger point as the auto-graded module-quiz pass in studentProgress.ts: this
+        // review may have been the student's last outstanding completion requirement.
+        if (result.passed) {
+          const { maybeFireCourseCompleted } = await import('@/lib/lms/courseCompletionEvent');
+          await maybeFireCourseCompleted(db, workspaceId, attempt.student_id, courseModule.course_id);
         }
       }
     }

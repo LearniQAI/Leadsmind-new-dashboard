@@ -1,6 +1,7 @@
 'use server';
 
 import { createAdminClient } from '@/lib/supabase/server';
+import { getModuleQuizTitles } from '@/lib/lms/moduleQuizzes';
 import { getStudentContactIds } from './studentEnrollments';
 import { logger } from '@/shared/logger';
 
@@ -66,7 +67,7 @@ export async function getStudentResults(): Promise<{
         .select('id, lesson_id, percentage, score, passed, submitted_at')
         .in('student_id', contactIds),
       db.from('module_quiz_attempts')
-        .select('id, module_id, percentage, score, passed, submitted_at')
+        .select('id, module_id, quiz_id, percentage, score, passed, submitted_at')
         .in('student_id', contactIds),
       db.from('lms_assignment_submissions')
         .select('id, lesson_id, course_id, grade_status, feedback_comments, submitted_at, graded_at')
@@ -87,13 +88,14 @@ export async function getStudentResults(): Promise<{
     );
     const moduleIds = uniq(moduleAttempts.map((a: any) => a.module_id).filter(Boolean));
 
-    const [lessonsRes, modulesRes] = await Promise.all([
+    const [lessonsRes, modulesRes, moduleQuizTitles] = await Promise.all([
       lessonIds.length
         ? db.from('course_lessons').select('id, title, course_id').in('id', lessonIds)
         : Promise.resolve({ data: [] as any[] }),
       moduleIds.length
         ? db.from('course_modules').select('id, title, course_id').in('id', moduleIds)
         : Promise.resolve({ data: [] as any[] }),
+      getModuleQuizTitles(db, moduleAttempts.map((a: any) => a.quiz_id)),
     ]);
 
     const lessonById = new Map((lessonsRes.data || []).map((l: any) => [l.id, l]));
@@ -132,7 +134,7 @@ export async function getStudentResults(): Promise<{
         return {
           id: a.id,
           kind: 'module',
-          title: m?.title ? `${m.title} — module quiz` : 'Removed module quiz',
+          title: m?.title ? `${m.title} — ${moduleQuizTitles.get(a.quiz_id) || 'module quiz'}` : 'Removed module quiz',
           courseTitle: c?.title ?? null,
           courseId: m?.course_id ?? null,
           scorePct: Math.round(Number(a.percentage ?? a.score ?? 0)),

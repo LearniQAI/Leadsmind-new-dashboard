@@ -17,8 +17,8 @@ interface QuizAnalyticsConsoleProps {
   quiz: any;
   course: any;
   questions: any[];
-  /** Module-Level Quiz pass — when set, reads module_quiz_attempts (via
-   *  getModuleQuizSubmissionsAction) for this module instead of the lesson quiz's
+  /** Module-Level Quiz pass — when set, quiz.id is a module quiz id and this reads its
+   *  module_quiz_attempts (via getModuleQuizSubmissionsAction) instead of the lesson quiz's
    *  quiz_attempts. Same dashboard UI either way (Step 4: reuse the existing results view). */
   moduleId?: string;
 }
@@ -35,7 +35,7 @@ export default function QuizAnalyticsConsole({ quiz, course, questions, moduleId
   const loadSubmissions = async () => {
     setLoading(true);
     try {
-      const res = moduleId ? await getModuleQuizSubmissionsAction(moduleId) : await getQuizSubmissionsAction(quiz.id);
+      const res = moduleId ? await getModuleQuizSubmissionsAction(quiz.id) : await getQuizSubmissionsAction(quiz.id);
       if (res.data) {
         setSubmissions(res.data);
       } else if (res.error) {

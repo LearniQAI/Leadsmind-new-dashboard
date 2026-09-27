@@ -5,9 +5,9 @@
 import { sendEmail } from '@/lib/email';
 import { createAdminClient } from '@/lib/supabase/server';
 import { SpamValidator } from '@/lib/intelligence/SpamValidator';
-import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
+import { getMarketingEmailConfig } from '@/lib/email/resolveConfig';
 import { checkEmailSuppression } from '@/lib/campaigns/emailSuppression';
-import { NO_SENDER_MESSAGE } from '@/lib/campaigns/fromEmail';
+import { NO_FORM_AUTOMATION_DOMAIN_MESSAGE } from '@/lib/campaigns/fromEmail';
 import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 import { logger } from '@/shared/logger';
 import { isUserSafeError } from '@/shared/errors/userSafe';
@@ -32,8 +32,11 @@ export const EmailAutomationService = {
   ): Promise<{ success: boolean; data?: any; error?: string }> {
     const supabase = createAdminClient();
 
-    // 1. Fetch workspace custom email configs if they exist using getWorkspaceEmailConfig
-    const providerConfig = await getWorkspaceEmailConfig(workspaceId);
+    // 1. Sender: form-workflow email follows the same domain-only rule as sequences and CRM
+    // automations — ONLY the workspace's verified managed sending domain (Settings › Email
+    // Domains); a saved bring-your-own Resend key never qualifies. (Its only caller is Engine B's
+    // WorkflowEngine, which runs form workflows.)
+    const providerConfig = await getMarketingEmailConfig(workspaceId);
 
     // Must not fall back to the platform's own RESEND_API_KEY — confirmed live
     // (2026-09-17) that doing so silently sent (and billed) workflow emails
@@ -43,11 +46,11 @@ export const EmailAutomationService = {
     // must fail here instead.
     const apiKey = providerConfig?.apiKey;
     const fromName = providerConfig?.fromName || config.fromName || 'LeadsMind';
-    const fromEmail = providerConfig?.fromEmail || config.fromEmail || 'onboarding@resend.dev';
 
-    if (!apiKey) {
-      return { success: false, error: NO_SENDER_MESSAGE };
+    if (!apiKey || !providerConfig?.fromEmail) {
+      return { success: false, error: NO_FORM_AUTOMATION_DOMAIN_MESSAGE };
     }
+    const fromEmail = providerConfig.fromEmail;
 
     // 2. Interpolate dynamic variables
     const recipient = config.toEmail

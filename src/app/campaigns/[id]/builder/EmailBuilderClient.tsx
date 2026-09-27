@@ -17,6 +17,9 @@ import { DashModal, DashModalContent, DashModalHeader, DashModalTitle, DashModal
 import { DashFormField, DashInput } from '@/components/dashboard-ui/FormField';
 import { DashButton } from '@/components/dashboard-ui/Button';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { toastCampaignSendError } from '@/lib/campaigns/sendErrorToast';
+import { TagAudiencePicker } from '@/components/campaigns/TagAudiencePicker';
+import type { TagOption } from '@/components/crm/TagMultiSelect';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { SegmentRuleBuilder } from '@/components/crm/SegmentRuleBuilder';
@@ -32,6 +35,7 @@ interface EmailBuilderClientProps {
   initialCampaign: any;
   brandKit: BrandKit;
   availableSegments?: SegmentOption[];
+  availableTags?: TagOption[];
   userEmail?: string;
 }
 
@@ -44,7 +48,7 @@ const BLOCK_TYPES = [
   { type: 'text', name: 'Rich Text Paragraph', desc: 'Standard narrative copy blocks', icon: AlignLeft },
 ] as const;
 
-export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: initialBrandKit, availableSegments = [], userEmail = '' }: EmailBuilderClientProps) {
+export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: initialBrandKit, availableSegments = [], availableTags = [], userEmail = '' }: EmailBuilderClientProps) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
@@ -78,14 +82,20 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
   const [deployModalOpen, setDeployModalOpen] = useState(false);
   // Every immediate send (header "Send now" and the Send dialog's "Send now") confirms first.
   const [confirmSendNowOpen, setConfirmSendNowOpen] = useState(false);
-  const [deployTags, setDeployTags] = useState(() => {
-    try {
-      if (initialCampaign.segment && Array.isArray(initialCampaign.segment.tags)) {
-        return initialCampaign.segment.tags.join(', ');
-      }
-    } catch(e){}
-    return '';
+  // Audience tags are picked from the real workspace tags and saved as tag IDS (never typed
+  // names, which used to be matched against the stale legacy contacts.tags array). Stored names
+  // from older campaigns are mapped to their current id; a tag that no longer exists is dropped.
+  const [tagOptions, setTagOptions] = useState<TagOption[]>(availableTags);
+  const [deployTagIds, setDeployTagIds] = useState<string[]>(() => {
+    const stored: unknown = initialCampaign.segment?.tags;
+    if (!Array.isArray(stored)) return [];
+    return stored
+      .map((entry: string) => availableTags.find((t) => t.id === entry || t.name.toLowerCase() === String(entry).toLowerCase())?.id)
+      .filter((id): id is string => !!id);
   });
+  // Direct addresses (sent inline to exactly these emails), kept separate from tags.
+  const [deployEmails, setDeployEmails] = useState<string>(() =>
+    Array.isArray(initialCampaign.segment?.emails) ? initialCampaign.segment.emails.join(', ') : '');
   const [isAutomated, setIsAutomated] = useState(() => {
     try {
       return !!initialCampaign.segment?.is_automated;
@@ -261,7 +271,7 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
     setTestSending(true);
     try {
       const res = await sendTestEmailAction(campaignId, testEmail.trim(), compileCampaignHtml(blocks, brandKit, preheaderText));
-      if (res.error) toast.error(res.error);
+      if (res.error) toastCampaignSendError(res.error, router.push);
       else { toast.success(`Test email sent to ${testEmail.trim()}`); setTestModalOpen(false); }
     } catch {
       toast.error('Failed to send test email.');
@@ -281,9 +291,12 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
       const textBlock = blocks.find(b => b.type === 'text');
       const plainTextPreview = textBlock?.content.body?.slice(0, 100) || 'Your LeadsMind Email Broadcast';
 
-      const tokens = deployTags.split(',').map(t => t.trim()).filter(Boolean);
-      const emailTokens = tokens.filter(t => t.includes('@'));
-      const tagTokens = tokens.filter(t => !t.includes('@'));
+      const emailTokens = deployEmails.split(',').map(t => t.trim()).filter(Boolean);
+      if (emailTokens.some(t => !/^[^s@]+@[^s@]+.[^s@]+$/.test(t))) {
+        toast.error('One of the direct email addresses is not valid.');
+        return;
+      }
+      const tagTokens = deployTagIds;
       const hasRuleGroup = !!deployRuleGroup && deployRuleGroup.rules.length > 0;
       // A saved segment and the ad-hoc rule builder are mutually exclusive —
       // picking a segment clears the ad-hoc rules (see the Select below).
@@ -328,12 +341,12 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
       });
 
       if (result.error) {
-        toast.error(result.error);
+        toastCampaignSendError(result.error, router.push);
       } else {
         if (mode === 'now' && !isAutomated && (result.matchedContactsCount || 0) > 0) {
           const dispatchResult = await dispatchCampaignNow(campaignId);
           if (dispatchResult.error) {
-            toast.error(dispatchResult.error);
+            toastCampaignSendError(dispatchResult.error, router.push);
             return;
           }
         }
@@ -1299,18 +1312,25 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
           <div className="space-y-6">
 
             <DashFormField
-              label="Target recipients (emails or tags)"
-              hint="Type CRM tags or direct comma-separated emails. The system handles both automatically."
+              label="Target audience tags"
+              hint="Sends to contacts that have ALL of the selected tags."
             >
-              <div className="flex items-center justify-end mb-1">
-                <button type="button" onClick={() => alert('Please navigate to the Contacts tab in your dashboard to import CSV files. You can type tags or direct emails here.')} className="text-[10px] font-bold text-dash-accent hover:text-dash-accent/80">
-                  Import CSV
-                </button>
-              </div>
+              <TagAudiencePicker
+                availableTags={tagOptions}
+                value={deployTagIds}
+                onChange={setDeployTagIds}
+                onTagCreated={(t) => setTagOptions((prev) => [...prev, t])}
+              />
+            </DashFormField>
+
+            <DashFormField
+              label="Direct email addresses (optional)"
+              hint="Comma-separated. Sent immediately to exactly these addresses (unsubscribed ones are skipped)."
+            >
               <DashInput
-                value={deployTags}
-                onChange={e => setDeployTags(e.target.value)}
-                placeholder="e.g. VIP, Newsletter, john@example.com"
+                value={deployEmails}
+                onChange={e => setDeployEmails(e.target.value)}
+                placeholder="e.g. john@example.com, jane@example.com"
               />
             </DashFormField>
 
@@ -1348,7 +1368,7 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
                 <div className="p-3.5 border-t border-dash-border space-y-3">
                   <SegmentRuleBuilder value={deployRuleGroup} onChange={setDeployRuleGroup} />
 
-                  {deployTags.split(',').map(t => t.trim()).filter(t => t && !t.includes('@')).length > 0 &&
+                  {deployTagIds.length > 0 &&
                     !!deployRuleGroup && deployRuleGroup.rules.length > 0 && (
                     <div className="pt-2 border-t border-dash-border">
                       <span className="text-[11px] font-bold !text-dash-textMuted block mb-2">
@@ -1390,7 +1410,7 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
                 <div>
                   <div className="text-[12px] font-bold !text-dash-text">Enable auto-sender</div>
                   <div className="text-[11px] !text-dash-textMuted mt-1 leading-relaxed">
-                    When enabled, this campaign becomes a live automation. Any future CRM contact that receives one of the tags above will automatically be sent this email.
+                    When enabled, this campaign becomes a live automation. Any future CRM contact that comes to have ALL of the tags above will automatically be sent this email.
                   </div>
                 </div>
               </label>

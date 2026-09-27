@@ -6,6 +6,7 @@ import { getOrCreateStudentContact } from '@/app/actions/studentEnrollments';
 import StudentQuizClient from './StudentQuizClient';
 import ModuleQuizShell from '../../module-quiz/[moduleId]/ModuleQuizShell';
 import { buildClientQuestion } from '@/lib/lms/quizGrading';
+import { attachStudentModuleQuizzes } from '@/lib/lms/moduleQuizzes';
 
 interface StudentQuizPageProps {
   params: { id: string; quizId: string };
@@ -48,12 +49,7 @@ export default async function StudentQuizPage({ params }: StudentQuizPageProps) 
     ]);
 
   const modules = modulesRes.data || [];
-  const moduleIds = modules.map((m: any) => m.id);
-  const { data: mqData } = moduleIds.length
-    ? await adminClient.from('module_quiz_questions').select('module_id').in('module_id', moduleIds)
-    : { data: [] as any[] };
-  const withQuiz = new Set((mqData || []).map((q: any) => q.module_id));
-  for (const m of modules) m.has_module_quiz = withQuiz.has(m.id);
+  await attachStudentModuleQuizzes(adminClient, modules);
 
   const activeModuleIds = new Set(modules.map((m: any) => m.id));
   const lessons = (lessonsRes.data || []).filter((l: any) => activeModuleIds.has(l.module_id));

@@ -35,7 +35,8 @@ export function isPermanentEmailError(err: unknown): boolean {
     msg.includes('auth') ||
     msg.includes('not configured') ||
     msg.includes('unavailable for this workspace') ||
-    msg.includes('set a from email')
+    msg.includes('set a from email') ||
+    msg.includes('add and verify a sending domain')
   );
 }
 

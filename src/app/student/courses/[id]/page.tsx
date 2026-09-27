@@ -7,6 +7,7 @@ import { getUser, getCurrentProfile } from '@/lib/auth';
 import { getOrCreateStudentContact } from '@/app/actions/studentEnrollments';
 import { getCompletedLessons } from '@/app/actions/studentProgress';
 import { isEnrolmentActive } from '@/lib/lms/enrolment';
+import { attachStudentModuleQuizzes } from '@/lib/lms/moduleQuizzes';
 import StudentPlayerClient from './StudentPlayerClient';
 import PreviewLessonClient from '@/components/lms/PreviewLessonClient';
 import { resolveCoursePreview } from '@/lib/lms/resolveCoursePreview';
@@ -122,17 +123,9 @@ export default async function StudentCoursePlayerPage({ params, searchParams }: 
 
   const modules = modulesRes.data || [];
 
-  // Flag which modules actually have a module-level quiz configured (>= 1 real question) so
-  // the syllabus sidebar can show an entry point only for those — the module-quiz route
-  // (/student/courses/[id]/module-quiz/[moduleId]) is otherwise reachable by URL only.
-  // Matches the module-quiz page's own behaviour: it renders from module_quiz_questions and
-  // treats a missing module_quiz_settings row as defaults, so questions are the real signal.
-  const moduleIds = modules.map((m) => m.id);
-  const { data: moduleQuizQ } = moduleIds.length
-    ? await adminClient.from('module_quiz_questions').select('module_id').in('module_id', moduleIds)
-    : { data: [] as any[] };
-  const modulesWithQuiz = new Set((moduleQuizQ || []).map((r: any) => r.module_id));
-  for (const m of modules) m.has_module_quiz = modulesWithQuiz.has(m.id);
+  // Attach each module's student-visible quizzes (published, with questions) so the syllabus
+  // sidebar lists one entry per quiz and the player knows whether a module has any.
+  await attachStudentModuleQuizzes(adminClient, modules);
 
   const activeModuleIds = new Set(modules.map((m) => m.id));
   // A lesson can be individually active but its parent module deactivated — exclude those too,

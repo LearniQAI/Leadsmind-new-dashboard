@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { Mail, CheckCircle2, AlertTriangle, RefreshCw, Key } from 'lucide-react';
-import { getEmailProvider, saveEmailProvider, verifyEmailProvider } from '@/app/actions/emailProviders';
+import { getEmailProvider, saveEmailProvider, verifyEmailProvider, removeEmailProvider } from '@/app/actions/emailProviders';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { toast } from 'sonner';
 import { DashButton } from '@/components/dashboard-ui';
 
@@ -17,6 +18,9 @@ export default function EmailProviderTab({ workspaceId }: { workspaceId?: string
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [hasSavedProvider, setHasSavedProvider] = useState(false);
+  const [removeOpen, setRemoveOpen] = useState(false);
+  const [removing, setRemoving] = useState(false);
 
   const load = async () => {
     if (!workspaceId) {
@@ -26,6 +30,7 @@ export default function EmailProviderTab({ workspaceId }: { workspaceId?: string
     setLoading(true);
     try {
       const res = await getEmailProvider(workspaceId);
+      setHasSavedProvider(!!(res.success && res.data));
       if (res.success && res.data) {
         setProvider(res.data.provider || 'resend');
         setApiKey(res.data.apiKey || '');
@@ -88,6 +93,25 @@ export default function EmailProviderTab({ workspaceId }: { workspaceId?: string
     }
   };
 
+  const handleRemove = async () => {
+    if (!workspaceId) return;
+    setRemoving(true);
+    try {
+      const res = await removeEmailProvider(workspaceId);
+      if (res.success) {
+        toast.success('Your own Resend key was removed.');
+        setApiKey(''); setFromEmail(''); setFromName(''); setVerified(false); setLastVerifiedAt(null);
+        await load();
+      } else {
+        toast.error(res.error || 'Failed to remove the email provider.');
+      }
+    } catch {
+      toast.error('Failed to remove the email provider.');
+    } finally {
+      setRemoving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-sm !text-dash-textMuted">
@@ -104,7 +128,7 @@ export default function EmailProviderTab({ workspaceId }: { workspaceId?: string
         <div>
           <h3 className="text-lg font-semibold !text-dash-text">Custom email provider (optional)</h3>
           <p className="text-sm !text-dash-textMuted">
-            Most workspaces don&apos;t need this: add a sending domain under Domains and LeadsMind sends for you. Connect your own Resend account only if you want all workspace email to go through it instead. Only workspace admins can change this.
+            Most workspaces don&apos;t need this. Campaigns, email sequences and automations always send from a verified sending domain under Email Domains, never through a key saved here. Your own Resend key is only used for transactional email (invoices, quotes, notifications). Only workspace admins can change this.
           </p>
         </div>
       </div>
@@ -208,8 +232,24 @@ export default function EmailProviderTab({ workspaceId }: { workspaceId?: string
               {verifying ? 'Retesting…' : 'Send test email'}
             </DashButton>
           )}
+
+          {hasSavedProvider && (
+            <DashButton type="button" disabled={removing} onClick={() => setRemoveOpen(true)} variant="destructive" size="sm">
+              {removing ? 'Removing…' : 'Remove key'}
+            </DashButton>
+          )}
         </div>
       </form>
+
+      <ConfirmDialog
+        isOpen={removeOpen}
+        onClose={() => setRemoveOpen(false)}
+        onConfirm={handleRemove}
+        title="Remove your own Resend key?"
+        description="The saved key and From address are deleted. Transactional email will then send from your verified sending domain under Email Domains (and cannot send until you have one). Campaigns, sequences and automations are unaffected: they never use this key."
+        confirmLabel="Remove key"
+        variant="danger"
+      />
     </div>
   );
 }

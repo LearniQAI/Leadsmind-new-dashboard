@@ -5,9 +5,10 @@ const designed = {
   id: 'c1', builder_json: [{ id: 'b', type: 'text' }], body_html: '<designed/>', preview_text: 'pre',
   segment: { tags: ['t-uuid'], emails: ['a@x.com'], is_automated: true },
 };
-const initial: EditInitial = { body: 'pre', tagNames: ['VIP'], ruleKey: 'null', segmentId: null, combine: 'AND' };
-const form = (o: Partial<EditFormState> = {}): EditFormState => ({ name: 'n', subject: 's', body: 'pre', tagNames: ['VIP'], ruleGroup: null, segmentId: null, combine: 'AND', ...o });
-const idFor = (n: string) => (n === 'VIP' ? 't-uuid' : n === 'New' ? 'n-uuid' : undefined);
+const initial: EditInitial = { body: 'pre', tagIds: ['t-vip'], ruleKey: 'null', segmentId: null, combine: 'AND' };
+const form = (o: Partial<EditFormState> = {}): EditFormState => ({ name: 'n', subject: 's', body: 'pre', tagIds: ['t-vip'], ruleGroup: null, segmentId: null, combine: 'AND', ...o });
+// Tags that still exist in the workspace; 't-gone' was deleted and must be dropped on save.
+const idFor = (id: string) => id !== 't-gone';
 
 describe('buildCampaignEditPayload (B4)', () => {
   it('a name-only edit writes ONLY name+subject — never body_html/preview_text/segment', () => {
@@ -25,7 +26,7 @@ describe('buildCampaignEditPayload (B4)', () => {
     expect(p).toMatchObject({ preview_text: 'plain', body_html: 'plain' });
   });
   it('changing the audience keeps the auto-sender flag and direct addresses', () => {
-    const p = buildCampaignEditPayload(designed, initial, form({ tagNames: ['VIP', 'New'] }), idFor);
-    expect(p.segment).toMatchObject({ tags: ['t-uuid', 'n-uuid'], emails: ['a@x.com'], is_automated: true });
+    const p = buildCampaignEditPayload(designed, initial, form({ tagIds: ['t-vip', 't-new', 't-gone'] }), idFor);
+    expect(p.segment).toMatchObject({ tags: ['t-vip', 't-new'], emails: ['a@x.com'], is_automated: true });
   });
 });

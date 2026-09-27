@@ -19,7 +19,8 @@ import {
   DashModal, DashModalContent, DashModalHeader, DashModalTitle, DashModalFooter
 } from '@/components/dashboard-ui/Modal';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { TagMultiSelect, TagOption } from '@/components/crm/TagMultiSelect';
+import type { TagOption } from '@/components/crm/TagMultiSelect';
+import { TagAudiencePicker } from '@/components/campaigns/TagAudiencePicker';
 import { SegmentRuleBuilder } from '@/components/crm/SegmentRuleBuilder';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
@@ -27,6 +28,7 @@ import {
 import type { RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
 import { buildCampaignEditPayload, type EditInitial } from '@/lib/campaigns/editPayload';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { toastCampaignSendError } from '@/lib/campaigns/sendErrorToast';
 
 // Sent via "Send now" (card or builder) and still draining: status stays 'scheduled' with no
 // scheduled_for until the dispatch worker marks it 'sent'. Auto-senders share that shape but
@@ -61,10 +63,8 @@ export default function CampaignsClient({
   const [editName, setEditName] = useState('');
   const [editSubject, setEditSubject] = useState('');
   const [editBody, setEditBody] = useState('');
-  // Real workspace tag NAMES currently selected in the picker — translated to
-  // real tag ids only at save time (see handleSaveEdit), since TagMultiSelect's
-  // established contract (shared with the Contact form) works in names.
-  const [editTagNames, setEditTagNames] = useState<string[]>([]);
+  // Selected tag IDS — a campaign targets tags by id, so renaming a tag never breaks it.
+  const [editTagIds, setEditTagIds] = useState<string[]>([]);
   const [editRuleGroup, setEditRuleGroup] = useState<RuleGroup | null>(null);
   const [editCombineMode, setEditCombineMode] = useState<'AND' | 'OR'>('AND');
   const [editSegmentId, setEditSegmentId] = useState<string | null>(null);
@@ -101,7 +101,7 @@ export default function CampaignsClient({
     setSendingNowId(campaign.id);
     try {
       const res = await sendCampaignNow(campaign.id);
-      if (res.error) { toast.error(res.error); return; }
+      if (res.error) { toastCampaignSendError(res.error, router.push); return; }
       setCampaigns(prev => prev.map(c => c.id === campaign.id ? { ...c, ...(res.data ?? {}) } : c));
       if (res.directFailed?.length) toast.warning(`${res.directFailed.length} direct address(es) failed to send: ${res.directFailed.map((f: { email: string }) => f.email).join(', ')}`);
       if (res.directSkipped?.length) toast.info(`Skipped ${res.directSkipped.length} unsubscribed/invalid address(es).`);
@@ -175,21 +175,19 @@ export default function CampaignsClient({
     setEditSubject(campaign.subject || '');
     setEditBody(campaign.preview_text || '');
 
-    // segment.tags may already be real tag ids (saved via this picker) or, for
-    // campaigns saved before this change, plain tag NAMES — either way the
-    // picker itself always works in names, so ids get resolved back to their
-    // current name here. A stale id whose tag was since deleted is dropped
+    // segment.tags are tag ids, or plain tag NAMES for campaigns saved before ids were used —
+    // names are resolved to their current tag id here. A tag that no longer exists is dropped
     // rather than shown as a broken chip.
-    let names: string[] = [];
+    let ids: string[] = [];
     try {
       if (campaign.segment && typeof campaign.segment === 'object' && Array.isArray(campaign.segment.tags)) {
         const stored: string[] = campaign.segment.tags;
-        names = stored
-          .map((entry) => (isUuid(entry) ? tags.find((t) => t.id === entry)?.name : entry))
+        ids = stored
+          .map((entry) => (isUuid(entry) ? tags.find((t) => t.id === entry)?.id : tags.find((t) => t.name.toLowerCase() === entry.toLowerCase())?.id))
           .filter((n): n is string => !!n);
       }
     } catch (e) {}
-    setEditTagNames(names);
+    setEditTagIds(ids);
 
     const ruleGroup: RuleGroup | null = (campaign.segment && typeof campaign.segment === 'object' && campaign.segment.ruleGroup)
       ? campaign.segment.ruleGroup
@@ -201,7 +199,7 @@ export default function CampaignsClient({
 
     setEditInitial({
       body: campaign.preview_text || '',
-      tagNames: names,
+      tagIds: ids,
       ruleKey: JSON.stringify(ruleGroup),
       segmentId: (campaign.segment && typeof campaign.segment === 'object' && campaign.segment.segmentId) || null,
       combine: (campaign.segment?.combineMode as string) || 'AND',
@@ -231,8 +229,8 @@ export default function CampaignsClient({
       const payload = buildCampaignEditPayload(
         editCampaign,
         editInitial,
-        { name: editName, subject: editSubject, body: editBody, tagNames: editTagNames, ruleGroup: editRuleGroup, segmentId: editSegmentId, combine: editCombineMode },
-        (name) => currentTags.find((t) => t.name.toLowerCase() === name.toLowerCase())?.id,
+        { name: editName, subject: editSubject, body: editBody, tagIds: editTagIds, ruleGroup: editRuleGroup, segmentId: editSegmentId, combine: editCombineMode },
+        (id) => currentTags.some((t) => t.id === id),
       );
 
       const res = await updateCampaign(editCampaign.id, payload);
@@ -419,8 +417,13 @@ export default function CampaignsClient({
             <DashFormField label="Subject">
               <DashInput value={editSubject} onChange={e => setEditSubject(e.target.value)} />
             </DashFormField>
-            <DashFormField label="Target audience tags" hint="A campaign needs an audience: pick at least one tag, a saved segment or a filter before sending.">
-              <TagMultiSelect availableTags={tags} value={editTagNames} onChange={setEditTagNames} />
+            <DashFormField label="Target audience tags" hint="Sends to contacts that have ALL of the selected tags. A campaign needs an audience: pick at least one tag, a saved segment or a filter before sending.">
+              <TagAudiencePicker
+                availableTags={tags}
+                value={editTagIds}
+                onChange={setEditTagIds}
+                onTagCreated={(t) => setTags((prev) => [...prev, t])}
+              />
             </DashFormField>
 
             <DashFormField label="Saved segment" hint="Select a saved segment instead of building rules below.">
@@ -457,7 +460,7 @@ export default function CampaignsClient({
                 <div className="p-3.5 border-t border-dash-border space-y-3">
                   <SegmentRuleBuilder value={editRuleGroup} onChange={setEditRuleGroup} />
 
-                  {editTagNames.length > 0 && !!editRuleGroup && editRuleGroup.rules.length > 0 && (
+                  {editTagIds.length > 0 && !!editRuleGroup && editRuleGroup.rules.length > 0 && (
                     <div className="pt-2 border-t border-dash-border">
                       <span className="text-[11px] font-bold !text-dash-textMuted block mb-2">
                         Match contacts who have these tags

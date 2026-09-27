@@ -1,3 +1,6 @@
+// NOTE (2026-09-26): this suite swaps createServerClient for the ADMIN client, which bypasses RLS,
+// so it does NOT prove real-user behaviour (it passed while every real user's enqueue was failing).
+// The authoritative user-path proof is campaign-real-session.live.test.ts.
 // Live verification: one-click "Send now" (campaign card + builder).
 // REAL database, REAL managed sending through the platform Resend account (to delivered@resend.dev
 // only), the real sendCampaignNow -> updateCampaign -> dispatchCampaignNow chain, and the real

@@ -1,6 +1,7 @@
-// A campaign is sent either through the workspace's LeadsMind-managed sending
-// domain or its own Resend account (BYO); both only accept From addresses on a
-// domain verified for that workspace. Platform-owned
+// Marketing email (campaigns, sequences, workflow emails) is sent ONLY through the workspace's
+// verified LeadsMind-managed sending domain (getMarketingEmailConfig); transactional email may still
+// use a bring-your-own Resend key. Either way only From addresses on a domain verified for that
+// workspace are accepted. Platform-owned
 // domains therefore can't be assumed valid for a customer:
 //  - resend.dev is Resend's sandbox (delivers only to the account owner) — never valid.
 //  - leadsmind.io is valid ONLY for a workspace whose own Resend provider is
@@ -42,6 +43,16 @@ export function resolveCampaignFromEmail(
 
 export const FROM_EMAIL_REQUIRED_MESSAGE =
   "Set a From email on your verified sending domain (Settings › Domains) before sending. Platform addresses like hello@leadsmind.io can't be used as your From address.";
+
+/** Marketing sends (campaigns, sequences, workflow emails) need a verified managed domain; a
+ * bring-your-own Resend key never qualifies. EMAIL_DOMAINS_SETTINGS_PATH is where the UI links. */
+export const NO_MARKETING_DOMAIN_MESSAGE =
+  'Add and verify a sending domain in Settings → Email Domains before sending a campaign.';
+export const NO_AUTOMATION_DOMAIN_MESSAGE =
+  'Add and verify a sending domain in Settings → Email Domains before sending sequence or automation emails.';
+export const NO_FORM_AUTOMATION_DOMAIN_MESSAGE =
+  'Add and verify a sending domain in Settings → Email Domains before sending form automation emails.';
+export const EMAIL_DOMAINS_SETTINGS_PATH = '/settings?tab=domains';
 
 export const NO_SENDER_MESSAGE =
   'Verify a sending domain in Settings › Domains (or connect your own Resend account) before sending email.';

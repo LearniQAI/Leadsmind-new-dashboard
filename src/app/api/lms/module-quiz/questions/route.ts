@@ -1,20 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireLmsInstructor } from '@/lib/lms/access';
+import { loadModuleQuizForWorkspace, touchModuleQuiz } from '@/lib/lms/moduleQuizzes';
 import { ForbiddenError, toClientError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
 
-// Module-Level Quiz — mirrors /api/lms/quiz/questions exactly, module_id in place of
-// lesson_id, ownership resolved via course_modules instead of course_lessons. Only
-// instructors ever reach this route — same reason as the lesson-quiz route: correct_answer
-// must never be fetchable by a student who discovers the URL directly.
+// Module-Level Quiz — mirrors /api/lms/quiz/questions, scoped to ONE module quiz (quiz_id)
+// since a module can hold several (module_quizzes, migration 20260930000015). module_id is
+// derived from the quiz, never taken from the request. Only instructors ever reach this route —
+// same reason as the lesson-quiz route: correct_answer must never be fetchable by a student who
+// discovers the URL directly.
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const moduleId = searchParams.get('moduleId');
-    if (!moduleId) return NextResponse.json({ error: 'Missing moduleId parameter' }, { status: 400 });
+    const quizId = searchParams.get('quizId');
+    if (!quizId) return NextResponse.json({ error: 'Missing quizId parameter' }, { status: 400 });
 
     const { workspaceId } = await requireLmsInstructor();
     const adminClient = createAdminClient();
@@ -22,7 +24,7 @@ export async function GET(req: NextRequest) {
     const { data: questions, error } = await adminClient
       .from('module_quiz_questions')
       .select('*')
-      .eq('module_id', moduleId)
+      .eq('quiz_id', quizId)
       .eq('workspace_id', workspaceId)
       .order('position', { ascending: true });
 
@@ -42,7 +44,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const {
-      module_id,
+      quiz_id,
       question_type,
       question_text,
       options = [],
@@ -53,26 +55,19 @@ export async function POST(req: NextRequest) {
       position = 0
     } = body;
 
-    if (!module_id || !question_type || !question_text) {
-      return NextResponse.json({ error: 'Missing required fields: module_id, question_type, question_text' }, { status: 400 });
+    if (!quiz_id || !question_type || !question_text) {
+      return NextResponse.json({ error: 'Missing required fields: quiz_id, question_type, question_text' }, { status: 400 });
     }
 
-    // Verify the target module actually belongs to the caller's own workspace before
-    // attaching a question to it — module_id is never trusted blindly.
-    const { data: moduleRow, error: moduleErr } = await adminClient
-      .from('course_modules')
-      .select('id')
-      .eq('id', module_id)
-      .eq('workspace_id', workspaceId)
-      .maybeSingle();
-
-    if (moduleErr) throw moduleErr;
-    if (!moduleRow) throw new ForbiddenError('You do not have access to this module');
+    // The quiz must belong to the caller's own workspace; its module_id is what gets stored.
+    const quiz = await loadModuleQuizForWorkspace(adminClient, quiz_id, workspaceId);
+    if (!quiz) throw new ForbiddenError('You do not have access to this quiz');
 
     const { data: question, error } = await adminClient
       .from('module_quiz_questions')
       .insert({
-        module_id,
+        quiz_id: quiz.id,
+        module_id: quiz.module_id,
         workspace_id: workspaceId,
         question_type,
         question_text,
@@ -87,6 +82,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) throw error;
+    await touchModuleQuiz(adminClient, quiz.id);
     return NextResponse.json({ data: question });
   } catch (err: any) {
     logger.error({ err }, 'lms.module_quiz_questions.post.failed');
@@ -126,6 +122,7 @@ export async function PATCH(req: NextRequest) {
       .single();
 
     if (error) throw error;
+    await touchModuleQuiz(adminClient, question.quiz_id);
     return NextResponse.json({ data: question });
   } catch (err: any) {
     logger.error({ err }, 'lms.module_quiz_questions.patch.failed');
@@ -144,13 +141,17 @@ export async function DELETE(req: NextRequest) {
     const adminClient = createAdminClient();
 
     const idList = id.split(',');
-    const { error } = await adminClient
+    const { data: deleted, error } = await adminClient
       .from('module_quiz_questions')
       .delete()
       .in('id', idList)
-      .eq('workspace_id', workspaceId);
+      .eq('workspace_id', workspaceId)
+      .select('quiz_id');
 
     if (error) throw error;
+    for (const quizId of new Set((deleted || []).map((r: any) => r.quiz_id))) {
+      await touchModuleQuiz(adminClient, quizId);
+    }
     return NextResponse.json({ success: true });
   } catch (err: any) {
     logger.error({ err }, 'lms.module_quiz_questions.delete.failed');

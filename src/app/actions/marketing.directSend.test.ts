@@ -15,7 +15,10 @@ function makeDb() {
         if (table === 'email_campaigns' && op === 'select') return { data: { from_email: state.campaignFrom, workspace_id: 'w1', status: 'draft', scheduled_for: null, subject: 's', from_name: 'F' }, error: null };
         if (table === 'email_campaigns' && op === 'update') return { data: { id: 'c1', workspace_id: 'w1', subject: 's', from_name: 'F', from_email: state.campaignFrom }, error: null };
         if (table === 'segments') return { data: state.segment, error: null };
-        if (table === 'sender_domains') return { data: { spf_status: true, dkim_status: true }, error: null };
+        // The workspace's real tags (campaign tag names/ids resolve against these).
+        if (table === 'tags') return { data: [{ id: 't-vip', name: 'vip' }], error: null };
+        // A verified, un-paused sending domain (every campaign send now requires one).
+        if (table === 'sender_domains') return { data: { id: 'd1', domain_name: 'acme.com', status: 'verified', paused_at: null, spf_status: true, dkim_status: true }, error: null };
         if (table === 'global_suppression_list') return { data: state.suppression, error: null };
         return { data: [], error: null };
       };
@@ -32,7 +35,8 @@ function makeDb() {
 
 vi.mock('@/lib/supabase/server', () => ({ createServerClient: async () => makeDb(), createAdminClient: () => makeDb() }));
 vi.mock('@/lib/auth', () => ({ requireWorkspaceAccess: async () => ({ workspaceId: 'w1' }), requireFormAccess: vi.fn(), requireModuleAccess: async () => {} }));
-vi.mock('@/lib/email/resolveConfig', () => ({ getWorkspaceEmailConfig: (...a: any[]) => getCfg(...a) }));
+// Campaigns resolve their sender with getMarketingEmailConfig (managed domain only).
+vi.mock('@/lib/email/resolveConfig', () => ({ getMarketingEmailConfig: (...a: any[]) => getCfg(...a) }));
 vi.mock('@/lib/email', () => ({ sendEmail: (...a: any[]) => sendEmail(...a) }));
 vi.mock('@/lib/campaigns/testSendLimit', () => ({ claimTestSendSlot: (...a: any[]) => claim(...a) }));
 vi.mock('@/shared/logger', () => ({ logger: { error: (...a: any[]) => logErr(...a), info: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
@@ -62,7 +66,7 @@ describe('updateCampaign direct-address path (B3)', () => {
   it('fails BEFORE mutating anything when the workspace has no provider', async () => {
     getCfg.mockResolvedValue(null);
     const r: any = await updateCampaign('c1', { ...base, segment: { emails: ['a@x.com'] } });
-    expect(r.error).toMatch(/Verify a sending domain/);
+    expect(r.error).toMatch(/Add and verify a sending domain in Settings → Email Domains/);
     expect(state.updates).toEqual([]);
     expect(sendEmail).not.toHaveBeenCalled();
   });
@@ -110,7 +114,7 @@ describe('From email (never a platform address)', () => {
   it('refuses to schedule with no Resend account at all', async () => {
     getCfg.mockResolvedValue(null);
     const r: any = await updateCampaign('c1', { status: 'scheduled', segment: { tags: ['x'] } });
-    expect(r.error).toMatch(/Verify a sending domain/);
+    expect(r.error).toMatch(/Add and verify a sending domain in Settings → Email Domains/);
     expect(state.updates).toEqual([]);
   });
   it('test send uses the provider From and rejects a bad recipient', async () => {
@@ -134,7 +138,7 @@ describe('sendTestEmailAction (B3)', () => {
   it('returns an actionable error with no provider, and does not send', async () => {
     getCfg.mockResolvedValue(null);
     const r: any = await sendTestEmailAction('c1', 'me@example.com', '<p/>');
-    expect(r.error).toMatch(/Verify a sending domain/);
+    expect(r.error).toMatch(/Add and verify a sending domain in Settings → Email Domains/);
     expect(sendEmail).not.toHaveBeenCalled();
   });
 });

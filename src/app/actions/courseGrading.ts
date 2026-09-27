@@ -2,6 +2,7 @@
 
 import { requireModuleAccess } from '@/lib/auth';
 import { createAdminClient } from '@/lib/supabase/server';
+import { getModuleQuizTitles } from '@/lib/lms/moduleQuizzes';
 import { requireLmsInstructor } from '@/lib/lms/access';
 import { logger } from '@/shared/logger';
 import { toClientError } from '@/shared/errors/AppError';
@@ -47,7 +48,7 @@ export async function getWorkspacePendingGradingQueue(): Promise<
         .eq('workspace_id', workspaceId)
         .eq('grade_status', 'pending_review'),
       db.from('module_quiz_attempts')
-        .select('id, module_id, student_id, submitted_at')
+        .select('id, module_id, quiz_id, student_id, submitted_at')
         .eq('workspace_id', workspaceId)
         .eq('grade_status', 'pending_review'),
     ]);
@@ -72,7 +73,7 @@ export async function getWorkspacePendingGradingQueue(): Promise<
       ),
     );
 
-    const [lessonsRes, modulesRes, contactsRes] = await Promise.all([
+    const [lessonsRes, modulesRes, contactsRes, quizTitles] = await Promise.all([
       lessonIds.length
         ? db.from('course_lessons').select('id, title, course_id').in('id', lessonIds)
         : Promise.resolve({ data: [] as any[] }),
@@ -82,6 +83,7 @@ export async function getWorkspacePendingGradingQueue(): Promise<
       contactIds.length
         ? db.from('contacts').select('id, first_name, last_name, email').in('id', contactIds)
         : Promise.resolve({ data: [] as any[] }),
+      getModuleQuizTitles(db, moduleAttempts.map((a: any) => a.quiz_id)),
     ]);
 
     const lessonById = new Map((lessonsRes.data || []).map((l: any) => [l.id, l]));
@@ -155,10 +157,14 @@ export async function getWorkspacePendingGradingQueue(): Promise<
         kind: 'module_quiz',
         studentName: student.name,
         studentEmail: student.email,
-        title: `${mod.title} — module quiz`,
+        // A module can hold several quizzes: name and open the specific one. An attempt whose
+        // quiz was deleted (quiz_id NULL) falls back to the module's quiz list.
+        title: `${mod.title} — ${quizTitles.get(a.quiz_id) || 'module quiz'}`,
         courseTitle: course?.title ?? 'Course',
         courseId: mod.course_id,
-        href: `/courses/${mod.course_id}/module-quiz/${mod.id}?tab=analytics`,
+        href: a.quiz_id
+          ? `/courses/${mod.course_id}/module-quiz/${mod.id}/${a.quiz_id}?tab=analytics`
+          : `/courses/${mod.course_id}/module-quiz/${mod.id}`,
         submittedAt: a.submitted_at,
       });
     }

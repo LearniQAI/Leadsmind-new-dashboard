@@ -93,7 +93,8 @@ interface ModuleCardProps {
   /** 1-based position among ALL of this course's modules (not just the filtered/visible
    *  ones) — kept stable under search so a module doesn't get renumbered as filters change. */
   moduleNumber: number;
-  /** Module-Level Quiz pass — needed to route to /courses/{courseId}/module-quiz/{module.id}. */
+  /** Module-Level Quiz pass — needed to route to /courses/{courseId}/module-quiz/{module.id},
+   *  the module's quiz list (a module can hold several quizzes). */
   courseId: string;
   siblingModules: { id: string; title: string }[];
   onEditModule: (module: any) => void;
@@ -217,11 +218,11 @@ export default function ModuleCard({
 
         <button
           onClick={() => router.push(`/courses/${courseId}/module-quiz/${module.id}`)}
-          title="Module quiz"
-          aria-label="Module quiz"
+          title="Module quizzes"
+          aria-label="Module quizzes"
           className="hidden shrink-0 items-center gap-1.5 rounded-lg border border-dash-border px-3 py-1.5 text-[11px] font-semibold text-dash-textMuted transition-colors hover:border-sky-500/40 hover:bg-sky-50 hover:text-sky-600 sm:flex"
         >
-          <HelpCircle size={13} /> Module Quiz
+          <HelpCircle size={13} /> Module Quizzes
         </button>
 
         <button
