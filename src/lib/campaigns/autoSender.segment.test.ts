@@ -19,15 +19,16 @@ vi.mock('@/lib/supabase/server', () => ({
     from: (table: string) => {
       let op = 'select';
       const rows: Record<string, any> = {
-        contacts: { data: { id: 'c1', tags: ['zzvip'] }, error: null },
+        contacts: { data: { id: 'c1' }, error: null },
         email_campaigns: { data: [{ id: 'camp1', segment: state.campaignSegment }], error: null },
-        tag_assignments: { data: [], error: null },
-        tags: { data: [], error: null },
+        // c1 carries the real tag 'zzvip' (tag_assignments is the source of truth).
+        tag_assignments: { data: [{ tag_id: 't-zz' }], error: null },
+        tags: { data: [{ id: 't-zz', name: 'zzvip' }], error: null },
         segments: { data: state.segmentRow, error: null },
         campaign_dispatch_queue: { data: [{ campaign_id: 'camp1' }], error: null },
       };
       const q: any = {
-        select: () => q, eq: () => q, in: () => q, contains: () => q,
+        select: () => q, eq: () => q, in: () => q, contains: () => q, order: () => q, range: () => q,
         upsert: (r: any) => { op = 'upsert'; upserts.push({ table, r }); return q; },
         maybeSingle: () => Promise.resolve(rows[table]),
         then: (r: any) => r(rows[table]),

@@ -7,7 +7,7 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { createEmailCampaign } from '@/app/actions/marketing';
+import { createEmailCampaign, getEmailCampaigns, sendCampaignNow } from '@/app/actions/marketing';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { DashCard } from '@/components/dashboard-ui/Card';
@@ -19,7 +19,8 @@ import {
   DashModal, DashModalContent, DashModalHeader, DashModalTitle, DashModalFooter
 } from '@/components/dashboard-ui/Modal';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { TagMultiSelect, TagOption } from '@/components/crm/TagMultiSelect';
+import type { TagOption } from '@/components/crm/TagMultiSelect';
+import { TagAudiencePicker } from '@/components/campaigns/TagAudiencePicker';
 import { SegmentRuleBuilder } from '@/components/crm/SegmentRuleBuilder';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
@@ -27,6 +28,13 @@ import {
 import type { RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
 import { buildCampaignEditPayload, type EditInitial } from '@/lib/campaigns/editPayload';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { toastCampaignSendError } from '@/lib/campaigns/sendErrorToast';
+
+// Sent via "Send now" (card or builder) and still draining: status stays 'scheduled' with no
+// scheduled_for until the dispatch worker marks it 'sent'. Auto-senders share that shape but
+// never finish, so they're excluded.
+const isSendingNow = (c: any) => c.status === 'scheduled' && !c.scheduled_for && !c.segment?.is_automated;
+const canSendNow = (c: any) => (c.status === 'draft' || (c.status === 'scheduled' && !!c.scheduled_for)) && !c.segment?.is_automated;
 
 const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 
@@ -55,10 +63,8 @@ export default function CampaignsClient({
   const [editName, setEditName] = useState('');
   const [editSubject, setEditSubject] = useState('');
   const [editBody, setEditBody] = useState('');
-  // Real workspace tag NAMES currently selected in the picker — translated to
-  // real tag ids only at save time (see handleSaveEdit), since TagMultiSelect's
-  // established contract (shared with the Contact form) works in names.
-  const [editTagNames, setEditTagNames] = useState<string[]>([]);
+  // Selected tag IDS — a campaign targets tags by id, so renaming a tag never breaks it.
+  const [editTagIds, setEditTagIds] = useState<string[]>([]);
   const [editRuleGroup, setEditRuleGroup] = useState<RuleGroup | null>(null);
   const [editCombineMode, setEditCombineMode] = useState<'AND' | 'OR'>('AND');
   const [editSegmentId, setEditSegmentId] = useState<string | null>(null);
@@ -71,6 +77,43 @@ export default function CampaignsClient({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteCampaign, setDeleteCampaign] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
+
+  const [sendNowCampaign, setSendNowCampaign] = useState<any>(null);
+  const [sendingNowId, setSendingNowId] = useState<string | null>(null);
+
+  // While any card shows "Sending", re-read the campaigns (status, sent_at, total_sent) every
+  // few seconds so the badge and stats flip to the real result without a manual reload. Stops
+  // after ~2 minutes: rate-limited rows can legitimately wait for the next hour's window.
+  const anySending = campaigns.some(isSendingNow);
+  React.useEffect(() => {
+    if (!anySending) return;
+    let polls = 0;
+    const timer = setInterval(async () => {
+      polls++;
+      const res = await getEmailCampaigns();
+      if (res.data) setCampaigns(res.data);
+      if (polls >= 40) clearInterval(timer);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [anySending]);
+
+  const handleSendNow = async (campaign: any) => {
+    setSendingNowId(campaign.id);
+    try {
+      const res = await sendCampaignNow(campaign.id);
+      if (res.error) { toastCampaignSendError(res.error, router.push); return; }
+      setCampaigns(prev => prev.map(c => c.id === campaign.id ? { ...c, ...(res.data ?? {}) } : c));
+      if (res.directFailed?.length) toast.warning(`${res.directFailed.length} direct address(es) failed to send: ${res.directFailed.map((f: { email: string }) => f.email).join(', ')}`);
+      if (res.directSkipped?.length) toast.info(`Skipped ${res.directSkipped.length} unsubscribed/invalid address(es).`);
+      const total = (res.matchedContactsCount || 0) + (res.directSent?.length || 0);
+      if (res.dispatchWarning) toast.warning(res.dispatchWarning);
+      else toast.success(`Sending now to ${total} recipient${total === 1 ? '' : 's'}.`);
+    } catch {
+      toast.error('Could not send the campaign. Please try again.');
+    } finally {
+      setSendingNowId(null);
+    }
+  };
 
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -132,21 +175,19 @@ export default function CampaignsClient({
     setEditSubject(campaign.subject || '');
     setEditBody(campaign.preview_text || '');
 
-    // segment.tags may already be real tag ids (saved via this picker) or, for
-    // campaigns saved before this change, plain tag NAMES — either way the
-    // picker itself always works in names, so ids get resolved back to their
-    // current name here. A stale id whose tag was since deleted is dropped
+    // segment.tags are tag ids, or plain tag NAMES for campaigns saved before ids were used —
+    // names are resolved to their current tag id here. A tag that no longer exists is dropped
     // rather than shown as a broken chip.
-    let names: string[] = [];
+    let ids: string[] = [];
     try {
       if (campaign.segment && typeof campaign.segment === 'object' && Array.isArray(campaign.segment.tags)) {
         const stored: string[] = campaign.segment.tags;
-        names = stored
-          .map((entry) => (isUuid(entry) ? tags.find((t) => t.id === entry)?.name : entry))
+        ids = stored
+          .map((entry) => (isUuid(entry) ? tags.find((t) => t.id === entry)?.id : tags.find((t) => t.name.toLowerCase() === entry.toLowerCase())?.id))
           .filter((n): n is string => !!n);
       }
     } catch (e) {}
-    setEditTagNames(names);
+    setEditTagIds(ids);
 
     const ruleGroup: RuleGroup | null = (campaign.segment && typeof campaign.segment === 'object' && campaign.segment.ruleGroup)
       ? campaign.segment.ruleGroup
@@ -158,7 +199,7 @@ export default function CampaignsClient({
 
     setEditInitial({
       body: campaign.preview_text || '',
-      tagNames: names,
+      tagIds: ids,
       ruleKey: JSON.stringify(ruleGroup),
       segmentId: (campaign.segment && typeof campaign.segment === 'object' && campaign.segment.segmentId) || null,
       combine: (campaign.segment?.combineMode as string) || 'AND',
@@ -188,8 +229,8 @@ export default function CampaignsClient({
       const payload = buildCampaignEditPayload(
         editCampaign,
         editInitial,
-        { name: editName, subject: editSubject, body: editBody, tagNames: editTagNames, ruleGroup: editRuleGroup, segmentId: editSegmentId, combine: editCombineMode },
-        (name) => currentTags.find((t) => t.name.toLowerCase() === name.toLowerCase())?.id,
+        { name: editName, subject: editSubject, body: editBody, tagIds: editTagIds, ruleGroup: editRuleGroup, segmentId: editSegmentId, combine: editCombineMode },
+        (id) => currentTags.some((t) => t.id === id),
       );
 
       const res = await updateCampaign(editCampaign.id, payload);
@@ -270,7 +311,7 @@ export default function CampaignsClient({
                 <Mail size={18} />
               </div>
               <div className="flex items-center gap-2">
-                <DashStatusPill variant={statusVariant(campaign.status)}>{campaign.status}</DashStatusPill>
+                <DashStatusPill variant={statusVariant(campaign.status)}>{isSendingNow(campaign) ? 'sending' : campaign.status}</DashStatusPill>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button className="h-8 w-8 rounded-lg bg-dash-surface hover:bg-dash-border/60 flex items-center justify-center transition-colors motion-reduce:transition-none">
@@ -310,14 +351,26 @@ export default function CampaignsClient({
               ))}
             </div>
 
-            <div className="flex items-center justify-between pt-5 border-t border-dash-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-5 border-t border-dash-border">
               <div className="flex items-center gap-2 text-[11px] font-semibold !text-dash-textMuted">
                 <Calendar className="w-3.5 h-3.5" />
                 {campaign.status === 'scheduled' && campaign.scheduled_for
                   ? `Scheduled for ${new Date(campaign.scheduled_for).toLocaleString()}`
-                  : campaign.sent_at ? `Sent ${new Date(campaign.sent_at).toLocaleDateString()}` : 'Not sent'}
+                  : isSendingNow(campaign)
+                    ? `Sending now · ${campaign.total_sent || 0} sent`
+                    : campaign.sent_at ? `Sent ${new Date(campaign.sent_at).toLocaleDateString()}` : 'Not sent'}
               </div>
               <div className="flex gap-2">
+                {canSendNow(campaign) && (
+                  <DashButton
+                    onClick={() => setSendNowCampaign(campaign)}
+                    disabled={sendingNowId === campaign.id}
+                    variant="secondary"
+                    size="sm"
+                  >
+                    <Send className="w-3.5 h-3.5" /> {sendingNowId === campaign.id ? 'Sending...' : 'Send now'}
+                  </DashButton>
+                )}
                 <DashButton onClick={() => openEdit(campaign)} variant="secondary" size="sm">
                   Settings
                 </DashButton>
@@ -364,8 +417,13 @@ export default function CampaignsClient({
             <DashFormField label="Subject">
               <DashInput value={editSubject} onChange={e => setEditSubject(e.target.value)} />
             </DashFormField>
-            <DashFormField label="Target audience tags" hint="A campaign needs an audience: pick at least one tag, a saved segment or a filter before sending.">
-              <TagMultiSelect availableTags={tags} value={editTagNames} onChange={setEditTagNames} />
+            <DashFormField label="Target audience tags" hint="Sends to contacts that have ALL of the selected tags. A campaign needs an audience: pick at least one tag, a saved segment or a filter before sending.">
+              <TagAudiencePicker
+                availableTags={tags}
+                value={editTagIds}
+                onChange={setEditTagIds}
+                onTagCreated={(t) => setTags((prev) => [...prev, t])}
+              />
             </DashFormField>
 
             <DashFormField label="Saved segment" hint="Select a saved segment instead of building rules below.">
@@ -402,7 +460,7 @@ export default function CampaignsClient({
                 <div className="p-3.5 border-t border-dash-border space-y-3">
                   <SegmentRuleBuilder value={editRuleGroup} onChange={setEditRuleGroup} />
 
-                  {editTagNames.length > 0 && !!editRuleGroup && editRuleGroup.rules.length > 0 && (
+                  {editTagIds.length > 0 && !!editRuleGroup && editRuleGroup.rules.length > 0 && (
                     <div className="pt-2 border-t border-dash-border">
                       <span className="text-[11px] font-bold !text-dash-textMuted block mb-2">
                         Match contacts who have these tags
@@ -440,6 +498,18 @@ export default function CampaignsClient({
           </DashModalFooter>
         </DashModalContent>
       </DashModal>
+
+      <ConfirmDialog
+        isOpen={!!sendNowCampaign}
+        onClose={() => setSendNowCampaign(null)}
+        onConfirm={() => { if (sendNowCampaign) handleSendNow(sendNowCampaign); }}
+        title="Send this campaign now?"
+        description={sendNowCampaign?.status === 'scheduled' && sendNowCampaign?.scheduled_for
+          ? `"${sendNowCampaign?.name}" is scheduled for ${new Date(sendNowCampaign.scheduled_for).toLocaleString()}. Sending now skips that schedule and emails its whole audience immediately. This can't be undone.`
+          : `"${sendNowCampaign?.name}" will be emailed to its whole audience immediately. Unsubscribed and invalid addresses are skipped. This can't be undone.`}
+        confirmLabel="Send now"
+        variant="warning"
+      />
 
       <ConfirmDialog
         isOpen={deleteOpen}

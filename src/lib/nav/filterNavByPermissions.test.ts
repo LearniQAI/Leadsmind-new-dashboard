@@ -38,7 +38,8 @@ describe("filterNavByPermissions (module-level)", () => {
 
   it("a member sees exactly the sections they were granted (+ Dashboard, + self-service links)", () => {
     const { sections, links } = visible({ role: "member", permissions: ["dashboard", "marketing"] });
-    expect(sections).toEqual(["dashboard", "marketing", "learning"]);
+    // CRM & Sales appears only because it now holds Campaigns (Marketing-gated) -- see below.
+    expect(sections).toEqual(["dashboard", "crm", "marketing", "learning"]);
     // Courses shows ONLY the student self-service link, never the admin pages.
     expect(links.has("/student")).toBe(true);
     expect(links.has("/courses")).toBe(false);
@@ -52,6 +53,16 @@ describe("filterNavByPermissions (module-level)", () => {
     for (const l of ["/contacts", "/contacts/tags", "/lead-finder", "/lead-finder/map", "/pipelines", "/quotes", "/tasks", "/projects", "/automations"]) {
       expect(links.has(l)).toBe(true);
     }
+  });
+
+  it("Campaigns sits under CRM & Sales but is still granted by Marketing (no access change from the move)", () => {
+    const marketingOnly = filterNavByPermissions(dashboardNav, { role: "member", permissions: ["dashboard", "marketing"] });
+    expect(marketingOnly.find((m) => m.id === "crm-sales")?.items?.map((i) => i.link)).toEqual(["/campaigns"]);
+    expect(marketingOnly.find((m) => m.id === "marketing")?.items?.some((i) => i.link === "/campaigns")).toBe(false);
+
+    expect(visible({ role: "member", permissions: ["crm"] }).links.has("/campaigns")).toBe(false);
+    expect(visible({ role: "member", permissions: ["crm", "marketing"] }).links.has("/campaigns")).toBe(true);
+    expect(visible({ role: "admin", permissions: [] }).links.has("/campaigns")).toBe(true);
   });
 
   it("Employees needs the hr role even inside a granted HR & Payroll section", () => {

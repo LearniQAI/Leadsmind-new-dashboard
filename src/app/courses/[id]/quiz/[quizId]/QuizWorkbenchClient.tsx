@@ -17,6 +17,7 @@ import Editor from "@monaco-editor/react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import QuizAnalyticsConsole from "./QuizAnalyticsConsole";
+import { updateModuleQuiz } from "@/app/actions/moduleQuizzes";
 import { PropertyGroup, SliderWithInput, PropertySelect } from "@/components/builder/inspector/primitives";
 
 // Real db question_type values -> a short, readable badge label for the question-list sidebar.
@@ -55,9 +56,10 @@ function AiGradingToggle({ checked, onChange }: { checked: boolean; onChange: (v
 interface QuizWorkbenchClientProps {
   course: any;
   quiz: any;
-  /** Module-Level Quiz pass — when set, this same Workbench authors a quiz scoped to an
-   *  entire module (module_quiz_questions/module_quiz_settings, Step 1's schema decision)
-   *  instead of the lesson `quiz.id` — the real question-authoring UI below is unchanged
+  /** Module-Level Quiz pass — when set, this same Workbench authors a module quiz
+   *  (module_quiz_questions/module_quiz_settings) instead of a lesson quiz. `quiz.id` is
+   *  then that module quiz's own id (module_quizzes — a module can hold several), and every
+   *  module-scope call below is addressed by it. The question-authoring UI is unchanged
    *  either way; only which API endpoints/payload keys get hit differs, isolated to the few
    *  call sites below rather than a second, parallel component (Step 2's explicit ask). */
   moduleId?: string;
@@ -83,6 +85,10 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
   const [maxRetakes, setMaxRetakes] = useState(quiz.max_retakes ?? -1);
   const [isRequired, setIsRequired] = useState(quiz.is_required ?? true);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  // Module quizzes only: module_quizzes.status. Students see a module quiz only once it is
+  // published (and has questions).
+  const [moduleQuizStatus, setModuleQuizStatus] = useState<string>(quiz.status || "draft");
+  const [isTogglingPublish, setIsTogglingPublish] = useState(false);
 
   // Global configuration overrides states
   const initialSettings = quiz.settings || {};
@@ -151,7 +157,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
     try {
       const res = await fetch(
         isModuleScope
-          ? `/api/lms/module-quiz/settings?moduleId=${moduleId}`
+          ? `/api/lms/module-quiz/settings?quizId=${quiz.id}`
           : `/api/lms/quiz/settings?lessonId=${quiz.id}`
       );
       const dataJson = await res.json();
@@ -174,7 +180,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
     try {
       const res = await fetch(
         isModuleScope
-          ? `/api/lms/module-quiz/questions?moduleId=${moduleId}`
+          ? `/api/lms/module-quiz/questions?quizId=${quiz.id}`
           : `/api/lms/quiz/questions?lessonId=${quiz.id}`
       );
       const dataJson = await res.json();
@@ -353,7 +359,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
           method,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            ...(isModuleScope ? { module_id: moduleId } : { lesson_id: quiz.id }),
+            ...(isModuleScope ? { quiz_id: quiz.id } : { lesson_id: quiz.id }),
             workspace_id: course.workspace_id || quiz.workspace_id,
             question_type: qTypeMap[type] || 'mcq',
             question_text: questionText,
@@ -397,18 +403,19 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
   };
 
   const handleSaveSettings = async () => {
-    if (!isModuleScope && !quizTitle.trim()) {
+    if (!quizTitle.trim()) {
       toast.error("Quiz title is required");
       return;
     }
     setIsSavingSettings(true);
     try {
-      // Module-Level Quiz pass: a module quiz has no title/description of its own (it's an
-      // assessment FOR the module, shown as "{Module title} Quiz" everywhere rather than a
-      // separately-named entity) — so, unlike the lesson-quiz path, there is no
-      // course_lessons row to update here, and deliberately no equivalent of the legacy
-      // upsertQuiz()/lms_quizzes write either (see below).
-      if (!isModuleScope) {
+      // A module quiz's title lives on its module_quizzes row (a module can hold several
+      // quizzes, each named); it has no description and no course_lessons row. Deliberately no
+      // equivalent of the legacy upsertQuiz()/lms_quizzes write either (see below).
+      if (isModuleScope) {
+        const renamed = await updateModuleQuiz(quiz.id, { title: quizTitle });
+        if (renamed.error) throw new Error(renamed.error);
+      } else {
         // 1. Update course_lessons title and description
         const lessonRes = await fetch(`/api/lms/lessons?id=${quiz.id}`, {
           method: "PATCH",
@@ -440,7 +447,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...(isModuleScope ? { module_id: moduleId } : { lesson_id: quiz.id }),
+          ...(isModuleScope ? { quiz_id: quiz.id } : { lesson_id: quiz.id }),
           time_limit_minutes: timeLimit,
           max_attempts: maxRetakes,
           pass_percentage: passingScore,
@@ -461,6 +468,22 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
     }
   };
 
+  const handleToggleModuleQuizPublish = async () => {
+    const next = moduleQuizStatus === "published" ? "draft" : "published";
+    setIsTogglingPublish(true);
+    try {
+      const res = await updateModuleQuiz(quiz.id, { status: next });
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
+      setModuleQuizStatus(next);
+      toast.success(next === "published" ? "Quiz published — students can now take it." : "Quiz moved back to draft.");
+    } finally {
+      setIsTogglingPublish(false);
+    }
+  };
+
   const handleGenerateAiQuestions = async () => {
     setIsGeneratingQuestions(true);
     try {
@@ -468,7 +491,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...(isModuleScope ? { module_id: moduleId } : { lesson_id: quiz.id }),
+          ...(isModuleScope ? { quiz_id: quiz.id } : { lesson_id: quiz.id }),
           workspace_id: course.workspace_id || quiz.workspace_id
         })
       });
@@ -492,17 +515,37 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-dash-border pb-5">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => router.push(`/courses/${course.id}`)}
+            onClick={() => router.push(isModuleScope ? `/courses/${course.id}/module-quiz/${moduleId}` : `/courses/${course.id}`)}
             className="w-10 h-10 rounded-xl bg-dash-surface border border-dash-border flex items-center justify-center !text-dash-textMuted hover:bg-dash-border/60 hover:!text-dash-text transition-all motion-reduce:transition-none active:scale-95 shrink-0"
-            title="Back to course builder"
+            title={isModuleScope ? "Back to the module's quizzes" : "Back to course builder"}
           >
             <ArrowLeft size={16} />
           </button>
           <div>
             <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-dash-accent">Quiz editor</span>
             <h1 className="font-display text-[26px] md:text-[30px] font-semibold leading-[1.1] tracking-[-0.02em] !text-dash-text mt-1">
-              {isModuleScope ? (quiz.title ? `${quiz.title} Quiz` : "Module Quiz") : (quizTitle || "Untitled quiz")}
+              {quizTitle || "Untitled quiz"}
             </h1>
+            {isModuleScope && (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span
+                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${
+                    moduleQuizStatus === "published"
+                      ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20"
+                      : "bg-slate-100 text-slate-600 ring-slate-500/20"
+                  }`}
+                >
+                  {moduleQuizStatus === "published" ? "Published" : "Draft — students can't see this quiz"}
+                </span>
+                <button
+                  onClick={handleToggleModuleQuizPublish}
+                  disabled={isTogglingPublish}
+                  className="h-7 px-2.5 rounded-lg border border-dash-border bg-white text-[11px] font-semibold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface transition-colors motion-reduce:transition-none disabled:opacity-60"
+                >
+                  {moduleQuizStatus === "published" ? "Unpublish" : "Publish"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1080,16 +1123,18 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
             </button>
           </div>
 
-          {/* Module-Level Quiz pass: a module quiz has no title/description of its own
-              (see handleSaveSettings) — shown as a read-only label instead of an editable
-              field a save would silently discard. */}
+          {/* A module quiz has a title (module_quizzes.title, saved by handleSaveSettings) but
+              no description, so only the title field is shown for it. */}
           <PropertyGroup title="Identity">
             {isModuleScope ? (
               <div className="space-y-1">
                 <label className="text-[11px] font-semibold !text-dash-textMuted block">Quiz title</label>
-                <div className="w-full bg-dash-surface border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text">
-                  {quiz.title ? `${quiz.title} Quiz` : "Module Quiz"}
-                </div>
+                <input
+                  type="text"
+                  value={quizTitle}
+                  onChange={(e) => setQuizTitle(e.target.value)}
+                  className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none"
+                />
               </div>
             ) : (
               <>

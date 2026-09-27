@@ -17,10 +17,26 @@ export async function POST(req: NextRequest) {
     const { workspaceId: workspace_id } = await requireLmsInstructor();
 
     const body = await req.json();
-    const { lesson_id, module_id } = body;
+    const { lesson_id, quiz_id } = body;
 
-    if (!lesson_id && !module_id) {
-      return NextResponse.json({ error: 'Missing required parameter: lesson_id or module_id' }, { status: 400 });
+    if (!lesson_id && !quiz_id) {
+      return NextResponse.json({ error: 'Missing required parameter: lesson_id or quiz_id' }, { status: 400 });
+    }
+
+    // A module quiz is addressed by its own id (a module can hold several quizzes); the module
+    // whose lessons supply the context is derived from it, scoped to the caller's workspace.
+    let module_id: string | null = null;
+    if (quiz_id) {
+      const { data: quiz } = await supabaseAdmin
+        .from('module_quizzes')
+        .select('module_id')
+        .eq('id', quiz_id)
+        .eq('workspace_id', workspace_id)
+        .maybeSingle();
+      if (!quiz) {
+        return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
+      }
+      module_id = quiz.module_id;
     }
 
     // Batch 3 (G5): context is now the REAL lesson body assembled from content_blocks
@@ -190,7 +206,7 @@ export async function POST(req: NextRequest) {
     // lesson quiz (Step 1 schema decision from the Module-Level Quiz pass: separate tables,
     // never a shared one).
     const insertPayload = questionsJson.map((q, idx) => ({
-      ...(module_id ? { module_id } : { lesson_id }),
+      ...(module_id ? { quiz_id, module_id } : { lesson_id }),
       workspace_id,
       question_type: 'mcq',
       question_text: q.question_text,

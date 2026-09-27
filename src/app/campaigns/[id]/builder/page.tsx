@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import MetaData from '@/hooks/useMetaData';
 import { EmailBuilderClient } from './EmailBuilderClient';
 import { listSegments } from '@/app/actions/segments';
+import { listTags } from '@/app/actions/tags';
 
 interface PageProps {
   params: {
@@ -47,8 +48,9 @@ export default async function EmailBuilderPage({ params }: PageProps) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  const segmentsRes = await listSegments();
+  const [segmentsRes, tagsRes] = await Promise.all([listSegments(), listTags()]);
   const availableSegments = segmentsRes.success ? segmentsRes.data : [];
+  const availableTags = tagsRes.success ? tagsRes.data : [];
 
   return (
     <MetaData pageTitle={`${campaign.name || 'Untitled Campaign'} | Campaign Builder`}>
@@ -57,6 +59,7 @@ export default async function EmailBuilderPage({ params }: PageProps) {
         initialCampaign={campaign}
         brandKit={brandKit}
         availableSegments={availableSegments}
+        availableTags={availableTags}
         userEmail={user?.email ?? ''}
       />
     </MetaData>

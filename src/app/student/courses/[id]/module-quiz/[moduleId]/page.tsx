@@ -1,95 +1,36 @@
 import React from 'react';
-import { redirect, notFound } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { Lock } from 'lucide-react';
-import { createAdminClient } from '@/lib/supabase/server';
-import { requireAuth, getCurrentProfile } from '@/lib/auth';
-import { getOrCreateStudentContact } from '@/app/actions/studentEnrollments';
-import { getModuleCompletionStatus } from '@/lib/lms/moduleCompletion';
-import StudentQuizClient from '../../quiz/[quizId]/StudentQuizClient';
+import { CheckCircle2, ChevronRight, Clock, HelpCircle } from 'lucide-react';
 import ModuleQuizShell from './ModuleQuizShell';
-import { buildClientQuestion } from '@/lib/lms/quizGrading';
+import { loadStudentModuleQuizContext, ModuleQuizLocked } from './moduleQuizContext';
 
-interface StudentModuleQuizPageProps {
+interface StudentModuleQuizzesPageProps {
   params: { id: string; moduleId: string };
 }
 
-// Module-Level Quiz — reuses StudentQuizClient (the quiz-taking flow), now inside the real
-// in-course chrome (ModuleQuizShell → the same SyllabusSidebar the lesson player uses)
-// instead of the generic /student portal nav.
-export default async function StudentModuleQuizPage({ params }: StudentModuleQuizPageProps) {
+// A module's quizzes, for a student. A module can hold several quizzes (module_quizzes); this
+// page lists the ones the student can see and must pass. With exactly one it goes straight to
+// that quiz, so the single-quiz experience (and every existing link here) is unchanged.
+export default async function StudentModuleQuizzesPage({ params }: StudentModuleQuizzesPageProps) {
   const courseId = params.id;
   const moduleId = params.moduleId;
-  await requireAuth();
 
-  const adminClient = createAdminClient();
+  const ctx = await loadStudentModuleQuizContext(courseId, moduleId);
 
-  const { data: course } = await adminClient
-    .from('courses')
-    .select('*')
-    .eq('id', courseId)
-    .single();
-  if (!course) notFound();
-
-  const contactId = await getOrCreateStudentContact(course.workspace_id);
-  if (!contactId) redirect('/student/marketplace');
-
-  const { data: enrollment } = await adminClient
-    .from('enrollments')
-    .select('*')
-    .eq('course_id', courseId)
-    .eq('contact_id', contactId)
-    .maybeSingle();
-  if (!enrollment) redirect(`/student/courses/${courseId}`);
-
-  const { data: courseModule } = await adminClient
-    .from('course_modules')
-    .select('*')
-    .eq('id', moduleId)
-    .eq('course_id', courseId)
-    .single();
-  if (!courseModule || courseModule.is_active === false) notFound();
-
-  // In-course sidebar data (same shape the lesson player's page.tsx builds).
-  const [modulesRes, lessonsRes, progressRes, profile] = await Promise.all([
-    adminClient.from('course_modules').select('*').eq('course_id', courseId).eq('is_active', true).order('position', { ascending: true }),
-    adminClient.from('course_lessons').select('*').eq('course_id', courseId).eq('is_active', true).order('position', { ascending: true }),
-    adminClient.from('course_progress').select('lesson_id').eq('contact_id', contactId).eq('course_id', courseId).not('completed_at', 'is', null),
-    getCurrentProfile(),
-  ]);
-
-  const modules = modulesRes.data || [];
-  const moduleIds = modules.map((m: any) => m.id);
-  const { data: mqData } = moduleIds.length
-    ? await adminClient.from('module_quiz_questions').select('module_id').in('module_id', moduleIds)
-    : { data: [] as any[] };
-  const moduleIdsWithQuiz = new Set((mqData || []).map((q: any) => q.module_id));
-  for (const m of modules) m.has_module_quiz = moduleIdsWithQuiz.has(m.id);
-
-  const activeModuleIds = new Set(modules.map((m: any) => m.id));
-  const lessons = (lessonsRes.data || []).filter((l: any) => activeModuleIds.has(l.module_id));
-  const completedLessonIds = (progressRes.data || []).map((p: any) => p.lesson_id);
-
-  const pf = (profile?.firstName || '').trim();
-  const pl = (profile?.lastName || '').trim();
-  const studentName = (pf && pl && pf !== pl ? `${pf} ${pl}` : pf || pl) || null;
-
-  const completion = await getModuleCompletionStatus(contactId, moduleId);
+  if (ctx.completion.allComplete && ctx.quizzes.length === 1) {
+    redirect(`/student/courses/${courseId}/module-quiz/${moduleId}/${ctx.quizzes[0].id}`);
+  }
 
   let body: React.ReactNode;
-
-  if (!completion.allComplete) {
+  if (!ctx.completion.allComplete) {
+    body = <ModuleQuizLocked courseId={courseId} moduleTitle={ctx.courseModule.title} completion={ctx.completion} />;
+  } else if (ctx.quizzes.length === 0) {
     body = (
       <div className="rounded-2xl border border-dash-border bg-white p-8 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-50 text-amber-600 ring-1 ring-inset ring-amber-500/15">
-          <Lock size={24} />
-        </div>
-        <h2 className="mt-4 font-display text-[17px] font-semibold !text-dash-text">
-          Complete the module first
-        </h2>
+        <h2 className="font-display text-[17px] font-semibold !text-dash-text">No quizzes in this module</h2>
         <p className="mx-auto mt-1.5 max-w-sm text-[13px] leading-relaxed !text-dash-textMuted">
-          You&apos;ve completed {completion.completedLessons} of {completion.totalLessons} lessons in
-          &ldquo;{courseModule.title}&rdquo;. Finish every lesson to unlock this module&apos;s quiz.
+          There&apos;s nothing to take here right now.
         </p>
         <Link
           href={`/student/courses/${courseId}`}
@@ -100,36 +41,64 @@ export default async function StudentModuleQuizPage({ params }: StudentModuleQui
       </div>
     );
   } else {
-    const [questionsRes, settingsRes, attemptsRes] = await Promise.all([
-      adminClient.from('module_quiz_questions').select('*').eq('module_id', moduleId).order('position', { ascending: true }),
-      adminClient.from('module_quiz_settings').select('*').eq('module_id', moduleId).maybeSingle(),
-      adminClient.from('module_quiz_attempts').select('id').eq('module_id', moduleId).eq('student_id', contactId),
-    ]);
+    const { data: attempts } = await ctx.adminClient
+      .from('module_quiz_attempts')
+      .select('quiz_id, passed, grade_status')
+      .eq('student_id', ctx.contactId)
+      .in('quiz_id', ctx.quizzes.map((q) => q.id));
+
+    const statusOf = (quizId: string): 'passed' | 'pending' | 'attempted' | 'new' => {
+      const rows = (attempts || []).filter((a: any) => a.quiz_id === quizId);
+      if (rows.some((a: any) => a.passed)) return 'passed';
+      if (rows.some((a: any) => a.grade_status === 'pending_review')) return 'pending';
+      return rows.length ? 'attempted' : 'new';
+    };
+    const passedCount = ctx.quizzes.filter((q) => statusOf(q.id) === 'passed').length;
 
     body = (
-      <StudentQuizClient
-        courseId={courseId}
-        quiz={{ id: courseModule.id, title: `${courseModule.title} Quiz` }}
-        questions={(questionsRes.data || []).map(buildClientQuestion)}
-        settings={settingsRes.data || {}}
-        attemptsCount={attemptsRes.data?.length || 0}
-        hasPassedRemedial={false}
-        moduleId={moduleId}
-      />
+      <div className="rounded-2xl border border-dash-border bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)] md:p-8">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-600">Module quizzes</span>
+        <h2 className="mt-1 font-display text-[19px] font-semibold !text-dash-text">{ctx.courseModule.title}</h2>
+        <p className="mt-1 text-[12px] !text-dash-textMuted">
+          Pass every quiz to complete this module &middot; {passedCount} of {ctx.quizzes.length} passed
+        </p>
+        <ul className="mt-5 space-y-2">
+          {ctx.quizzes.map((q) => {
+            const status = statusOf(q.id);
+            return (
+              <li key={q.id}>
+                <Link
+                  href={`/student/courses/${courseId}/module-quiz/${moduleId}/${q.id}`}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-dash-border px-4 py-3 transition-colors hover:bg-dash-surface"
+                >
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    {status === 'passed' ? (
+                      <CheckCircle2 size={16} className="shrink-0 text-emerald-600" />
+                    ) : status === 'pending' ? (
+                      <Clock size={16} className="shrink-0 text-amber-600" />
+                    ) : (
+                      <HelpCircle size={16} className="shrink-0 text-sky-600" />
+                    )}
+                    <span className="truncate text-[13px] font-semibold !text-dash-text">{q.title}</span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-1 text-[11px] !text-dash-textMuted">
+                    {status === 'passed'
+                      ? 'Passed'
+                      : status === 'pending'
+                        ? 'Awaiting review'
+                        : status === 'attempted'
+                          ? 'Not passed yet'
+                          : 'Not started'}
+                    <ChevronRight size={14} />
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     );
   }
 
-  return (
-    <ModuleQuizShell
-      course={course}
-      modules={modules}
-      lessons={lessons}
-      completedLessonIds={completedLessonIds}
-      enrollment={enrollment}
-      studentName={studentName}
-      activeModuleId={moduleId}
-    >
-      {body}
-    </ModuleQuizShell>
-  );
+  return <ModuleQuizShell {...ctx.shellProps}>{body}</ModuleQuizShell>;
 }

@@ -8,7 +8,8 @@ import {
 
 /**
  * Page route → module index. Every sidebar link belongs to the module of the section it sits
- * in (so granting "CRM & Sales" covers Contacts, Pipelines, Quotes, ... alike), plus the
+ * in (so granting "CRM & Sales" covers Contacts, Pipelines, Quotes, ... alike) unless the item
+ * carries its own `module` override (Campaigns: under CRM & Sales, gated by Marketing), plus the
  * off-nav sibling routes in EXTRA_MODULE_ROUTES.
  *
  * Previously /shipments, /affiliates and /admin/compliance were deliberately left ungated
@@ -22,8 +23,9 @@ function buildModuleIndex(): Array<[string, ModuleKey]> {
   dashboardNav.forEach((module) => {
     if (module.link) entries.push([module.link, module.module]);
     module.items?.forEach((item) => {
-      if (item.link) entries.push([item.link, module.module]);
-      item.subItems?.forEach((sub) => entries.push([sub.link, module.module]));
+      const itemModule = item.module ?? module.module;
+      if (item.link) entries.push([item.link, itemModule]);
+      item.subItems?.forEach((sub) => entries.push([sub.link, itemModule]));
     });
   });
 

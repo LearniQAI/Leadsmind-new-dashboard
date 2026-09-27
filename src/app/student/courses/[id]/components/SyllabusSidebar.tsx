@@ -185,11 +185,12 @@ export default function SyllabusSidebar({
                   </span>
                 )}
 
-                {/* Module-level quiz entry point — only for modules that actually have one
-                    configured. Locked until every lesson in the module is complete, mirroring
+                {/* Module-level quiz entry points — one per quiz the student can see (a module
+                    can hold several; mod.module_quizzes from attachStudentModuleQuizzes). Locked
+                    until every lesson in the module is complete, mirroring
                     getModuleCompletionStatus() (the same all-lessons-complete rule the
-                    module-quiz page enforces server-side) and the locked-lesson visual above. */}
-                {mod.has_module_quiz && (() => {
+                    module-quiz pages enforce server-side) and the locked-lesson visual above. */}
+                {(mod.module_quizzes || []).map((mq: { id: string; title: string }) => {
                   const allLessonsDone =
                     moduleLessons.length === 0 ||
                     moduleLessons.every((l: any) => completedLessonIds.includes(l.id));
@@ -206,7 +207,7 @@ export default function SyllabusSidebar({
                             allLessonsDone ? 'font-semibold !text-dash-text' : '!text-dash-textMuted'
                           }`}
                         >
-                          Module quiz
+                          {mq.title}
                         </span>
                       </span>
                       <span className="text-[10px] uppercase !text-dash-textMuted/70">
@@ -218,7 +219,8 @@ export default function SyllabusSidebar({
                     'mt-1 flex w-full items-center justify-between gap-3 rounded-xl border border-dashed px-3 py-2.5 text-left transition-colors';
                   return allLessonsDone ? (
                     <a
-                      href={`/student/courses/${course.id}/module-quiz/${mod.id}`}
+                      key={mq.id}
+                      href={`/student/courses/${course.id}/module-quiz/${mod.id}/${mq.id}`}
                       className={`${base} border-dash-border hover:bg-white`}
                       style={{ borderColor: `${accent}55` }}
                     >
@@ -226,6 +228,7 @@ export default function SyllabusSidebar({
                     </a>
                   ) : (
                     <div
+                      key={mq.id}
                       aria-disabled="true"
                       title="Complete every lesson in this module to unlock its quiz"
                       className={`${base} cursor-not-allowed border-dash-border opacity-45`}
@@ -233,7 +236,7 @@ export default function SyllabusSidebar({
                       {inner}
                     </div>
                   );
-                })()}
+                })}
               </div>
             </div>
           );

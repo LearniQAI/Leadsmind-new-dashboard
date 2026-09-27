@@ -16,7 +16,7 @@ type Campaign = { id: string; segment: any };
 export async function enqueueAutoSenderCampaigns(workspaceId: string, contactId: string) {
   const supabase = createAdminClient();
   const [{ data: contact, error: contactError }, { data: campaigns, error: campaignsError }] = await Promise.all([
-    supabase.from('contacts').select('id, tags').eq('id', contactId).eq('workspace_id', workspaceId).maybeSingle(),
+    supabase.from('contacts').select('id').eq('id', contactId).eq('workspace_id', workspaceId).maybeSingle(),
     supabase
       .from('email_campaigns')
       .select('id, segment')
@@ -36,21 +36,24 @@ export async function enqueueAutoSenderCampaigns(workspaceId: string, contactId:
     .eq('entity_id', contactId);
   if (assignmentError) throw assignmentError;
   const contactTagIds = new Set((assignments ?? []).map((row) => row.tag_id));
-  const contactTagNames = new Set(Array.isArray(contact.tags) ? contact.tags : []);
-  const { data: workspaceTags, error: workspaceTagsError } = await supabase
-    .from('tags')
-    .select('id, name')
-    .eq('workspace_id', workspaceId);
-  if (workspaceTagsError) throw workspaceTagsError;
-  const tagNameById = new Map((workspaceTags ?? []).map((tag) => [tag.id, tag.name]));
+  // Campaign tags are ids (or names on older campaigns); membership comes ONLY from
+  // tag_assignments, never the stale legacy contacts.tags array.
+  const { resolveCampaignTagIds } = await import('@/lib/campaigns/tagAudience');
 
   const matchingIds: string[] = [];
   for (const campaign of campaigns as Campaign[]) {
     const segment = campaign.segment ?? {};
     const campaignTags: string[] = Array.isArray(segment.tags) ? segment.tags : [];
-    const tagMatches = campaignTags.length === 0 || campaignTags.every((tag) =>
-      contactTagIds.has(tag) || contactTagNames.has(tag) || contactTagNames.has(tagNameById.get(tag) ?? ''),
-    );
+    let tagMatches = true;
+    if (campaignTags.length > 0) {
+      const { ids, missing } = await resolveCampaignTagIds(supabase as any, workspaceId, campaignTags);
+      if (missing.length > 0) {
+        // A deleted tag must not silently widen the audience to the remaining tags.
+        logger.error({ campaignId: campaign.id, workspaceId, missing }, 'campaign.auto_sender.tag_missing');
+        continue;
+      }
+      tagMatches = ids.every((id) => contactTagIds.has(id));
+    }
 
     // Resolve this campaign's rule group. A campaign whose saved segment was deleted (or whose
     // rules are invalid) FAILS CLOSED: it is skipped and an error is logged, never evaluated on

@@ -1,6 +1,7 @@
 'use server';
 
 import { createAdminClient } from '@/lib/supabase/server';
+import { getModuleQuizTitles } from '@/lib/lms/moduleQuizzes';
 import { getStudentContactIds } from './studentEnrollments';
 import { isEnrolmentActive } from '@/lib/lms/enrolment';
 import { logger } from '@/shared/logger';
@@ -88,7 +89,7 @@ export async function getStudentPendingWork(): Promise<{
         .in('student_id', contactIds)
         .in('grade_status', ['pending_review', 'reviewed']),
       db.from('module_quiz_attempts')
-        .select('id, module_id, grade_status, passed, submitted_at, graded_at')
+        .select('id, module_id, quiz_id, grade_status, passed, submitted_at, graded_at')
         .in('student_id', contactIds)
         .in('grade_status', ['pending_review', 'reviewed']),
     ]);
@@ -184,7 +185,9 @@ export async function getStudentPendingWork(): Promise<{
       }
     }
 
-    // Module-scoped quizzes — same real shape, module_quiz_attempts.
+    // Module-scoped quizzes — same real shape, module_quiz_attempts. A module can hold several
+    // quizzes, so each item is labelled with its quiz's own title.
+    const moduleQuizTitles = await getModuleQuizTitles(db, (maRes.data || []).map((a: any) => a.quiz_id));
     for (const a of maRes.data || []) {
       const mod = a.module_id ? moduleById.get(a.module_id) : null;
       if (!mod) continue;
@@ -193,7 +196,7 @@ export async function getStudentPendingWork(): Promise<{
       const base = {
         id: a.id,
         kind: 'module_quiz' as const,
-        title: `${mod.title} — module quiz`,
+        title: `${mod.title} — ${moduleQuizTitles.get(a.quiz_id) || 'module quiz'}`,
         courseTitle: course?.title ?? 'Course',
         courseId: mod.course_id,
         href,

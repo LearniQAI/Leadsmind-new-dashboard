@@ -5,6 +5,7 @@ import { getUser } from '@/lib/auth';
 import { getOrCreateStudentContact } from './studentEnrollments';
 import { gradeQuizAttempt } from '@/lib/lms/gradeQuiz';
 import { gradeModuleQuizAttempt } from '@/lib/lms/gradeModuleQuiz';
+import { getStudentVisibleModuleQuizzes } from '@/lib/lms/moduleQuizzes';
 import { getModuleCompletionStatus } from '@/lib/lms/moduleCompletion';
 import { markLessonCompleteForContact } from '@/lib/lms/completeLesson';
 import { enrolmentInactiveReason } from '@/lib/lms/enrolment';
@@ -309,9 +310,12 @@ export async function submitQuizAttempt(payload: {
 // course_progress completion tracking every other completion path in this codebase uses) —
 // enforced here server-side, not just as a UI affordance, since a client-side-only gate could
 // be bypassed by calling this action directly.
+// A module can hold several quizzes (module_quizzes, migration 20260930000015), so the attempt
+// is for ONE quiz (quizId). The module is derived from the quiz, and only a quiz a student can
+// see (published, with questions — getStudentVisibleModuleQuizzes) accepts attempts.
 export async function submitModuleQuizAttempt(payload: {
   courseId: string;
-  moduleId: string;
+  quizId: string;
   answers: any;
 }) {
   try {
@@ -330,19 +334,43 @@ export async function submitModuleQuizAttempt(payload: {
     const inactiveReason = enrolmentInactiveReason(enrollment);
     if (inactiveReason) return { error: inactiveReason, code: enrollment ? 'ENROLMENT_INACTIVE' : 'NOT_ENROLLED' };
 
-    const completion = await getModuleCompletionStatus(contactId, payload.moduleId);
+    const { data: quiz } = await adminClient
+      .from('module_quizzes')
+      .select('id, module_id')
+      .eq('id', payload.quizId)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+    const { data: quizModule } = quiz
+      ? await adminClient
+          .from('course_modules')
+          .select('id, is_active')
+          .eq('id', quiz.module_id)
+          .eq('course_id', payload.courseId)
+          .maybeSingle()
+      : { data: null };
+    if (!quiz || !quizModule || quizModule.is_active === false) {
+      return { error: 'Quiz not found in this course.' };
+    }
+    const visible = await getStudentVisibleModuleQuizzes(adminClient, [quiz.module_id]);
+    if (!visible.some((q) => q.id === quiz.id)) {
+      return { error: 'This quiz is not available.' };
+    }
+    const moduleId = quiz.module_id;
+
+    const completion = await getModuleCompletionStatus(contactId, moduleId);
     if (!completion.allComplete) {
       return { error: 'Complete every lesson in this module before taking its quiz.' };
     }
 
     const { score, passed, rawScore, maxScore, autoRawScore, pendingManual } =
-      await gradeModuleQuizAttempt(payload.moduleId, payload.answers);
+      await gradeModuleQuizAttempt(quiz.id, payload.answers);
 
     const { error: attemptErr } = await adminClient
       .from('module_quiz_attempts')
       .insert({
         workspace_id: workspaceId,
-        module_id: payload.moduleId,
+        module_id: moduleId,
+        quiz_id: quiz.id,
         student_id: contactId,
         score: pendingManual ? null : score,
         max_score: maxScore,
@@ -374,11 +402,11 @@ export async function submitModuleQuizAttempt(payload: {
         workspaceId,
         contactId,
         courseId: payload.courseId,
-        moduleId: payload.moduleId,
-        metadata: { score, maxScore, rawScore, quizScope: 'module' },
+        moduleId,
+        metadata: { score, maxScore, rawScore, quizScope: 'module', moduleQuizId: quiz.id },
       });
     } catch (evtErr) {
-      logger.error({ err: evtErr, courseId: payload.courseId, moduleId: payload.moduleId }, 'student_progress.module_quiz_attempt.lms_event.failed');
+      logger.error({ err: evtErr, courseId: payload.courseId, quizId: payload.quizId }, 'student_progress.module_quiz_attempt.lms_event.failed');
     }
 
     // Batch 4 / fix 3: a module quiz has no lesson to "complete", so it never went through
@@ -392,7 +420,7 @@ export async function submitModuleQuizAttempt(payload: {
 
     return { success: true, score, passed, maxScore, rawScore };
   } catch (err: any) {
-    logger.error({ err, courseId: payload.courseId, moduleId: payload.moduleId }, 'student_progress.module_quiz_attempt.submit.failed');
+    logger.error({ err, courseId: payload.courseId, quizId: payload.quizId }, 'student_progress.module_quiz_attempt.submit.failed');
     return { error: 'Failed to submit quiz attempt.' };
   }
 }
@@ -466,7 +494,7 @@ export async function getStudentQuizStats(): Promise<{
         .in('student_id', contactIds),
       adminClient
         .from('module_quiz_attempts')
-        .select('module_id, percentage, passed')
+        .select('module_id, quiz_id, percentage, passed')
         .in('student_id', contactIds),
     ]);
 
@@ -483,7 +511,9 @@ export async function getStudentQuizStats(): Promise<{
       if (a.passed && a.lesson_id) passedQuizKeys.add(`lesson:${a.lesson_id}`);
     }
     for (const a of moduleAttempts) {
-      if (a.passed && a.module_id) passedQuizKeys.add(`module:${a.module_id}`);
+      // A module can hold several quizzes; count each quiz (fall back to the module for an
+      // attempt whose quiz was deleted).
+      if (a.passed && (a.quiz_id || a.module_id)) passedQuizKeys.add(`module:${a.quiz_id || a.module_id}`);
     }
 
     const avgQuizScore =

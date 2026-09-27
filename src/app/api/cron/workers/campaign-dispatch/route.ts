@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { sendEmail, EmailRateLimitError } from '@/lib/email';
 import { parsePersonalTokens } from '@/lib/builder/emailRenderer';
 import { buildUnsubscribeLink } from '@/lib/email/unsubscribeLink';
-import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
+import { getMarketingEmailConfig } from '@/lib/email/resolveConfig';
 import { buildListUnsubscribeHeaders } from '@/lib/email/unsubscribeLink';
 import { PredictiveIntelligence } from '@/lib/intelligence/PredictiveIntelligence';
 import { Observability } from '@/lib/observability';
@@ -66,7 +66,7 @@ export async function GET(req: Request) {
     const workspaceIds = [...new Set(campaigns?.map(c => c.workspace_id) || [])];
     const campaignsMap = new Map(campaigns?.map((c: any) => [c.id, c]));
     const emailConfigMap = new Map(
-      await Promise.all(workspaceIds.map(async (ws) => [ws, await getWorkspaceEmailConfig(ws)] as const))
+      await Promise.all(workspaceIds.map(async (ws) => [ws, await getMarketingEmailConfig(ws)] as const))
     );
 
     // Pre-fetch contacts
@@ -119,6 +119,10 @@ export async function GET(req: Request) {
       // without its own key, the same bug shape as the Twilio global-fallback
       // issue fixed the same day.
       const apiKey = emailConfig?.apiKey;
+      if (!apiKey) {
+        updates.push({ id: job.id, status: 'failed', error_log: 'No verified sending domain: add and verify one in Settings → Email Domains', locked_by: null });
+        continue;
+      }
       // Never substitute a platform address: campaign From, else the workspace
       // provider's From, else fail the row with a clear reason.
       const fromEmail = resolveCampaignFromEmail(campaign.from_email, emailConfig?.fromEmail);
@@ -127,8 +131,9 @@ export async function GET(req: Request) {
         continue;
       }
 
-      // Predictive Scheduling Check
-      const optimizedTime = await PredictiveIntelligence.getOptimizedSendTime(contact, now);
+      // Predictive Scheduling Check — scheduled campaigns only. A "Send now" row
+      // (send_immediately, set at enqueue) goes out at once, whichever run claims it.
+      const optimizedTime = job.send_immediately ? now : await PredictiveIntelligence.getOptimizedSendTime(contact, now);
       if (optimizedTime.getTime() > now.getTime()) {
         updates.push({ 
            id: job.id, 
@@ -159,7 +164,9 @@ export async function GET(req: Request) {
           config: {
             apiKey,
             fromEmail,
-            fromName: campaign.from_name || 'LeadsMind',
+            // Same chain as the direct and test sends: the campaign's own name, else the From
+            // name configured for the workspace's sending identity (Settings), else LeadsMind.
+            fromName: campaign.from_name || emailConfig?.fromName || 'LeadsMind',
             headers: buildListUnsubscribeHeaders(contact.email, job.workspace_id),
             tags: [
               { name: 'campaign_id', value: campaign.id },

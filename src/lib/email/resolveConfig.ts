@@ -39,6 +39,19 @@ export async function getWorkspaceEmailConfig(workspaceId: string) {
     }
   }
 
+  return getMarketingEmailConfig(workspaceId)
+}
+
+/**
+ * Sender for MARKETING email — campaigns (incl. test and direct-address sends), email sequences,
+ * CRM workflow emails and form-workflow emails (EmailAutomationService). Only the workspace's verified LeadsMind-managed sending domain
+ * (Settings › Email Domains) qualifies: a saved bring-your-own Resend key is deliberately ignored
+ * here, verified or not, and there is no platform fallback. Null = no verified domain, and callers
+ * must refuse to send. (Transactional/system email still uses getWorkspaceEmailConfig above.)
+ */
+export async function getMarketingEmailConfig(workspaceId: string) {
+  if (!workspaceId) return null
+
   const managed = await resolveManagedFromIdentity(workspaceId)
   if (!managed) return null
   return {

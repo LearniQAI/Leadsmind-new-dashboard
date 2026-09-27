@@ -19,7 +19,8 @@ function isItemAllowed(item: NavItem, ctx: NavRoleContext): boolean {
 /**
  * Module-level: a section is shown iff the member holds its module (admin/owner hold all),
  * with every page in it. Self-service links (UNGATED_ROUTES, e.g. Student Portal) stay
- * visible inside a section the member otherwise lacks.
+ * visible inside a section the member otherwise lacks, as do items whose own `module` override
+ * the member holds (Campaigns under CRM & Sales for a Marketing-only member).
  */
 export function filterNavByPermissions(modules: NavModule[], ctx: NavRoleContext): NavModule[] {
   return modules
@@ -28,9 +29,14 @@ export function filterNavByPermissions(modules: NavModule[], ctx: NavRoleContext
 
       if (!module.items) return granted ? module : null;
 
-      const filteredItems: NavItem[] = module.items.filter((item) =>
-        granted ? isItemAllowed(item, ctx) : Boolean(item.link && isUngatedRoute(item.link))
-      );
+      const filteredItems: NavItem[] = module.items.filter((item) => {
+        // An item with its own `module` override follows that permission, not the section's.
+        const itemGranted =
+          item.module && item.module !== module.module
+            ? canAccessModule(ctx.role, ctx.permissions, item.module)
+            : granted;
+        return itemGranted ? isItemAllowed(item, ctx) : Boolean(item.link && isUngatedRoute(item.link));
+      });
 
       if (filteredItems.length === 0) return null;
 

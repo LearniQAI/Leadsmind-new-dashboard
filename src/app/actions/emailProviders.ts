@@ -127,6 +127,26 @@ export async function saveEmailProvider(
   return { success: true }
 }
 
+/** Removes the workspace's saved bring-your-own Resend key (admin/owner only). Marketing email
+ * never uses it anyway; removing it returns transactional email to the verified sending domain. */
+export async function removeEmailProvider(workspaceId: string) {
+  await requireModuleAccess('settings');
+  if (!workspaceId) return { success: false, error: 'Workspace ID is required' }
+  if (!(await requireWorkspaceMember(workspaceId, PROVIDER_ADMIN_ROLES))) {
+    return { success: false, error: 'Only workspace admins can change the email provider.' }
+  }
+
+  const { error } = await createAdminClient()
+    .from('workspace_email_providers')
+    .delete()
+    .eq('workspace_id', workspaceId)
+  if (error) {
+    logger.error({ err: error, workspaceId }, 'email_providers.remove.failed')
+    return { success: false, error: 'Failed to remove the email provider.' }
+  }
+  return { success: true }
+}
+
 export async function verifyEmailProvider(workspaceId: string) {
   await requireModuleAccess('settings');
   if (!workspaceId) return { success: false, error: 'Workspace ID is required' }

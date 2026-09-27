@@ -5,12 +5,12 @@ import { requireWorkspaceAccess, requireFormAccess, requireModuleAccess } from '
 import { logger } from '@/shared/logger';
 import { getTemplateById } from '@/lib/builder/templates';
 import { inngest } from '@/lib/inngest';
-import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
+import { getMarketingEmailConfig } from '@/lib/email/resolveConfig';
 import { userSafeMessage } from '@/shared/errors/userSafe';
 import { validateRuleGroup } from '@/lib/segments/ruleValidation';
 import { loadSegmentRuleGroup, SegmentUnavailableError } from '@/lib/segments/resolveSegment';
 import type { RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
-import { resolveCampaignFromEmail, isUsableCampaignFromEmail, isPlatformSenderDomain, FROM_EMAIL_REQUIRED_MESSAGE, NO_SENDER_MESSAGE } from '@/lib/campaigns/fromEmail';
+import { resolveCampaignFromEmail, isUsableCampaignFromEmail, isPlatformSenderDomain, FROM_EMAIL_REQUIRED_MESSAGE, NO_MARKETING_DOMAIN_MESSAGE } from '@/lib/campaigns/fromEmail';
 
 // FUNNELS
 export async function getFunnels() {
@@ -99,6 +99,7 @@ export async function createFunnel(name: string, templateId?: string) {
 
 // CAMPAIGNS
 export async function getEmailCampaigns() {
+ await requireModuleAccess('marketing');
  try {
   const supabase = await createServerClient();
   let workspaceId: string;
@@ -123,6 +124,7 @@ export async function getEmailCampaigns() {
 }
 
 export async function createEmailCampaign(name: string) {
+ await requireModuleAccess('marketing');
  try {
   const supabase = await createServerClient();
   let workspaceId: string;
@@ -1039,9 +1041,13 @@ class CampaignUserError extends Error {}
 export async function updateCampaign(id: string, updates: any) {
  await requireModuleAccess('marketing');
  let previousState: { status: string; scheduled_for: string | null } | null = null;
- let directEmailConfig: Awaited<ReturnType<typeof getWorkspaceEmailConfig>> = null;
+ let directEmailConfig: Awaited<ReturnType<typeof getMarketingEmailConfig>> = null;
  let audienceLookupFailed = false;
  let resolvedSegmentRuleGroup: RuleGroup | null = null;
+ // Set once this call has flipped the campaign to 'scheduled': any failure before its recipients
+ // are committed to the queue restores the previous status instead of stranding it "sending".
+ let restoreOnFailure = false;
+ let restoreWorkspaceId: string | null = null;
  try {
   const supabase = await createServerClient();
   let workspaceId: string;
@@ -1117,23 +1123,26 @@ export async function updateCampaign(id: string, updates: any) {
 
    previousState = { status: campaign.status, scheduled_for: campaign.scheduled_for };
 
-   // Preflight BEFORE any state is mutated: sending needs a verified sending
-   // domain or the workspace's own Resend account (queue worker and direct
-   // path alike), so an unconfigured
-   // workspace must fail here with a clear message, not after the campaign has
-   // been flipped to scheduled/sent and every queued row hard-fails later.
-   const emailConfig = await getWorkspaceEmailConfig(workspaceId);
+   // Preflight BEFORE any state is mutated: campaigns send ONLY from the workspace's verified
+   // managed sending domain (Settings › Email Domains) — a saved bring-your-own Resend key never
+   // qualifies — so a workspace without one fails here with a clear message, not after the
+   // campaign has been flipped to scheduled/sent and every queued row hard-fails later.
+   const emailConfig = await getMarketingEmailConfig(workspaceId);
    if (!emailConfig?.apiKey) {
-    throw new CampaignUserError(NO_SENDER_MESSAGE);
+    throw new CampaignUserError(NO_MARKETING_DOMAIN_MESSAGE);
    }
    if (updates.segment?.emails?.length > 0 && updates.body_html && !updates.scheduled_for) {
     directEmailConfig = emailConfig;
    }
 
-   // From address: the campaign's own, else the one saved with the workspace's
-   // Resend provider. Never a platform address (leadsmind.io / resend.dev) —
-   // the customer's Resend account can't send from those, so substituting one
-   // just moves the failure to Resend, after the campaign is already queued.
+   // From address: the campaign's own, else the managed domain's From identity. Never a
+   // platform address (leadsmind.io / resend.dev) substituted for the workspace's own.
+   // Intended (confirmed 2026-09-27): the resolved address is stored on the campaign below, so a
+   // campaign keeps the From it first went out with even if the workspace's default identity
+   // changes later — recipients of an in-progress, rescheduled or auto-sender campaign never see
+   // its sender switch mid-flight. It is fixed at the first send/schedule ATTEMPT (the rollbacks
+   // restore status, not from_email). If that domain is later removed or paused the send is
+   // refused by checkManagedFromDomain below — never re-pointed silently.
    if (updates.from_email && !isUsableCampaignFromEmail(updates.from_email, emailConfig.fromEmail)) {
     throw new CampaignUserError(FROM_EMAIL_REQUIRED_MESSAGE);
    }
@@ -1141,11 +1150,9 @@ export async function updateCampaign(id: string, updates: any) {
    if (!fromEmail) throw new CampaignUserError(FROM_EMAIL_REQUIRED_MESSAGE);
    updates.from_email = fromEmail;
 
-   // Managed sending: the From domain must be one of this workspace's verified, un-paused
-   // LeadsMind sending domains (sendEmail re-checks this on every send; checking here fails the
-   // action before anything is queued). BYO-key workspaces are gated by their own Resend account,
-   // which rejects any From domain it has not verified.
-   if (emailConfig.mode === 'managed') {
+   // The From domain must be one of this workspace's verified, un-paused sending domains
+   // (sendEmail re-checks this on every send; checking here fails before anything is queued).
+   {
     const { checkManagedFromDomain } = await import('@/lib/email/managedSender');
     const gate = await checkManagedFromDomain(createAdminClient() as any, workspaceId, fromEmail);
     if (gate.ok === false) throw new CampaignUserError(gate.reason);
@@ -1154,6 +1161,10 @@ export async function updateCampaign(id: string, updates: any) {
 
   const { data, error } = await supabase.from('email_campaigns').update(updates).eq("id", id).eq("workspace_id", workspaceId).select().single();
   if (error) throw error;
+  if (updates.status === 'scheduled' && previousState) {
+   restoreOnFailure = true;
+   restoreWorkspaceId = workspaceId;
+  }
   
   // Recipient count shown to the user — derived from the exact same
   // contact-id set that gets queued below, not a separately-computed count,
@@ -1179,50 +1190,22 @@ export async function updateCampaign(id: string, updates: any) {
    if ((segmentTags.length > 0 || ruleGroup) && data.workspace_id) {
     let matchError: any = null;
 
-    // Tag-based match — unchanged from before (real relational membership
-    // via tag_assignments for uuid ids, legacy contacts.tags array match
-    // for pre-Smart-Tags campaigns storing plain names).
+    // Tag-based match: contacts carrying ALL selected tags per tag_assignments — the only source
+    // of truth (never the stale legacy contacts.tags array), read in pages (no 1000-row cap).
+    // Stored entries are tag ids, or names on older campaigns (resolved to ids first). A tag that
+    // no longer exists refuses the send instead of silently changing who receives it.
     let tagMatchedIds: Set<string> | null = null;
     if (segmentTags.length > 0) {
-     tagMatchedIds = new Set<string>();
-     const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
-     const tagIds = segmentTags.filter(isUuid);
-     const legacyTagNames = segmentTags.filter((v) => !isUuid(v));
-
-     if (tagIds.length > 0) {
-      // Real, current relational membership — every contact presently carrying
-      // ALL of these tag ids per tag_assignments (Part 1's source of truth),
-      // not a stale free-text array snapshot.
-      const { data: assignments, error: assignErr } = await supabase
-       .from('tag_assignments')
-       .select('entity_id, tag_id')
-       .eq('workspace_id', data.workspace_id)
-       .eq('entity_type', 'contact')
-       .in('tag_id', tagIds);
-
-      if (assignErr) {
-       matchError = assignErr;
-      } else {
-       const countsByContact = new Map<string, number>();
-       (assignments ?? []).forEach((a) => countsByContact.set(a.entity_id, (countsByContact.get(a.entity_id) ?? 0) + 1));
-       Array.from(countsByContact.entries())
-        .filter(([, count]) => count === tagIds.length)
-        .forEach(([contactId]) => tagMatchedIds!.add(contactId));
+     const { resolveCampaignTagIds, contactIdsWithAllTags } = await import('@/lib/campaigns/tagAudience');
+     try {
+      const { ids: tagIds, missing } = await resolveCampaignTagIds(supabase as any, data.workspace_id, segmentTags);
+      if (missing.length > 0) {
+       throw new CampaignUserError(`A selected tag no longer exists (${missing.join(', ')}). Update the campaign's audience and try again.`);
       }
-     }
-
-     if (!matchError && legacyTagNames.length > 0) {
-      const { data: legacyMatches, error: legacyErr } = await supabase
-       .from('contacts')
-       .select('id')
-       .eq('workspace_id', data.workspace_id)
-       .contains('tags', legacyTagNames);
-
-      if (legacyErr) {
-       matchError = legacyErr;
-      } else {
-       (legacyMatches ?? []).forEach((c) => tagMatchedIds!.add(c.id));
-      }
+      tagMatchedIds = await contactIdsWithAllTags(supabase as any, data.workspace_id, tagIds);
+     } catch (tagErr) {
+      if (tagErr instanceof CampaignUserError) throw tagErr;
+      matchError = tagErr;
      }
     }
 
@@ -1269,34 +1252,28 @@ export async function updateCampaign(id: string, updates: any) {
 
      if (uniqueContactIds.length > 0) {
      const queueScheduledFor = updates.scheduled_for || new Date().toISOString();
-     const queueRows = uniqueContactIds.map(contactId => ({
-     campaign_id: id,
-     workspace_id: data.workspace_id,
-     contact_id: contactId,
-     status: 'pending',
-     scheduled_for: queueScheduledFor,
-     }));
+     // "Send now" (no scheduled_for, not an auto-sender — the card, builder and Send dialog
+     // buttons) skips the worker's predictive send-time hold; scheduled campaigns keep it.
+     const sendImmediately = !updates.scheduled_for && !updates.segment?.is_automated;
 
-     // upsert + ignoreDuplicates -> ON CONFLICT (campaign_id, contact_id) DO NOTHING.
-     // Redeploying an already-deployed campaign must be a safe no-op, not a
-     // duplicate queue row that would get sent twice.
-     const { error: queueError } = await supabase
-      .from('campaign_dispatch_queue')
-      .upsert(queueRows, { onConflict: 'campaign_id,contact_id', ignoreDuplicates: true });
+     // campaign_dispatch_queue has no client RLS policy (by design), so the enqueue runs with
+     // the admin client — only after this action verified the caller on their own session
+     // (requireModuleAccess('marketing') + requireWorkspaceAccess above) and scoped the campaign
+     // to that workspace. One atomic call: existing pending/deferred rows move to the new due
+     // time and new recipients are added (never duplicated or re-sent), or nothing changes.
+     const { error: queueError } = await createAdminClient().rpc('enqueue_campaign_recipients', {
+      p_campaign_id: id,
+      p_workspace_id: workspaceId,
+      p_contact_ids: uniqueContactIds,
+      p_scheduled_for: queueScheduledFor,
+      p_send_immediately: sendImmediately,
+     });
      if (queueError) {
-      logger.error({ err: queueError, campaignId: id }, 'update.campaign.dispatch_queue.insert.failed');
-      throw new Error('Failed to queue campaign recipients. Please try again.');
+      logger.error({ err: queueError, campaignId: id }, 'update.campaign.dispatch_queue.enqueue.failed');
+      throw new Error('campaign enqueue failed');
      }
-
-     // An existing row is intentionally not duplicated by the upsert. Update
-     // its due time too, so changing a future schedule to Send now (or
-     // rescheduling it) affects recipients already in the queue.
-     const { error: rescheduleError } = await supabase
-      .from('campaign_dispatch_queue')
-      .update({ scheduled_for: queueScheduledFor })
-      .eq('campaign_id', id)
-      .in('status', ['pending', 'deferred']);
-     if (rescheduleError) throw rescheduleError;
+     // Recipients are committed: a later failure must not un-schedule a campaign that will send.
+     restoreOnFailure = false;
      }
      matchedContactsCount = uniqueContactIds.length;
     }
@@ -1400,6 +1377,22 @@ export async function updateCampaign(id: string, updates: any) {
   return { data, matchedContactsCount };
  } catch (error: any) {
    logger.error({ err: error }, 'update.campaign.failed');
+   if (restoreOnFailure && previousState && restoreWorkspaceId) {
+    try {
+     const supabase = await createServerClient();
+     const { error: restoreError } = await supabase
+      .from('email_campaigns')
+      .update({ status: previousState.status, scheduled_for: previousState.scheduled_for })
+      .eq('id', id)
+      .eq('workspace_id', restoreWorkspaceId);
+     if (restoreError) throw restoreError;
+    } catch (restoreErr) {
+     logger.error({ err: restoreErr, campaignId: id }, 'update.campaign.restore_status.failed');
+    }
+    if (!(error instanceof CampaignUserError)) {
+     return { error: "Could not queue this campaign's recipients, so nothing was sent and the campaign was left as it was. Please try again." };
+    }
+   }
    if (error instanceof CampaignUserError) return { error: error.message };
    return { error: 'Operation failed. Please try again.' };
  }
@@ -1407,6 +1400,7 @@ export async function updateCampaign(id: string, updates: any) {
 
 /** Queue a durable immediate-dispatch job after recipients have been queued. */
 export async function dispatchCampaignNow(campaignId: string) {
+ await requireModuleAccess('marketing');
  try {
   const supabase = await createServerClient();
   const { workspaceId } = await requireWorkspaceAccess();
@@ -1416,9 +1410,10 @@ export async function dispatchCampaignNow(campaignId: string) {
    .eq('id', campaignId)
    .eq('workspace_id', workspaceId)
    .single();
-  if (error || !campaign) throw new Error('Email campaign not found.');
+  if (error || !campaign) return { error: 'Email campaign not found.' };
 
-  const { count, error: queueError } = await supabase
+  // The queue has no client RLS policy; the campaign was just verified as the caller's own.
+  const { count, error: queueError } = await createAdminClient()
    .from('campaign_dispatch_queue')
    .select('id', { count: 'exact', head: true })
    .eq('campaign_id', campaignId)
@@ -1430,11 +1425,72 @@ export async function dispatchCampaignNow(campaignId: string) {
   return { success: true, queued: count ?? 0 };
  } catch (error: any) {
   logger.error({ err: error, campaignId }, 'campaign.immediate_dispatch.enqueue.failed');
-  return { error: error.message || 'Failed to start immediate campaign delivery.' };
+  return { error: userSafeMessage(error, 'Failed to start immediate campaign delivery.') };
+ }
+}
+
+/**
+ * One-click "Send now" for an already-saved campaign (the campaign card). Not a separate send
+ * path: it replays the builder's own "Send now" — updateCampaign(status 'scheduled',
+ * scheduled_for null) with the campaign's saved audience and body, which runs every guard
+ * (audience required, zero-match rollback, enqueue-time suppression, From address, managed
+ * domain verified/un-paused) and moves any future-scheduled queue rows to now — then
+ * dispatchCampaignNow, the Inngest event that runs the cron worker for this campaign at once.
+ * Rate limits apply in that worker as always: over-limit rows are deferred to the next window.
+ */
+export async function sendCampaignNow(campaignId: string) {
+ await requireModuleAccess('marketing');
+ try {
+  const supabase = await createServerClient();
+  const { workspaceId } = await requireWorkspaceAccess();
+  const { data: campaign, error } = await supabase
+   .from('email_campaigns')
+   .select('id, status, segment, subject, body_html')
+   .eq('id', campaignId)
+   .eq('workspace_id', workspaceId)
+   .maybeSingle();
+  if (error) throw error;
+  if (!campaign) return { error: 'Email campaign not found.' };
+  if (campaign.status === 'sent') return { error: 'This campaign has already been sent.' };
+  if (campaign.segment?.is_automated) {
+   return { error: 'This is an auto-sender campaign: it emails matching contacts automatically, so there is nothing to send now.' };
+  }
+  if (!campaign.subject?.trim()) return { error: 'Add a subject line before sending (Settings).' };
+  if (!campaign.body_html?.trim()) return { error: 'Design the email before sending (Design).' };
+
+  const result = await updateCampaign(campaignId, {
+   segment: campaign.segment,
+   body_html: campaign.body_html,
+   status: 'scheduled',
+   scheduled_for: null,
+  });
+  if (result.error) return { error: result.error };
+
+  const matched = result.matchedContactsCount || 0;
+  let dispatchWarning: string | undefined;
+  if (matched > 0) {
+   const dispatch = await dispatchCampaignNow(campaignId);
+   // Recipients are already queued and due now, so the dispatch cron still delivers them;
+   // only the instant start failed.
+   if (dispatch.error) dispatchWarning = `${matched} recipient(s) are queued, but instant delivery could not start (${dispatch.error}). They will go out on the next scheduled run.`;
+  }
+
+  return {
+   data: result.data,
+   matchedContactsCount: matched,
+   directSent: result.directSent ?? [],
+   directSkipped: result.directSkipped ?? [],
+   directFailed: result.directFailed ?? [],
+   dispatchWarning,
+  };
+ } catch (error: any) {
+  logger.error({ err: error, campaignId }, 'campaign.send_now.failed');
+  return { error: userSafeMessage(error, 'Could not send the campaign. Please try again.') };
  }
 }
 
 export async function deleteCampaignAction(id: string) {
+ await requireModuleAccess('marketing');
  try {
   const supabase = await createServerClient();
   let workspaceId: string;
@@ -1642,12 +1698,11 @@ export async function sendTestEmailAction(campaignId: string, testEmail: string,
 
   if (error || !campaign) return { error: 'Campaign not found.' };
 
-  // Workspace's own Resend key — sendEmail fails closed without one (no
-  // platform-account fallback), so an unconfigured workspace gets a clear
-  // actionable message instead of a generic failure.
-  const emailConfig = await getWorkspaceEmailConfig(workspaceId);
+  // Same sender as the real campaign: the verified managed domain only (never a BYO key or a
+  // platform address), so a test shows exactly what recipients will get.
+  const emailConfig = await getMarketingEmailConfig(workspaceId);
   if (!emailConfig?.apiKey) {
-   return { error: NO_SENDER_MESSAGE };
+   return { error: NO_MARKETING_DOMAIN_MESSAGE };
   }
 
   const testFrom = resolveCampaignFromEmail(campaign.from_email, emailConfig.fromEmail);
@@ -1708,5 +1763,46 @@ export async function sendTestEmailAction(campaignId: string, testEmail: string,
   // exceptions — can carry internal detail, so the user gets a generic message.
   if (error?.userSafe === true) return { error: `Test email failed: ${error.message}` };
   return { error: 'Something went wrong sending the test email. Please try again.' };
+ }
+}
+
+/**
+ * Audience sizes for the campaign tag picker, count-only (SegmentationCompiler.countSegment, the
+ * same fast path Segments use — nothing is fetched but numbers). `emailReach` applies the same
+ * exclusions as sending (no address, invalid, suppressed). `combined` is the campaign's actual
+ * audience for the selection: contacts carrying ALL of the tags. Tags resolve by id against the
+ * caller's own workspace (RLS-scoped read), and a tag that no longer exists is simply omitted.
+ */
+export async function getCampaignTagReach(tagIds: string[], combinedIds: string[] = []) {
+ await requireModuleAccess('marketing');
+ try {
+  const supabase = await createServerClient();
+  const { workspaceId } = await requireWorkspaceAccess();
+  const wanted = [...new Set([...tagIds, ...combinedIds])].slice(0, 60);
+  if (wanted.length === 0) return { perTag: {}, combined: null };
+  const { data: tags, error } = await supabase.from('tags').select('id, name').eq('workspace_id', workspaceId).in('id', wanted);
+  if (error) throw error;
+  const nameById = new Map((tags ?? []).map((t: any) => [t.id as string, t.name as string]));
+  const { SegmentationCompiler } = await import('@/lib/intelligence/SegmentationCompiler');
+  const count = (names: string[]) => SegmentationCompiler.countSegment(workspaceId, {
+   logic: 'AND',
+   rules: names.map((value) => ({ field: 'tags', operator: 'equals' as const, value })),
+  });
+
+  const perTag: Record<string, { total: number; emailReach: number }> = {};
+  const ids = tagIds.filter((id) => nameById.has(id)).slice(0, 60);
+  // Count-only RPCs, 12 at a time (a picker window shows ~11 rows).
+  for (let i = 0; i < ids.length; i += 12) {
+   const batch = ids.slice(i, i + 12);
+   const results = await Promise.all(batch.map((id) => count([nameById.get(id)!])));
+   batch.forEach((id, j) => { const r = results[j]; if (r) perTag[id] = { total: r.total, emailReach: r.emailReach }; });
+  }
+
+  const combinedNames = combinedIds.map((id) => nameById.get(id)).filter((n): n is string => !!n);
+  const c = combinedNames.length > 0 && combinedNames.length === combinedIds.length ? await count(combinedNames) : null;
+  return { perTag, combined: c ? { total: c.total, emailReach: c.emailReach } : null };
+ } catch (error: any) {
+  logger.error({ err: error }, 'campaign.tag_reach.failed');
+  return { error: 'Could not load audience counts.' };
  }
 }

@@ -18,7 +18,9 @@
  * here, add its tables there too.
  *
  * Grant semantics are module-level: granting "crm" grants every page under CRM & Sales
- * (Contacts, Tags, Lead Finder, Pipelines, Quotes, Tasks, Projects, Automations).
+ * (Contacts, Tags, Lead Finder, Pipelines, Quotes, Tasks, Projects, Automations). One exception:
+ * Campaigns is listed under CRM & Sales but carries a per-item `module: 'marketing'` override
+ * in dashboard-nav.ts, so it is still granted by Marketing (matching the email_campaigns RLS).
  */
 
 export const MODULE_KEYS = [

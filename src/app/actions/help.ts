@@ -1044,7 +1044,7 @@ export async function seedHelpArticles() {
         slug: 'email-campaign-builder',
         category: 'Email Marketing System',
         title: 'Building and Sending Email Campaigns',
-        body_plain: 'Design campaigns in the email builder under Marketing then Email Campaigns. Emails are sent through Resend as the sending provider, with a mock fallback used automatically in local or sandbox environments when no real Resend key is configured.',
+        body_plain: 'Design campaigns in the email builder under CRM & Sales then Campaigns. Emails are sent through Resend as the sending provider, with a mock fallback used automatically in local or sandbox environments when no real Resend key is configured.',
         content_json: [
           { step: 1, title: 'Design the Campaign', description: 'Build the campaign layout in the email builder.' },
           { step: 2, title: 'Send', description: 'Sending goes through Resend.' }

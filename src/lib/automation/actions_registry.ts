@@ -10,10 +10,10 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { sendEmail, EmailSendError } from "@/lib/email";
 import { checkEmailSuppression } from "@/lib/campaigns/emailSuppression";
-import { resolveCampaignFromEmail, FROM_EMAIL_REQUIRED_MESSAGE } from "@/lib/campaigns/fromEmail";
+import { resolveCampaignFromEmail, FROM_EMAIL_REQUIRED_MESSAGE, NO_AUTOMATION_DOMAIN_MESSAGE } from "@/lib/campaigns/fromEmail";
 import { buildUnsubscribeLink, buildListUnsubscribeHeaders } from "@/lib/email/unsubscribeLink";
 import { buildAutomationEmail, EmailSuppressedError, type StepContext } from "./automationEmail";
-import { getWorkspaceEmailConfig } from "@/lib/email/resolveConfig";
+import { getMarketingEmailConfig } from "@/lib/email/resolveConfig";
 import { sendSMS } from "@/lib/sms";
 import { calculateLeadScore } from "../../app/actions/automation";
 import { enrollStudent, updateProgress } from "../../app/actions/lms";
@@ -44,11 +44,10 @@ export const AutomationActions = {
   const blocked = await checkEmailSuppression(supabase as any, workspaceId, contact);
   if (blocked === 'invalid_email' || blocked === 'suppressed') throw new EmailSuppressedError(blocked);
 
-  // Workspace's own Resend key/from-address, as configured via the
-  // Settings > Email Provider UI (workspace_email_providers, encrypted) —
-  // not the legacy plaintext workspaces.resend_api_key/email_from_address
-  // columns, which no code path ever writes to.
-  const emailConfig = await getWorkspaceEmailConfig(workspaceId);
+  // Sequence / workflow email is marketing email: ONLY the workspace's verified managed sending
+  // domain (Settings › Email Domains) — a saved bring-your-own Resend key never qualifies.
+  const emailConfig = await getMarketingEmailConfig(workspaceId);
+  if (!emailConfig?.apiKey) throw new EmailSendError(NO_AUTOMATION_DOMAIN_MESSAGE);
 
   // Never substitute a platform From address (sendEmail would otherwise fall
   // back to RESEND_FROM_EMAIL / noreply@leadsmind.io): same rule as campaigns.

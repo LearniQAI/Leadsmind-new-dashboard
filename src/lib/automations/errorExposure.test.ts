@@ -10,6 +10,8 @@ vi.mock('@/lib/email', async () => {
 });
 vi.mock('@/lib/email/resolveConfig', () => ({
   getWorkspaceEmailConfig: async () => ({ apiKey: 're_workspace', fromEmail: 'me@acme.com', fromName: 'A' }),
+  // Form-workflow email resolves its sender with the domain-only resolver.
+  getMarketingEmailConfig: async () => ({ apiKey: 're_workspace', fromEmail: 'me@acme.com', fromName: 'A', mode: 'managed' }),
 }));
 vi.mock('@/lib/supabase/server', () => ({
   createAdminClient: () => ({

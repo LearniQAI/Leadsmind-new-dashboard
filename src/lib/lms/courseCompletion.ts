@@ -1,4 +1,5 @@
 import type { createAdminClient } from '@/lib/supabase/server';
+import { getStudentVisibleModuleQuizzes } from './moduleQuizzes';
 
 // Single definition of "this student has genuinely completed this course" for CERTIFICATE issuance,
 // shared by the download route and the assign_certificate automation (Batch 3 / fix 1).
@@ -15,8 +16,11 @@ import type { createAdminClient } from '@/lib/supabase/server';
 //      REQUIRED). Confirmed live: 'draft' and 'published' are the only publish_status values in
 //      use today; 'coming_soon' has real code support but 0 live rows.
 //   2. every visible lesson that has quiz questions has a PASSED lesson-quiz attempt.
-//   3. every visible module that has module-quiz questions has a PASSED module-quiz attempt
-//      (a 'pending_review' attempt has passed = null and does not count).
+//   3. every module quiz a student can see in a visible module has a PASSED attempt — a module
+//      can hold several quizzes, and ALL of them must be passed (product decision 2026-09-27).
+//      "Can see" is getStudentVisibleModuleQuizzes: status 'published' with >= 1 question, so a
+//      draft or empty quiz never gates the certificate. A 'pending_review' attempt has
+//      passed = null and does not count.
 //   4. every visible lesson containing an assignment block has an assignment submission whose
 //      grade_status is 'passed' (submitted-but-ungraded or failed does not count).
 //
@@ -31,7 +35,9 @@ export interface CompletionInput {
   completedLessonIds: string[];
   lessonIdsWithQuiz: string[];
   passedLessonQuizIds: string[];
-  moduleIdsWithQuiz: string[];
+  /** Student-visible module quizzes (published, with questions). */
+  moduleQuizzes: { id: string; module_id: string }[];
+  /** module_quizzes ids this student has a passed attempt for. */
   passedModuleQuizIds: string[];
   lessonIdsWithAssignment: string[];
   passedAssignmentLessonIds: string[];
@@ -64,9 +70,9 @@ export function evaluateCourseCompletion(input: CompletionInput): CompletionStat
   const passedLessonQuiz = new Set(input.passedLessonQuizIds);
   const missingLessonQuizzes = quizLessons.filter((id) => !passedLessonQuiz.has(id)).length;
 
-  const quizModules = input.moduleIdsWithQuiz.filter((id) => visibleModules.has(id));
+  const requiredModuleQuizzes = input.moduleQuizzes.filter((q) => visibleModules.has(q.module_id));
   const passedModuleQuiz = new Set(input.passedModuleQuizIds);
-  const missingModuleQuizzes = quizModules.filter((id) => !passedModuleQuiz.has(id)).length;
+  const missingModuleQuizzes = requiredModuleQuizzes.filter((q) => !passedModuleQuiz.has(q.id)).length;
 
   const assignmentLessons = input.lessonIdsWithAssignment.filter((id) => visibleLessonIds.has(id));
   const passedAssignments = new Set(input.passedAssignmentLessonIds);
@@ -75,7 +81,7 @@ export function evaluateCourseCompletion(input: CompletionInput): CompletionStat
   const totals = {
     lessons: visibleLessons.length,
     lessonQuizzes: quizLessons.length,
-    moduleQuizzes: quizModules.length,
+    moduleQuizzes: requiredModuleQuizzes.length,
     assignments: assignmentLessons.length,
   };
   const missing = {
@@ -128,16 +134,17 @@ export async function getCourseCompletionStatus(
   const inOrEmpty = async (run: (ids: string[]) => PromiseLike<{ data: any[] | null; error: any }>, ids: string[]) =>
     ids.length === 0 ? [] : (await run(ids).then((r) => { if (r.error) throw r.error; return r.data || []; }));
 
-  const [lessonQuizQ, lessonQuizPassed, moduleQuizQ, moduleQuizPassed, assignmentBlocks, assignmentPassed] =
+  const [lessonQuizQ, lessonQuizPassed, moduleQuizzes, moduleQuizPassed, assignmentBlocks, assignmentPassed] =
     await Promise.all([
       inOrEmpty((ids) => db.from('quiz_questions').select('lesson_id').in('lesson_id', ids), lessonIds),
       inOrEmpty(
         (ids) => db.from('quiz_attempts').select('lesson_id').eq('student_id', contactId).eq('passed', true).in('lesson_id', ids),
         lessonIds
       ),
-      inOrEmpty((ids) => db.from('module_quiz_questions').select('module_id').in('module_id', ids), moduleIds),
+      getStudentVisibleModuleQuizzes(db, moduleIds),
       inOrEmpty(
-        (ids) => db.from('module_quiz_attempts').select('module_id').eq('student_id', contactId).eq('passed', true).in('module_id', ids),
+        (ids) =>
+          db.from('module_quiz_attempts').select('quiz_id').eq('student_id', contactId).eq('passed', true).in('module_id', ids).not('quiz_id', 'is', null),
         moduleIds
       ),
       inOrEmpty((ids) => db.from('content_blocks').select('lesson_id').eq('type', 'assignment').in('lesson_id', ids), lessonIds),
@@ -156,8 +163,8 @@ export async function getCourseCompletionStatus(
     completedLessonIds: (progressRes.data || []).map((p: any) => p.lesson_id),
     lessonIdsWithQuiz: uniq(lessonQuizQ, 'lesson_id'),
     passedLessonQuizIds: uniq(lessonQuizPassed, 'lesson_id'),
-    moduleIdsWithQuiz: uniq(moduleQuizQ, 'module_id'),
-    passedModuleQuizIds: uniq(moduleQuizPassed, 'module_id'),
+    moduleQuizzes: moduleQuizzes.map((q) => ({ id: q.id, module_id: q.module_id })),
+    passedModuleQuizIds: uniq(moduleQuizPassed, 'quiz_id'),
     lessonIdsWithAssignment: uniq(assignmentBlocks, 'lesson_id'),
     passedAssignmentLessonIds: uniq(assignmentPassed, 'lesson_id'),
   });

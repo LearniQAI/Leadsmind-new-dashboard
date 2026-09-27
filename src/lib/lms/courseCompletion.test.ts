@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { evaluateCourseCompletion, type CompletionInput } from './courseCompletion';
 
-// Course: M1 [L1, L2(lesson quiz)], M2 [L3(assignment)], M2 has a module quiz; M1 has none.
+// Course: M1 [L1, L2(lesson quiz)], M2 [L3(assignment)], M2 has a module quiz (Q1); M1 has none.
 const base = (): CompletionInput => ({
   modules: [
     { id: 'M1', is_active: true, publish_status: 'published' },
@@ -15,8 +15,8 @@ const base = (): CompletionInput => ({
   completedLessonIds: ['L1', 'L2', 'L3'],
   lessonIdsWithQuiz: ['L2'],
   passedLessonQuizIds: ['L2'],
-  moduleIdsWithQuiz: ['M2'],
-  passedModuleQuizIds: ['M2'],
+  moduleQuizzes: [{ id: 'Q1', module_id: 'M2' }],
+  passedModuleQuizIds: ['Q1'],
   lessonIdsWithAssignment: ['L3'],
   passedAssignmentLessonIds: ['L3'],
 });
@@ -34,6 +34,26 @@ describe('evaluateCourseCompletion', () => {
     expect(r.complete).toBe(false);
     expect(r.missing.moduleQuizzes).toBe(1);
     expect(r.reason).toMatch(/module quizzes/i);
+  });
+
+  it('a module with several quizzes requires passing EVERY one of them', () => {
+    const input = base();
+    input.moduleQuizzes.push({ id: 'Q2', module_id: 'M2' });
+    const onePassed = evaluateCourseCompletion(input);
+    expect(onePassed.complete).toBe(false);
+    expect(onePassed.totals.moduleQuizzes).toBe(2);
+    expect(onePassed.missing.moduleQuizzes).toBe(1);
+
+    const bothPassed = evaluateCourseCompletion({ ...input, passedModuleQuizIds: ['Q1', 'Q2'] });
+    expect(bothPassed.complete).toBe(true);
+  });
+
+  it('a pass on one quiz does not count for a sibling quiz in the same module', () => {
+    const input = base();
+    input.moduleQuizzes.push({ id: 'Q2', module_id: 'M2' });
+    const r = evaluateCourseCompletion({ ...input, passedModuleQuizIds: ['Q2'] });
+    expect(r.complete).toBe(false);
+    expect(r.missing.moduleQuizzes).toBe(1);
   });
 
   it('required assignment not graded passed (submitted/pending/failed) -> not complete', () => {
@@ -75,7 +95,7 @@ describe('evaluateCourseCompletion', () => {
     const input = base();
     input.modules.push({ id: 'M3', is_active: true, publish_status: 'coming_soon' }, { id: 'M4', is_active: false, publish_status: 'published' });
     input.lessons.push({ id: 'L5', module_id: 'M3', is_active: true }, { id: 'L6', module_id: 'M4', is_active: true });
-    input.moduleIdsWithQuiz.push('M3', 'M4');
+    input.moduleQuizzes.push({ id: 'Q3', module_id: 'M3' }, { id: 'Q4', module_id: 'M4' });
     const r = evaluateCourseCompletion(input);
     expect(r.complete).toBe(true);
     expect(r.totals).toEqual({ lessons: 3, lessonQuizzes: 1, moduleQuizzes: 1, assignments: 1 });
@@ -104,7 +124,7 @@ describe('evaluateCourseCompletion', () => {
     const input = base();
     input.modules.push({ id: 'M3', is_active: true, publish_status: 'draft' });
     input.lessons.push({ id: 'L5', module_id: 'M3', is_active: true });
-    input.moduleIdsWithQuiz.push('M3'); // never passed
+    input.moduleQuizzes.push({ id: 'Q3', module_id: 'M3' }); // never passed
     expect(evaluateCourseCompletion(input).complete).toBe(true);
   });
 
@@ -116,7 +136,7 @@ describe('evaluateCourseCompletion', () => {
 
   it('a module with no quiz / a lesson with no assignment imposes nothing extra', () => {
     const r = evaluateCourseCompletion({
-      ...base(), lessonIdsWithQuiz: [], moduleIdsWithQuiz: [], lessonIdsWithAssignment: [],
+      ...base(), lessonIdsWithQuiz: [], moduleQuizzes: [], lessonIdsWithAssignment: [],
       passedLessonQuizIds: [], passedModuleQuizIds: [], passedAssignmentLessonIds: [],
     });
     expect(r.complete).toBe(true);

@@ -2,7 +2,7 @@ import type { RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
 
 export interface EditInitial {
   body: string;
-  tagNames: string[];
+  tagIds: string[];
   ruleKey: string;
   segmentId: string | null;
   combine: string;
@@ -12,7 +12,7 @@ export interface EditFormState {
   name: string;
   subject: string;
   body: string;
-  tagNames: string[];
+  tagIds: string[];
   ruleGroup: RuleGroup | null;
   segmentId: string | null;
   combine: 'AND' | 'OR';
@@ -28,7 +28,8 @@ export function buildCampaignEditPayload(
   campaign: any,
   initial: EditInitial | null,
   form: EditFormState,
-  tagIdForName: (name: string) => string | undefined,
+  /** True for a tag id that still exists in the workspace (a deleted tag is dropped, not saved). */
+  tagExists: (id: string) => boolean,
 ): Record<string, any> {
   const payload: Record<string, any> = { name: form.name, subject: form.subject };
 
@@ -43,13 +44,13 @@ export function buildCampaignEditPayload(
 
   const audienceChanged =
     !initial ||
-    JSON.stringify([...form.tagNames].sort()) !== JSON.stringify([...initial.tagNames].sort()) ||
+    JSON.stringify([...form.tagIds].sort()) !== JSON.stringify([...initial.tagIds].sort()) ||
     JSON.stringify(form.ruleGroup) !== initial.ruleKey ||
     form.segmentId !== initial.segmentId ||
     form.combine !== initial.combine;
 
   if (audienceChanged) {
-    const tagIds = form.tagNames.map(tagIdForName).filter((id): id is string => !!id);
+    const tagIds = form.tagIds.filter(tagExists);
     const hasRuleGroup = !!form.ruleGroup && form.ruleGroup.rules.length > 0;
     // A saved segment and the ad-hoc rule builder are mutually exclusive.
     const hasSegmentId = !!form.segmentId && !hasRuleGroup;
