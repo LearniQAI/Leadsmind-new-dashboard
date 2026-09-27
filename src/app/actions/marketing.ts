@@ -1497,6 +1497,58 @@ export async function sendCampaignNow(campaignId: string) {
  }
 }
 
+/**
+ * Reverts a genuinely future-scheduled campaign (status 'scheduled' with a real scheduled_for)
+ * back to 'draft' and removes its not-yet-sent queue rows. Never touches a campaign that is
+ * mid-send ('scheduled' with scheduled_for null — see isSendingNow in CampaignsClient) or an
+ * auto-sender (segment.is_automated), since neither has a schedule to cancel.
+ */
+export async function cancelScheduledCampaign(campaignId: string) {
+ await requireModuleAccess('marketing');
+ try {
+  const supabase = await createServerClient();
+  const { workspaceId } = await requireWorkspaceAccess();
+  const { data: campaign, error } = await supabase
+   .from('email_campaigns')
+   .select('id, status, scheduled_for, segment')
+   .eq('id', campaignId)
+   .eq('workspace_id', workspaceId)
+   .maybeSingle();
+  if (error) throw error;
+  if (!campaign) return { error: 'Email campaign not found.' };
+  if (campaign.segment?.is_automated) {
+   return { error: 'This is an auto-sender campaign. Turn off auto-send in Settings instead of canceling.' };
+  }
+  if (campaign.status !== 'scheduled' || !campaign.scheduled_for) {
+   return { error: 'This campaign is not scheduled.' };
+  }
+
+  // Admin client: campaign_dispatch_queue has no client RLS policy (by design), same as the
+  // enqueue path in updateCampaign above. Only rows not yet claimed by a worker are removed —
+  // 'processing'/'sent' rows are left alone (a send already underway can't be un-sent).
+  const { error: queueError } = await createAdminClient()
+   .from('campaign_dispatch_queue')
+   .delete()
+   .eq('campaign_id', campaignId)
+   .in('status', ['pending', 'deferred']);
+  if (queueError) throw queueError;
+
+  const { data, error: updateError } = await supabase
+   .from('email_campaigns')
+   .update({ status: 'draft', scheduled_for: null })
+   .eq('id', campaignId)
+   .eq('workspace_id', workspaceId)
+   .select()
+   .single();
+  if (updateError) throw updateError;
+
+  return { data };
+ } catch (error: any) {
+  logger.error({ err: error, campaignId }, 'campaign.cancel_scheduled.failed');
+  return { error: userSafeMessage(error, 'Could not cancel the scheduled send. Please try again.') };
+ }
+}
+
 export async function deleteCampaignAction(id: string) {
  await requireModuleAccess('marketing');
  try {

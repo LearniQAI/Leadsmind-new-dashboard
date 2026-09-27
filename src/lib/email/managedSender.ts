@@ -50,6 +50,8 @@ export interface ManagedSenderDomain {
   id: string;
   domain_name: string;
   status: string;
+  spf_status: boolean;
+  dkim_status: boolean;
   paused_at: string | null;
   pause_reason: string | null;
   hourly_send_limit: number | null;
@@ -58,6 +60,15 @@ export interface ManagedSenderDomain {
 /**
  * The send gate for managed sending. Returns the domain row when `fromAddress` is on a domain this
  * workspace verified in the platform account and that is not paused; otherwise a user-safe reason.
+ *
+ * Gated on spf_status/dkim_status (the actual deliverability requirements), NOT on the provider's
+ * aggregate `status` label. Resend's aggregate status also folds in the (optional) tracking-
+ * subdomain CNAME: a domain with SPF+DKIM fully verified but a pending/missing tracking CNAME
+ * reports as 'partially_verified', not 'verified'. Blocking sends on that label conflates "can't
+ * open/click-track yet" with "can't send" — proven live 2026-09-27 when enabling open/click
+ * tracking on zainulhassan.site flipped its status and silently broke production sending even
+ * though SPF and DKIM were untouched and still fine. Tracking-subdomain state must only ever gate
+ * whether open/click stats are available, never whether the domain can send.
  */
 export async function checkManagedFromDomain(
   db: SupabaseClient,
@@ -69,7 +80,7 @@ export async function checkManagedFromDomain(
 
   const { data, error } = await db
     .from('sender_domains')
-    .select('id, domain_name, status, paused_at, pause_reason, hourly_send_limit')
+    .select('id, domain_name, status, spf_status, dkim_status, paused_at, pause_reason, hourly_send_limit')
     .eq('workspace_id', workspaceId)
     .eq('domain_name', domainName)
     .maybeSingle();
@@ -78,7 +89,7 @@ export async function checkManagedFromDomain(
   if (!data) {
     return { ok: false, reason: `'${domainName}' is not a sending domain of this workspace. Add and verify it in Settings › Domains.` };
   }
-  if (data.status !== 'verified') {
+  if (!data.spf_status || !data.dkim_status) {
     return { ok: false, reason: `'${domainName}' is not verified yet. Finish its DNS setup in Settings › Domains.` };
   }
   if (data.paused_at) {

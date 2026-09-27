@@ -15,6 +15,14 @@ interface ConfirmDialogProps {
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: 'danger' | 'warning' | 'info';
+  /** Disables the confirm button (e.g. while a confirmed action is in flight). */
+  confirmDisabled?: boolean;
+  /**
+   * By default, confirming closes the dialog immediately. Set this when the caller needs the
+   * dialog to stay open after confirm — e.g. to show a transitional "Sending…"/"Sent" state
+   * inside it — and will call onClose itself once that's done.
+   */
+  keepOpenOnConfirm?: boolean;
 }
 
 export function ConfirmDialog({
@@ -25,7 +33,9 @@ export function ConfirmDialog({
   description,
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
-  variant = 'danger'
+  variant = 'danger',
+  confirmDisabled = false,
+  keepOpenOnConfirm = false,
 }: ConfirmDialogProps) {
   const iconWrapClass = {
     danger: 'bg-red/10 text-red',
@@ -54,16 +64,17 @@ export function ConfirmDialog({
             </Dialog.Description>
 
             <div className="flex w-full gap-3">
-              <DashButton variant="secondary" size="default" className="flex-1" onClick={onClose}>
+              <DashButton variant="secondary" size="default" className="flex-1" onClick={onClose} disabled={keepOpenOnConfirm && confirmDisabled}>
                 {cancelLabel}
               </DashButton>
               <DashButton
                 variant={variant === 'danger' ? 'destructive' : 'primary'}
                 size="default"
                 className="flex-1"
+                disabled={confirmDisabled}
                 onClick={() => {
                   onConfirm();
-                  onClose();
+                  if (!keepOpenOnConfirm) onClose();
                 }}
               >
                 {confirmLabel}

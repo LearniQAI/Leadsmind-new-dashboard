@@ -34,7 +34,7 @@ function toDomain(d: { id: string; name: string; status: string; region?: string
     status: (DOMAIN_STATUSES.has(d.status as DomainStatus) ? d.status : 'pending') as DomainStatus,
     region: d.region ?? null,
     records: (d.records ?? []).map((r): DomainDnsRecord => ({
-      purpose: r.record === 'SPF' ? 'SPF' : r.record === 'DKIM' ? 'DKIM' : 'OTHER',
+      purpose: r.record === 'SPF' ? 'SPF' : r.record === 'DKIM' ? 'DKIM' : (r.record === 'Tracking' || r.record === 'TrackingCAA') ? 'TRACKING' : 'OTHER',
       type: r.type,
       name: r.name,
       value: r.value,
@@ -91,7 +91,22 @@ export class ResendProvider implements EmailSendingProvider {
   }
 
   async createDomain(name: string): Promise<ProviderDomain> {
-    const { data, error } = await this.client.domains.create({ name });
+    const { data, error } = await this.client.domains.create({
+      name,
+      // Without these Resend never injects an open-tracking pixel or rewrites links, so
+      // email_tracking_logs never gets 'open'/'click' rows for any domain (see resend.ts audit).
+      // Both flags are a no-op unless a `trackingSubdomain` is also set AND its CNAME is verified
+      // (proven live 2026-09-27: PATCHing an already-verified domain with the flags alone did not
+      // persist as true). 'links' is added here as one more record for the customer to add
+      // alongside SPF/DKIM during onboarding — safe for a brand-new, not-yet-verified domain.
+      // NEVER retrofit trackingSubdomain onto an already-'verified' domain via domains.update():
+      // that flips its status to 'partially_verified' until the new CNAME propagates, which trips
+      // checkManagedFromDomain's send gate and silently breaks sending (proven live on
+      // zainulhassan.site — see tracking-open-click-fix notes).
+      openTracking: true,
+      clickTracking: true,
+      trackingSubdomain: 'links',
+    } as any);
     if (error || !data) fail(error, 'Resend could not create the domain');
     return toDomain(data);
   }

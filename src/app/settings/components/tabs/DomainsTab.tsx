@@ -29,8 +29,15 @@ type PillVariant = 'success' | 'warning' | 'danger';
 const statusVariant = (status: string): PillVariant =>
   status === 'verified' ? 'success' : status === 'failed' || status === 'partially_failed' ? 'danger' : 'warning';
 
-const domainPill = (d: any): { variant: PillVariant; label: string } =>
-  d.paused_at ? { variant: 'danger', label: 'Paused' } : { variant: statusVariant(d.status), label: STATUS_LABEL[d.status] ?? d.status };
+// Sendable (the pill people actually care about) is spf_status && dkim_status, not the provider's
+// aggregate `status` label — that label also folds in the optional tracking-subdomain CNAME, so a
+// domain can be 'partially_verified' (tracking CNAME pending) while fully able to send. Showing
+// that as a warning would be a false alarm; see checkManagedFromDomain's comment for the full story.
+const domainPill = (d: any): { variant: PillVariant; label: string } => {
+  if (d.paused_at) return { variant: 'danger', label: 'Paused' };
+  if (d.spf_status && d.dkim_status) return { variant: 'success', label: 'Verified' };
+  return { variant: statusVariant(d.status), label: STATUS_LABEL[d.status] ?? d.status };
+};
 
 const pct = (r: number) => `${(r * 100).toFixed(2)}%`;
 
@@ -204,7 +211,7 @@ export default function DomainsTab() {
       toast.error(res.error);
       return;
     }
-    if (res.data?.status === 'verified') toast.success('Domain verified. You can now send from it.');
+    if (res.data?.spf_status && res.data?.dkim_status) toast.success('Domain verified. You can now send from it.');
     else toast.message('Verification requested. DNS changes can take a while to propagate. Check again shortly.');
     await loadDomains(domainId);
   };
@@ -254,7 +261,11 @@ export default function DomainsTab() {
   const getExpectedDMARCHost = () => '_dmarc';
   const getExpectedDMARCValue = (domainName: string) => `v=DMARC1; p=quarantine; pct=100; rua=mailto:dmarc@${domainName || 'yourdomain.com'}`;
 
-  const records: any[] = Array.isArray(selectedDomain?.records) ? selectedDomain.records : [];
+  const allRecords: any[] = Array.isArray(selectedDomain?.records) ? selectedDomain.records : [];
+  // Tracking (the open/click CNAME) is shown separately, as an optional enhancement — see the
+  // block below. It must never look like one of the required-to-send records.
+  const records = allRecords.filter((r) => r.purpose !== 'TRACKING');
+  const trackingRecords = allRecords.filter((r) => r.purpose === 'TRACKING');
   const rep = selectedDomain?.reputation;
   const selectedPill = selectedDomain ? domainPill(selectedDomain) : null;
 
@@ -473,7 +484,7 @@ export default function DomainsTab() {
                   <span className="font-mono text-sm font-semibold !text-dash-text [overflow-wrap:anywhere]">{selectedDomain.domain_name}</span>
                   <DashStatusPill variant={selectedPill.variant} dot>
                     {selectedPill.label}
-                    {selectedDomain.status === 'verified' && selectedDomain.verified_at ? ` · ${new Date(selectedDomain.verified_at).toLocaleDateString()}` : ''}
+                    {selectedDomain.spf_status && selectedDomain.dkim_status && selectedDomain.verified_at ? ` · ${new Date(selectedDomain.verified_at).toLocaleDateString()}` : ''}
                   </DashStatusPill>
                 </div>
                 {selectedDomain.last_checked_at && (
@@ -486,7 +497,7 @@ export default function DomainsTab() {
               </DashButton>
             </div>
 
-            {(selectedDomain.paused_at || selectedDomain.status !== 'verified') && (
+            {(selectedDomain.paused_at || !selectedDomain.spf_status || !selectedDomain.dkim_status) && (
               <div className="px-5 md:px-6 pt-5 space-y-3">
                 {selectedDomain.paused_at && (
                   <div className="bg-red/5 border border-red/20 rounded-xl p-4 flex gap-3 items-start text-sm text-red leading-relaxed">
@@ -497,10 +508,10 @@ export default function DomainsTab() {
                     </span>
                   </div>
                 )}
-                {selectedDomain.status !== 'verified' && (
+                {(!selectedDomain.spf_status || !selectedDomain.dkim_status) && (
                   <div className="bg-amber/10 border border-amber/30 rounded-xl p-4 flex gap-3 items-start text-sm !text-dash-text leading-relaxed">
                     <AlertTriangle size={18} className="mt-0.5 shrink-0 text-amber" />
-                    <span>Emails from this domain are blocked until it is verified. DNS changes can take up to a few hours to be visible.</span>
+                    <span>Emails from this domain are blocked until SPF and DKIM are verified. DNS changes can take up to a few hours to be visible.</span>
                   </div>
                 )}
               </div>
@@ -571,6 +582,34 @@ export default function DomainsTab() {
                   />
                 </div>
               </div>
+
+              {trackingRecords.length > 0 && (
+                <div className="pt-2">
+                  <div className="mb-3">
+                    <h5 className="text-[13px] font-bold !text-dash-text">Open/click tracking <span className="font-medium !text-dash-textMuted">(optional)</span></h5>
+                    <p className="text-xs !text-dash-textMuted mt-0.5">
+                      Add these to enable open/click tracking for campaigns and sequences sent from this domain. They never affect whether this
+                      domain can send — sending only needs the SPF and DKIM records above.
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-dash-border overflow-hidden">
+                    {trackingRecords.map((r, i) => (
+                      <DnsRecordRow
+                        key={`tracking-${r.type}-${r.name}-${i}`}
+                        type={r.type}
+                        purpose="Tracking"
+                        meta="Optional"
+                        host={r.name}
+                        value={r.value}
+                        status={<RecordStatus status={r.status} />}
+                        idPrefix={`tracking-${i}`}
+                        copiedId={copiedId}
+                        onCopy={copyToClipboard}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </DashCard>
 
