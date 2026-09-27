@@ -56,3 +56,9 @@ export const EMAIL_DOMAINS_SETTINGS_PATH = '/settings?tab=domains';
 
 export const NO_SENDER_MESSAGE =
   'Verify a sending domain in Settings › Domains (or connect your own Resend account) before sending email.';
+
+/** Anti-spam law (CAN-SPAM and equivalents) requires a real physical postal address in every
+ * commercial email. Shared by every getMarketingEmailConfig() caller — see its doc comment for
+ * which sends that covers. */
+export const POSTAL_ADDRESS_REQUIRED_MESSAGE =
+  'Add your business postal address in Settings → Email Domains before sending — anti-spam law requires one in every commercial email.';

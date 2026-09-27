@@ -3,34 +3,51 @@ import { buildAutomationEmail, isPermanentEmailError } from '@/lib/automation/au
 
 const LINK = 'https://app.test/public/unsubscribe?email=a%40x.com&workspace_id=w1&token=abc';
 const contact = { first_name: 'Ada', last_name: 'L', company: 'Acme', email: 'a@x.com' };
+const ADDRESS = '123 Main Street, Cape Town, 8001';
 
 describe('buildAutomationEmail', () => {
   it('always includes the real signed unsubscribe link (footer appended when the author has none)', () => {
-    const plain = buildAutomationEmail({ subject: 'Hi', body: 'Hello there' }, contact, LINK);
+    const plain = buildAutomationEmail({ subject: 'Hi', body: 'Hello there' }, contact, LINK, ADDRESS);
     expect(plain.html).toContain(`href="${LINK}"`);
     expect(plain.text).toContain(`Unsubscribe: ${LINK}`);
-    const html = buildAutomationEmail({ subject: 'Hi', body: '<p>Hello</p>', isHtml: true }, contact, LINK);
+    const html = buildAutomationEmail({ subject: 'Hi', body: '<p>Hello</p>', isHtml: true }, contact, LINK, ADDRESS);
     expect(html.html).toContain(`href="${LINK}"`);
     expect(html.html).not.toContain('{{');
   });
 
   it('does not add a second footer when the author placed {{unsubscribe_link}}', () => {
-    const r = buildAutomationEmail({ subject: 'Hi', body: '<p><a href="{{unsubscribe_link}}">Opt out</a></p>', isHtml: true }, contact, LINK);
+    const r = buildAutomationEmail({ subject: 'Hi', body: '<p><a href="{{unsubscribe_link}}">Opt out</a></p>', isHtml: true }, contact, LINK, ADDRESS);
     expect(r.html.split(LINK).length - 1).toBe(1);
   });
 
   it('resolves first_name and the advertised contact.first_name tags, in subject and body', () => {
-    const r = buildAutomationEmail({ subject: 'Hi {{contact.first_name}}', body: 'Dear {{first_name}} of {{company}}' }, contact, LINK);
+    const r = buildAutomationEmail({ subject: 'Hi {{contact.first_name}}', body: 'Dear {{first_name}} of {{company}}' }, contact, LINK, ADDRESS);
     expect(r.subject).toBe('Hi Ada');
     expect(r.html).toContain('Dear Ada of Acme');
   });
 
   it('escapes contact values and plain-text bodies, and keeps line breaks', () => {
-    const r = buildAutomationEmail({ subject: 's', body: 'Hi {{first_name}}\nbye <b>' }, { ...contact, first_name: '<script>x</script>' }, LINK);
+    const r = buildAutomationEmail({ subject: 's', body: 'Hi {{first_name}}\nbye <b>' }, { ...contact, first_name: '<script>x</script>' }, LINK, ADDRESS);
     expect(r.html).not.toContain('<script>');
     expect(r.html).toContain('&lt;script&gt;');
     expect(r.html).toContain('<br>');
     expect(r.html).toContain('bye &lt;b&gt;');
+  });
+
+  // CAN-SPAM: the caller has already refused to send without a real postal address
+  // (POSTAL_ADDRESS_REQUIRED_MESSAGE) — this just confirms the footer actually carries it.
+  it("puts the workspace's postal address in the auto-appended footer, HTML-escaped, for both HTML and plain-text bodies", () => {
+    const html = buildAutomationEmail({ subject: 'Hi', body: '<p>Hello</p>', isHtml: true }, contact, LINK, '123 Main St <script>');
+    expect(html.html).toContain('123 Main St &lt;script&gt;');
+    expect(html.html).not.toContain('<script>');
+    const plain = buildAutomationEmail({ subject: 'Hi', body: 'Hello there' }, contact, LINK, ADDRESS);
+    expect(plain.text).toContain(ADDRESS);
+    expect(plain.text.indexOf(ADDRESS)).toBeLessThan(plain.text.indexOf(`Unsubscribe: ${LINK}`));
+  });
+
+  it("doesn't inject the address into an author's own custom unsubscribe footer", () => {
+    const r = buildAutomationEmail({ subject: 'Hi', body: '<p><a href="{{unsubscribe_link}}">Opt out</a></p>', isHtml: true }, contact, LINK, ADDRESS);
+    expect(r.html).not.toContain(ADDRESS);
   });
 });
 

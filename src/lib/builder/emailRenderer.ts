@@ -3,11 +3,23 @@
  * responsive HTML, performing conditional visibility checks and regex token substitution.
  */
 
+import { escapeHtml } from '@/lib/text/escapeHtml';
+
 export interface BrandKit {
   logoUrl?: string | null;
   brandColorPrimary?: string;
   brandColorSecondary?: string;
   brandFontDefault?: string;
+  // The sending identity shown in the footer ("Sent by ___" / "© ___"), same fallback chain as
+  // the From name (resolveManagedFromIdentity: domain From name → workspace name → domain) — NOT
+  // "LeadsMind": that platform-branded footer, with no address at all, was a real CAN-SPAM gap
+  // (found in the 2026-09-27 deliverability audit) as well as a spam signal.
+  senderName?: string | null;
+  // The workspace's CAN-SPAM postal address (Settings › Email Domains). Sending is refused
+  // without one (POSTAL_ADDRESS_REQUIRED_MESSAGE), but this renderer has no such gate of its own —
+  // it's also used for on-screen preview before a real send is attempted — so a missing value
+  // renders as a visible placeholder rather than silently omitting the (legally required) line.
+  postalAddress?: string | null;
 }
 
 export interface BlockCondition {
@@ -106,6 +118,11 @@ export function renderEmailLayout(
   const defaultFont = brandKit.brandFontDefault || 'Inter, Arial, sans-serif';
   const logoUrl = brandKit.logoUrl || '';
   const hiddenPreheader = preheaderText || '';
+  // Never the platform's own brand on a customer's email — see BrandKit.senderName above.
+  const senderName = escapeHtml(brandKit.senderName?.trim() || 'this sender');
+  // A visible placeholder, not a silently blank line: sending is refused without a real address
+  // (POSTAL_ADDRESS_REQUIRED_MESSAGE), but this on-screen preview has no such gate of its own.
+  const postalAddress = escapeHtml(brandKit.postalAddress?.trim() || 'Postal address not yet set — required before sending');
 
   // Render individual blocks
   let blocksHtml = '';
@@ -393,8 +410,9 @@ export function renderEmailLayout(
           <!-- Footer -->
           <tr>
             <td align="center" style="font-family: ${defaultFont}; font-size: 11px; color: #94a3c8; line-height: 1.6; padding-top: 30px; border-top: 1px solid #e2e8f0; margin-top: 30px;">
-              Sent automatically by LeadsMind Campaign Engine.<br />
-              &copy; ${new Date().getFullYear()} LeadsMind Inc. All rights reserved.<br />
+              Sent by ${senderName}.<br />
+              &copy; ${new Date().getFullYear()} ${senderName}. All rights reserved.<br />
+              ${postalAddress}<br />
               <a href="{{unsubscribe_link}}" style="color: ${primaryColor}; text-decoration: none;">Unsubscribe</a> from future campaigns.
             </td>
           </tr>

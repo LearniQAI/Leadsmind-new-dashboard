@@ -10,7 +10,7 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { sendEmail, EmailSendError } from "@/lib/email";
 import { checkEmailSuppression } from "@/lib/campaigns/emailSuppression";
-import { resolveCampaignFromEmail, FROM_EMAIL_REQUIRED_MESSAGE, NO_AUTOMATION_DOMAIN_MESSAGE } from "@/lib/campaigns/fromEmail";
+import { resolveCampaignFromEmail, FROM_EMAIL_REQUIRED_MESSAGE, NO_AUTOMATION_DOMAIN_MESSAGE, POSTAL_ADDRESS_REQUIRED_MESSAGE } from "@/lib/campaigns/fromEmail";
 import { buildUnsubscribeLink, buildListUnsubscribeHeaders } from "@/lib/email/unsubscribeLink";
 import { buildAutomationEmail, EmailSuppressedError, type StepContext } from "./automationEmail";
 import { getMarketingEmailConfig } from "@/lib/email/resolveConfig";
@@ -48,13 +48,15 @@ export const AutomationActions = {
   // domain (Settings › Email Domains) — a saved bring-your-own Resend key never qualifies.
   const emailConfig = await getMarketingEmailConfig(workspaceId);
   if (!emailConfig?.apiKey) throw new EmailSendError(NO_AUTOMATION_DOMAIN_MESSAGE);
+  // CAN-SPAM (and equivalents) require a real postal address in every commercial email.
+  if (!emailConfig.postalAddress) throw new EmailSendError(POSTAL_ADDRESS_REQUIRED_MESSAGE);
 
   // Never substitute a platform From address (sendEmail would otherwise fall
   // back to RESEND_FROM_EMAIL / noreply@leadsmind.io): same rule as campaigns.
   const fromEmail = resolveCampaignFromEmail(null, emailConfig?.fromEmail);
   if (!fromEmail) throw new EmailSendError(FROM_EMAIL_REQUIRED_MESSAGE);
 
-  const { subject, html, text } = buildAutomationEmail(config, contact, buildUnsubscribeLink(contact.email, workspaceId));
+  const { subject, html, text } = buildAutomationEmail(config, contact, buildUnsubscribeLink(contact.email, workspaceId), emailConfig.postalAddress);
 
   await sendEmail({
    to: contact.email,

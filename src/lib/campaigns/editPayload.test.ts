@@ -25,8 +25,9 @@ describe('buildCampaignEditPayload (B4)', () => {
     const p = buildCampaignEditPayload({ ...designed, builder_json: [] }, initial, form({ body: 'plain' }), idFor);
     expect(p).toMatchObject({ preview_text: 'plain', body_html: 'plain' });
   });
-  it('changing the audience keeps the auto-sender flag and direct addresses', () => {
+  it('changing the audience keeps the auto-sender flag but drops legacy direct addresses (no longer a supported audience)', () => {
     const p = buildCampaignEditPayload(designed, initial, form({ tagIds: ['t-vip', 't-new', 't-gone'] }), idFor);
-    expect(p.segment).toMatchObject({ tags: ['t-vip', 't-new'], emails: ['a@x.com'], is_automated: true });
+    expect(p.segment).toMatchObject({ tags: ['t-vip', 't-new'], is_automated: true });
+    expect('emails' in p.segment).toBe(false);
   });
 });

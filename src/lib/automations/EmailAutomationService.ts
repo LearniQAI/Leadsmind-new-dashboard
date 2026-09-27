@@ -7,10 +7,11 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { SpamValidator } from '@/lib/intelligence/SpamValidator';
 import { getMarketingEmailConfig } from '@/lib/email/resolveConfig';
 import { checkEmailSuppression } from '@/lib/campaigns/emailSuppression';
-import { NO_FORM_AUTOMATION_DOMAIN_MESSAGE } from '@/lib/campaigns/fromEmail';
+import { NO_FORM_AUTOMATION_DOMAIN_MESSAGE, POSTAL_ADDRESS_REQUIRED_MESSAGE } from '@/lib/campaigns/fromEmail';
 import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 import { logger } from '@/shared/logger';
 import { isUserSafeError } from '@/shared/errors/userSafe';
+import { escapeHtml } from '@/lib/text/escapeHtml';
 
 export interface EmailActionConfig {
   templateType: 'confirmation' | 'notification' | 'recovery' | 'welcome' | 'custom_followup' | 'voice_note' | 'voice_note_notification';
@@ -50,7 +51,12 @@ export const EmailAutomationService = {
     if (!apiKey || !providerConfig?.fromEmail) {
       return { success: false, error: NO_FORM_AUTOMATION_DOMAIN_MESSAGE };
     }
+    // CAN-SPAM (and equivalents) require a real postal address in every commercial email.
+    if (!providerConfig.postalAddress) {
+      return { success: false, error: POSTAL_ADDRESS_REQUIRED_MESSAGE };
+    }
     const fromEmail = providerConfig.fromEmail;
+    const postalAddress = providerConfig.postalAddress;
 
     // 2. Interpolate dynamic variables
     const recipient = config.toEmail
@@ -156,7 +162,7 @@ export const EmailAutomationService = {
     }
 
     // 3. Render HTML using structured navy branding template
-    const htmlContent = await this.compileHtmlTemplate(workspaceId, config.templateType, subject, bodyText, variables);
+    const htmlContent = await this.compileHtmlTemplate(workspaceId, config.templateType, subject, bodyText, variables, { brandName: fromName, postalAddress });
 
     // 4. Dispatch email with retry safety
     let attempts = 0;
@@ -229,7 +235,8 @@ export const EmailAutomationService = {
     type: string,
     subject: string,
     body: string,
-    variables: Record<string, any>
+    variables: Record<string, any>,
+    identity: { brandName: string; postalAddress: string }
   ): Promise<string> {
     const supabase = createAdminClient();
 
@@ -390,8 +397,9 @@ export const EmailAutomationService = {
                   <!-- Footer -->
                   <tr>
                     <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 24px; text-align: center; font-size: 11px; color: #64748b; line-height: 1.5;">
-                      Sent automatically by LeadsMind Voice Engine. Keep capturing premium high-intent leads.<br>
-                      © ${new Date().getFullYear()} LeadsMind Inc. All rights reserved.
+                      Sent by ${escapeHtml(identity.brandName)}.<br>
+                      © ${new Date().getFullYear()} ${escapeHtml(identity.brandName)}. All rights reserved.<br>
+                      ${escapeHtml(identity.postalAddress)}
                     </td>
                   </tr>
 
@@ -425,8 +433,9 @@ export const EmailAutomationService = {
           <p>${body.replace(/\n/g, '<br>')}</p>
           ${actionButton}
           <div class="footer">
-            Sent automatically by LeadsMind Forms. Keep capturing premium high-intent leads.<br>
-            © ${new Date().getFullYear()} LeadsMind Inc. All rights reserved.
+            Sent by ${escapeHtml(identity.brandName)}.<br>
+            © ${new Date().getFullYear()} ${escapeHtml(identity.brandName)}. All rights reserved.<br>
+            ${escapeHtml(identity.postalAddress)}
           </div>
         </div>
       </body>

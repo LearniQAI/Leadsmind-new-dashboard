@@ -128,7 +128,7 @@ afterAll(async () => {
 
 describe('1. real Resend domain lifecycle (platform account)', () => {
   it('creates the domain in Resend and stores Resend\'s real records and status', async () => {
-    const row = await M.registerSendingDomain(ws, LIFECYCLE_DOMAIN);
+    const row = await M.registerSendingDomain(ws, LIFECYCLE_DOMAIN, 'Lifecycle Test Co');
     lifecycleProviderId = row.provider_domain_id;
     expect(row).toMatchObject({ workspace_id: ws, domain_name: LIFECYCLE_DOMAIN, provider: 'resend', is_default: true, verified_at: null });
     expect(row.provider_domain_id).toBeTruthy();
@@ -165,8 +165,8 @@ describe('1. real Resend domain lifecycle (platform account)', () => {
   });
 
   it('another workspace cannot claim a domain someone is verifying; platform domains are never claimable', async () => {
-    await expect(M.registerSendingDomain(wsB, LIFECYCLE_DOMAIN)).rejects.toThrow(/Another workspace started verifying/);
-    await expect(M.registerSendingDomain(wsB, 'mail.leadsmind.io')).rejects.toThrow(/platform domains/);
+    await expect(M.registerSendingDomain(wsB, LIFECYCLE_DOMAIN, 'Lifecycle Test Co')).rejects.toThrow(/Another workspace started verifying/);
+    await expect(M.registerSendingDomain(wsB, 'mail.leadsmind.io', 'Lifecycle Test Co')).rejects.toThrow(/platform domains/);
   });
 
   it('removal deletes it from Resend first, then the row', async () => {

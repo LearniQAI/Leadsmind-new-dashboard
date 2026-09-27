@@ -532,7 +532,7 @@ describe('6. form-workflow email (Forms › Automations, Engine B) follows the d
     const asUser = await me().from('workflow_executions').select('status').eq('workflow_id', workflowId).limit(1);
     report.executionReadAsUser = asUser.error?.message ?? `${asUser.data?.length ?? 0} row(s) visible`;
     // ADMIN: read-only assertion (execution rows are written by the service-role engine).
-    return (await admin.from('workflow_executions').select('status, error_message').eq('workflow_id', workflowId).order('created_at', { ascending: false }).limit(1).single()).data;
+    return (await admin.from('workflow_executions').select('status, error_message').eq('workflow_id', workflowId).order('started_at', { ascending: false }).limit(1).single()).data;
   };
 
   it('no verified domain (with a saved BYO key): refused with the domain message, nothing sent', async () => {

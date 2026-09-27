@@ -2,11 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  AlertTriangle, Check, CheckCircle2, Clock, Copy, Gauge, Globe, Info, MailCheck, PauseCircle,
+  AlertTriangle, Check, CheckCircle2, Clock, Copy, Gauge, Globe, Info, MailCheck, MapPin, PauseCircle,
   Plus, RefreshCw, Send, ShieldCheck, Star, Trash2, XCircle, Calendar, Layers,
 } from 'lucide-react';
-import { getSenderDomains, registerSenderDomain, deleteSenderDomain, verifySenderDomain, updateSenderDomainIdentity } from '@/app/actions/domains';
+import { getSenderDomains, registerSenderDomain, deleteSenderDomain, verifySenderDomain, updateSenderDomainIdentity, updateWorkspacePostalAddress } from '@/app/actions/domains';
 import { toast } from 'sonner';
+import { validateSenderName, SENDER_NAME_MAX } from '@/lib/email/senderName';
+import { validatePostalAddress, POSTAL_ADDRESS_MAX } from '@/lib/email/postalAddress';
 import { DashButton, DashCard, DashEmptyState, DashStatusPill } from '@/components/dashboard-ui';
 
 // Resend statuses (stored verbatim on sender_domains.status and on each record).
@@ -106,6 +108,8 @@ export default function DomainsTab() {
   const [limits, setLimits] = useState<{ workspaceHourly: number; workspaceDaily: number; domainHourlyDefault: number } | null>(null);
   const [policy, setPolicy] = useState<{ windowDays: number; minSends: number; maxHardBounceRate: number; maxComplaintRate: number } | null>(null);
   const [newDomainName, setNewDomainName] = useState('');
+  const [newFromName, setNewFromName] = useState('');
+  const [newFromNameTouched, setNewFromNameTouched] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRegistering, setIsRegistering] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -113,8 +117,21 @@ export default function DomainsTab() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [fromLocalPart, setFromLocalPart] = useState('');
   const [fromName, setFromName] = useState('');
+  // The workspace's CAN-SPAM postal address (getSenderDomains reads it alongside the domain
+  // list — see domains.ts). savedPostalAddress is what's actually stored, used to know whether
+  // it's set at all (the warning banner) independently of unsaved edits in the field below.
+  const [savedPostalAddress, setSavedPostalAddress] = useState<string | null>(null);
+  const [postalAddress, setPostalAddress] = useState('');
+  const [postalAddressTouched, setPostalAddressTouched] = useState(false);
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
 
   const selectedDomain = domains.find((d) => d.id === selectedId) ?? null;
+  // Same rules the server enforces on add / verify / save (lib/email/senderName.ts).
+  const newFromNameCheck = validateSenderName(newFromName);
+  const savedNameCheck = selectedDomain ? validateSenderName(selectedDomain.from_name) : null;
+  const fromNameCheck = validateSenderName(fromName);
+  const savedAddressCheck = validatePostalAddress(savedPostalAddress);
+  const postalAddressCheck = validatePostalAddress(postalAddress);
 
   const loadDomains = async (keepSelection?: string | null) => {
     setIsLoading(true);
@@ -128,6 +145,8 @@ export default function DomainsTab() {
     setDomains(list);
     setLimits(res.limits ?? null);
     setPolicy(res.policy ?? null);
+    setSavedPostalAddress(res.postalAddress ?? null);
+    setPostalAddress(res.postalAddress ?? '');
     const keep = keepSelection && list.some((d: any) => d.id === keepSelection) ? keepSelection : null;
     setSelectedId(keep ?? list[0]?.id ?? null);
   };
@@ -147,14 +166,21 @@ export default function DomainsTab() {
       toast.error('Please enter a domain name');
       return;
     }
+    if (!newFromNameCheck.ok) {
+      setNewFromNameTouched(true);
+      toast.error(newFromNameCheck.reason);
+      return;
+    }
     setIsRegistering(true);
-    const res = await registerSenderDomain(newDomainName);
+    const res = await registerSenderDomain(newDomainName, newFromName);
     setIsRegistering(false);
     if (res.error) {
       toast.error(res.error);
     } else if (res.data) {
       toast.success('Domain added. Add the DNS records below, then check verification.');
       setNewDomainName('');
+      setNewFromName('');
+      setNewFromNameTouched(false);
       await loadDomains(res.data.id);
     }
   };
@@ -185,6 +211,10 @@ export default function DomainsTab() {
 
   const handleSaveIdentity = async (makeDefault = false) => {
     if (!selectedDomain) return;
+    if (!fromNameCheck.ok) {
+      toast.error(fromNameCheck.reason);
+      return;
+    }
     setIsSavingIdentity(true);
     const res = await updateSenderDomainIdentity(selectedDomain.id, { fromLocalPart, fromName, makeDefault });
     setIsSavingIdentity(false);
@@ -193,6 +223,23 @@ export default function DomainsTab() {
     } else {
       toast.success(makeDefault ? 'Default sending domain updated' : 'From identity saved');
       await loadDomains(selectedDomain.id);
+    }
+  };
+
+  const handleSaveAddress = async () => {
+    setPostalAddressTouched(true);
+    if (!postalAddressCheck.ok) {
+      toast.error(postalAddressCheck.reason);
+      return;
+    }
+    setIsSavingAddress(true);
+    const res = await updateWorkspacePostalAddress(postalAddress);
+    setIsSavingAddress(false);
+    if (res.error) {
+      toast.error(res.error);
+    } else {
+      toast.success('Postal address saved');
+      await loadDomains(selectedId);
     }
   };
 
@@ -272,6 +319,30 @@ export default function DomainsTab() {
             <p id="new-sending-domain-help" className="text-xs !text-dash-textMuted mt-2">
               Use a subdomain like <span className="font-mono !text-dash-text">mail.yourdomain.com</span> for the smoothest setup.
             </p>
+            <div className="mt-4 max-w-md">
+              <label htmlFor="new-from-name" className="block text-[13px] font-semibold !text-dash-text mb-2">
+                From name <span className="text-red" aria-hidden="true">*</span>
+              </label>
+              <input
+                id="new-from-name"
+                type="text"
+                value={newFromName}
+                onChange={(e) => setNewFromName(e.target.value)}
+                onBlur={() => setNewFromNameTouched(true)}
+                placeholder="Acme Coaching"
+                maxLength={SENDER_NAME_MAX}
+                required
+                disabled={isRegistering}
+                aria-invalid={newFromNameTouched && !newFromNameCheck.ok}
+                aria-describedby="new-from-name-help"
+                className={INPUT_CLASS}
+              />
+              <p id="new-from-name-help" className={`text-xs mt-2 ${newFromNameTouched && !newFromNameCheck.ok ? 'text-red' : '!text-dash-textMuted'}`}>
+                {newFromNameTouched && !newFromNameCheck.ok
+                  ? newFromNameCheck.reason
+                  : 'The name recipients see in their inbox. Use your company or brand name: mailbox providers send mail with a generic or mismatched name to spam.'}
+              </p>
+            </div>
           </form>
         </DashCard>
 
@@ -322,7 +393,12 @@ export default function DomainsTab() {
                           </span>
                         )}
                       </div>
-                      <DashStatusPill variant={pill.variant} dot className="whitespace-nowrap">{pill.label}</DashStatusPill>
+                      <div className="flex flex-wrap gap-1.5">
+                        <DashStatusPill variant={pill.variant} dot className="whitespace-nowrap">{pill.label}</DashStatusPill>
+                        {!validateSenderName(d.from_name).ok && (
+                          <DashStatusPill variant="warning" className="whitespace-nowrap">Needs a From name</DashStatusPill>
+                        )}
+                      </div>
                     </div>
                     <button
                       type="button"
@@ -341,6 +417,49 @@ export default function DomainsTab() {
             })}
           </div>
         )}
+      </section>
+
+      {/* 2b. Postal address — workspace-level (CAN-SPAM requires one in every commercial email;
+          getMarketingEmailConfig refuses to send without it, regardless of domain verification). */}
+      <section className="space-y-4" aria-labelledby="postal-address-title">
+        <div>
+          <h4 id="postal-address-title" className={SECTION_TITLE_CLASS}>Business postal address</h4>
+          <p className={SECTION_SUB_CLASS}>Shown in the footer of every campaign, sequence and automated email. Anti-spam law (CAN-SPAM) requires a real physical address in every commercial email — sending is blocked without one.</p>
+        </div>
+        <DashCard interactive={false} className="p-5 md:p-6 space-y-4">
+          {!savedAddressCheck.ok && (
+            <div role="alert" className="bg-amber/10 border border-amber/30 rounded-xl p-4 flex gap-3 items-start text-sm !text-dash-text leading-relaxed">
+              <AlertTriangle size={18} className="mt-0.5 shrink-0 text-amber" />
+              <span>No postal address set yet. Campaigns, sequences and automation emails can't be sent until one is saved here.</span>
+            </div>
+          )}
+          <div className="max-w-lg">
+            <label htmlFor="postal-address" className={FIELD_LABEL_CLASS}>
+              Postal address <span className="text-red" aria-hidden="true">*</span>
+            </label>
+            <textarea
+              id="postal-address"
+              value={postalAddress}
+              onChange={(e) => setPostalAddress(e.target.value)}
+              onBlur={() => setPostalAddressTouched(true)}
+              placeholder={'123 Main Street\nCape Town, 8001\nSouth Africa'}
+              maxLength={POSTAL_ADDRESS_MAX}
+              required
+              rows={3}
+              aria-invalid={postalAddressTouched && !postalAddressCheck.ok}
+              aria-describedby="postal-address-help"
+              className={`${INPUT_CLASS} h-auto py-2.5 resize-y`}
+            />
+            <p id="postal-address-help" className={`text-xs mt-2 ${postalAddressTouched && !postalAddressCheck.ok ? 'text-red' : '!text-dash-textMuted'}`}>
+              {postalAddressTouched && !postalAddressCheck.ok
+                ? postalAddressCheck.reason
+                : 'Your registered business or mailing address, exactly as it should appear to recipients.'}
+            </p>
+          </div>
+          <DashButton onClick={handleSaveAddress} disabled={isSavingAddress} variant="primary" size="sm">
+            <MapPin size={13} /> Save address
+          </DashButton>
+        </DashCard>
       </section>
 
       {/* 3. DNS setup for the selected domain */}
@@ -461,6 +580,15 @@ export default function DomainsTab() {
                 <h5 className="text-[13px] font-bold !text-dash-text">From identity</h5>
                 <p className="text-xs !text-dash-textMuted mt-0.5">The default domain is used by automated emails (sequences, invoices, course emails). Campaigns can use any address on a verified domain.</p>
               </div>
+              {savedNameCheck && !savedNameCheck.ok && (
+                <div role="alert" className="bg-amber/10 border border-amber/30 rounded-xl p-4 flex gap-3 items-start text-sm !text-dash-text leading-relaxed">
+                  <AlertTriangle size={18} className="mt-0.5 shrink-0 text-amber" />
+                  <span>
+                    {selectedDomain.from_name ? <>“{selectedDomain.from_name}” doesn’t look like a real sender name. </> : <>This domain has no From name yet. </>}
+                    Emails with a generic or mismatched sender name are far more likely to land in spam. Set the name your recipients know you by, then save. You can’t re-verify this domain until you do.
+                  </span>
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="min-w-0">
                   <label htmlFor="from-local-part" className={FIELD_LABEL_CLASS}>From address</label>
@@ -475,14 +603,25 @@ export default function DomainsTab() {
                   </div>
                 </div>
                 <div className="min-w-0">
-                  <label htmlFor="from-name" className={FIELD_LABEL_CLASS}>From name</label>
-                  <input id="from-name" value={fromName} onChange={(e) => setFromName(e.target.value)} placeholder="Your company" className={INPUT_CLASS} />
+                  <label htmlFor="from-name" className={FIELD_LABEL_CLASS}>From name <span className="text-red" aria-hidden="true">*</span></label>
+                  <input
+                    id="from-name"
+                    value={fromName}
+                    onChange={(e) => setFromName(e.target.value)}
+                    placeholder="Acme Coaching"
+                    maxLength={SENDER_NAME_MAX}
+                    required
+                    aria-invalid={!fromNameCheck.ok}
+                    aria-describedby="from-name-help"
+                    className={INPUT_CLASS}
+                  />
+                  {!fromNameCheck.ok && <p id="from-name-help" className="text-xs text-red mt-1.5">{fromNameCheck.reason}</p>}
                 </div>
               </div>
               <div className="flex gap-3 flex-wrap">
-                <DashButton onClick={() => handleSaveIdentity(false)} disabled={isSavingIdentity} variant="primary" size="sm">Save identity</DashButton>
+                <DashButton onClick={() => handleSaveIdentity(false)} disabled={isSavingIdentity || !fromNameCheck.ok} variant="primary" size="sm">Save identity</DashButton>
                 {!selectedDomain.is_default && (
-                  <DashButton onClick={() => handleSaveIdentity(true)} disabled={isSavingIdentity} variant="secondary" size="sm">
+                  <DashButton onClick={() => handleSaveIdentity(true)} disabled={isSavingIdentity || !fromNameCheck.ok} variant="secondary" size="sm">
                     <Star size={13} /> Make default
                   </DashButton>
                 )}

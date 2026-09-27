@@ -81,8 +81,8 @@ export async function enqueueAutoSenderCampaigns(workspaceId: string, contactId:
     let ruleMatches = true;
     if (rules?.rules?.length) {
       try {
-        const contacts = await SegmentationCompiler.executeSegment(workspaceId, rules);
-        ruleMatches = contacts.some((matched: any) => matched.id === contactId);
+        // Exact single-contact check (no 1000-row audience fetch that could miss this contact).
+        ruleMatches = await SegmentationCompiler.matchesContact(workspaceId, rules, contactId);
       } catch (evalErr) {
         if (evalErr instanceof InvalidRuleGroupError) {
           logger.error({ campaignId: campaign.id, workspaceId, problem: evalErr.message }, 'campaign.auto_sender.rules_invalid');
