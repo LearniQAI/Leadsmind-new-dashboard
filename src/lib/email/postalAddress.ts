@@ -21,9 +21,11 @@ export function validatePostalAddress(raw: string | null | undefined): PostalAdd
   const address = (raw ?? '').trim().replace(/[ \t]+/g, ' ');
   const flat = address.replace(/\s+/g, ' ');
   if (!flat) return fail('Enter your business postal address.');
+  // Checked before the length/shape heuristics below: most placeholders ("N/A", "TBD", ...) are
+  // also too short to reach them, and "not a placeholder" is the more useful message.
+  if (PLACEHOLDERS.has(flat.toLowerCase())) return fail('Enter a real postal address, not a placeholder.');
   if (flat.length < POSTAL_ADDRESS_MIN) return fail('That looks too short to be a real postal address.');
   if (flat.length > POSTAL_ADDRESS_MAX) return fail(`Keep the address under ${POSTAL_ADDRESS_MAX} characters.`);
-  if (PLACEHOLDERS.has(flat.toLowerCase())) return fail('Enter a real postal address, not a placeholder.');
   if (!/\d/.test(flat)) return fail('A postal address usually includes a number (street number, unit, or postal/zip code).');
   if (flat.split(' ').filter(Boolean).length < 2) return fail('Enter a full postal address (street, city and postal/zip code).');
   return { ok: true, address, reason: '' };

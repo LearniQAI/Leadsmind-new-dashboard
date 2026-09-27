@@ -51,7 +51,7 @@ beforeEach(() => { sendEmail.mockReset(); getCfg.mockReset(); state.updates = []
 
 describe('updateCampaign direct-address path (B3)', () => {
   it('passes the workspace key and populates unsubscribe link', async () => {
-    getCfg.mockResolvedValue({ apiKey: 're_workspace', fromEmail: 'w@acme.com', fromName: 'W' });
+    getCfg.mockResolvedValue({ apiKey: 're_workspace', fromEmail: 'w@acme.com', fromName: 'W', postalAddress: '123 Main St, Cape Town' });
     sendEmail.mockResolvedValue({ id: 'm1' });
     const r: any = await updateCampaign('c1', { ...base, segment: { emails: ['a@x.com'] } });
     expect(r.error).toBeUndefined();
@@ -72,7 +72,7 @@ describe('updateCampaign direct-address path (B3)', () => {
   });
 
   it('rolls status back when every direct send fails and nothing else is queued', async () => {
-    getCfg.mockResolvedValue({ apiKey: 're_workspace', fromEmail: 'me@acme.com' });
+    getCfg.mockResolvedValue({ apiKey: 're_workspace', fromEmail: 'me@acme.com', postalAddress: '123 Main St, Cape Town' });
     // A provider rejection is user-safe (EmailSendError sets userSafe) and is shown.
     sendEmail.mockRejectedValue(Object.assign(new Error('The domain is not verified'), { userSafe: true }));
     const r: any = await updateCampaign('c1', { ...base, segment: { emails: ['a@x.com'] } });
@@ -82,7 +82,7 @@ describe('updateCampaign direct-address path (B3)', () => {
   });
 
   it('never emails a suppressed direct address', async () => {
-    getCfg.mockResolvedValue({ apiKey: 're_workspace', fromEmail: 'me@acme.com' });
+    getCfg.mockResolvedValue({ apiKey: 're_workspace', fromEmail: 'me@acme.com', postalAddress: '123 Main St, Cape Town' });
     state.suppression = [{ workspace_id: 'w1', email: 'A@X.com' }];
     const r: any = await updateCampaign('c1', { ...base, segment: { emails: ['a@x.com'] } });
     expect(sendEmail).not.toHaveBeenCalled();
@@ -92,20 +92,20 @@ describe('updateCampaign direct-address path (B3)', () => {
 
 describe('From email (never a platform address)', () => {
   it('rejects an explicitly-set platform From with an actionable error and mutates nothing', async () => {
-    getCfg.mockResolvedValue({ apiKey: 're_workspace', fromEmail: 'me@acme.com' });
+    getCfg.mockResolvedValue({ apiKey: 're_workspace', fromEmail: 'me@acme.com', postalAddress: '123 Main St, Cape Town' });
     const r: any = await updateCampaign('c1', { ...base, from_email: 'hello@leadsmind.io' });
     expect(r.error).toMatch(/verified sending domain/);
     expect(state.updates).toEqual([]);
   });
   it('errors when neither the campaign nor the provider has a usable From', async () => {
-    getCfg.mockResolvedValue({ apiKey: 're_workspace', fromEmail: 'onboarding@resend.dev' });
+    getCfg.mockResolvedValue({ apiKey: 're_workspace', fromEmail: 'onboarding@resend.dev', postalAddress: '123 Main St, Cape Town' });
     const r: any = await updateCampaign('c1', { ...base, segment: { emails: ['a@x.com'] } });
     expect(r.error).toMatch(/verified sending domain/);
     expect(state.updates).toEqual([]);
   });
   it('self-heals a legacy stored hello@leadsmind.io by using the provider From', async () => {
     state.campaignFrom = 'hello@leadsmind.io';
-    getCfg.mockResolvedValue({ apiKey: 're_workspace', fromEmail: 'me@acme.com' });
+    getCfg.mockResolvedValue({ apiKey: 're_workspace', fromEmail: 'me@acme.com', postalAddress: '123 Main St, Cape Town' });
     sendEmail.mockResolvedValue({});
     const r: any = await updateCampaign('c1', { ...base, segment: { emails: ['a@x.com'] } });
     expect(r.error).toBeUndefined();
@@ -118,7 +118,7 @@ describe('From email (never a platform address)', () => {
     expect(state.updates).toEqual([]);
   });
   it('test send uses the provider From and rejects a bad recipient', async () => {
-    getCfg.mockResolvedValue({ apiKey: 're_workspace', fromEmail: 'me@acme.com' });
+    getCfg.mockResolvedValue({ apiKey: 're_workspace', fromEmail: 'me@acme.com', postalAddress: '123 Main St, Cape Town' });
     sendEmail.mockResolvedValue({});
     await sendTestEmailAction('c1', 'me@example.com', '<p/>');
     expect(sendEmail.mock.calls[0][0].config.fromEmail).toBe('me@acme.com');
@@ -127,9 +127,32 @@ describe('From email (never a platform address)', () => {
   });
 });
 
+describe('Postal address (CAN-SPAM) — 2026-09-27 legal-compliance fix', () => {
+  it('refuses to schedule/send-now when the domain is verified but no postal address is set, before mutating anything', async () => {
+    getCfg.mockResolvedValue({ apiKey: 're_workspace', fromEmail: 'me@acme.com' }); // no postalAddress
+    const r: any = await updateCampaign('c1', { ...base, segment: { emails: ['a@x.com'] } });
+    expect(r.error).toMatch(/postal address/i);
+    expect(state.updates).toEqual([]);
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+  it('refuses a test send under the same condition', async () => {
+    getCfg.mockResolvedValue({ apiKey: 're_workspace', fromEmail: 'me@acme.com' });
+    const r: any = await sendTestEmailAction('c1', 'me@example.com', '<p/>');
+    expect(r.error).toMatch(/postal address/i);
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+  it('sends once a postal address is present', async () => {
+    getCfg.mockResolvedValue({ apiKey: 're_workspace', fromEmail: 'me@acme.com', postalAddress: '123 Main St, Cape Town' });
+    sendEmail.mockResolvedValue({});
+    const r: any = await updateCampaign('c1', { ...base, segment: { emails: ['a@x.com'] } });
+    expect(r.error).toBeUndefined();
+    expect(r.directSent).toEqual(['a@x.com']);
+  });
+});
+
 describe('sendTestEmailAction (B3)', () => {
   it('sends with the workspace key', async () => {
-    getCfg.mockResolvedValue({ apiKey: 're_workspace', fromEmail: 'me@acme.com' });
+    getCfg.mockResolvedValue({ apiKey: 're_workspace', fromEmail: 'me@acme.com', postalAddress: '123 Main St, Cape Town' });
     sendEmail.mockResolvedValue({});
     const r: any = await sendTestEmailAction('c1', 'me@example.com', '<a href="{{unsubscribe_link}}">u</a>');
     expect(r.success).toBe(true);
@@ -144,7 +167,7 @@ describe('sendTestEmailAction (B3)', () => {
 });
 
 describe('empty targeting (B6)', () => {
-  const ok = { apiKey: 're_workspace', fromEmail: 'me@acme.com' };
+  const ok = { apiKey: 're_workspace', fromEmail: 'me@acme.com', postalAddress: '123 Main St, Cape Town' };
   it('refuses to schedule with no audience at all, before mutating anything', async () => {
     getCfg.mockResolvedValue(ok);
     const r: any = await updateCampaign('c1', { status: 'scheduled', segment: {} });
@@ -166,7 +189,7 @@ describe('empty targeting (B6)', () => {
 });
 
 describe('test-send hardening', () => {
-  const ok = { apiKey: 're_workspace', fromEmail: 'me@acme.com' };
+  const ok = { apiKey: 're_workspace', fromEmail: 'me@acme.com', postalAddress: '123 Main St, Cape Town' };
   it('accepts normal addresses containing the letter "s" (regex regression)', async () => {
     getCfg.mockResolvedValue(ok); sendEmail.mockResolvedValue({});
     const r: any = await sendTestEmailAction('c1', 'sales@shop.co', '<p/>');
@@ -191,7 +214,7 @@ describe('test-send hardening', () => {
 });
 
 describe('test-send error classification', () => {
-  const ok = { apiKey: 're_workspace', fromEmail: 'me@acme.com' };
+  const ok = { apiKey: 're_workspace', fromEmail: 'me@acme.com', postalAddress: '123 Main St, Cape Town' };
   it('shows a known provider rejection as-is', async () => {
     getCfg.mockResolvedValue(ok);
     sendEmail.mockRejectedValue(Object.assign(new Error('The to field must be a valid email address'), { userSafe: true }));
@@ -219,7 +242,7 @@ describe('test-send error classification', () => {
 });
 
 describe('direct-send failure reasons (item 7)', () => {
-  const ok = { apiKey: 're_workspace', fromEmail: 'me@acme.com' };
+  const ok = { apiKey: 're_workspace', fromEmail: 'me@acme.com', postalAddress: '123 Main St, Cape Town' };
   it('masks an internal error in both directFailed reasons and the rollback message, and logs the real one', async () => {
     getCfg.mockResolvedValue(ok);
     const internal = new Error('connect ECONNREFUSED 10.0.0.5:5432 password authentication failed for user "svc_admin"');
@@ -245,7 +268,7 @@ describe('direct-send failure reasons (item 7)', () => {
 });
 
 describe('segment handling in updateCampaign (items 1-3)', () => {
-  const ok = { apiKey: 're_workspace', fromEmail: 'me@acme.com' };
+  const ok = { apiKey: 're_workspace', fromEmail: 'me@acme.com', postalAddress: '123 Main St, Cape Town' };
   const future = new Date(Date.now() + 86400000).toISOString();
 
   it('a DELETED segment fails closed: clear error, nothing mutated (was: silently widened to the tag alone)', async () => {
