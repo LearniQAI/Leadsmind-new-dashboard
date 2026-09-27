@@ -1,4 +1,5 @@
 import { parsePersonalTokens } from '@/lib/builder/emailRenderer';
+import { escapeHtml } from '@/lib/text/escapeHtml';
 
 // Thrown by the send_email action when the recipient may not be emailed
 // (unsubscribed / hard-bounced). Not a failure: the executor cancels a
@@ -42,9 +43,6 @@ export function isPermanentEmailError(err: unknown): boolean {
 
 const UNSUBSCRIBE_TOKEN = /\{\{\s*unsubscribe_link\s*\}\}/i;
 
-const escapeHtml = (s: string) =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-
 interface AutomationEmailContact {
   first_name?: string | null;
   last_name?: string | null;
@@ -74,15 +72,22 @@ function tokenVars(contact: AutomationEmailContact, unsubscribeLink: string, esc
  * - Resolves merge tokens for this recipient (contact values HTML-escaped in the body).
  * - Guarantees a real, signed unsubscribe link: if the author didn't place
  *   {{unsubscribe_link}} themselves, a footer is appended.
+ * - That same appended footer carries the sending workspace's postal address (CAN-SPAM requires
+ *   one in every commercial email; the caller has already refused to send without one — see
+ *   POSTAL_ADDRESS_REQUIRED_MESSAGE). Only OUR footer gets it: an author who wrote their own
+ *   {{unsubscribe_link}} keeps full control of their body, so the address isn't force-injected
+ *   into it — same scoping as the unsubscribe link itself.
  * - Plain-text bodies are converted to HTML with line breaks preserved.
  */
 export function buildAutomationEmail(
   config: { subject?: string; body?: string; isHtml?: boolean },
   contact: AutomationEmailContact,
   unsubscribeLink: string,
+  postalAddress: string,
 ): { subject: string; html: string; text: string } {
   const rawBody = config.body || `Hello ${contact.first_name || ''}, this is an automated message.`;
   const isHtml = rawBody.trimStart().startsWith('<') || !!config.isHtml;
+  const addressLine = postalAddress ? `${escapeHtml(postalAddress)}<br>` : '';
 
   const subject = parsePersonalTokens(config.subject || 'Important Update', undefined, tokenVars(contact, unsubscribeLink, (s) => s));
 
@@ -90,7 +95,7 @@ export function buildAutomationEmail(
     ? rawBody
     : `<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5;">${escapeHtml(rawBody).replace(/\r?\n/g, '<br>')}</div>`;
   if (!UNSUBSCRIBE_TOKEN.test(bodyHtml)) {
-    bodyHtml += `<p style="font-family: Arial, sans-serif; font-size: 12px; color: #6b7280; margin-top: 24px;">You are receiving this email because you are in our contact list. <a href="{{unsubscribe_link}}" style="color: #6b7280;">Unsubscribe</a></p>`;
+    bodyHtml += `<p style="font-family: Arial, sans-serif; font-size: 12px; color: #6b7280; margin-top: 24px;">${addressLine}You are receiving this email because you are in our contact list. <a href="{{unsubscribe_link}}" style="color: #6b7280;">Unsubscribe</a></p>`;
   }
   const html = parsePersonalTokens(bodyHtml, undefined, tokenVars(contact, unsubscribeLink, escapeHtml));
 
@@ -98,7 +103,7 @@ export function buildAutomationEmail(
   // campaign behaviour of no text part).
   const text = isHtml
     ? ''
-    : `${parsePersonalTokens(rawBody, undefined, tokenVars(contact, unsubscribeLink, (s) => s))}${UNSUBSCRIBE_TOKEN.test(rawBody) ? '' : `\n\nUnsubscribe: ${unsubscribeLink}`}`;
+    : `${parsePersonalTokens(rawBody, undefined, tokenVars(contact, unsubscribeLink, (s) => s))}${UNSUBSCRIBE_TOKEN.test(rawBody) ? '' : `\n\n${postalAddress ? `${postalAddress}\n` : ''}Unsubscribe: ${unsubscribeLink}`}`;
 
   return { subject, html, text };
 }

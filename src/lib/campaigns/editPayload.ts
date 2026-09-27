@@ -54,9 +54,11 @@ export function buildCampaignEditPayload(
     const hasRuleGroup = !!form.ruleGroup && form.ruleGroup.rules.length > 0;
     // A saved segment and the ad-hoc rule builder are mutually exclusive.
     const hasSegmentId = !!form.segmentId && !hasRuleGroup;
+    // Direct addresses are no longer a supported audience (Settings tags/segment/filters are the
+    // only audience now) — an audience save on an older campaign that still has some drops them,
+    // rather than keeping a hidden extra recipient list nothing in the UI shows or edits anymore.
     const existing = campaign?.segment && typeof campaign.segment === 'object' ? campaign.segment : {};
     const preserved = {
-      ...(Array.isArray(existing.emails) && existing.emails.length > 0 ? { emails: existing.emails } : {}),
       ...(existing.is_automated ? { is_automated: true } : {}),
     };
     const audience = {

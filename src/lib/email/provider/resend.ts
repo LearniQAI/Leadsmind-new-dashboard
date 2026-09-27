@@ -74,7 +74,10 @@ export class ResendProvider implements EmailSendingProvider {
         subject: email.subject,
         react: email.react as any,
         html: email.html || undefined,
-        text: email.text || '',
+        // Omitted (not '') when the caller has none: Resend then derives the text/plain part from the
+        // HTML. An empty string explicitly opts out, which made every campaign HTML-only
+        // (Content-Type text/html, Resend stored text length 0) — a spam-scoring signal.
+        text: email.text || undefined,
         replyTo: email.replyTo || undefined,
         tags: email.tags,
         headers: email.headers,

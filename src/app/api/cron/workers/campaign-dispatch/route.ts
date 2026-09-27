@@ -10,6 +10,7 @@ import { Observability } from '@/lib/observability';
 import { logger } from '@/shared/logger';
 import { loadSuppressedEmails, suppressionReason } from '@/lib/campaigns/emailSuppression';
 import { resolveCampaignFromEmail } from '@/lib/campaigns/fromEmail';
+import { closeFinishedCampaigns, reconcileFinishedCampaigns } from '@/lib/campaigns/campaignCompletion';
 import crypto from 'crypto';
 
 const supabaseAdmin = createClient(
@@ -46,6 +47,9 @@ export async function GET(req: Request) {
     }
 
     if (!jobs || jobs.length === 0) {
+      // Nothing to send — still close any campaign that finished but was never marked 'sent'
+      // (only the target campaign on a targeted run; a bounded sweep on a cron run).
+      await reconcileFinishedCampaigns(supabaseAdmin as any, targetCampaignId ? { campaignIds: [targetCampaignId] } : {});
       return NextResponse.json({ success: true, processed: 0, sent: 0, remaining: 0, message: 'Queue is empty' });
     }
 
@@ -123,6 +127,13 @@ export async function GET(req: Request) {
         updates.push({ id: job.id, status: 'failed', error_log: 'No verified sending domain: add and verify one in Settings → Email Domains', locked_by: null });
         continue;
       }
+      // Defense in depth: updateCampaign already refuses to schedule/send-now without one
+      // (POSTAL_ADDRESS_REQUIRED_MESSAGE), but a row could predate that gate or the address
+      // could be removed after it was queued.
+      if (!emailConfig.postalAddress) {
+        updates.push({ id: job.id, status: 'failed', error_log: 'No postal address: add your business postal address in Settings → Email Domains (required by anti-spam law)', locked_by: null });
+        continue;
+      }
       // Never substitute a platform address: campaign From, else the workspace
       // provider's From, else fail the row with a clear reason.
       const fromEmail = resolveCampaignFromEmail(campaign.from_email, emailConfig?.fromEmail);
@@ -164,9 +175,10 @@ export async function GET(req: Request) {
           config: {
             apiKey,
             fromEmail,
-            // Same chain as the direct and test sends: the campaign's own name, else the From
-            // name configured for the workspace's sending identity (Settings), else LeadsMind.
-            fromName: campaign.from_name || emailConfig?.fromName || 'LeadsMind',
+            // The campaign's own name, else the sending identity's name (resolveManagedFromIdentity:
+            // domain From name → workspace name → domain). Never "LeadsMind" on a customer domain —
+            // that brand/domain mismatch was proven to send campaigns to Gmail spam.
+            fromName: campaign.from_name || emailConfig.fromName,
             headers: buildListUnsubscribeHeaders(contact.email, job.workspace_id),
             tags: [
               { name: 'campaign_id', value: campaign.id },
@@ -239,27 +251,10 @@ export async function GET(req: Request) {
     // still has any pending/processing/deferred row is left alone; this may
     // take several worker runs to converge for large campaigns, which is
     // correct — it should only flip once genuinely done.
-    for (const cid of campaignIds) {
-      const { count: remaining } = await supabaseAdmin
-        .from('campaign_dispatch_queue')
-        .select('id', { count: 'exact', head: true })
-        .eq('campaign_id', cid)
-        .in('status', ['pending', 'processing', 'deferred']);
-
-      if ((remaining ?? 0) === 0) {
-        const { data: campToClose } = await supabaseAdmin
-          .from('email_campaigns')
-          .select('status')
-          .eq('id', cid)
-          .single();
-        if (campToClose && campToClose.status !== 'sent') {
-          await supabaseAdmin
-            .from('email_campaigns')
-            .update({ status: 'sent', sent_at: now.toISOString() })
-            .eq('id', cid);
-        }
-      }
-    }
+    // Retries transient failures; anything still not closed is caught by the reconcile sweep that
+    // every run performs (below and on an empty queue), so a sent campaign is never stuck.
+    await closeFinishedCampaigns(supabaseAdmin as any, campaignIds as string[], now);
+    if (!targetCampaignId) await reconcileFinishedCampaigns(supabaseAdmin as any);
 
     let remaining = 0;
     if (targetCampaignId) {

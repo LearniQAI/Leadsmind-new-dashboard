@@ -10,7 +10,7 @@ import { userSafeMessage } from '@/shared/errors/userSafe';
 import { validateRuleGroup } from '@/lib/segments/ruleValidation';
 import { loadSegmentRuleGroup, SegmentUnavailableError } from '@/lib/segments/resolveSegment';
 import type { RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
-import { resolveCampaignFromEmail, isUsableCampaignFromEmail, isPlatformSenderDomain, FROM_EMAIL_REQUIRED_MESSAGE, NO_MARKETING_DOMAIN_MESSAGE } from '@/lib/campaigns/fromEmail';
+import { resolveCampaignFromEmail, isUsableCampaignFromEmail, isPlatformSenderDomain, FROM_EMAIL_REQUIRED_MESSAGE, NO_MARKETING_DOMAIN_MESSAGE, POSTAL_ADDRESS_REQUIRED_MESSAGE } from '@/lib/campaigns/fromEmail';
 
 // FUNNELS
 export async function getFunnels() {
@@ -1131,6 +1131,12 @@ export async function updateCampaign(id: string, updates: any) {
    if (!emailConfig?.apiKey) {
     throw new CampaignUserError(NO_MARKETING_DOMAIN_MESSAGE);
    }
+   // CAN-SPAM (and equivalents) require a real postal address in every commercial email — a
+   // verified domain alone isn't enough. Same preflight-before-mutation placement as the domain
+   // check above.
+   if (!emailConfig.postalAddress) {
+    throw new CampaignUserError(POSTAL_ADDRESS_REQUIRED_MESSAGE);
+   }
    if (updates.segment?.emails?.length > 0 && updates.body_html && !updates.scheduled_for) {
     directEmailConfig = emailConfig;
    }
@@ -1459,7 +1465,9 @@ export async function sendCampaignNow(campaignId: string) {
   if (!campaign.body_html?.trim()) return { error: 'Design the email before sending (Design).' };
 
   const result = await updateCampaign(campaignId, {
-   segment: campaign.segment,
+   // The Settings audience only: direct addresses left on older campaigns are not sent (the
+   // builder no longer offers them), so the card and the builder send to the same people.
+   segment: campaign.segment && typeof campaign.segment === 'object' ? { ...campaign.segment, emails: [] } : campaign.segment,
    body_html: campaign.body_html,
    status: 'scheduled',
    scheduled_for: null,
@@ -1704,6 +1712,9 @@ export async function sendTestEmailAction(campaignId: string, testEmail: string,
   if (!emailConfig?.apiKey) {
    return { error: NO_MARKETING_DOMAIN_MESSAGE };
   }
+  if (!emailConfig.postalAddress) {
+   return { error: POSTAL_ADDRESS_REQUIRED_MESSAGE };
+  }
 
   const testFrom = resolveCampaignFromEmail(campaign.from_email, emailConfig.fromEmail);
   if (!testFrom) return { error: FROM_EMAIL_REQUIRED_MESSAGE };
@@ -1804,5 +1815,69 @@ export async function getCampaignTagReach(tagIds: string[], combinedIds: string[
  } catch (error: any) {
   logger.error({ err: error }, 'campaign.tag_reach.failed');
   return { error: 'Could not load audience counts.' };
+ }
+}
+
+/**
+ * The saved campaign's audience size, for the read-only summary in the Send dialog. Uses the
+ * SAVED audience (Settings is the only place it is configured) and the same rules as sending:
+ * tags are ALL-of (tag_assignments), a saved segment / ad-hoc filters, combined with the
+ * campaign's combineMode. Count-only (countSegment) whenever the audience is one flat rule group,
+ * which covers every tag-only, segment-only and tags-AND-filters audience; a tags-OR-filters mix
+ * is resolved with the send path's own functions instead. `emailReach` = can actually be emailed.
+ */
+export async function getCampaignAudienceReach(campaignId: string) {
+ await requireModuleAccess('marketing');
+ try {
+  const supabase = await createServerClient();
+  const { workspaceId } = await requireWorkspaceAccess();
+  const { data: campaign, error } = await supabase
+   .from('email_campaigns').select('segment').eq('id', campaignId).eq('workspace_id', workspaceId).maybeSingle();
+  if (error) throw error;
+  if (!campaign) return { error: 'Email campaign not found.' };
+  const seg = campaign.segment && typeof campaign.segment === 'object' ? campaign.segment : {};
+
+  const storedTags: string[] = Array.isArray(seg.tags) ? seg.tags : [];
+  const { resolveCampaignTagIds, contactIdsWithAllTags } = await import('@/lib/campaigns/tagAudience');
+  const { ids: tagIds, missing } = await resolveCampaignTagIds(supabase as any, workspaceId, storedTags);
+  if (missing.length > 0) return { error: `A selected tag no longer exists (${missing.join(', ')}). Update the audience in Settings.` };
+
+  let rules: RuleGroup | null = Array.isArray(seg.ruleGroup?.rules) && seg.ruleGroup.rules.length > 0 ? seg.ruleGroup : null;
+  if (!rules && seg.segmentId) {
+   try { rules = await loadSegmentRuleGroup(supabase, workspaceId, seg.segmentId); }
+   catch (segErr) { if (segErr instanceof SegmentUnavailableError) return { error: segErr.message }; throw segErr; }
+  }
+  if (tagIds.length === 0 && !rules) return { total: 0, emailReach: 0, hasAudience: false };
+
+  const { data: tagRows } = tagIds.length
+   ? await supabase.from('tags').select('id, name').eq('workspace_id', workspaceId).in('id', tagIds)
+   : { data: [] as any[] };
+  const tagRules = (tagRows ?? []).map((t: any) => ({ field: 'tags', operator: 'equals' as const, value: t.name }));
+  const combine: 'AND' | 'OR' = seg.combineMode === 'OR' ? 'OR' : 'AND';
+
+  let flat: RuleGroup | null = null;
+  if (!rules) flat = { logic: 'AND', rules: tagRules };
+  else if (tagRules.length === 0) flat = rules;
+  else if (combine === 'AND' && rules.logic === 'AND') flat = { logic: 'AND', rules: [...tagRules, ...rules.rules] };
+  else if (combine === 'OR' && rules.logic === 'OR' && tagRules.length === 1) flat = { logic: 'OR', rules: [...tagRules, ...rules.rules] };
+
+  const { SegmentationCompiler } = await import('@/lib/intelligence/SegmentationCompiler');
+  if (flat) {
+   const counted = await SegmentationCompiler.countSegment(workspaceId, flat);
+   if (counted) return { total: counted.total, emailReach: counted.emailReach, hasAudience: true };
+  }
+
+  // Not one flat group (or the count RPC is unavailable): resolve exactly as sending does.
+  const tagSet = tagIds.length ? await contactIdsWithAllTags(supabase as any, workspaceId, tagIds) : null;
+  const ruleSet = rules ? new Set((await SegmentationCompiler.executeSegment(workspaceId, rules)).map((c: any) => c.id as string)) : null;
+  const ids = tagSet && ruleSet
+   ? (combine === 'OR' ? new Set([...tagSet, ...ruleSet]) : new Set([...tagSet].filter((id) => ruleSet.has(id))))
+   : (tagSet ?? ruleSet ?? new Set<string>());
+  const { filterEmailableContactIds } = await import('@/lib/campaigns/emailSuppression');
+  const { eligible } = await filterEmailableContactIds(createAdminClient(), workspaceId, [...ids]);
+  return { total: ids.size, emailReach: eligible.length, hasAudience: true };
+ } catch (error: any) {
+  logger.error({ err: error, campaignId }, 'campaign.audience_reach.failed');
+  return { error: 'Could not count this campaign\'s audience.' };
  }
 }

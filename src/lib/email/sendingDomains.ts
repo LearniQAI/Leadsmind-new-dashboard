@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { logger } from '@/shared/logger';
 import { ResendProvider } from './provider/resend';
 import { EmailProviderError, type EmailSendingProvider, type ProviderDomain } from './provider/types';
+import { validateSenderName } from './senderName';
 
 /**
  * LeadsMind-managed sending domains. Each domain is created in the PLATFORM's Resend account, and
@@ -73,13 +74,23 @@ function providerMessage(err: unknown, fallback: string): string {
   return fallback;
 }
 
+/** A domain can't exist without a real From name (see senderName.ts for why). */
+function requireSenderName(raw: string | null | undefined): string {
+  const check = validateSenderName(raw);
+  if (!check.ok) throw new SendingDomainError(check.reason);
+  return check.name;
+}
+
 export async function registerSendingDomain(
   workspaceId: string,
   rawName: string,
+  rawFromName: string,
   provider: EmailSendingProvider = getPlatformEmailProvider(),
 ) {
   const name = normalizeSendingDomain(rawName);
   if (!name) throw new SendingDomainError('Enter a valid domain, like mail.yourcompany.com.');
+  // Checked before anything is created at the provider, so a bad name leaves nothing behind.
+  const fromName = requireSenderName(rawFromName);
   if (isPlatformOwnedDomain(name)) throw new SendingDomainError('LeadsMind platform domains cannot be added as a sending domain.');
 
   const db = createAdminClient();
@@ -128,6 +139,7 @@ export async function registerSendingDomain(
       provider: provider.name,
       provider_domain_id: created.id,
       is_default: !defaults,
+      from_name: fromName,
       dmarc_status: false,
       ...domainStateColumns(created),
     })
@@ -159,11 +171,15 @@ export async function refreshSendingDomain(
   const db = createAdminClient();
   const { data: row } = await db
     .from('sender_domains')
-    .select('id, domain_name, provider_domain_id')
+    .select('id, domain_name, provider_domain_id, from_name')
     .eq('id', domainId)
     .eq('workspace_id', workspaceId)
     .maybeSingle();
   if (!row) throw new SendingDomainError('Sending domain not found.');
+  // Domains added before the From name was required (or with a placeholder one) must get a real
+  // name before they can be (re)verified.
+  const nameCheck = validateSenderName(row.from_name);
+  if (!nameCheck.ok) throw new SendingDomainError(`Set a real From name for this domain before verifying it. ${nameCheck.reason}`);
   if (!row.provider_domain_id) {
     throw new SendingDomainError('This domain was added before LeadsMind managed sending. Remove it and add it again.');
   }
@@ -249,7 +265,8 @@ export async function updateSendingDomainIdentity(
     if (!/^[A-Za-z0-9._%+-]{1,64}$/.test(local)) throw new SendingDomainError('Enter a valid From name before the @, like hello or team.');
     update.from_local_part = local;
   }
-  if (patch.fromName !== undefined) update.from_name = patch.fromName?.trim() || null;
+  // Required, never cleared: every sending domain keeps a real From name.
+  if (patch.fromName !== undefined) update.from_name = requireSenderName(patch.fromName);
 
   if (patch.makeDefault) {
     const { error } = await db.from('sender_domains').update({ is_default: false }).eq('workspace_id', workspaceId).eq('is_default', true);
@@ -268,12 +285,21 @@ export async function updateSendingDomainIdentity(
   return data;
 }
 
-/** The workspace's managed From identity: its default domain if verified, else any verified one. */
+/**
+ * The workspace's managed From identity: its default domain if verified, else any verified one.
+ *
+ * fromName is never null and never "LeadsMind": a customer domain sent under the display name
+ * "LeadsMind" (the old caller fallback, and workspaces.email_from_name's column default) is a
+ * brand/domain mismatch Gmail spam-folders. Proven 2026-09-27 by single-variable real sends:
+ * identical HTML from hello@zainulhassan.site landed in Inbox as "Zain Ul Hassan" and in Spam as
+ * "LeadsMind", in two separate Gmail mailboxes. Chain: the domain's own From name → the workspace
+ * name → the domain itself, each taken only if it passes validateSenderName.
+ */
 export async function resolveManagedFromIdentity(workspaceId: string) {
   const db = createAdminClient();
   const { data, error } = await db
     .from('sender_domains')
-    .select('id, domain_name, from_local_part, from_name, is_default, status, paused_at')
+    .select('id, domain_name, from_local_part, from_name, is_default, status, paused_at, workspaces(name, postal_address)')
     .eq('workspace_id', workspaceId)
     .eq('status', 'verified')
     .order('is_default', { ascending: false })
@@ -281,5 +307,12 @@ export async function resolveManagedFromIdentity(workspaceId: string) {
     .limit(1)
     .maybeSingle();
   if (error || !data) return null;
-  return { fromEmail: `${data.from_local_part}@${data.domain_name}`, fromName: data.from_name as string | null };
+  // Legacy rows can still lack a real name (the settings page prompts for one); a placeholder is
+  // never sent — "Jane's Workspace" falls through to the domain itself.
+  const workspaceName = (data as any).workspaces?.name as string | undefined;
+  const fromName = [data.from_name as string | null, workspaceName].map(validateSenderName).find((c) => c.ok)?.name ?? data.domain_name;
+  // Workspace-level (one legal business address, not per domain) — see the postal_address
+  // migration's comment. null when unset; callers must refuse to send (POSTAL_ADDRESS_REQUIRED_MESSAGE).
+  const postalAddress = ((data as any).workspaces?.postal_address as string | null | undefined)?.trim() || null;
+  return { fromEmail: `${data.from_local_part}@${data.domain_name}`, fromName, postalAddress };
 }

@@ -14,6 +14,19 @@ export interface RuleGroup {
   rules: FilterRule[];
 }
 
+// PostgREST returns at most 1000 rows per request, so every read here is paged in a stable order —
+// a segment matching 1500 contacts used to come back as (an arbitrary) 1000 of them.
+const PAGE = 1000;
+async function pageRows(query: (from: number, to: number) => PromiseLike<{ data: any[] | null; error: any }>, what: string): Promise<any[]> {
+  const rows: any[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await query(from, from + PAGE - 1);
+    if (error) throw new Error(`${what} failed: ${error.message}`);
+    rows.push(...(data ?? []));
+    if (!data || data.length < PAGE) return rows;
+  }
+}
+
 // contact id -> lower-cased names of the tags currently assigned to it (tag_assignments truth).
 // Paginated: PostgREST caps a plain select at 1000 rows, which would silently truncate this.
 async function loadContactTagNames(supabase: any, workspaceId: string): Promise<Map<string, Set<string>>> {
@@ -201,6 +214,25 @@ export const SegmentationCompiler = {
   },
 
   /**
+   * Does ONE contact match the rule group? Exact and uncapped: the compiled segment is filtered to
+   * that contact id in the database (the RPC's SETOF contacts result is filterable), instead of
+   * fetching the whole audience to look for it — which silently missed contacts past row 1000.
+   */
+  async matchesContact(workspaceId: string, ruleGroup: RuleGroup, contactId: string): Promise<boolean> {
+    assertValidRuleGroup(ruleGroup);
+    const compiled = this.compileToSql(workspaceId, ruleGroup);
+    try {
+      const { data, error } = await createAdminClient()
+        .rpc('fn_execute_segment_sql', { p_sql: compiled.sql, p_params: compiled.params })
+        .eq('id', contactId)
+        .limit(1);
+      if (!error && Array.isArray(data)) return data.length > 0;
+    } catch { /* fall through to the full (paged) evaluation */ }
+    const all = await this.executeSegment(workspaceId, ruleGroup);
+    return all.some((c: any) => c.id === contactId);
+  },
+
+  /**
    * Resolves contact list by executing compiled SQL via DB RPC, or falling back
    * to programmatic client-side intersections to ensure remote environment compatibility.
    */
@@ -215,43 +247,55 @@ export const SegmentationCompiler = {
     // granted to service_role alone (see 20260921000001_lockdown_fn_execute_segment_sql.sql),
     // which is why this MUST run through createAdminClient() — never a user-session client.
     // It is the production hot path (campaigns, auto-senders, Segments counts), not optional.
+    // Paged (ordered by id): the RPC returns SETOF contacts, so PostgREST applies order/range to it.
+    const rpcPage = (from: number, to: number) =>
+      supabase.rpc('fn_execute_segment_sql', { p_sql: compiled.sql, p_params: compiled.params }).order('id', { ascending: true }).range(from, to);
+    let firstPage: { data: any[] | null; error: any } | null = null;
     try {
-      const { data, error } = await supabase.rpc('fn_execute_segment_sql', {
-        p_sql: compiled.sql,
-        p_params: compiled.params
-      });
-
-      if (!error && Array.isArray(data)) {
-        return data;
-      }
-      // Log error but proceed to programmatic fallback
-      if (error && error.code !== 'P0001') {
-        console.warn(`[SegmentationCompiler] DB RPC returned error: ${error.message}. Falling back to JS client.`);
-      }
+      firstPage = await rpcPage(0, PAGE - 1);
     } catch (err: any) {
       console.warn(`[SegmentationCompiler] DB RPC call failed: ${err.message}. Falling back to JS client.`);
+    }
+    if (firstPage && !firstPage.error && Array.isArray(firstPage.data)) {
+      const rows = [...firstPage.data];
+      // Later pages must all succeed: a partial audience is worse than an error.
+      for (let from = PAGE; rows.length === from; from += PAGE) {
+        const { data, error } = await rpcPage(from, from + PAGE - 1);
+        if (error) throw new Error(`segment evaluation failed while paging: ${error.message}`);
+        rows.push(...(data ?? []));
+      }
+      return rows;
+    }
+    // Log error but proceed to programmatic fallback
+    if (firstPage?.error && firstPage.error.code !== 'P0001') {
+      console.warn(`[SegmentationCompiler] DB RPC returned error: ${firstPage.error.message}. Falling back to JS client.`);
     }
 
     // 2. Programmatic Fallsack (TypeScript-side relational intersection)
     try {
       // 2.a Fetch all contacts for workspace
-      const { data: contacts, error: cErr } = await supabase
-        .from('contacts')
-        .select('*')
-        .eq('workspace_id', workspaceId);
+      const contacts = await pageRows((from, to) =>
+        supabase.from('contacts').select('*').eq('workspace_id', workspaceId).order('id', { ascending: true }).range(from, to), 'contact lookup');
 
-      if (cErr || !contacts || contacts.length === 0) {
+      if (contacts.length === 0) {
         return [];
       }
 
       const contactIds = contacts.map(c => c.id);
+      const enrollmentChunks: string[][] = [];
+      for (let i = 0; i < contactIds.length; i += 200) enrollmentChunks.push(contactIds.slice(i, i + 200));
 
-      // 2.b Fetch related collections in parallel
-      const [invoicesRes, enrollmentsRes, logsRes] = await Promise.all([
-        supabase.from('invoices').select('*').eq('workspace_id', workspaceId),
-        supabase.from('enrollments').select('*').in('contact_id', contactIds),
-        supabase.from('email_tracking_logs').select('*').eq('workspace_id', workspaceId)
+      // 2.b Fetch related collections in parallel (paged; enrollments by contact-id chunk)
+      const [invoicesRows, enrollmentsRows, logsRows] = await Promise.all([
+        pageRows((from, to) => supabase.from('invoices').select('*').eq('workspace_id', workspaceId).order('id', { ascending: true }).range(from, to), 'invoice lookup'),
+        Promise.all(enrollmentChunks.map((ids) =>
+          pageRows((from, to) => supabase.from('enrollments').select('*').in('contact_id', ids).order('id', { ascending: true }).range(from, to), 'enrollment lookup'),
+        )).then((parts) => parts.flat()),
+        pageRows((from, to) => supabase.from('email_tracking_logs').select('*').eq('workspace_id', workspaceId).order('id', { ascending: true }).range(from, to), 'tracking log lookup'),
       ]);
+      const invoicesRes = { data: invoicesRows };
+      const enrollmentsRes = { data: enrollmentsRows };
+      const logsRes = { data: logsRows };
 
       // Only load tag data when a rule needs it.
       const tagNamesByContact = ruleGroup.rules.some((r) => r.field === 'tags')

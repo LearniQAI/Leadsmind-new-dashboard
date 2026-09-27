@@ -6,6 +6,7 @@ import MetaData from '@/hooks/useMetaData';
 import { EmailBuilderClient } from './EmailBuilderClient';
 import { listSegments } from '@/app/actions/segments';
 import { listTags } from '@/app/actions/tags';
+import { resolveManagedFromIdentity } from '@/lib/email/sendingDomains';
 
 interface PageProps {
   params: {
@@ -39,11 +40,19 @@ export default async function EmailBuilderPage({ params }: PageProps) {
     .eq('id', workspaceId)
     .single();
 
+  // The footer's sender identity (name shown in "Sent by ___" / postal address): same fallback
+  // chain and CAN-SPAM gate as the campaign's own From line (resolveManagedFromIdentity). Read at
+  // page load like the rest of BrandKit (logo/colors/font) — not re-checked at the moment of Send,
+  // same acceptable staleness window as those.
+  const identity = await resolveManagedFromIdentity(workspaceId);
+
   const brandKit = {
     logoUrl: workspace?.logo_url || null,
     brandColorPrimary: workspace?.brand_color_primary || '#2563eb',
     brandColorSecondary: workspace?.brand_color_secondary || '#080f28',
-    brandFontDefault: workspace?.brand_font_default || 'Inter'
+    brandFontDefault: workspace?.brand_font_default || 'Inter',
+    senderName: identity?.fromName ?? null,
+    postalAddress: identity?.postalAddress ?? null,
   };
 
   const { data: { user } } = await supabase.auth.getUser();

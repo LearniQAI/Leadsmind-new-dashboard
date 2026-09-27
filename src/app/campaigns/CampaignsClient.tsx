@@ -14,20 +14,13 @@ import { DashCard } from '@/components/dashboard-ui/Card';
 import { DashButton } from '@/components/dashboard-ui/Button';
 import { DashEmptyState } from '@/components/dashboard-ui/EmptyState';
 import { DashStatusPill } from '@/components/dashboard-ui/StatusPill';
-import { DashFormField, DashInput, DashTextarea } from '@/components/dashboard-ui/FormField';
+import { DashFormField, DashInput } from '@/components/dashboard-ui/FormField';
 import {
   DashModal, DashModalContent, DashModalHeader, DashModalTitle, DashModalFooter
 } from '@/components/dashboard-ui/Modal';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import type { TagOption } from '@/components/crm/TagMultiSelect';
-import { TagAudiencePicker } from '@/components/campaigns/TagAudiencePicker';
-import { SegmentRuleBuilder } from '@/components/crm/SegmentRuleBuilder';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
-} from '@/components/ui/select';
-import type { RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
-import { buildCampaignEditPayload, type EditInitial } from '@/lib/campaigns/editPayload';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { CampaignSettingsDialog } from '@/components/campaigns/CampaignSettingsDialog';
 import { toastCampaignSendError } from '@/lib/campaigns/sendErrorToast';
 
 // Sent via "Send now" (card or builder) and still draining: status stays 'scheduled' with no
@@ -36,7 +29,6 @@ import { toastCampaignSendError } from '@/lib/campaigns/sendErrorToast';
 const isSendingNow = (c: any) => c.status === 'scheduled' && !c.scheduled_for && !c.segment?.is_automated;
 const canSendNow = (c: any) => (c.status === 'draft' || (c.status === 'scheduled' && !!c.scheduled_for)) && !c.segment?.is_automated;
 
-const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 
 interface SegmentOption { id: string; name: string; }
 
@@ -60,19 +52,6 @@ export default function CampaignsClient({
 
   const [editOpen, setEditOpen] = useState(false);
   const [editCampaign, setEditCampaign] = useState<any>(null);
-  const [editName, setEditName] = useState('');
-  const [editSubject, setEditSubject] = useState('');
-  const [editBody, setEditBody] = useState('');
-  // Selected tag IDS — a campaign targets tags by id, so renaming a tag never breaks it.
-  const [editTagIds, setEditTagIds] = useState<string[]>([]);
-  const [editRuleGroup, setEditRuleGroup] = useState<RuleGroup | null>(null);
-  const [editCombineMode, setEditCombineMode] = useState<'AND' | 'OR'>('AND');
-  const [editSegmentId, setEditSegmentId] = useState<string | null>(null);
-  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  // Snapshot of what the dialog opened with, so Save only writes fields the
-  // user actually changed (a name-only edit must not touch body/segment).
-  const [editInitial, setEditInitial] = useState<EditInitial | null>(null);
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteCampaign, setDeleteCampaign] = useState<any>(null);
@@ -169,80 +148,8 @@ export default function CampaignsClient({
     }
   };
 
-  const openEdit = (campaign: any) => {
-    setEditCampaign(campaign);
-    setEditName(campaign.name);
-    setEditSubject(campaign.subject || '');
-    setEditBody(campaign.preview_text || '');
-
-    // segment.tags are tag ids, or plain tag NAMES for campaigns saved before ids were used —
-    // names are resolved to their current tag id here. A tag that no longer exists is dropped
-    // rather than shown as a broken chip.
-    let ids: string[] = [];
-    try {
-      if (campaign.segment && typeof campaign.segment === 'object' && Array.isArray(campaign.segment.tags)) {
-        const stored: string[] = campaign.segment.tags;
-        ids = stored
-          .map((entry) => (isUuid(entry) ? tags.find((t) => t.id === entry)?.id : tags.find((t) => t.name.toLowerCase() === entry.toLowerCase())?.id))
-          .filter((n): n is string => !!n);
-      }
-    } catch (e) {}
-    setEditTagIds(ids);
-
-    const ruleGroup: RuleGroup | null = (campaign.segment && typeof campaign.segment === 'object' && campaign.segment.ruleGroup)
-      ? campaign.segment.ruleGroup
-      : null;
-    setEditRuleGroup(ruleGroup);
-    setEditCombineMode((campaign.segment?.combineMode as 'AND' | 'OR') || 'AND');
-    setEditSegmentId((campaign.segment && typeof campaign.segment === 'object' && campaign.segment.segmentId) || null);
-    setAdvancedFiltersOpen(!!ruleGroup && ruleGroup.rules.length > 0);
-
-    setEditInitial({
-      body: campaign.preview_text || '',
-      tagIds: ids,
-      ruleKey: JSON.stringify(ruleGroup),
-      segmentId: (campaign.segment && typeof campaign.segment === 'object' && campaign.segment.segmentId) || null,
-      combine: (campaign.segment?.combineMode as string) || 'AND',
-    });
-    setEditOpen(true);
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editCampaign) return;
-    setSaving(true);
-    try {
-      const { updateCampaign } = await import('@/app/actions/marketing');
-
-      // Re-fetch tags so a tag just created inline in this session (the picker
-      // can create a brand-new tag on the fly) resolves to a real id even
-      // though it wasn't in the list this page loaded with.
-      let currentTags = tags;
-      try {
-        const { listTags } = await import('@/app/actions/tags');
-        const freshRes = await listTags();
-        if (freshRes.success) {
-          currentTags = freshRes.data;
-          setTags(freshRes.data);
-        }
-      } catch (e) { /* fall back to the tags already in state */ }
-
-      const payload = buildCampaignEditPayload(
-        editCampaign,
-        editInitial,
-        { name: editName, subject: editSubject, body: editBody, tagIds: editTagIds, ruleGroup: editRuleGroup, segmentId: editSegmentId, combine: editCombineMode },
-        (id) => currentTags.some((t) => t.id === id),
-      );
-
-      const res = await updateCampaign(editCampaign.id, payload);
-      if (res.error) { toast.error(res.error); }
-      else {
-        toast.success('Campaign updated!');
-        setCampaigns(prev => prev.map(c => c.id === editCampaign.id ? { ...c, ...(res.data ?? { name: editName, subject: editSubject }) } : c));
-        setEditOpen(false);
-      }
-    } catch { toast.error('Update failed'); }
-    setSaving(false);
-  };
+  // The Settings dialog (shared with the builder's "Edit audience") owns its own form state.
+  const openEdit = (campaign: any) => { setEditCampaign(campaign); setEditOpen(true); };
 
   const openDelete = (campaign: any) => { setDeleteCampaign(campaign); setDeleteOpen(true); };
 
@@ -404,100 +311,15 @@ export default function CampaignsClient({
         </DashModalContent>
       </DashModal>
 
-      {/* Edit Dialog */}
-      <DashModal open={editOpen} onOpenChange={setEditOpen}>
-        <DashModalContent className="max-w-md">
-          <DashModalHeader>
-            <DashModalTitle>Edit <span className="text-dash-accent">campaign</span></DashModalTitle>
-          </DashModalHeader>
-          <div className="space-y-3">
-            <DashFormField label="Name">
-              <DashInput value={editName} onChange={e => setEditName(e.target.value)} />
-            </DashFormField>
-            <DashFormField label="Subject">
-              <DashInput value={editSubject} onChange={e => setEditSubject(e.target.value)} />
-            </DashFormField>
-            <DashFormField label="Target audience tags" hint="Sends to contacts that have ALL of the selected tags. A campaign needs an audience: pick at least one tag, a saved segment or a filter before sending.">
-              <TagAudiencePicker
-                availableTags={tags}
-                value={editTagIds}
-                onChange={setEditTagIds}
-                onTagCreated={(t) => setTags((prev) => [...prev, t])}
-              />
-            </DashFormField>
-
-            <DashFormField label="Saved segment" hint="Select a saved segment instead of building rules below.">
-              <Select
-                value={editSegmentId || 'none'}
-                onValueChange={(v) => {
-                  const next = v === 'none' ? null : v;
-                  setEditSegmentId(next);
-                  if (next) setEditRuleGroup(null);
-                }}
-              >
-                <SelectTrigger className="h-10 border-dash-border rounded-xl text-[12px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-white border border-dash-border rounded-xl shadow-xl">
-                  <SelectItem value="none" className="text-[12px]">None (build ad-hoc rules below)</SelectItem>
-                  {availableSegments.map((s) => (
-                    <SelectItem key={s.id} value={s.id} className="text-[12px]">{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </DashFormField>
-
-            <div className={`border border-dash-border rounded-xl overflow-hidden ${editSegmentId ? 'opacity-50 pointer-events-none' : ''}`}>
-              <button
-                type="button"
-                onClick={() => setAdvancedFiltersOpen((v) => !v)}
-                className="w-full flex items-center justify-between px-3.5 py-3 text-[12px] font-bold !text-dash-text hover:bg-dash-surface transition-colors motion-reduce:transition-none"
-              >
-                Advanced filters
-                {advancedFiltersOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              </button>
-              {advancedFiltersOpen && (
-                <div className="p-3.5 border-t border-dash-border space-y-3">
-                  <SegmentRuleBuilder value={editRuleGroup} onChange={setEditRuleGroup} />
-
-                  {editTagIds.length > 0 && !!editRuleGroup && editRuleGroup.rules.length > 0 && (
-                    <div className="pt-2 border-t border-dash-border">
-                      <span className="text-[11px] font-bold !text-dash-textMuted block mb-2">
-                        Match contacts who have these tags
-                      </span>
-                      <div className="inline-flex rounded-lg border border-dash-border overflow-hidden mb-2">
-                        {(['AND', 'OR'] as const).map((m) => (
-                          <button
-                            key={m}
-                            type="button"
-                            onClick={() => setEditCombineMode(m)}
-                            className={`px-3 py-1 text-[11px] font-bold transition-colors motion-reduce:transition-none ${
-                              editCombineMode === m ? 'bg-dash-accent text-white' : 'bg-white !text-dash-textMuted hover:bg-dash-surface'
-                            }`}
-                          >
-                            {m}
-                          </button>
-                        ))}
-                      </div>
-                      <span className="text-[11px] font-bold !text-dash-textMuted block">
-                        these advanced filters
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <DashFormField label="Email body / plain text preview">
-              <DashTextarea value={editBody} onChange={e => setEditBody(e.target.value)} placeholder="Write your email content..." className="min-h-[100px]" />
-            </DashFormField>
-          </div>
-          <DashModalFooter>
-            <DashButton variant="secondary" onClick={() => setEditOpen(false)}>Cancel</DashButton>
-            <DashButton onClick={handleSaveEdit} disabled={saving}>{saving ? 'Saving...' : 'Save changes'}</DashButton>
-          </DashModalFooter>
-        </DashModalContent>
-      </DashModal>
+      <CampaignSettingsDialog
+        campaign={editCampaign}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        availableTags={tags}
+        availableSegments={availableSegments}
+        onTagsChange={setTags}
+        onSaved={(saved) => setCampaigns(prev => prev.map(c => c.id === saved.id ? { ...c, ...saved } : c))}
+      />
 
       <ConfirmDialog
         isOpen={!!sendNowCampaign}

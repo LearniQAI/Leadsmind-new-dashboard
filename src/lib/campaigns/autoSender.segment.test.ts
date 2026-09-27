@@ -12,7 +12,7 @@ vi.mock('@/lib/campaigns/emailSuppression', () => ({ filterEmailableContactIds: 
 vi.mock('@/lib/intelligence/SegmentationCompiler', async () => {
   const actual: any = await vi.importActual('@/lib/intelligence/SegmentationCompiler');
   // the contact belongs to the segment only when the test says so
-  return { ...actual, SegmentationCompiler: { executeSegment: async () => [{ id: 'c1' }] } };
+  return { ...actual, SegmentationCompiler: { executeSegment: async () => [{ id: 'c1' }], matchesContact: async (_w: string, _r: any, id: string) => id === 'c1' } };
 });
 vi.mock('@/lib/supabase/server', () => ({
   createAdminClient: () => ({

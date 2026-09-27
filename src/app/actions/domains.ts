@@ -15,6 +15,7 @@ import {
   SendingDomainError,
 } from '@/lib/email/sendingDomains';
 import { getDomainReputation, REPUTATION_POLICY } from '@/lib/email/reputation';
+import { validatePostalAddress } from '@/lib/email/postalAddress';
 import {
   DEFAULT_DOMAIN_HOURLY_LIMIT,
   DEFAULT_WORKSPACE_DAILY_LIMIT,
@@ -79,6 +80,10 @@ export async function getSenderDomains() {
       (data ?? []).map(async (d) => ({ ...d, reputation: await getDomainReputation(db as any, d.id).catch(() => null) })),
     );
     const { data: limits } = await db.from('email_sending_limits').select('hourly_limit, daily_limit').eq('workspace_id', workspaceId).maybeSingle();
+    // The workspace's CAN-SPAM postal address (required in every commercial email — see
+    // getMarketingEmailConfig). One value per workspace, not per domain: read alongside the
+    // domain list so the settings page can show its own "required" state without a second call.
+    const { data: ws } = await db.from('workspaces').select('postal_address').eq('id', workspaceId).maybeSingle();
 
     return {
       data: withReputation,
@@ -88,6 +93,7 @@ export async function getSenderDomains() {
         domainHourlyDefault: DEFAULT_DOMAIN_HOURLY_LIMIT,
       },
       policy: REPUTATION_POLICY,
+      postalAddress: ws?.postal_address ?? null,
     };
   } catch (error: any) {
     logger.error({ err: error }, 'domains.sender_domains.fetch.failed');
@@ -95,11 +101,11 @@ export async function getSenderDomains() {
   }
 }
 
-export async function registerSenderDomain(domainName: string): Promise<SenderDomainResult> {
+export async function registerSenderDomain(domainName: string, fromName: string): Promise<SenderDomainResult> {
   const workspaceId = await senderDomainAdmin();
   if (!workspaceId) return { error: 'Unauthorized' };
   try {
-    const data = await registerSendingDomain(workspaceId, domainName);
+    const data = await registerSendingDomain(workspaceId, domainName, fromName);
     revalidatePath('/settings');
     return { data };
   } catch (err) {
@@ -129,6 +135,25 @@ export async function verifySenderDomain(domainId: string): Promise<SenderDomain
     return { data };
   } catch (err) {
     return senderDomainError(err, 'domains.sender_domain.verify.failed', 'Failed to verify sender domain.', { domainId });
+  }
+}
+
+/** The workspace's CAN-SPAM postal address (Settings › Email Domains), required before any
+ * marketing send (getMarketingEmailConfig refuses without one). Admin/owner only, same gate as
+ * every other sender-domain action — this is compliance-critical, not a per-member preference. */
+export async function updateWorkspacePostalAddress(address: string): Promise<SenderDomainResult> {
+  const workspaceId = await senderDomainAdmin();
+  if (!workspaceId) return { error: 'Unauthorized' };
+  const check = validatePostalAddress(address);
+  if (!check.ok) return { error: check.reason };
+  try {
+    const db = createAdminClient();
+    const { error } = await db.from('workspaces').update({ postal_address: check.address }).eq('id', workspaceId);
+    if (error) throw error;
+    revalidatePath('/settings');
+    return { data: { postalAddress: check.address } };
+  } catch (err) {
+    return senderDomainError(err, 'domains.postal_address.update.failed', 'Failed to save your postal address.', { workspaceId });
   }
 }
 

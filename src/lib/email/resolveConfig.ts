@@ -58,6 +58,11 @@ export async function getMarketingEmailConfig(workspaceId: string) {
     apiKey: signManagedSenderToken(workspaceId),
     fromEmail: managed.fromEmail,
     fromName: managed.fromName,
+    // The workspace's CAN-SPAM postal address, or null if unset. A verified domain alone doesn't
+    // make a send legal — every caller of getMarketingEmailConfig must also refuse to send when
+    // this is null (POSTAL_ADDRESS_REQUIRED_MESSAGE), the same way they already refuse on a
+    // missing apiKey/fromEmail.
+    postalAddress: managed.postalAddress,
     mode: 'managed' as const,
   }
 }
