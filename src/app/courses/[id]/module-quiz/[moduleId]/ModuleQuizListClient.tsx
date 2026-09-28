@@ -23,7 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import QuizDialog from "./QuizDialog";
 import { StatusPill, CARD_SHADOW } from "../../components/settings/primitives";
 import {
   createModuleQuiz,
@@ -44,6 +44,8 @@ const btnPrimary =
   "inline-flex h-11 items-center gap-2 rounded-full bg-sky-500 px-5 text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-sky-600 disabled:opacity-60 [&_svg]:size-4";
 const btnSecondary =
   "inline-flex h-10 items-center gap-2 rounded-lg border border-dash-border bg-white px-4 text-[12px] font-semibold !text-dash-text transition-colors hover:bg-dash-surface disabled:opacity-60";
+const btnDialogPrimary =
+  "inline-flex h-10 items-center gap-2 rounded-lg bg-sky-500 px-4 text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-60";
 const textInput =
   "w-full rounded-xl border border-dash-border bg-white px-4 py-3 text-[13px] !text-dash-text outline-none transition-colors focus:border-sky-500 focus:ring-4 focus:ring-sky-500/12";
 
@@ -235,67 +237,74 @@ export default function ModuleQuizListClient({ course, courseModule, initialQuiz
         </ul>
       )}
 
-      <Dialog open={nameDialog.open} onOpenChange={(open) => !isPending && setNameDialog((s) => ({ ...s, open }))}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{nameDialog.target ? "Rename quiz" : "Create new quiz"}</DialogTitle>
-            <DialogDescription>
-              {nameDialog.target
-                ? "Students see this title in the course."
-                : "It starts as a draft. Students can't see it until you publish it."}
-            </DialogDescription>
-          </DialogHeader>
-          <input
-            autoFocus
-            value={nameValue}
-            onChange={(e) => setNameValue(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && submitName()}
-            placeholder="e.g. Quiz 1: Adjectives basics"
-            maxLength={200}
-            className={textInput}
-          />
-          <DialogFooter>
+      <QuizDialog
+        open={nameDialog.open}
+        onOpenChange={(open) => !isPending && setNameDialog((s) => ({ ...s, open }))}
+        icon={nameDialog.target ? <Pencil /> : <HelpCircle />}
+        title={nameDialog.target ? "Rename quiz" : "Create new quiz"}
+        description={
+          nameDialog.target
+            ? "Students see this title in the course."
+            : "It starts as a draft. Students can't see it until you publish it."
+        }
+        footer={
+          <>
             <button onClick={() => setNameDialog({ open: false, target: null })} disabled={isPending} className={btnSecondary}>
               Cancel
             </button>
-            <button
-              onClick={submitName}
-              disabled={isPending}
-              className="inline-flex h-10 items-center gap-2 rounded-lg bg-sky-500 px-4 text-[12px] font-semibold text-white hover:bg-sky-600 disabled:opacity-60"
-            >
+            <button onClick={submitName} disabled={isPending || !nameValue.trim()} className={btnDialogPrimary}>
               {isPending && <Loader2 size={14} className="animate-spin" />}
               {nameDialog.target ? "Save" : "Create and open"}
             </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </>
+        }
+      >
+        <label htmlFor="quiz-name" className="mb-1.5 block text-[12px] font-semibold !text-dash-text">
+          Quiz name
+        </label>
+        <input
+          id="quiz-name"
+          autoFocus
+          value={nameValue}
+          onChange={(e) => setNameValue(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && submitName()}
+          placeholder="e.g. Quiz 1: Adjectives basics"
+          maxLength={200}
+          className={textInput}
+        />
+        <p className="mb-0 mt-1.5 text-right text-[11px] tabular-nums !text-dash-textMuted">{nameValue.length}/200</p>
+      </QuizDialog>
 
-      <Dialog open={!!deleting} onOpenChange={(open) => !open && !isPending && setDeleting(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Delete &ldquo;{deleting?.title}&rdquo;?</DialogTitle>
-            <DialogDescription>
-              Its {deleting?.questionCount ?? 0} questions and settings are deleted permanently.
-              {deleting?.attemptCount
-                ? ` The ${deleting.attemptCount} student attempts stay in their history, and students no longer need to pass this quiz to complete the course.`
-                : ""}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
+      <QuizDialog
+        open={!!deleting}
+        onOpenChange={(open) => !open && !isPending && setDeleting(null)}
+        tone="rose"
+        icon={<Trash2 />}
+        title={<>Delete &ldquo;{deleting?.title}&rdquo;?</>}
+        description={
+          <>
+            Its {deleting?.questionCount ?? 0} questions and settings are deleted permanently.
+            {deleting?.attemptCount
+              ? ` The ${deleting.attemptCount} student attempts stay in their history, and students no longer need to pass this quiz to complete the course.`
+              : ""}
+          </>
+        }
+        footer={
+          <>
             <button onClick={() => setDeleting(null)} disabled={isPending} className={btnSecondary}>
               Cancel
             </button>
             <button
               onClick={confirmDelete}
               disabled={isPending}
-              className="inline-flex h-10 items-center gap-2 rounded-lg bg-rose-600 px-4 text-[12px] font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
+              className="inline-flex h-10 items-center gap-2 rounded-lg bg-rose-600 px-4 text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-rose-700 disabled:opacity-60"
             >
               {isPending && <Loader2 size={14} className="animate-spin" />}
               Delete quiz
             </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </>
+        }
+      />
     </div>
   );
 }

@@ -68,7 +68,6 @@ export default function ModuleCreatorModal({
   const [description, setDescription] = useState("");
   const [icon, setIcon] = useState("📚");
   const [customIcon, setCustomIcon] = useState("");
-  const [publishStatus, setPublishStatus] = useState<"published" | "draft" | "coming_soon">("draft");
   const [nqfLevel, setNqfLevel] = useState("None");
   const [requiredForCompletion, setRequiredForCompletion] = useState(true);
   const [dripDays, setDripDays] = useState(0);
@@ -85,7 +84,6 @@ export default function ModuleCreatorModal({
             const m = resData.data;
             setTitle(m.title || "");
             setDescription(m.description || "");
-            setPublishStatus(m.publish_status || "draft");
             setNqfLevel(m.nqf_level || "None");
             setRequiredForCompletion(m.required_for_completion !== false);
             setDripDays(m.drip_days || 0);
@@ -105,7 +103,6 @@ export default function ModuleCreatorModal({
       setDescription("");
       setIcon("📚");
       setCustomIcon("");
-      setPublishStatus("draft");
       setNqfLevel("None");
       setRequiredForCompletion(true);
       setDripDays(0);
@@ -171,8 +168,8 @@ export default function ModuleCreatorModal({
       const url = moduleId ? `/api/lms/modules?id=${moduleId}` : "/api/lms/modules";
       const method = moduleId ? "PATCH" : "POST";
       const bodyPayload = moduleId
-        ? { title, description, icon: finalIcon, publish_status: publishStatus, nqf_level: nqfLevel, required_for_completion: requiredForCompletion, drip_days: dripDays }
-        : { course_id: courseId, workspace_id: workspaceId, title, description, icon: finalIcon, publish_status: publishStatus, nqf_level: nqfLevel, required_for_completion: requiredForCompletion, drip_days: dripDays };
+        ? { title, description, icon: finalIcon, nqf_level: nqfLevel, required_for_completion: requiredForCompletion, drip_days: dripDays }
+        : { course_id: courseId, workspace_id: workspaceId, title, description, icon: finalIcon, nqf_level: nqfLevel, required_for_completion: requiredForCompletion, drip_days: dripDays };
 
       const res = await fetch(url, {
         method,
@@ -237,16 +234,12 @@ export default function ModuleCreatorModal({
             </MField>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <MField label="Publish status" htmlFor="mm-status">
-                <Select
-                  id="mm-status"
-                  value={publishStatus}
-                  onChange={(e) => setPublishStatus(e.target.value as any)}
-                >
-                  <option value="draft">Draft</option>
-                  <option value="published">Published</option>
-                  <option value="coming_soon">Coming soon</option>
-                </Select>
+              <MField label="Status" htmlFor="mm-status">
+                <p id="mm-status" className="text-[12.5px] leading-relaxed text-dash-textMuted">
+                  {moduleId
+                    ? "Publish, deactivate or activate this module from its menu on the course page."
+                    : "New modules start as Draft. Publish one from its menu once it is ready."}
+                </p>
               </MField>
 
               <MField label="NQF level" htmlFor="mm-nqf">

@@ -695,6 +695,40 @@
   margin: 0;
 }
 
+/* Bullet/numbered lists inside the Paragraph element's rich text (builder canvas, Preview, and
+   the published student page — all three inject the same stored `<ul>`/`<ol>` HTML). Tailwind's
+   preflight resets `ul`/`ol` to `list-style: none; margin: 0; padding: 0`, which otherwise
+   leaves a list with no markers and no indent. `::marker` inherits `color` from its <li> by
+   default, so no separate marker-colour rule is needed here — it already follows the element's
+   own Text color. `li + li` reads the per-instance `--lm-list-gap` custom property the block's
+   own wrapper sets (Paragraph.tsx / StudentPlayerClient's richtext render); it's undefined
+   unless the "Space between items" panel control was used, hence the 4px fallback below. */
+.tiptap ul,
+.builder-rich-text ul,
+.lm-richtext ul {
+  list-style: disc;
+  padding-left: 1.25em;
+  margin: 0;
+}
+.tiptap ol,
+.builder-rich-text ol,
+.lm-richtext ol {
+  list-style: decimal;
+  padding-left: 1.25em;
+  margin: 0;
+}
+.tiptap ul ul, .tiptap ol ul, .builder-rich-text ul ul, .builder-rich-text ol ul, .lm-richtext ul ul, .lm-richtext ol ul {
+  list-style: circle;
+}
+.tiptap li, .builder-rich-text li, .lm-richtext li {
+  margin: 0;
+}
+.tiptap li + li,
+.builder-rich-text li + li,
+.lm-richtext li + li {
+  margin-top: var(--lm-list-gap, 4px);
+}
+
 /* Universal top/bottom block spacing in the flattened student lesson view
    (components/lms/CanvasItemSpacing). Values are resolved per breakpoint server-side; the
    breakpoints are the builder's own (autoDetectViewport: mobile <= 767px, tablet <= 1023px). */

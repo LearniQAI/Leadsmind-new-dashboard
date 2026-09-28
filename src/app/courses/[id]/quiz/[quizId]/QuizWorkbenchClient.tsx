@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useTransition } from "react";
+import React, { useState, useEffect, useMemo, useRef, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -8,8 +8,15 @@ import { toast } from "sonner";
 import {
   ArrowLeft, Plus, Trash2, HelpCircle, Loader2,
   Sparkles, AlertTriangle, Save,
-  Sliders, Layout, Eye
+  Sliders, Layout, Eye,
+  ListChecks, GripVertical, Check, CircleDot, ToggleLeft, Type, ArrowLeftRight, ArrowDownUp,
+  TextCursorInput, Code2, Upload, type LucideIcon
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Tooltip, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { DashTooltipContent } from "@/components/dashboard-ui/Tooltip";
+import ConfirmationModal from "@/components/calendar/modals/ConfirmationModal";
+import { ORANGE_ACTION } from "@/lib/lms/brandOrange";
 import {
   generateExplanationWithLena
 } from "@/app/actions/quizzes";
@@ -30,6 +37,18 @@ const QUESTION_TYPE_LABELS: Record<string, string> = {
   fill_blank: "Fill blank",
   code: "Code",
   file_upload: "File upload",
+};
+
+// Icon + colour per question type so the list reads at a glance (label comes from QUESTION_TYPE_LABELS).
+const QUESTION_TYPE_META: Record<string, { icon: LucideIcon; tone: string }> = {
+  mcq: { icon: CircleDot, tone: "bg-sky-50 text-sky-700 ring-sky-500/20" },
+  true_false: { icon: ToggleLeft, tone: "bg-violet-50 text-violet-700 ring-violet-500/20" },
+  short_answer: { icon: Type, tone: "bg-emerald-50 text-emerald-700 ring-emerald-500/20" },
+  matching: { icon: ArrowLeftRight, tone: "bg-amber-50 text-amber-700 ring-amber-500/20" },
+  ordering: { icon: ArrowDownUp, tone: "bg-indigo-50 text-indigo-700 ring-indigo-500/20" },
+  fill_blank: { icon: TextCursorInput, tone: "bg-rose-50 text-rose-700 ring-rose-500/20" },
+  code: { icon: Code2, tone: "bg-slate-100 text-slate-700 ring-slate-500/20" },
+  file_upload: { icon: Upload, tone: "bg-orange-50 text-orange-700 ring-orange-500/20" },
 };
 
 // Batch 3 (G6b) — opt-in AI-assisted acceptance toggle, shared by the short_answer and
@@ -148,6 +167,47 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
 
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
 
+  // ---- Unsaved-change tracking -------------------------------------------------------------
+  // Nothing in this editor autosaves: a question's fields live in component state until "Save Question
+  // Node", and title/settings until the Advanced-settings Save. So "dirty" = the form differs from a
+  // baseline snapshot taken when the question was loaded / last saved (and likewise for settings).
+  const questionSnap = useMemo(
+    () =>
+      JSON.stringify({
+        type, questionText, points, explanation,
+        options: optionsList.map((o) => [o.text, o.is_correct]),
+        synonyms, caseSensitive, aiGrading, matchingPairs, orderingItems,
+        blankText, blankAnswers, blankCaseSensitive, starterCode, acceptedSolutions, rubrics,
+      }),
+    [type, questionText, points, explanation, optionsList, synonyms, caseSensitive, aiGrading, matchingPairs, orderingItems, blankText, blankAnswers, blankCaseSensitive, starterCode, acceptedSolutions, rubrics]
+  );
+  const [questionBaseline, setQuestionBaseline] = useState<string | null>(null);
+  const [baselineVersion, setBaselineVersion] = useState(0);
+  // Runs in the render that follows a select / new / save, so the snapshot already reflects the new form.
+  useEffect(() => { setQuestionBaseline(questionSnap); }, [baselineVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Only the settings handleSaveSettings actually persists count toward "unsaved".
+  const settingsSnap = useMemo(
+    () => JSON.stringify({ quizTitle, quizDesc: isModuleScope ? null : quizDesc, passingScore, timeLimit, maxRetakes, feedbackTrigger, shuffleQuestions }),
+    [quizTitle, quizDesc, isModuleScope, passingScore, timeLimit, maxRetakes, feedbackTrigger, shuffleQuestions]
+  );
+  const [settingsBaseline, setSettingsBaseline] = useState<string | null>(null);
+  const [settingsVersion, setSettingsVersion] = useState(0);
+  useEffect(() => { if (settingsVersion > 0) setSettingsBaseline(settingsSnap); }, [settingsVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const questionDirty = questionBaseline !== null && questionSnap !== questionBaseline;
+  const settingsDirty = settingsBaseline !== null && settingsSnap !== settingsBaseline;
+  const isDirty = questionDirty || settingsDirty;
+
+  const [isSavingQuiz, setIsSavingQuiz] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
+  const [pendingLeave, setPendingLeave] = useState<(() => void) | null>(null);
+
+  // Question-list drag & drop (handle-initiated, like the curriculum module list).
+  const [dragQId, setDragQId] = useState<string | null>(null);
+  const [dragOverQId, setDragOverQId] = useState<string | null>(null);
+  const [handleHeldQId, setHandleHeldQId] = useState<string | null>(null);
+
   useEffect(() => {
     loadQuestions();
     loadSettings();
@@ -173,10 +233,12 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setSettingsVersion((v) => v + 1); // baseline = whatever loaded (or the defaults)
     }
   };
 
-  const loadQuestions = async () => {
+  const loadQuestions = async (selectId?: string) => {
     try {
       const res = await fetch(
         isModuleScope
@@ -187,7 +249,8 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
       if (dataJson.data) {
         setQuestions(dataJson.data);
         if (dataJson.data.length > 0) {
-          selectQuestion(dataJson.data[0]);
+          // After a save, stay on the question that was saved instead of jumping back to the first.
+          selectQuestion(dataJson.data.find((q: any) => q.id === selectId) ?? dataJson.data[0]);
         } else {
           handleNewQuestion();
         }
@@ -229,6 +292,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
     } else if (q.question_type === "file_upload") {
       setRubrics(meta.rubric_criteria || [{ criteria: "Correctness", max_points: 5 }]);
     }
+    setBaselineVersion((v) => v + 1);
   };
 
   const handleNewQuestion = () => {
@@ -252,7 +316,18 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
     setStarterCode("// Code challenge starter template\n");
     setAcceptedSolutions([""]);
     setRubrics([{ criteria: "Completeness", max_points: 10 }]);
+    setPosition(questions.length); // a new question goes at the end of the list
+    setBaselineVersion((v) => v + 1);
   };
+
+  // Leaving a question / the page with unsaved edits asks first (reused by the list, the back arrow and links).
+  const guardQuestionChange = (action: () => void) => (questionDirty ? setPendingLeave(() => action) : action());
+  const guardLeave = (action: () => void) => (isDirty ? setPendingLeave(() => action) : action());
+  const requestSelectQuestion = (q: any) => {
+    if (q.id === activeQuestion?.id) return;
+    guardQuestionChange(() => selectQuestion(q));
+  };
+  const requestNewQuestion = () => guardQuestionChange(handleNewQuestion);
 
   const handleLenaGenerate = async () => {
     if (!questionText || questionText.trim() === "") {
@@ -280,10 +355,10 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
     }
   };
 
-  const handleSaveQuestion = async () => {
+  const persistQuestion = async (opts?: { silent?: boolean }): Promise<boolean> => {
     if (!questionText.trim()) {
       toast.error("Question text is required");
-      return;
+      return false;
     }
 
     const metadata: any = {};
@@ -293,13 +368,13 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
       const hasCorrect = optionsList.some(o => o.is_correct);
       if (!hasCorrect) {
         toast.error("Please mark at least one answer as correct");
-        return;
+        return false;
       }
     } else if (type === "short_answer") {
       const synList = synonyms.split(",").map(s => s.trim()).filter(Boolean);
       if (synList.length === 0) {
         toast.error("Short answer requires at least one synonym");
-        return;
+        return false;
       }
       correct_answer.synonyms = synList;
       metadata.case_sensitive = caseSensitive;
@@ -312,14 +387,14 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
       const blankCount = (blankText.match(/\[blank\]/g) || []).length;
       if (blankCount === 0) {
         toast.error("Sentence must contain at least one '[blank]' placeholder");
-        return;
+        return false;
       }
       const blanks = Array.from({ length: blankCount }, (_, i) => ({
         accepted: (blankAnswers[i] || "").split(",").map(s => s.trim()).filter(Boolean),
       }));
       if (blanks.some(b => b.accepted.length === 0)) {
         toast.error("Every blank needs at least one accepted answer");
-        return;
+        return false;
       }
       metadata.text_with_blanks = blankText;
       metadata.blanks = blanks;
@@ -329,7 +404,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
       const solutions = acceptedSolutions.map(s => s.trim()).filter(Boolean);
       if (solutions.length === 0) {
         toast.error("Add at least one accepted solution — code is graded by matching against these, not by running it");
-        return;
+        return false;
       }
       metadata.starter_template = starterCode;
       metadata.accepted_solutions = solutions;
@@ -349,39 +424,46 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
       file_upload: 'file_upload'
     };
 
-    startTransition(async () => {
-      try {
-        const base = isModuleScope ? '/api/lms/module-quiz/questions' : '/api/lms/quiz/questions';
-        const url = activeQuestion?.id ? `${base}?id=${activeQuestion.id}` : base;
-        const method = activeQuestion?.id ? 'PATCH' : 'POST';
+    try {
+      const base = isModuleScope ? '/api/lms/module-quiz/questions' : '/api/lms/quiz/questions';
+      const url = activeQuestion?.id ? `${base}?id=${activeQuestion.id}` : base;
+      const method = activeQuestion?.id ? 'PATCH' : 'POST';
 
-        const res = await fetch(url, {
-          method,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...(isModuleScope ? { quiz_id: quiz.id } : { lesson_id: quiz.id }),
-            workspace_id: course.workspace_id || quiz.workspace_id,
-            question_type: qTypeMap[type] || 'mcq',
-            question_text: questionText,
-            options: type === "multiple_choice" || type === "true_false" ? optionsList : [],
-            correct_answer: type === "multiple_choice" || type === "true_false" ? { correct_option_index: optionsList.findIndex(o => o.is_correct) } : correct_answer,
-            metadata,
-            explanation,
-            points,
-            position
-          })
-        });
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...(isModuleScope ? { quiz_id: quiz.id } : { lesson_id: quiz.id }),
+          workspace_id: course.workspace_id || quiz.workspace_id,
+          question_type: qTypeMap[type] || 'mcq',
+          question_text: questionText,
+          options: type === "multiple_choice" || type === "true_false" ? optionsList : [],
+          correct_answer: type === "multiple_choice" || type === "true_false" ? { correct_option_index: optionsList.findIndex(o => o.is_correct) } : correct_answer,
+          metadata,
+          explanation,
+          points,
+          position
+        })
+      });
 
-        const resData = await res.json();
-        if (resData.error) {
-          toast.error(resData.error);
-        } else {
-          toast.success("Question saved successfully!");
-          loadQuestions();
-        }
-      } catch {
-        toast.error("Failed to save question");
+      const resData = await res.json();
+      if (resData.error) {
+        toast.error(resData.error);
+        return false;
       }
+      if (!opts?.silent) toast.success("Question saved successfully!");
+      await loadQuestions(resData.data?.id ?? activeQuestion?.id);
+      return true;
+    } catch {
+      toast.error("Failed to save question");
+      return false;
+    }
+  };
+
+  // The per-question button keeps its own transition so its spinner state is unchanged.
+  const handleSaveQuestion = () => {
+    startTransition(async () => {
+      await persistQuestion();
     });
   };
 
@@ -402,10 +484,10 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
     }
   };
 
-  const handleSaveSettings = async () => {
+  const persistSettings = async (opts?: { silent?: boolean }): Promise<boolean> => {
     if (!quizTitle.trim()) {
       toast.error("Quiz title is required");
-      return;
+      return false;
     }
     setIsSavingSettings(true);
     try {
@@ -459,13 +541,107 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
       const settingsJson = await settingsRes.json();
       if (settingsJson.error) throw new Error(settingsJson.error);
 
-      toast.success("Quiz settings saved successfully!");
+      if (!opts?.silent) toast.success("Quiz settings saved successfully!");
+      setSettingsVersion((v) => v + 1); // saved values become the new baseline
       router.refresh();
+      return true;
     } catch (err: any) {
       toast.error(err.message || "Failed to save settings");
+      return false;
     } finally {
       setIsSavingSettings(false);
     }
+  };
+
+  const handleSaveSettings = () => {
+    void persistSettings();
+  };
+
+  // Saves whatever is unsaved — settings/title and/or the open question — and never touches publish status.
+  const handleSaveQuiz = async () => {
+    if (!isDirty || isSavingQuiz) return;
+    setIsSavingQuiz(true);
+    try {
+      if (settingsDirty && !(await persistSettings({ silent: true }))) return;
+      if (questionDirty && !(await persistQuestion({ silent: true }))) return;
+      toast.success("Quiz saved.");
+      setJustSaved(true);
+      setTimeout(() => setJustSaved(false), 2200);
+    } catch {
+      toast.error("Failed to save the quiz");
+    } finally {
+      setIsSavingQuiz(false);
+    }
+  };
+  const saveQuizRef = useRef(handleSaveQuiz);
+  saveQuizRef.current = handleSaveQuiz;
+
+  // Cmd/Ctrl+S saves (and suppresses the browser's own save dialog).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        void saveQuizRef.current();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Warn before losing edits by closing/reloading the tab, or by following any in-app link.
+  useEffect(() => {
+    if (!isDirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    const onClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = (e.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!a || a.target === "_blank" || a.hasAttribute("download")) return;
+      const url = new URL(a.href, window.location.href);
+      if (url.origin !== window.location.origin) return;
+      if (url.pathname === window.location.pathname && url.search === window.location.search) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setPendingLeave(() => () => router.push(url.pathname + url.search + url.hash));
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("click", onClick, true);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("click", onClick, true);
+    };
+  }, [isDirty, router]);
+
+  // Reorder questions: optimistic, then one atomic server call; revert on failure. Local positions are kept
+  // in step so a later "Save question" doesn't write a stale position back.
+  const moveQuestion = (fromId: string, toId: string) => {
+    const from = questions.findIndex((q) => q.id === fromId);
+    const to = questions.findIndex((q) => q.id === toId);
+    if (from < 0 || to < 0 || from === to) return;
+    const previous = questions;
+    const next = [...questions];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    const withPositions = next.map((q, i) => ({ ...q, position: i }));
+    setQuestions(withPositions);
+    const activeIdx = withPositions.findIndex((q) => q.id === activeQuestion?.id);
+    if (activeIdx >= 0) setPosition(activeIdx);
+    void (async () => {
+      try {
+        const res = await fetch(isModuleScope ? "/api/lms/module-quiz/questions/reorder" : "/api/lms/quiz/questions/reorder", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(isModuleScope ? { quizId: quiz.id, ids: withPositions.map((q) => q.id) } : { lessonId: quiz.id, ids: withPositions.map((q) => q.id) }),
+        });
+        const json = await res.json();
+        if (!res.ok || json.error) throw new Error(json.error || "Could not save the new order");
+        toast.success("Question order saved.");
+      } catch (err: any) {
+        setQuestions(previous);
+        const prevIdx = previous.findIndex((q) => q.id === activeQuestion?.id);
+        if (prevIdx >= 0) setPosition(prevIdx);
+        toast.error(err.message || "Could not save the new order");
+      }
+    })();
   };
 
   const handleToggleModuleQuizPublish = async () => {
@@ -515,7 +691,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-dash-border pb-5">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => router.push(isModuleScope ? `/courses/${course.id}/module-quiz/${moduleId}` : `/courses/${course.id}`)}
+            onClick={() => guardLeave(() => router.push(isModuleScope ? `/courses/${course.id}/module-quiz/${moduleId}` : `/courses/${course.id}`))}
             className="w-10 h-10 rounded-xl bg-dash-surface border border-dash-border flex items-center justify-center !text-dash-textMuted hover:bg-dash-border/60 hover:!text-dash-text transition-all motion-reduce:transition-none active:scale-95 shrink-0"
             title={isModuleScope ? "Back to the module's quizzes" : "Back to course builder"}
           >
@@ -526,8 +702,8 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
             <h1 className="font-display text-[26px] md:text-[30px] font-semibold leading-[1.1] tracking-[-0.02em] !text-dash-text mt-1">
               {quizTitle || "Untitled quiz"}
             </h1>
-            {isModuleScope && (
-              <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {isModuleScope && (
                 <span
                   className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${
                     moduleQuizStatus === "published"
@@ -537,15 +713,43 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
                 >
                   {moduleQuizStatus === "published" ? "Published" : "Draft — students can't see this quiz"}
                 </span>
+              )}
+              {isDirty && !isSavingQuiz && (
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-medium !text-amber-700" role="status">
+                  <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" aria-hidden /> Unsaved changes
+                </span>
+              )}
+              {/* Secondary action: saves the open question and/or title & settings; never changes publish status. */}
+              <button
+                type="button"
+                onClick={handleSaveQuiz}
+                disabled={!isDirty || isSavingQuiz}
+                title="Save quiz (Ctrl/⌘ + S)"
+                className={cn(
+                  "inline-flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-semibold transition-colors motion-reduce:transition-none [&_svg]:size-3.5",
+                  justSaved
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : "border-dash-border bg-white !text-dash-text shadow-sm hover:bg-dash-surface disabled:cursor-not-allowed disabled:bg-dash-surface disabled:!text-dash-textMuted disabled:opacity-60 disabled:shadow-none"
+                )}
+              >
+                {isSavingQuiz ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : justSaved ? <Check /> : <Save />}
+                {isSavingQuiz ? "Saving…" : justSaved ? "Saved" : "Save Quiz"}
+              </button>
+              {isModuleScope && (
                 <button
                   onClick={handleToggleModuleQuizPublish}
                   disabled={isTogglingPublish}
-                  className="h-7 px-2.5 rounded-lg border border-dash-border bg-white text-[11px] font-semibold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface transition-colors motion-reduce:transition-none disabled:opacity-60"
+                  className={cn(
+                    "h-7 px-2.5 rounded-lg text-[11px] font-semibold transition-colors motion-reduce:transition-none disabled:opacity-60",
+                    moduleQuizStatus === "published"
+                      ? "border border-dash-border bg-white !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface"
+                      : ORANGE_ACTION
+                  )}
                 >
                   {moduleQuizStatus === "published" ? "Unpublish" : "Publish"}
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
@@ -578,37 +782,59 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
         /* Questions Composer Panel */
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 items-start">
           
-          {/* Question List Sidebar */}
-          <div className="bg-white border border-dash-border p-5 rounded-2xl space-y-4 shadow-sm">
-            <div className="flex items-center justify-between gap-3 border-b border-dash-border pb-3.5">
-              <div className="flex items-baseline gap-2 min-w-0">
-                <span className="text-[11px] font-bold uppercase tracking-[0.08em] !text-dash-textMuted">Question list</span>
-                <span className="text-[11px] font-semibold tabular-nums !text-dash-textMuted/70">{questions.length}</span>
+          {/* Question List Sidebar — a question navigator: numbered, typed, draggable cards in an independently
+              scrolling panel that stays in view while the editor on the right scrolls. */}
+          <TooltipProvider delayDuration={350}>
+          <aside
+            aria-label="Question list"
+            className="flex min-h-[320px] flex-col overflow-hidden rounded-2xl border border-dash-border bg-white shadow-sm lg:sticky lg:top-6 lg:max-h-[calc(100vh-8rem)]"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between gap-3 px-5 pb-4 pt-5">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <h2 className="font-display text-[16px] font-semibold tracking-[-0.01em] !text-dash-text">Questions</h2>
+                <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-sky-50 px-2 text-[11px] font-bold tabular-nums text-sky-700 ring-1 ring-inset ring-sky-500/15">
+                  {questions.length}
+                </span>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex shrink-0 items-center gap-2">
                 {questions.length > 0 && (
-                  <button
-                    onClick={() => {
-                      setIsBulkSelectMode(!isBulkSelectMode);
-                      setSelectedQuestionIds([]);
-                    }}
-                    className="h-8 px-2.5 rounded-lg text-[11px] font-semibold !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface transition-colors motion-reduce:transition-none"
-                  >
-                    {isBulkSelectMode ? "Cancel" : "Select"}
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={isBulkSelectMode ? "Exit selection mode" : "Select questions"}
+                        aria-pressed={isBulkSelectMode}
+                        onClick={() => {
+                          setIsBulkSelectMode(!isBulkSelectMode);
+                          setSelectedQuestionIds([]);
+                        }}
+                        className={cn(
+                          "flex h-9 w-9 items-center justify-center rounded-xl border transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40",
+                          isBulkSelectMode
+                            ? "border-sky-300 bg-sky-50 text-sky-700"
+                            : "border-dash-border bg-white text-dash-textMuted hover:bg-dash-surface hover:text-dash-text"
+                        )}
+                      >
+                        <ListChecks size={16} />
+                      </button>
+                    </TooltipTrigger>
+                    <DashTooltipContent>{isBulkSelectMode ? "Exit selection" : "Select multiple"}</DashTooltipContent>
+                  </Tooltip>
                 )}
                 <button
-                  onClick={handleNewQuestion}
-                  className="h-8 px-3 rounded-lg bg-dash-accent text-white text-[11px] font-semibold flex items-center gap-1 shadow-sm shadow-dash-accent/25 hover:bg-dash-accent/90 active:scale-[0.97] motion-reduce:active:scale-100 transition-all motion-reduce:transition-none"
+                  type="button"
+                  onClick={requestNewQuestion}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-sky-500 px-3.5 text-[12px] font-semibold text-white shadow-sm shadow-sky-500/25 transition-all hover:bg-sky-600 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 focus-visible:ring-offset-2"
                 >
-                  <Plus size={13} /> Add
+                  <Plus size={14} /> Add
                 </button>
               </div>
             </div>
 
             {isBulkSelectMode && questions.length > 0 && (
-              <div className="flex items-center justify-between bg-dash-surface border border-dash-border p-2 rounded-xl text-[10.5px]">
-                <label className="flex items-center gap-2 cursor-pointer !text-dash-textMuted hover:!text-dash-text select-none font-medium">
+              <div className="mx-5 mb-3 flex items-center justify-between rounded-xl border border-dash-border bg-dash-surface p-2.5 text-[11px]">
+                <label className="flex cursor-pointer select-none items-center gap-2 font-medium !text-dash-textMuted hover:!text-dash-text">
                   <input
                     type="checkbox"
                     checked={selectedQuestionIds.length === questions.length}
@@ -619,14 +845,14 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
                         setSelectedQuestionIds([]);
                       }
                     }}
-                    className="accent-dash-accent h-3.5 w-3.5 rounded"
+                    className="h-3.5 w-3.5 rounded accent-sky-600"
                   />
                   Select all ({questions.length})
                 </label>
                 {selectedQuestionIds.length > 0 && (
                   <button
                     onClick={() => setIsBulkDeleteConfirmOpen(true)}
-                    className="text-red-600 hover:text-red-700 font-bold text-[9px] bg-red-100 border border-red-200 px-2 py-1 rounded-lg"
+                    className="rounded-lg border border-red-200 bg-red-100 px-2.5 py-1 text-[10px] font-bold text-red-600 hover:text-red-700"
                   >
                     Delete ({selectedQuestionIds.length})
                   </button>
@@ -634,109 +860,178 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
               </div>
             )}
 
-            {/* Three Deferred Items, Item 2 — /api/ai/generate-questions now accepts module_id
-                too (combined content of every lesson in the module as its real context), so
-                this button is real for both scopes. Sky-blue LENA/AI treatment, matching the
-                established brand pattern for AI actions elsewhere (ModuleCreatorModal's
-                "Generate with LENA" card) — not an arbitrary new lavender tone. */}
-            <button
-              type="button"
-              onClick={handleGenerateAiQuestions}
-              disabled={isGeneratingQuestions}
-              className="group w-full h-11 rounded-xl border border-sky-200 bg-gradient-to-r from-sky-50 to-indigo-50 hover:from-sky-100 hover:to-indigo-100 text-sky-700 text-[11.5px] font-semibold flex items-center justify-center gap-2 transition-colors motion-reduce:transition-none disabled:opacity-50 shadow-sm shadow-sky-500/10"
-            >
-              <span className="w-6 h-6 rounded-lg bg-white border border-sky-200 flex items-center justify-center shrink-0 text-sky-600">
-                {isGeneratingQuestions ? <Loader2 size={13} className="animate-spin motion-reduce:animate-none" /> : <Sparkles size={13} />}
-              </span>
-              {isGeneratingQuestions ? "Generating questions…" : "Generate with AI"}
-            </button>
+            {/* AI action: its own violet→sky gradient outline, so it reads as a distinct "magic" action and doesn't
+                compete with the solid sky "Add" button. Same handler as before. */}
+            <div className="px-5 pb-3">
+              <button
+                type="button"
+                onClick={handleGenerateAiQuestions}
+                disabled={isGeneratingQuestions}
+                className="group w-full rounded-xl bg-gradient-to-r from-violet-400 via-sky-400 to-fuchsia-400 p-px shadow-sm shadow-violet-500/10 transition-shadow hover:shadow-md hover:shadow-violet-500/20 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60 focus-visible:ring-offset-2"
+              >
+                <span className="flex items-center gap-3 rounded-[11px] bg-white px-3 py-2.5 transition-colors group-hover:bg-violet-50/50">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-sky-500 text-white shadow-sm">
+                    {isGeneratingQuestions ? <Loader2 size={15} className="animate-spin motion-reduce:animate-none" /> : <Sparkles size={15} />}
+                  </span>
+                  <span className="text-left leading-tight">
+                    <span className="block text-[12px] font-semibold !text-dash-text">
+                      {isGeneratingQuestions ? "Generating questions…" : "Generate with AI"}
+                    </span>
+                    <span className="mt-0.5 block text-[10.5px] !text-dash-textMuted">
+                      Draft questions from {isModuleScope ? "this module's lessons" : "this lesson"}
+                    </span>
+                  </span>
+                </span>
+              </button>
+            </div>
 
-            <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+            {/* Cards — this region scrolls on its own */}
+            <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto border-t border-dash-border bg-dash-surface/40 px-4 pb-4 pt-3.5 [scrollbar-width:thin]">
               {questions.map((q, idx) => {
                 const typeLabel = QUESTION_TYPE_LABELS[q.question_type] || q.question_type;
+                const meta = QUESTION_TYPE_META[q.question_type] || { icon: HelpCircle, tone: "bg-slate-100 text-slate-700 ring-slate-500/20" };
+                const TypeIcon = meta.icon;
                 const isActive = !isBulkSelectMode && activeQuestion?.id === q.id;
                 const isChecked = isBulkSelectMode && selectedQuestionIds.includes(q.id);
+                const selected = isActive || isChecked;
+                const pts = q.points ?? 1;
+                const canDrag = !isBulkSelectMode && questions.length > 1;
                 return (
-                <div
-                  key={q.id}
-                  onClick={() => {
-                    if (isBulkSelectMode) {
-                      if (selectedQuestionIds.includes(q.id)) {
-                        setSelectedQuestionIds(selectedQuestionIds.filter(id => id !== q.id));
-                      } else {
-                        setSelectedQuestionIds([...selectedQuestionIds, q.id]);
+                  <div
+                    key={q.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-current={isActive ? "true" : undefined}
+                    draggable={canDrag && handleHeldQId === q.id}
+                    onDragStart={(e) => {
+                      if (!canDrag || handleHeldQId !== q.id) return;
+                      e.dataTransfer.effectAllowed = "move";
+                      e.dataTransfer.setData("text/plain", q.id);
+                      setDragQId(q.id);
+                    }}
+                    onDragEnter={() => canDrag && dragQId && setDragOverQId(q.id)}
+                    onDragOver={(e) => { if (canDrag && dragQId) e.preventDefault(); }}
+                    onDrop={(e) => {
+                      if (!canDrag || !dragQId) return;
+                      e.preventDefault();
+                      moveQuestion(dragQId, q.id);
+                      setDragQId(null); setDragOverQId(null); setHandleHeldQId(null);
+                    }}
+                    onDragEnd={() => { setDragQId(null); setDragOverQId(null); setHandleHeldQId(null); }}
+                    onKeyDown={(e) => {
+                      if (e.target !== e.currentTarget) return;
+                      if (e.altKey && canDrag && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+                        e.preventDefault();
+                        const target = questions[idx + (e.key === "ArrowUp" ? -1 : 1)];
+                        if (target) moveQuestion(q.id, target.id);
+                        return;
                       }
-                    } else {
-                      selectQuestion(q);
-                    }
-                  }}
-                  className={`group relative overflow-hidden p-3.5 pl-4 rounded-xl cursor-pointer select-none border transition-all motion-reduce:transition-none space-y-2.5 ${
-                    isActive || isChecked
-                      ? "bg-dash-accent/[0.07] border-dash-accent ring-1 ring-dash-accent/20 shadow-sm"
-                      : "bg-dash-surface border-dash-border hover:border-dash-border/80 hover:bg-white hover:shadow-sm"
-                  }`}
-                >
-                  <span
-                    className={`absolute left-0 top-0 bottom-0 w-1 transition-colors motion-reduce:transition-none ${
-                      isActive || isChecked ? "bg-dash-accent" : "bg-transparent group-hover:bg-dash-border"
-                    }`}
-                  />
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-start gap-2 min-w-0 flex-1">
-                      {isBulkSelectMode && (
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        (e.currentTarget as HTMLElement).click();
+                      }
+                    }}
+                    onClick={() => {
+                      if (isBulkSelectMode) {
+                        setSelectedQuestionIds((ids) => (ids.includes(q.id) ? ids.filter((id) => id !== q.id) : [...ids, q.id]));
+                      } else {
+                        requestSelectQuestion(q);
+                      }
+                    }}
+                    className={cn(
+                      "group relative cursor-pointer select-none overflow-hidden rounded-xl border p-3.5 pl-4 outline-none transition-all duration-150 motion-reduce:transition-none",
+                      "focus-visible:ring-2 focus-visible:ring-sky-500/50",
+                      selected
+                        ? "border-sky-300 bg-sky-50/80 shadow-sm ring-1 ring-sky-200"
+                        : "border-dash-border bg-white hover:-translate-y-px hover:border-slate-300 hover:shadow-md motion-reduce:hover:translate-y-0",
+                      dragQId === q.id && "opacity-50",
+                      dragOverQId === q.id && dragQId !== q.id && "border-sky-400 ring-2 ring-sky-300"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "absolute bottom-0 left-0 top-0 w-1 transition-colors motion-reduce:transition-none",
+                        selected ? "bg-sky-500" : "bg-transparent group-hover:bg-slate-200"
+                      )}
+                    />
+                    <div className="flex items-center gap-2">
+                      {isBulkSelectMode ? (
                         <input
                           type="checkbox"
-                          checked={selectedQuestionIds.includes(q.id)}
-                          onChange={() => {}} // toggled on container div click
-                          className="accent-dash-accent h-3.5 w-3.5 rounded shrink-0 mt-0.5"
+                          checked={isChecked}
+                          onChange={() => {}} // toggled by the card click
+                          aria-label={`Select question ${idx + 1}`}
+                          className="h-3.5 w-3.5 shrink-0 rounded accent-sky-600"
                         />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <span className={`text-[10px] font-bold tabular-nums ${isActive ? "text-dash-accent" : "!text-dash-textMuted"}`}>
-                          Q{idx + 1}
+                      ) : canDrag ? (
+                        <span
+                          role="img"
+                          aria-label="Drag to reorder (or Alt + arrow keys)"
+                          title="Drag to reorder"
+                          onMouseDown={() => setHandleHeldQId(q.id)}
+                          onMouseUp={() => setHandleHeldQId(null)}
+                          className="-ml-1 flex h-6 w-4 shrink-0 cursor-grab items-center justify-center rounded text-slate-300 transition-colors hover:text-slate-500 active:cursor-grabbing group-hover:text-slate-400"
+                        >
+                          <GripVertical size={14} />
                         </span>
-                        <p className="text-[12.5px] font-semibold leading-snug !text-dash-text line-clamp-2 mt-0.5">
+                      ) : null}
+                      <span
+                        className={cn(
+                          "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold tabular-nums",
+                          selected ? "bg-sky-500 text-white" : "bg-slate-100 text-slate-600"
+                        )}
+                      >
+                        {idx + 1}
+                      </span>
+                      <span className={cn("inline-flex min-w-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset [&_svg]:size-3", meta.tone)}>
+                        <TypeIcon />
+                        <span className="truncate">{typeLabel}</span>
+                      </span>
+                      <span className="ml-auto shrink-0 rounded-full bg-white px-2 py-0.5 text-[10px] font-bold tabular-nums text-slate-600 ring-1 ring-inset ring-slate-200">
+                        {pts} pt{pts === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <p className="mb-0 mt-2.5 line-clamp-2 pr-6 text-[12.5px] font-semibold leading-snug !text-dash-text">
                           {q.question_text || "Untitled question"}
                         </p>
-                      </div>
-                    </div>
+                      </TooltipTrigger>
+                      <DashTooltipContent side="right" className="max-w-xs whitespace-pre-wrap">
+                        {q.question_text || "Untitled question"}
+                      </DashTooltipContent>
+                    </Tooltip>
                     {!isBulkSelectMode && (
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           setQuestionToDelete(q);
                         }}
-                        className="shrink-0 -mt-0.5 -mr-1 text-dash-textMuted/70 hover:text-red hover:bg-red/10 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-all motion-reduce:transition-none"
+                        className="absolute bottom-2 right-2 rounded-lg p-1.5 text-slate-400 opacity-0 transition-all hover:bg-red-50 hover:text-red-600 focus-visible:opacity-100 group-hover:opacity-100 motion-reduce:transition-none"
                         title="Delete question"
+                        aria-label={`Delete question ${idx + 1}`}
                       >
                         <Trash2 size={13} />
                       </button>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[9px] font-bold uppercase tracking-[0.06em] px-2 py-0.5 rounded-full bg-white border border-dash-border !text-dash-textMuted">
-                      {typeLabel}
-                    </span>
-                    <span className="text-[9px] font-bold uppercase tracking-[0.06em] px-2 py-0.5 rounded-full bg-white border border-dash-border !text-dash-textMuted">
-                      {q.points ?? 1} pt{(q.points ?? 1) === 1 ? "" : "s"}
-                    </span>
-                  </div>
-                </div>
                 );
               })}
               {questions.length === 0 && (
-                <div className="flex flex-col items-center justify-center text-center py-8 bg-dash-surface rounded-xl border border-dash-border">
-                  <div className="w-10 h-10 rounded-full bg-white border border-dash-border flex items-center justify-center mb-2.5">
-                    <HelpCircle size={16} className="!text-dash-textMuted" />
-                  </div>
-                  <p className="text-[11.5px] font-semibold !text-dash-text">No questions yet</p>
-                  <p className="text-[10.5px] !text-dash-textMuted mt-0.5 max-w-[180px]">
-                    Add one manually or generate a set with AI.
+                <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white px-5 py-10 text-center">
+                  <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-500/15">
+                    <HelpCircle size={22} />
+                  </span>
+                  <p className="mb-0 text-[13px] font-semibold !text-dash-text">No questions yet</p>
+                  <p className="mb-0 mt-1 max-w-[200px] text-[11.5px] leading-relaxed !text-dash-textMuted">
+                    Write your first question on the right, or let AI draft a set for you.
                   </p>
                 </div>
               )}
             </div>
-          </div>
+          </aside>
+          </TooltipProvider>
 
           {/* Editor Workbench */}
           <div className="bg-white border border-dash-border rounded-2xl p-6 space-y-6 shadow-sm">
@@ -1466,6 +1761,20 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ConfirmationModal
+        isOpen={pendingLeave !== null}
+        onClose={() => setPendingLeave(null)}
+        onConfirm={() => {
+          const go = pendingLeave;
+          setPendingLeave(null);
+          go?.();
+        }}
+        title="Discard unsaved changes?"
+        description="You have changes in this quiz that haven't been saved. If you continue they will be lost."
+        confirmText="Discard changes"
+        cancelText="Keep editing"
+        isDestructive
+      />
     </div>
   );
 }

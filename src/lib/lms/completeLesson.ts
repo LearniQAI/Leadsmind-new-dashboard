@@ -1,3 +1,4 @@
+import { isLessonStudentVisible } from '@/lib/lms/studentVisibility';
 import { createAdminClient } from '@/lib/supabase/server';
 import { logger } from '@/shared/logger';
 import { isEnrolmentActive } from '@/lib/lms/enrolment';
@@ -66,6 +67,12 @@ export async function markLessonCompleteForContact(
       .maybeSingle();
 
     if (!lesson) return { error: 'Lesson not found in this course' };
+
+    // A lesson in a DRAFT or INACTIVE module (or a deactivated lesson) is not open to students, so it
+    // cannot be completed by them even by calling the action directly.
+    if (!(await isLessonStudentVisible(adminClient, lessonId))) {
+      return { error: 'Lesson not found in this course' };
+    }
 
     // Batch 6 / Part 1 — strict completion mode: a course opts out of the override entirely.
     // `requestedOverride` is what the caller asked for; `allowIncomplete` is what's actually

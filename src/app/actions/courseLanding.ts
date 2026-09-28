@@ -26,6 +26,8 @@ async function loadCourseLandingPayload(
       .from('course_modules')
       .select('*')
       .eq('course_id', course.id)
+      .eq('is_active', true)
+      .in('publish_status', ['published', 'coming_soon'])
       .order('position', { ascending: true }),
     adminClient
       .from('course_lessons')
@@ -34,10 +36,13 @@ async function loadCourseLandingPayload(
       .order('position', { ascending: true })
   ]);
 
+  // Public curriculum shows only what students can see: DRAFT/INACTIVE modules and their lessons are omitted.
+  const modules = modulesRes.data || [];
+  const visibleModuleIds = new Set(modules.map((m: any) => m.id));
   return {
     course,
-    modules: modulesRes.data || [],
-    lessons: lessonsRes.data || []
+    modules,
+    lessons: (lessonsRes.data || []).filter((l: any) => l.is_active !== false && visibleModuleIds.has(l.module_id))
   };
 }
 

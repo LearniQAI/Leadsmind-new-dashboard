@@ -136,11 +136,16 @@ export default function PreviewLessonClient({
     }
     if (item.kind === 'richtext') {
       const type = canvasBlockTypeProps(item);
+      const style: React.CSSProperties = {
+        textAlign: item.align,
+        ...type.style,
+        ...(typeof item.listItemSpacing === 'number' ? ({ ['--lm-list-gap' as any]: `${item.listItemSpacing}px` }) : {}),
+      };
       return (
         <div
           key={idx}
-          className={`text-[15px] leading-relaxed ${type.setsColor ? '' : '!text-dash-text'} ${CANVAS_INLINE_HTML} [&_p]:my-0 [&_ul]:my-0 [&_ol]:my-0 [&_ol]:list-decimal [&_ol]:pl-5 ${type.className}`}
-          style={{ textAlign: item.align, ...type.style }}
+          className={`lm-richtext text-[15px] leading-relaxed ${type.setsColor ? '' : '!text-dash-text'} ${CANVAS_INLINE_HTML} [&_p]:my-0 ${type.className}`}
+          style={style}
           dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(item.html) }}
         />
       );

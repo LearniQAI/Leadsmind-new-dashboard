@@ -1,3 +1,4 @@
+import { isModuleStudentVisible } from '@/lib/lms/studentVisibility';
 import React from 'react';
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
@@ -35,11 +36,11 @@ export async function loadStudentModuleQuizContext(courseId: string, moduleId: s
     .eq('id', moduleId)
     .eq('course_id', courseId)
     .single();
-  if (!courseModule || courseModule.is_active === false) notFound();
+  if (!courseModule || !isModuleStudentVisible(courseModule)) notFound();
 
   // In-course sidebar data (same shape the lesson player's page.tsx builds).
   const [modulesRes, lessonsRes, progressRes, profile] = await Promise.all([
-    adminClient.from('course_modules').select('*').eq('course_id', courseId).eq('is_active', true).order('position', { ascending: true }),
+    adminClient.from('course_modules').select('*').eq('course_id', courseId).eq('is_active', true).in('publish_status', ['published', 'coming_soon']).order('position', { ascending: true }),
     adminClient.from('course_lessons').select('*').eq('course_id', courseId).eq('is_active', true).order('position', { ascending: true }),
     adminClient.from('course_progress').select('lesson_id').eq('contact_id', contactId).eq('course_id', courseId).not('completed_at', 'is', null),
     getCurrentProfile(),

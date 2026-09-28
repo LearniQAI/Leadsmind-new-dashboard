@@ -21,7 +21,7 @@ export async function getCourses() {
   // fetched separately and merged in below rather than embedded.
   const { data, error } = await supabase
    .from('courses')
-   .select('*, modules:course_modules(count), enrollments(count)')
+   .select('*, modules:course_modules(count), enrollments(count), domain:domain_configurations(hostname)')
    .eq('workspace_id', workspaceId)
    .neq('status', 'archived')
    .order('created_at', { ascending: false });

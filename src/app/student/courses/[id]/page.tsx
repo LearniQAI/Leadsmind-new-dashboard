@@ -1,3 +1,4 @@
+import { orderCourseLessons, resolveContinueLearning } from '@/lib/lms/continueLearning';
 import React from 'react';
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
@@ -116,11 +117,12 @@ export default async function StudentCoursePlayerPage({ params, searchParams }: 
 
   // 3. Fetch modules and lessons using admin client to bypass RLS
   const [modulesRes, lessonsRes, progressRes] = await Promise.all([
-    adminClient.from('course_modules').select('*').eq('course_id', courseId).eq('is_active', true).order('position', { ascending: true }),
+    adminClient.from('course_modules').select('*').eq('course_id', courseId).eq('is_active', true).in('publish_status', ['published', 'coming_soon']).order('position', { ascending: true }),
     adminClient.from('course_lessons').select('*').eq('course_id', courseId).eq('is_active', true).order('position', { ascending: true }),
     getCompletedLessons(courseId)
   ]);
 
+  // Students only see PUBLISHED (and locked coming_soon) modules — DRAFT and INACTIVE are hidden (studentVisibility.ts).
   const modules = modulesRes.data || [];
 
   // Attach each module's student-visible quizzes (published, with questions) so the syllabus
@@ -131,8 +133,17 @@ export default async function StudentCoursePlayerPage({ params, searchParams }: 
   // A lesson can be individually active but its parent module deactivated — exclude those too,
   // otherwise the lesson (and its content_blocks below) would still ship to the client even
   // though its module never renders, defeating the point of deactivation.
-  const lessons = (lessonsRes.data || []).filter((l) => activeModuleIds.has(l.module_id));
+  // Course order is module.position THEN lesson.position: lesson positions restart in every module,
+  // so ordering by lesson.position alone (the query above) interleaves modules in "Next lesson".
+  const lessons = orderCourseLessons(modules, (lessonsRes.data || []).filter((l) => activeModuleIds.has(l.module_id))).map((o) => o.lesson);
   const completedLessonIds = progressRes.data || [];
+  // Where to open: the in-progress lesson if there is one, else the first incomplete in current order.
+  const resolution = resolveContinueLearning({
+    modules,
+    lessons,
+    completedLessonIds,
+    lastLessonId: enrollment?.last_lesson_id,
+  });
 
   // 4. Attach ordered content_blocks per lesson (PRD Section 4 block system).
   const lessonIds = lessons.map((l) => l.id);
@@ -186,6 +197,7 @@ export default async function StudentCoursePlayerPage({ params, searchParams }: 
       modules={modules}
       lessons={lessonsWithBlocks}
       initialCompletedLessonIds={completedLessonIds}
+      initialLessonId={resolution.target?.lessonId ?? null}
       enrollment={enrollment}
       studentName={studentName}
     />

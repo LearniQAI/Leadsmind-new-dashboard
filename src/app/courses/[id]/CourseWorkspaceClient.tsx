@@ -17,6 +17,8 @@ import LessonPreviewModal from "./components/LessonPreviewModal";
 import AddStudentModal from "./components/AddStudentModal";
 import StudentsRosterModal from "./components/StudentsRosterModal";
 import AddLessonNameModal from "./components/AddLessonNameModal";
+import { describeDeleteImpact } from "@/lib/lms/moduleDeleteImpact";
+import { applyDraftOrder, buildReorderItems, moveId, moveDown, moveUp, sameOrder } from "@/lib/lms/moduleOrder";
 import { getCourseTheme } from "@/lib/courses/courseThemeTokens";
 
 interface CourseWorkspaceClientProps {
@@ -40,6 +42,13 @@ export default function CourseWorkspaceClient({
   const quickActionTheme = getCourseTheme(currentCourse?.landing_page_settings?.template);
 
   const [modules, setModules] = useState<any[]>(initialModules);
+  // Curriculum reorder is an explicit-save flow: moves edit this draft (a list of module ids) and
+  // nothing is written until "Save Curriculum Order". Identity is always the id, never an index.
+  const [draftOrder, setDraftOrder] = useState<string[] | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
+  const [isConfirmOrderOpen, setIsConfirmOrderOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState<"All" | "draft" | "published" | "coming_soon">("All");
   // Nav restructure (Section 2): 2 top-level tabs only. Modules stays the default — see
@@ -121,17 +130,45 @@ export default function CourseWorkspaceClient({
     refreshWorkspace();
   }, [course.id]);
 
+  // Delete asks first what it would destroy (lessons, students, progress rows) and shows it in the
+  // confirmation — a stronger confirm, not a block. The server refuses to drop student progress
+  // unless the caller confirms (confirmProgressLoss).
+  const [deletingModule, setDeletingModule] = useState<{ id: string; title: string; description: string; hasProgress: boolean } | null>(null);
+  const [isDeletingModule, setIsDeletingModule] = useState(false);
+
   const handleDeleteModule = async (moduleId: string) => {
     try {
-      const res = await fetch(`/api/lms/modules?id=${moduleId}`, { method: "DELETE" });
+      const res = await fetch(`/api/lms/modules/${moduleId}/impact`);
       const dataJson = await res.json();
-      if (dataJson.error) toast.error(dataJson.error);
-      else {
-        toast.success("Module node removed.");
-        refreshWorkspace();
+      if (!res.ok || dataJson.error) {
+        toast.error(dataJson.error || "Could not check what this module contains");
+        return;
       }
+      setDeletingModule({
+        id: moduleId,
+        title: dataJson.data.title,
+        description: describeDeleteImpact(dataJson.data),
+        hasProgress: dataJson.data.progressRows > 0
+      });
+    } catch {
+      toast.error("Could not check what this module contains");
+    }
+  };
+
+  const confirmDeleteModule = async () => {
+    if (!deletingModule) return;
+    setIsDeletingModule(true);
+    try {
+      const res = await fetch(`/api/lms/modules?id=${deletingModule.id}&confirmProgressLoss=true`, { method: "DELETE" });
+      const dataJson = await res.json();
+      if (!res.ok || dataJson.error) toast.error(dataJson.error || "Failed to delete module");
+      else toast.success("Module deleted.");
     } catch {
       toast.error("Failed to delete module");
+    } finally {
+      setIsDeletingModule(false);
+      setDeletingModule(null);
+      refreshWorkspace();
     }
   };
 
@@ -186,21 +223,22 @@ export default function CourseWorkspaceClient({
     }
   };
 
-  const handleToggleModuleActive = async (moduleId: string, isActive: boolean) => {
+  const handleChangeModuleStatus = async (moduleId: string, target: string) => {
     try {
-      const res = await fetch(`/api/lms/modules?id=${moduleId}`, {
+      const res = await fetch(`/api/lms/courses/${course.id}/modules/${moduleId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_active: isActive })
+        body: JSON.stringify({ status: target })
       });
       const dataJson = await res.json();
       if (dataJson.error) toast.error(dataJson.error);
-      else {
-        toast.success(isActive ? "Module activated." : "Module deactivated.");
-        refreshWorkspace();
-      }
+      else toast.success(target === "PUBLISHED" ? (dataJson.from === "INACTIVE" ? "Module activated." : "Module published.") : "Module deactivated.");
     } catch {
       toast.error("Failed to update module status");
+    } finally {
+      // Always reconcile with the server: the list is never patched locally, so a failed or
+      // conflicting change can't leave a badge showing a state the DB doesn't have.
+      refreshWorkspace();
     }
   };
 
@@ -293,7 +331,41 @@ export default function CourseWorkspaceClient({
     }
   };
 
-  const filteredModules = modules.filter((m) => {
+  const orderedModules = applyDraftOrder(modules, draftOrder);
+  const orderedIds = orderedModules.map((m) => m.id);
+  const serverIds = modules.map((m) => m.id);
+  const orderDirty = draftOrder !== null && !sameOrder(orderedIds, serverIds);
+  const canReorder = !isSavingOrder && searchTerm.trim() === "" && activeFilter === "All";
+
+  const setOrder = (next: string[]) => setDraftOrder(sameOrder(next, serverIds) ? null : next);
+
+  const saveOrder = async () => {
+    setIsSavingOrder(true);
+    try {
+      const res = await fetch(`/api/lms/courses/${course.id}/modules/reorder`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: buildReorderItems(orderedIds) })
+      });
+      const dataJson = await res.json();
+      if (!res.ok || dataJson.error) {
+        toast.error(dataJson.error || "Failed to save curriculum order");
+        return;
+      }
+      // Reload the saved order from the server BEFORE dropping the draft, so the list never
+      // flashes back to the old order between the save and the refetch.
+      await refreshWorkspace();
+      setDraftOrder(null);
+      toast.success("Curriculum order saved.");
+    } catch {
+      toast.error("Failed to save curriculum order");
+    } finally {
+      setIsSavingOrder(false);
+      setIsConfirmOrderOpen(false);
+    }
+  };
+
+  const filteredModules = orderedModules.filter((m) => {
     const search = searchTerm.toLowerCase();
     const titleMatches = (m?.title || m?.name || "").toLowerCase().includes(search);
     const descMatches = (m?.description || "").toLowerCase().includes(search);
@@ -325,6 +397,12 @@ export default function CourseWorkspaceClient({
                   Control Room
                 </span>
               </div>
+              <p
+                data-testid="course-context-label"
+                className="text-[12px] font-bold uppercase tracking-[0.08em] !text-dash-textMuted"
+              >
+                COURSE: {currentCourse.title} — Status: {isPublished ? "Published" : "Draft"}
+              </p>
               <h1 className="font-display text-[30px] font-semibold leading-[1.08] tracking-[-0.02em] !text-dash-text md:text-[36px]">
                 <span className="font-normal !text-dash-textMuted">Course </span>
                 {currentCourse.title}
@@ -393,6 +471,23 @@ export default function CourseWorkspaceClient({
             </button>
           </div>
 
+          {orderDirty && (
+            <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
+              <p className="text-[13px] font-medium text-sky-900">Curriculum order changed — not saved yet.</p>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" disabled={isSavingOrder} onClick={() => setDraftOrder(null)}>Discard</Button>
+                <Button
+                  size="sm"
+                  disabled={isSavingOrder}
+                  className="bg-sky-500 text-white hover:bg-sky-600"
+                  onClick={() => (isPublished ? setIsConfirmOrderOpen(true) : saveOrder())}
+                >
+                  {isSavingOrder ? <Loader2 className="animate-spin" size={14} /> : null} Save Curriculum Order
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Modules List */}
           {filteredModules.length === 0 ? (
             <div className="py-20 bg-dash-surface border-2 border-dashed border-dash-border rounded-3xl flex flex-col items-center justify-center text-center px-4">
@@ -415,7 +510,22 @@ export default function CourseWorkspaceClient({
               {filteredModules.map((module) => (
                 <ModuleCard
                   key={module.id}
-                  moduleNumber={modules.findIndex((m) => m.id === module.id) + 1}
+                  moduleNumber={orderedIds.indexOf(module.id) + 1}
+                  reorder={{
+                    enabled: canReorder,
+                    isFirst: orderedIds[0] === module.id,
+                    isLast: orderedIds[orderedIds.length - 1] === module.id,
+                    isDragOver: dragOverId === module.id && dragId !== module.id,
+                    onMoveUp: () => setOrder(moveUp(orderedIds, module.id)),
+                    onMoveDown: () => setOrder(moveDown(orderedIds, module.id)),
+                    onDragStart: () => setDragId(module.id),
+                    onDragEnter: () => setDragOverId(module.id),
+                    onDrop: () => {
+                      if (dragId && dragId !== module.id) setOrder(moveId(orderedIds, orderedIds.indexOf(dragId), orderedIds.indexOf(module.id)));
+                      setDragId(null); setDragOverId(null);
+                    },
+                    onDragEnd: () => { setDragId(null); setDragOverId(null); }
+                  }}
                   courseId={currentCourse.id}
                   module={{
                     ...module,
@@ -446,7 +556,7 @@ export default function CourseWorkspaceClient({
                     }
                   }}
                   onDeleteLesson={(lesId) => setDeletingLessonId(lesId)}
-                  onToggleModuleActive={handleToggleModuleActive}
+                  onChangeModuleStatus={handleChangeModuleStatus}
                   onToggleLessonActive={handleToggleLessonActive}
                   onDuplicateModule={handleDuplicateModule}
                   onDuplicateLesson={handleDuplicateLesson}
@@ -497,6 +607,28 @@ export default function CourseWorkspaceClient({
         moduleId={activeModuleIdForLesson}
         courseId={currentCourse.id}
         editingLesson={editingLesson}
+      />
+
+      <ConfirmationModal
+        isOpen={deletingModule !== null}
+        onClose={() => setDeletingModule(null)}
+        onConfirm={confirmDeleteModule}
+        title={`Delete module "${deletingModule?.title ?? ""}"?`}
+        description={deletingModule?.description ?? ""}
+        confirmText={deletingModule?.hasProgress ? "Delete module and student progress" : "Delete module"}
+        isDestructive
+        isLoading={isDeletingModule}
+      />
+
+      <ConfirmationModal
+        isOpen={isConfirmOrderOpen}
+        onClose={() => setIsConfirmOrderOpen(false)}
+        onConfirm={saveOrder}
+        title="Save curriculum order?"
+        description="This will change the order students see in this course."
+        confirmText="Save order"
+        isDestructive={false}
+        isLoading={isSavingOrder}
       />
 
       <ConfirmationModal

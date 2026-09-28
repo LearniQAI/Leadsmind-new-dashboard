@@ -1,3 +1,4 @@
+import { filterStudentVisibleLessonIds } from '@/lib/lms/studentVisibility';
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getUser } from '@/lib/auth';
@@ -135,7 +136,10 @@ export async function POST(req: NextRequest) {
     });
     if (matchError) throw matchError;
 
-    const retrievedChunks: RetrievedChunk[] = chunks || [];
+    // The course index also holds DRAFT/INACTIVE lessons; a student's answer may only be grounded in what they can see.
+    const allChunks: RetrievedChunk[] = chunks || [];
+    const visibleLessons = await filterStudentVisibleLessonIds(adminClient, [...new Set(allChunks.map((c) => c.lesson_id))]);
+    const retrievedChunks: RetrievedChunk[] = allChunks.filter((c) => visibleLessons.has(c.lesson_id));
 
     // No relevant content found — the real, expected "I don't know" path.
     // Only 1 real API call was made (the embedding), so charge 1 credit.

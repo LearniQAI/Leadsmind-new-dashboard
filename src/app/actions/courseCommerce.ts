@@ -1,5 +1,6 @@
 'use server';
 
+import { isModuleStudentVisible } from '@/lib/lms/studentVisibility';
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId, getUser, requireWorkspaceAccess } from '@/lib/auth';
 import { stripe as defaultStripe } from '@/lib/stripe';
@@ -341,6 +342,11 @@ export async function verifyLessonAccess(courseId: string, lessonId: string) {
       .single();
 
     if (lessonErr || !lesson) return { allowed: false, reason: 'lesson_not_found' };
+
+    // DRAFT / INACTIVE modules (and deactivated lessons) are hidden from students — even 'public' lessons in them.
+    if (lesson.is_active === false || !lesson.module || !isModuleStudentVisible(lesson.module)) {
+      return { allowed: false, reason: 'lesson_not_found' };
+    }
 
     const { data: course, error: courseErr } = await adminClient
       .from('courses')

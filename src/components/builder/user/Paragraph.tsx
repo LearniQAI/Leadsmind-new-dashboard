@@ -27,6 +27,10 @@ export interface ParagraphProps {
  letterSpacing?: number;
  /** Same theme-inheritance mechanism as Heading.tsx — see its comment. */
  useThemeFont?: boolean;
+ /** Gap between list items (px), when this paragraph's text is a <ul>/<ol> (list-style panel
+  *  control). Not itself responsive — a deliberately small, low-risk addition alongside the
+  *  larger existing responsive typography system (see ParagraphSettings). */
+ listItemSpacing?: number;
 }
 
 export const Paragraph = (allProps: ParagraphProps & any) => {
@@ -52,6 +56,7 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
   letterSpacing_mobile,
   letterSpacing_tablet,
   useThemeFont,
+  listItemSpacing,
   dragRef,
   ...props
  } = allProps;
@@ -134,6 +139,10 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
     fontFamily: fontFamily ? fontStack(fontFamily) : undefined,
     ...(fontFamily ? { [BLOCK_FONT_VAR]: fontStack(fontFamily) } : {}),
     letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined,
+    // List item gap (globals.css: `.tiptap li + li` / `.builder-rich-text li + li`). Set here on
+    // the shared outer wrapper so both the editor and Preview/published branches below pick it up
+    // through normal CSS custom-property inheritance — one place to set it, not two.
+    ...(typeof listItemSpacing === 'number' ? ({ ['--lm-list-gap' as any]: `${listItemSpacing}px` }) : {}),
    }}
   >
     {enabled ? (
@@ -141,14 +150,23 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
       // bare `p { ... }` rule can't override the size / weight / line-height /
       // letter-spacing set on the wrapper above (see .tiptap p in globals.css for
       // the matching fix on TipTap's own inner <p>).
-      <p className="outline-none w-full m-0 p-0" style={INHERIT_TYPOGRAPHY}>
+      //
+      // A plain <div>, not <p>: once list support is on, TipTap's own DOM can contain
+      // block-level <ul>/<ol>/<li> (and multiple <p>s), which is invalid content for a <p> to
+      // contain. React builds this via the DOM API (not innerHTML), so it wouldn't get silently
+      // re-parsed/broken by the browser either way — but it's still invalid markup this avoids
+      // outright, and a <div> is visually identical here (margins are already zeroed, and
+      // INHERIT_TYPOGRAPHY replaces every typographic default a real <p> would otherwise add).
+      <div className="outline-none w-full m-0 p-0" style={INHERIT_TYPOGRAPHY}>
         <InlineTextEditor
           value={text}
           onChange={(val) => setProp((props: any) => { props.text = val; }, 500)}
+          onImmediateChange={(val) => setProp((props: any) => { props.text = val; })}
+          enableListToolbar
         />
-      </p>
+      </div>
    ) : (
-    <p className={RICH_TEXT_CLASS} style={{ ...INHERIT_TYPOGRAPHY, margin: 0 }} dangerouslySetInnerHTML={{ __html: displayText }} />
+    <div className={RICH_TEXT_CLASS} style={{ ...INHERIT_TYPOGRAPHY, margin: 0 }} dangerouslySetInnerHTML={{ __html: displayText }} />
    )}
   </div>
  );

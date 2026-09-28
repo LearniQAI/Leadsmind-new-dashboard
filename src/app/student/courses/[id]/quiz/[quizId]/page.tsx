@@ -42,13 +42,15 @@ export default async function StudentQuizPage({ params }: StudentQuizPageProps) 
       adminClient.from('quiz_settings').select('*').eq('lesson_id', quizId).maybeSingle(),
       adminClient.from('quiz_attempts').select('id').eq('lesson_id', quizId).eq('student_id', contactId),
       adminClient.from('lms_remedial_assignments').select('status').eq('enrollment_id', enrollment.id).eq('lesson_id', quizId).maybeSingle(),
-      adminClient.from('course_modules').select('*').eq('course_id', courseId).eq('is_active', true).order('position', { ascending: true }),
+      adminClient.from('course_modules').select('*').eq('course_id', courseId).eq('is_active', true).in('publish_status', ['published', 'coming_soon']).order('position', { ascending: true }),
       adminClient.from('course_lessons').select('*').eq('course_id', courseId).eq('is_active', true).order('position', { ascending: true }),
       adminClient.from('course_progress').select('lesson_id').eq('contact_id', contactId).eq('course_id', courseId).not('completed_at', 'is', null),
       getCurrentProfile(),
     ]);
 
   const modules = modulesRes.data || [];
+  // A quiz inside a DRAFT or INACTIVE module is not visible to students, even by direct URL.
+  if (!modules.some((m: any) => m.id === lesson.module_id)) notFound();
   await attachStudentModuleQuizzes(adminClient, modules);
 
   const activeModuleIds = new Set(modules.map((m: any) => m.id));

@@ -16,6 +16,9 @@ import {
   Droplet,
   Eye,
   HelpCircle,
+  GripVertical,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -30,6 +33,10 @@ import {
 import { toast } from "sonner";
 import { StatusPill, CARD_SHADOW } from "./settings/primitives";
 import { cn } from "@/lib/utils";
+import { ORANGE_ACTION } from "@/lib/lms/brandOrange";
+import { Tooltip, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { DashTooltipContent } from "@/components/dashboard-ui/Tooltip";
+import { deriveModuleStatus, statusActionFor, type ModuleStatus } from "@/lib/lms/moduleStatus";
 
 function parseMarkdownToHtml(markdown: string): string {
   if (!markdown) return "";
@@ -102,13 +109,26 @@ interface ModuleCardProps {
   onAddLesson: (moduleId: string) => void;
   onEditLesson: (lesson: any, moduleId: string) => void;
   onDeleteLesson: (lessonId: string) => void;
-  onToggleModuleActive: (moduleId: string, isActive: boolean) => void;
+  onChangeModuleStatus: (moduleId: string, target: ModuleStatus) => void;
   onToggleLessonActive: (lessonId: string, isActive: boolean) => void;
   onDuplicateModule: (moduleId: string) => void;
   onDuplicateLesson: (lessonId: string) => void;
   onMoveLesson: (lessonId: string, targetModuleId: string) => void;
   onViewLesson: (lesson: any) => void;
   onCreateAssignment: (lesson: any) => void;
+  /** Curriculum reordering. Disabled while a search or filter narrows the list. */
+  reorder?: {
+    enabled: boolean;
+    isFirst: boolean;
+    isLast: boolean;
+    isDragOver: boolean;
+    onMoveUp: () => void;
+    onMoveDown: () => void;
+    onDragStart: () => void;
+    onDragEnter: () => void;
+    onDrop: () => void;
+    onDragEnd: () => void;
+  };
 }
 
 export default function ModuleCard({
@@ -121,24 +141,27 @@ export default function ModuleCard({
   onAddLesson,
   onEditLesson,
   onDeleteLesson,
-  onToggleModuleActive,
+  onChangeModuleStatus,
   onToggleLessonActive,
   onDuplicateModule,
   onDuplicateLesson,
   onMoveLesson,
   onViewLesson,
   onCreateAssignment,
+  reorder,
 }: ModuleCardProps) {
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
+  // Only the handle starts a drag, so text selection and the card's own buttons stay normal.
+  const [handleHeld, setHandleHeld] = useState(false);
 
   const lessonCount = module.lessons?.length || 0;
   const hasLessons = lessonCount > 0;
   const otherModules = siblingModules.filter((m) => m.id !== module.id);
 
-  const status = (module.publish_status || "").toLowerCase();
-  const statusTone =
-    status === "published" ? "green" : status === "coming_soon" ? "amber" : "slate";
+  const lifecycle = deriveModuleStatus(module);
+  const statusTone = lifecycle === "PUBLISHED" ? "green" : lifecycle === "INACTIVE" ? "amber" : "slate";
+  const lifecycleAction = statusActionFor(lifecycle);
 
   const addLectureBtn = (
     <button
@@ -151,9 +174,22 @@ export default function ModuleCard({
 
   return (
     <div
+      draggable={!!reorder?.enabled && handleHeld}
+      onDragStart={(e) => {
+        if (reorder?.enabled && handleHeld) {
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", module.id);
+          reorder.onDragStart();
+        }
+      }}
+      onDragEnter={() => reorder?.enabled && reorder.onDragEnter()}
+      onDragOver={(e) => { if (reorder?.enabled) e.preventDefault(); }}
+      onDrop={(e) => { if (reorder?.enabled) { e.preventDefault(); reorder.onDrop(); } }}
+      onDragEnd={() => { setHandleHeld(false); reorder?.onDragEnd(); }}
       className={cn(
         "overflow-hidden rounded-2xl border border-dash-border bg-white transition-shadow",
-        CARD_SHADOW
+        CARD_SHADOW,
+        reorder?.isDragOver && "ring-2 ring-sky-400"
       )}
     >
       {/* Module header */}
@@ -163,6 +199,41 @@ export default function ModuleCard({
           isExpanded && "border-b border-dash-border"
         )}
       >
+        {reorder && (
+          <div className="flex shrink-0 items-center gap-0.5">
+            <span
+              role="img"
+              aria-label="Drag to reorder"
+              title={reorder.enabled ? "Drag to reorder" : "Clear search and filters to reorder"}
+              onMouseDown={() => setHandleHeld(true)}
+              onMouseUp={() => setHandleHeld(false)}
+              className={cn("rounded-md p-0.5 text-dash-textMuted", reorder.enabled ? "cursor-grab hover:bg-dash-surface active:cursor-grabbing" : "cursor-not-allowed opacity-40")}
+            >
+              <GripVertical size={16} />
+            </span>
+            <div className="flex flex-col">
+              <button
+                onClick={reorder.onMoveUp}
+                disabled={!reorder.enabled || reorder.isFirst}
+                aria-label="Move module up"
+                title="Move up"
+                className="rounded p-0 text-dash-textMuted hover:bg-dash-surface disabled:opacity-30"
+              >
+                <ArrowUp size={13} />
+              </button>
+              <button
+                onClick={reorder.onMoveDown}
+                disabled={!reorder.enabled || reorder.isLast}
+                aria-label="Move module down"
+                title="Move down"
+                className="rounded p-0 text-dash-textMuted hover:bg-dash-surface disabled:opacity-30"
+              >
+                <ArrowDown size={13} />
+              </button>
+            </div>
+          </div>
+        )}
+
         <button
           onClick={() => setIsExpanded((v) => !v)}
           className="shrink-0 rounded-md p-0.5 text-dash-textMuted transition-colors hover:bg-dash-surface hover:text-dash-text"
@@ -186,21 +257,10 @@ export default function ModuleCard({
             <h3 className="font-display truncate text-[17px] font-bold tracking-tight text-dash-text">
               {module.title || module.name}
             </h3>
-            {module.publish_status && module.publish_status !== "draft" && (
-              <StatusPill tone={statusTone as any}>
-                {module.publish_status.replace("_", " ")}
-              </StatusPill>
-            )}
-            {module.required_for_completion && (
-              <StatusPill tone="red">
-                <Lock /> Required
-              </StatusPill>
-            )}
-            {module.is_active === false && (
-              <StatusPill tone="slate">
-                <EyeOff /> Inactive
-              </StatusPill>
-            )}
+            <StatusPill tone={statusTone as any}>{lifecycle}</StatusPill>
+            <StatusPill tone={module.required_for_completion ? "red" : "slate"}>
+              {module.required_for_completion ? <><Lock /> Required</> : "Optional"}
+            </StatusPill>
           </div>
           <span className="mt-1 block text-[12px] text-dash-textMuted">
             {lessonCount} {lessonCount === 1 ? "lesson" : "lessons"}
@@ -216,14 +276,24 @@ export default function ModuleCard({
           </span>
         )}
 
-        <button
-          onClick={() => router.push(`/courses/${courseId}/module-quiz/${module.id}`)}
-          title="Module quizzes"
-          aria-label="Module quizzes"
-          className="hidden shrink-0 items-center gap-1.5 rounded-lg border border-dash-border px-3 py-1.5 text-[11px] font-semibold text-dash-textMuted transition-colors hover:border-sky-500/40 hover:bg-sky-50 hover:text-sky-600 sm:flex"
-        >
-          <HelpCircle size={13} /> Module Quizzes
-        </button>
+        {/* Brand orange (same #F7941D / #E07E0C as the Continue Learning CTA). The hint sits on the
+            button so the quiz is created last, once the module's lessons exist. */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => router.push(`/courses/${courseId}/module-quiz/${module.id}`)}
+                aria-label="Module quizzes"
+                className={cn("hidden shrink-0 items-center gap-1.5 rounded-lg border border-transparent px-3 py-1.5 text-[11px] font-semibold transition-colors sm:flex", ORANGE_ACTION)}
+              >
+                <HelpCircle size={13} /> Module Quizzes
+              </button>
+            </TooltipTrigger>
+            <DashTooltipContent className="max-w-[240px]">
+              Create the quiz last, after you&apos;ve added all the lessons for this module.
+            </DashTooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
         <button
           onClick={() => onAddLesson(module.id)}
@@ -243,22 +313,14 @@ export default function ModuleCard({
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => onAddLesson(module.id)}>Add lesson</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => onToggleModuleActive(module.id, module.is_active === false)}>
-              {module.is_active === false ? "Activate" : "Deactivate"}
+            <DropdownMenuItem onClick={() => onChangeModuleStatus(module.id, lifecycleAction.target)}>
+              {lifecycleAction.label}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onEditModule(module)}>Edit</DropdownMenuItem>
             <DropdownMenuItem onClick={() => onDuplicateModule(module.id)}>Duplicate</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => {
-                if (
-                  window.confirm(
-                    `Delete module "${module.title || module.name}"? This cannot be undone.`
-                  )
-                ) {
-                  onDeleteModule(module.id);
-                }
-              }}
+              onClick={() => onDeleteModule(module.id)}
               className="text-red focus:text-red"
             >
               Delete

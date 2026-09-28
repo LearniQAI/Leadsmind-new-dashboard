@@ -1,3 +1,4 @@
+import { isLessonStudentVisible } from '@/lib/lms/studentVisibility';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getUser, getUserRoleForWorkspace } from '@/lib/auth';
 import { getOrCreateStudentContact } from '@/app/actions/studentEnrollments';
@@ -54,7 +55,13 @@ export async function resolveVideoAccess(assetId: string, contentBlockId: string
     return { ok: false, error: 'Video not found', status: 404 };
   }
 
-  if (lesson.is_preview === true && lesson.is_active !== false) {
+  // Staff see everything (builder canvas, preview). Everyone else — free preview or enrolled student —
+  // only gets bytes for a lesson a student may see: not inside a DRAFT/INACTIVE module. Checked lazily
+  // so the staff path costs no extra query.
+  const lessonId = (block as any).course_lessons.id as string;
+  const visibleToStudents = () => isLessonStudentVisible(adminClient, lessonId);
+
+  if (lesson.is_preview === true && lesson.is_active !== false && (await visibleToStudents())) {
     return { ok: true, fileId: asset.google_drive_file_id };
   }
 
@@ -63,6 +70,8 @@ export async function resolveVideoAccess(assetId: string, contentBlockId: string
 
   const staffRole = await getUserRoleForWorkspace(lesson.workspace_id);
   if (staffRole) return { ok: true, fileId: asset.google_drive_file_id };
+
+  if (!(await visibleToStudents())) return { ok: false, error: 'Video not found', status: 404 };
 
   const contactId = await getOrCreateStudentContact(lesson.workspace_id);
   if (!contactId) return { ok: false, error: 'Forbidden', status: 403 };

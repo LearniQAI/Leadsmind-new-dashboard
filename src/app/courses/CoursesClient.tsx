@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { DashButton } from "@/components/dashboard-ui";
 import {
   Plus,
@@ -26,6 +26,13 @@ import {
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import CreateCourseWizard from "./components/CreateCourseWizard";
+import NewCourseAcknowledgement from "./components/NewCourseAcknowledgement";
+import {
+  shouldShowCourseReminder,
+  snoozeCourseReminder,
+  clearCourseReminderSnooze,
+  getCourseReminderSnoozedUntil,
+} from "@/lib/lms/courseCreationReminder";
 import ConfirmationModal from "@/components/calendar/modals/ConfirmationModal";
 
 // Real course-level status values (confirmed live: only 'draft' and 'published' exist in
@@ -48,6 +55,16 @@ export default function CoursesClient({
 
   // Create Course Wizard state (Phase D: name+domain+url -> theme -> add module)
   const [isModalOpen, setIsModalOpen] = useState(false);
+  // "You Are Creating a New Course" acknowledgement — always shown unless the user explicitly
+  // snoozed it (30 days, reversible from the note under the header).
+  const [isAckOpen, setIsAckOpen] = useState(false);
+  const [snoozedUntil, setSnoozedUntil] = useState<number | null>(null);
+  useEffect(() => { setSnoozedUntil(getCourseReminderSnoozedUntil()); }, []);
+
+  const requestNewCourse = () => {
+    if (shouldShowCourseReminder()) setIsAckOpen(true);
+    else setIsModalOpen(true);
+  };
 
   const [courses, setCourses] = useState(initialCourses);
   const [deletingCourse, setDeletingCourse] = useState<any | null>(null);
@@ -133,7 +150,7 @@ export default function CoursesClient({
             <ClipboardCheck size={13} /> Needs grading
           </DashButton>
 
-          <DashButton variant="primary" size="sm" onClick={() => setIsModalOpen(true)}>
+          <DashButton variant="primary" size="sm" onClick={requestNewCourse}>
             <Plus size={14} /> Add a new course
           </DashButton>
         </div>
@@ -153,7 +170,7 @@ export default function CoursesClient({
               {courses.length === 0 ? "Create your first course to get started" : "Try a different search or status filter"}
             </p>
             {courses.length === 0 && (
-              <DashButton variant="primary" size="sm" onClick={() => setIsModalOpen(true)} className="mt-6">
+              <DashButton variant="primary" size="sm" onClick={requestNewCourse} className="mt-6">
                 <Plus size={14} /> Add a new course
               </DashButton>
             )}
@@ -166,6 +183,8 @@ export default function CoursesClient({
                   <th className="px-6 py-3.5 text-[10.5px] font-bold !text-dash-textMuted uppercase tracking-[0.08em] border-b border-dash-border">Name</th>
                   <th className="px-6 py-3.5 text-[10.5px] font-bold !text-dash-textMuted uppercase tracking-[0.08em] border-b border-dash-border">Type</th>
                   <th className="px-6 py-3.5 text-[10.5px] font-bold !text-dash-textMuted uppercase tracking-[0.08em] border-b border-dash-border">Status</th>
+                  <th className="px-6 py-3.5 text-[10.5px] font-bold !text-dash-textMuted uppercase tracking-[0.08em] border-b border-dash-border">Learning site</th>
+                  <th className="px-6 py-3.5 text-[10.5px] font-bold !text-dash-textMuted uppercase tracking-[0.08em] border-b border-dash-border">Enrolment</th>
                   <th className="px-6 py-3.5 w-12 border-b border-dash-border" />
                 </tr>
               </thead>
@@ -205,6 +224,12 @@ export default function CoursesClient({
                         {isPublished ? <CheckCircle2 size={12} className="shrink-0" /> : <PenLine size={12} className="shrink-0" />}
                         {isPublished ? "Published" : "Draft"}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-xs !text-dash-textMuted font-medium">
+                      {course.domain?.hostname || "leadsmind.io"}
+                    </td>
+                    <td className="px-6 py-4 text-xs !text-dash-textMuted font-medium whitespace-nowrap">
+                      {(course.enrollments?.[0]?.count ?? 0)} enrolled · {(course.modules?.[0]?.count ?? 0)} module{(course.modules?.[0]?.count ?? 0) === 1 ? "" : "s"}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <DropdownMenu>
@@ -251,6 +276,28 @@ export default function CoursesClient({
           </div>
         )}
       </div>
+
+      {snoozedUntil !== null && (
+        <p className="text-[11.5px] !text-dash-textMuted">
+          The new-course reminder is hidden until {new Date(snoozedUntil).toLocaleDateString()}.{" "}
+          <button
+            className="underline hover:!text-dash-text"
+            onClick={() => { clearCourseReminderSnooze(); setSnoozedUntil(null); }}
+          >
+            Turn it back on
+          </button>
+        </p>
+      )}
+
+      <NewCourseAcknowledgement
+        open={isAckOpen}
+        onCancel={() => setIsAckOpen(false)}
+        onConfirm={(dontRemind) => {
+          if (dontRemind) setSnoozedUntil(snoozeCourseReminder());
+          setIsAckOpen(false);
+          setIsModalOpen(true);
+        }}
+      />
 
       <CreateCourseWizard
         open={isModalOpen}
