@@ -134,9 +134,10 @@ export default function GmailImportPanel() {
         <div>
           <p className="!text-dash-text text-[13px] font-semibold">Import existing conversations</p>
           <p className="!text-dash-textMuted text-[11.5px] mt-1 leading-snug max-w-lg">
-            Brings past emails with your contacts into Conversations. People you have emailed from this Gmail become
-            contacts if they aren&apos;t already. Newsletters, notifications, promotions and spam are left out.
-            Large mailboxes can take a while, and the import keeps running in the background.
+            Brings your past emails into Conversations, including newsletters and receipts. Real correspondence
+            creates a contact automatically; automated senders (newsletters, receipts, notifications) show up
+            without cluttering your Contacts list. Spam and trash are left out. Large mailboxes can take a while,
+            and the import keeps running in the background.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <label htmlFor="gmail-import-range" className="sr-only">How far back</label>
