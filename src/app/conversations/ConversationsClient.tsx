@@ -19,6 +19,13 @@ const CHANNEL_LABEL: Record<string, string> = { facebook: 'Messenger', instagram
 // history) so an agent can always see what's available and what still needs
 // connecting — fixed order, not derived from whatever happens to exist today.
 const ALL_CHANNELS = ['instagram', 'facebook', 'whatsapp', 'email', 'sms'];
+// TEMPORARY (WhatsApp connect-flow audit): no working self-serve connect exists for an existing
+// number yet, and no historical import — hidden from this inbox so it doesn't surface a
+// confusing/broken channel, while the underlying connection/conversations/messages stay fully
+// intact and untouched (still visible/manageable in Settings -> Messaging Connections). To bring
+// it back once self-serve connect is built: change this to an empty Set — nothing else needs to
+// move.
+const HIDDEN_CHANNELS = new Set<string>(['whatsapp']);
 import { ConversationList } from '@/components/conversations/ConversationList';
 import { ConversationThread } from '@/components/conversations/ConversationThread';
 import { ContactInfoPanel } from '@/components/conversations/ContactInfoPanel';
@@ -103,6 +110,13 @@ export default function ConversationsClient({
     });
   }, [supabase]);
 
+  // HIDDEN_CHANNELS filtered out at this single source point, so "All", the per-channel unread
+  // badges, and every downstream list/count naturally exclude them too — not a per-feature patch.
+  const visibleConversations = React.useMemo(
+    () => initialConversations.filter((conv) => !HIDDEN_CHANNELS.has(conv.platform)),
+    [initialConversations],
+  );
+
   // Consolidate conversations by contact_id
   const consolidatedConversations = React.useMemo(() => {
     const contactMap: Record<string, any> = {};
@@ -115,7 +129,7 @@ export default function ConversationsClient({
       return p ? { ...m, ...p } : m;
     };
 
-    initialConversations.forEach((conv) => {
+    visibleConversations.forEach((conv) => {
       const contact = Array.isArray(conv.contacts) ? conv.contacts[0] : conv.contacts;
       const contactId = contact?.id;
 
@@ -200,7 +214,7 @@ export default function ConversationsClient({
     });
 
     return allConsolidated.sort((a: any, b: any) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime());
-  }, [initialConversations, liveMessagePatches, optimisticMessages]);
+  }, [visibleConversations, liveMessagePatches, optimisticMessages]);
 
   // Channels whose token looks dead — either the connection row is in 'error', or
   // a visible outbound message failed with a Graph auth error. Drives the
@@ -208,7 +222,7 @@ export default function ConversationsClient({
   const reauthPlatforms = React.useMemo(() => {
     const set = new Set<string>();
     connectedPlatforms.forEach((c) => {
-      if (c.status === 'error' && META_MESSAGING.includes(c.platform)) set.add(c.platform);
+      if (c.status === 'error' && META_MESSAGING.includes(c.platform) && !HIDDEN_CHANNELS.has(c.platform)) set.add(c.platform);
     });
     consolidatedConversations.forEach((conv: any) => {
       (conv.messages || []).forEach((m: any) => {
@@ -216,7 +230,7 @@ export default function ConversationsClient({
         const code = m.metadata?.error_code;
         if (m.metadata?.error_type === 'OAuthException' || (typeof code === 'number' && AUTH_ERROR_CODES.has(code))) {
           const p = m.platform || conv.platform;
-          if (META_MESSAGING.includes(p)) set.add(p);
+          if (META_MESSAGING.includes(p) && !HIDDEN_CHANNELS.has(p)) set.add(p);
         }
       });
     });
@@ -237,7 +251,7 @@ export default function ConversationsClient({
   // messaging channels here, and were explicitly not built for the
   // Communications Hub. Stray/legacy conversation rows on those platforms
   // must never surface a tab for a channel that doesn't exist here.
-  const activeChannels = ALL_CHANNELS;
+  const activeChannels = ALL_CHANNELS.filter((c) => !HIDDEN_CHANNELS.has(c));
 
   // Real per-channel connection status, used to pick the right empty state
   // (a "Connect" prompt vs. a plain "no conversations yet"):
@@ -380,15 +394,18 @@ export default function ConversationsClient({
   useEffect(() => {
     const ids = activeIdsKey ? activeIdsKey.split(',') : [];
     if (!ids.length || document.visibilityState !== 'visible') return;
-    const hasUnread = !unread.loaded || ids.some((id) => (unread.byConversation[id] || 0) > 0);
+    const hasUnread = !unread.loaded || ids.some((id) => (unread.byConversation?.[id] || 0) > 0);
     if (!hasUnread) return;
     markReadLocally(ids);
     void markConversationsRead(ids);
   }, [activeIdsKey, unread]);
 
+  // Guarded with `?.` + a `?? {}` fallback below: `unread` comes from a shared external store
+  // (useSyncExternalStore) and a stale/mid-update snapshot should degrade to "nothing unread yet"
+  // rather than crash the whole page on a bracket access.
   const withUnread = (entry: any) =>
     unread.loaded
-      ? { ...entry, unread_count: entry.id === activeConvId ? 0 : convIdsOf(entry).reduce((n, id) => n + (unread.byConversation[id] || 0), 0) }
+      ? { ...entry, unread_count: entry.id === activeConvId ? 0 : convIdsOf(entry).reduce((n, id) => n + (unread.byConversation?.[id] || 0), 0) }
       : entry;
 
   // Per-channel unread totals for the channel selector's badges — same live store as everything
@@ -396,13 +413,14 @@ export default function ConversationsClient({
   const channelUnread = React.useMemo(() => {
     const totals: Record<string, number> = {};
     if (!unread.loaded) return totals;
-    for (const conv of initialConversations) {
+    const byConversation = unread.byConversation ?? {};
+    for (const conv of visibleConversations) {
       if (conv.id === activeConvId) continue;
-      const n = unread.byConversation[conv.id] || 0;
+      const n = byConversation[conv.id] || 0;
       if (n) totals[conv.platform] = (totals[conv.platform] || 0) + n;
     }
     return totals;
-  }, [initialConversations, unread, activeConvId]);
+  }, [visibleConversations, unread, activeConvId]);
 
   const filteredConversations = consolidatedConversations.map(withUnread).filter(c => {
     const matchesFilter = filter === 'all' || c.availablePlatforms.some((p: any) => p.platform === filter);

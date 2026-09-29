@@ -5,6 +5,7 @@ import { decrypt } from '@/lib/encryption';
 import { logger } from '@/shared/logger';
 import { MetaAdapter } from '@/lib/meta/MetaAdapter';
 import { statusesReadReceiptAdvancesFrom } from '@/lib/meta/deliveryStatus';
+import { normalizePhone } from '@/lib/phone';
 
 export const dynamic = 'force-dynamic';
 
@@ -741,20 +742,24 @@ async function handleWhatsAppMessage(message: any, metadata: any, webhookContact
     return;
   }
 
-  // 3. Normalize Phone Number standard (e.g., prefix with +)
-  const cleanPhone = fromNumber.startsWith('+') ? fromNumber : `+${fromNumber}`;
+  // 3. Normalize the phone number the same way every other channel does (E.164, via the shared
+  // normalizePhone() backed by the same SQL function as contacts.phone_e164) so a contact stored
+  // with spaces/dashes/local formatting still matches instead of spawning a duplicate "WhatsApp
+  // User" contact. Falls back to a bare "+" prefix only when normalization can't resolve the
+  // number at all — mirrors the Twilio inbound handler's exact fallback shape.
+  const fromE164 = normalizePhone(fromNumber);
+  const cleanPhone = fromE164 || (fromNumber.startsWith('+') ? fromNumber : `+${fromNumber}`);
 
   // 4. Resolve or Create Contact using existing CRM matching logic by Phone
   let contactId = null;
   let contactName = `WhatsApp User (${cleanPhone})`;
 
-  const { data: existingContact } = await supabase
+  let contactQuery = supabase
     .from('contacts')
     .select('id, first_name, last_name')
-    .eq('workspace_id', workspaceId)
-    .eq('phone', cleanPhone)
-    .limit(1)
-    .maybeSingle();
+    .eq('workspace_id', workspaceId);
+  contactQuery = fromE164 ? contactQuery.eq('phone_e164', fromE164) : contactQuery.eq('phone', cleanPhone);
+  const { data: existingContact } = await contactQuery.limit(1).maybeSingle();
 
   if (existingContact) {
     contactId = existingContact.id;

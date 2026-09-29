@@ -671,12 +671,20 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
                             ) : (
                               phoneNumbers.map((phone) => (
                                 <option key={phone.id} value={phone.id}>
-                                  {phone.verified_name} ({phone.display_phone_number})
+                                  {phone.verified_name} ({phone.display_phone_number}){phone.cloudApiReady === false ? ' — Not ready' : ''}
                                 </option>
                               ))
                             )}
                           </select>
                         </DashFormField>
+
+                        {selectedPhone && selectedPhone.cloudApiReady === false && (
+                          <div className="p-2.5 bg-red/5 border border-red/20 rounded-lg text-[11px] text-red leading-relaxed">
+                            Not ready — needs Cloud API setup (status: {selectedPhone.status || 'unknown'}
+                            {selectedPhone.platform_type && selectedPhone.platform_type !== 'CLOUD_API' ? `, platform: ${selectedPhone.platform_type}` : ''}).
+                            Complete registration in Meta&apos;s WhatsApp Manager first, or this number won&apos;t receive any messages.
+                          </div>
+                        )}
 
                         <div className="flex items-center gap-3 mt-4">
                           <DashButton
@@ -690,7 +698,7 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
                           <DashButton
                             type="button"
                             onClick={handleSaveWizard}
-                            disabled={!selectedPhone}
+                            disabled={!selectedPhone || selectedPhone.cloudApiReady === false}
                             variant="primary"
                             className="flex-1"
                           >
@@ -823,12 +831,20 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
                               ) : (
                                 phoneNumbers.map((phone) => (
                                   <option key={phone.id} value={phone.id}>
-                                    {phone.verified_name} ({phone.display_phone_number})
+                                    {phone.verified_name} ({phone.display_phone_number}){phone.cloudApiReady === false ? ' — Not ready' : ''}
                                   </option>
                                 ))
                               )}
                             </select>
                           </DashFormField>
+                        )}
+
+                        {selectedWaba && selectedPhone && selectedPhone.cloudApiReady === false && (
+                          <div className="p-2.5 bg-red/5 border border-red/20 rounded-lg text-[11px] text-red leading-relaxed">
+                            Not ready — needs Cloud API setup (status: {selectedPhone.status || 'unknown'}
+                            {selectedPhone.platform_type && selectedPhone.platform_type !== 'CLOUD_API' ? `, platform: ${selectedPhone.platform_type}` : ''}).
+                            Complete registration in Meta&apos;s WhatsApp Manager first, or this number won&apos;t receive any messages.
+                          </div>
                         )}
                       </div>
 
@@ -844,7 +860,7 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
                         <DashButton
                           type="button"
                           onClick={handleSaveWizard}
-                          disabled={selectedWaba && !selectedPhone}
+                          disabled={(selectedWaba && !selectedPhone) || selectedPhone?.cloudApiReady === false}
                           variant="primary"
                           className="flex-1"
                         >

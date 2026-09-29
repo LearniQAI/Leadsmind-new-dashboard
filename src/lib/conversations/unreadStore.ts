@@ -37,8 +37,14 @@ async function refresh() {
   inFlight = true;
   try {
     const next = await getUnreadCounts();
-    state = { ...next, loaded: true };
+    // Defensive: a stale client bundle hitting a server action across a deploy, or any other
+    // transport hiccup, should degrade to "nothing unread" rather than ever hand out a `state`
+    // whose byConversation isn't a real object (every reader does state.byConversation[id]).
+    state = { total: next?.total ?? 0, byConversation: next?.byConversation ?? {}, loaded: true };
     emit();
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[unreadStore] refresh failed', err);
   } finally {
     inFlight = false;
     if (again) {

@@ -1000,22 +1000,32 @@ export async function fetchMetaWhatsAppAccounts(businessId: string) {
   }
 }
 
+// A number only receives real Cloud API traffic in this state — anything else (ON_PREMISE,
+// DISCONNECTED, PENDING, NOT_VERIFIED, etc.) means messages sent to it never reach Meta's Cloud
+// API layer at all, regardless of anything on our side (confirmed live against a real number that
+// was showing "Connected" in our UI while receiving zero messages).
+export function isCloudApiHealthy(platformType: string | null | undefined, status: string | null | undefined): boolean {
+  return platformType === 'CLOUD_API' && status === 'CONNECTED';
+}
+
 export async function fetchWhatsAppPhoneNumbers(wabaId: string) {
   const oauth = await getMetaOauthToken();
   if (!oauth) throw new Error('Meta account not linked or session expired');
 
   if (oauth.isMock) {
+    const mockHealthy = { code_verification_status: 'VERIFIED', status: 'CONNECTED', platform_type: 'CLOUD_API', cloudApiReady: true };
     if (wabaId === 'mock_waba_1') {
-      return [{ id: 'mock_phone_1', display_phone_number: '+1 (555) 019-2834', verified_name: 'LeadsMind Corporate WhatsApp Line' }];
+      return [{ id: 'mock_phone_1', display_phone_number: '+1 (555) 019-2834', verified_name: 'LeadsMind Corporate WhatsApp Line', ...mockHealthy }];
     } else if (wabaId === 'mock_waba_2') {
-      return [{ id: 'mock_phone_2', display_phone_number: '+1 (555) 019-9999', verified_name: 'LeadsMind Retail WhatsApp Line' }];
+      return [{ id: 'mock_phone_2', display_phone_number: '+1 (555) 019-9999', verified_name: 'LeadsMind Retail WhatsApp Line', ...mockHealthy }];
     } else {
-      return [{ id: 'mock_phone_3', display_phone_number: '+1 (555) 019-1111', verified_name: 'Personal WhatsApp Line' }];
+      return [{ id: 'mock_phone_3', display_phone_number: '+1 (555) 019-1111', verified_name: 'Personal WhatsApp Line', ...mockHealthy }];
     }
   }
 
   try {
-    const response = await fetch(`https://graph.facebook.com/v18.0/${wabaId}/phone_numbers?access_token=${oauth.token}`);
+    const fields = 'id,display_phone_number,verified_name,code_verification_status,status,platform_type';
+    const response = await fetch(`https://graph.facebook.com/v18.0/${wabaId}/phone_numbers?fields=${fields}&access_token=${oauth.token}`);
     const data = await response.json();
     if (!response.ok) {
       throw new Error(data.error?.message || 'Failed to fetch WhatsApp Phone Numbers');
@@ -1023,7 +1033,13 @@ export async function fetchWhatsAppPhoneNumbers(wabaId: string) {
     return (data.data || []).map((p: any) => ({
       id: p.id,
       display_phone_number: p.display_phone_number,
-      verified_name: p.verified_name || 'WhatsApp Business Line'
+      verified_name: p.verified_name || 'WhatsApp Business Line',
+      code_verification_status: p.code_verification_status || null,
+      status: p.status || null,
+      platform_type: p.platform_type || null,
+      // Surfaced in the picker so a customer sees this BEFORE selecting a number, not after a
+      // silent "Connected" that never receives anything.
+      cloudApiReady: isCloudApiHealthy(p.platform_type, p.status),
     }));
   } catch (err: any) {
     logger.error({ err, wabaId }, 'messaging.meta_api.whatsapp_phone_numbers.fetch.failed');
@@ -1120,6 +1136,31 @@ export async function saveMetaConnections(data: {
       }, { onConflict: 'workspace_id,platform' });
       if (igErr) throw igErr;
     } else if (targetPlatform === 'whatsapp') {
+      // Fail closed: a number that isn't actually CLOUD_API/CONNECTED on Meta's side will never
+      // receive real WhatsApp traffic no matter what we store here (confirmed live against a real
+      // number this exact scenario broke for). The webhook-subscription check below is necessary
+      // but not sufficient - it passes even for a number stuck ON_PREMISE/DISCONNECTED, which is
+      // exactly how this went silently wrong before. This is checked with a fresh, real Graph API
+      // call rather than trusting whatever fetchWhatsAppPhoneNumbers() returned to the picker
+      // (which could be stale by the time the customer clicks through the wizard).
+      if (!data.phoneNumberId) return { error: 'No WhatsApp phone number selected.' };
+      if (!oauth.isMock) {
+        const fields = 'id,status,platform_type,code_verification_status';
+        const pnRes = await fetch(`https://graph.facebook.com/v18.0/${data.phoneNumberId}?fields=${fields}&access_token=${oauth.token}`);
+        const pnData = await pnRes.json();
+        if (!pnRes.ok) {
+          logger.error({ err: pnData?.error, phoneNumberId: data.phoneNumberId, workspaceId }, 'messaging.whatsapp.phone_status_check.failed');
+          return { error: pnData?.error?.message || 'Could not verify this WhatsApp number\'s status with Meta. Please try again.' };
+        }
+        if (!isCloudApiHealthy(pnData.platform_type, pnData.status)) {
+          logger.warn({ phoneNumberId: data.phoneNumberId, workspaceId, platformType: pnData.platform_type, status: pnData.status }, 'messaging.whatsapp.connect_refused_unhealthy_number');
+          return {
+            error: `This WhatsApp number isn't ready to receive messages yet (Cloud API status: ${pnData.status || 'unknown'}${pnData.platform_type && pnData.platform_type !== 'CLOUD_API' ? `, platform: ${pnData.platform_type}` : ''}). ` +
+              'It needs to complete Cloud API registration in Meta\'s WhatsApp Manager (business.facebook.com/wa/manage/phone-numbers) before it can be connected here.',
+          };
+        }
+      }
+
       const wa = await whatsappWebhookHealth(data.whatsappBusinessAccountId, oauth.token);
       if (!wa.ok) warning = WA_WEBHOOK_WARNING;
       const { error: waErr } = await supabase.from('platform_connections').upsert({
