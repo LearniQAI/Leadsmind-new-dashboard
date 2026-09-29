@@ -24,6 +24,10 @@ export interface TriggerPayload {
   attribution?: Record<string, any>;
   isReturningContact?: boolean;
   metadata?: Record<string, any>;
+  // Carries the originating HTTP request's request_id (e.g. the form-submit route's) through to
+  // the Inngest-run workflow trigger, so its own timing log can be correlated back to the request
+  // that caused it instead of appearing as an unrelated log line.
+  requestId?: string;
 }
 
 export const TriggerDispatcher = {
@@ -40,7 +44,7 @@ export const TriggerDispatcher = {
     try {
       await inngest.send({
         name: 'workflow/trigger',
-        data: { event, payload },
+        data: { event, payload, requestId: payload.requestId },
       });
     } catch (err: any) {
       console.error(`[TriggerDispatcher] Failed to enqueue event ${event}:`, err);

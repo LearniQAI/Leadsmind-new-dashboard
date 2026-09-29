@@ -1,6 +1,8 @@
 import OpenAI from 'openai';
 import { db } from '../../database/datasource';
 import { ScoringEngine } from './ScoringEngine';
+import { logger, safeLog } from '@/shared/logger';
+import { createStepTimer } from '@/shared/logger/requestTiming';
 
 export const agentToolDefinitions = [
   {
@@ -208,9 +210,21 @@ export class ResearchAgent {
     contactName: string,
     companyName: string,
     domain: string,
-    workspaceId: string
+    workspaceId: string,
+    requestId?: string
   ): Promise<any> {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const timer = createStepTimer();
+
+    // One contact's step timing within a batch request — logged here (not into request_timings,
+    // which holds the batch route's own single top-level row) so the OpenAI-call breakdown for
+    // this specific contact is visible without a DB write per contact.
+    const logStep = (outcome: 'cache_hit' | 'completed' | 'error') => safeLog(() =>
+      logger.info(
+        { requestId, workspaceId, contactId, outcome, durationMs: Math.round(timer.totalMs()), steps: timer.steps() },
+        'ai_research.enrich_contact'
+      )
+    );
 
     // Check cache first
     const thirtyDaysAgo = new Date();
@@ -218,9 +232,11 @@ export class ResearchAgent {
     const cachedReport = await db('ai_research_reports')
       .where({ contact_id: contactId })
       .first();
+    timer.mark('cache_lookup');
 
     if (cachedReport && new Date(cachedReport.created_at) > thirtyDaysAgo) {
       console.log(`[Research Agent] Cache HIT for contact ${contactId}`);
+      logStep('cache_hit');
       return cachedReport.report_json;
     }
 
@@ -256,6 +272,7 @@ export class ResearchAgent {
         tools: agentToolDefinitions as any,
         tool_choice: 'auto'
       });
+      timer.mark('openai_call_draft');
 
       const responseMessage = response.choices[0].message;
       let rawContent = '';
@@ -277,6 +294,7 @@ export class ResearchAgent {
           messages,
           response_format: { type: 'json_object' }
         });
+        timer.mark('openai_call_final');
 
         rawContent = finalResponse.choices[0].message.content || '{}';
       } else {
@@ -306,8 +324,9 @@ export class ResearchAgent {
       const companyRecord = await db('crm_companies').where({ domain }).first();
       const headcountNum = companyRecord ? parseInt(companyRecord.employees || '0', 10) : 60;
       const industryText = companyRecord?.industry || '';
-      
+
       const voiceRecord = await db('workspace_brand_voice').where({ workspace_id: workspaceId }).first();
+      timer.mark('company_and_brand_voice_lookup');
       const targetIndustry = voiceRecord?.industry || '';
       const industryMatch = industryText.toLowerCase().includes(targetIndustry.toLowerCase()) || targetIndustry.toLowerCase().includes(industryText.toLowerCase()) || true;
 
@@ -359,6 +378,7 @@ export class ResearchAgent {
         sources_used: [`https://linkedin.com/in/${contactName.toLowerCase().replace(' ', '-')}`, `https://${domain}`],
         expires_at: expiresAt.toISOString()
       });
+      timer.mark('report_insert');
 
       try {
         await db('crm_activities').insert({
@@ -372,10 +392,13 @@ export class ResearchAgent {
       } catch (activityErr: any) {
         console.error('Error logging CRM activity:', activityErr.message);
       }
+      timer.mark('activity_insert');
 
+      logStep('completed');
       return finalReportJson;
     } catch (err: any) {
       console.error('[Research Agent Contact Enrichment] Error:', err);
+      logStep('error');
       return {
         company_snapshot: {
           legal_name: companyName,

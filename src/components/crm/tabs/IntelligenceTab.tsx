@@ -4,6 +4,7 @@ import { Brain, Sparkles, TrendingUp, AlertTriangle, ShieldCheck, HelpCircle, Bu
 import { FaLinkedin as Linkedin } from 'react-icons/fa6';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
+import { newClientRequestId } from '@/lib/http/requestId';
 
 interface IntelligenceTabProps {
   contactId: string;
@@ -60,7 +61,7 @@ export default function IntelligenceTab({
     try {
       const response = await fetch('/api/v1/ai/research/batch', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-request-id': newClientRequestId() },
         body: JSON.stringify({
           contactIds: [contactId],
           workspaceId,

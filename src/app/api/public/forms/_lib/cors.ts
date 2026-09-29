@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 export const EMBED_CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, x-workspace-id',
+  'Access-Control-Allow-Headers': 'Content-Type, x-workspace-id, x-request-id',
   'Cache-Control': 'no-store',
 } as const;
 

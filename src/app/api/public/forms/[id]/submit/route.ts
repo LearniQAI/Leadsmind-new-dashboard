@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server';
 import { corsResponse, corsError, getAdminSupabase } from '../../_lib/cors';
 import { evaluateLogicRules, LogicRule } from '@/app/forms/builder/[id]/components/LogicEngine';
 import { validatePublicStep, PublicFieldSchema } from '@/app/public/forms/[id]/PublicValidationEngine';
+import { getRequestId } from '@/shared/logger/requestId';
+import { createStepTimer, logRequestComplete } from '@/shared/logger/requestTiming';
 
 // Simple in-memory rate limit scaffold (per IP, per form, per minute)
 // In production this would be backed by Redis or Upstash
@@ -44,6 +46,25 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const requestId = getRequestId(req.headers);
+  const timer = createStepTimer();
+  let workspaceIdForLog: string | null = null;
+
+  const response = await handleSubmit();
+
+  logRequestComplete({
+    requestId,
+    route: '/api/public/forms/[id]/submit',
+    method: 'POST',
+    status: response.status,
+    durationMs: timer.totalMs(),
+    steps: timer.steps(),
+    workspaceId: workspaceIdForLog,
+  });
+  response.headers.set('x-request-id', requestId);
+  return response;
+
+  async function handleSubmit(): Promise<Response> {
   const { id } = params;
 
   if (!id) {
@@ -74,6 +95,7 @@ export async function POST(
     if (!workspace_id) {
       return corsError('Workspace ID is required', 400);
     }
+    workspaceIdForLog = workspace_id;
 
     const supabase = getAdminSupabase();
 
@@ -85,6 +107,7 @@ export async function POST(
       .eq('status', 'published')
       .eq('workspace_id', workspace_id)
       .single();
+    timer.mark('form_lookup');
 
     if (formError || !form) {
       return corsError('Form not found or not published', 404);
@@ -106,6 +129,7 @@ export async function POST(
         .maybeSingle();
       verifiedVariantId = variantRow?.id || null;
     }
+    timer.mark('variant_lookup');
 
     // Honeypot spam check
     const honeypot = formData.lm_hp_field;
@@ -240,6 +264,8 @@ export async function POST(
         contactId = c.id;
       }
     }
+
+    timer.mark('contact_resolution');
 
     // Parse attachments from formData if not explicitly passed
     let parsedAttachments = Array.isArray(attachments) ? attachments : [];
@@ -417,6 +443,7 @@ export async function POST(
         console.error('[Public Submit] Tag-on-submit assignment failed (non-fatal):', tagAssignError);
       }
     }
+    timer.mark('contact_write');
 
     // 4. Insert the form submission record first — the activity logged just
     // below references its id, so an activity can never exist without a
@@ -445,6 +472,8 @@ export async function POST(
       .select('id')
       .single();
 
+    timer.mark('submission_insert');
+
     if (submissionError) {
       console.error('[Public Submit] Submission error:', submissionError);
       return corsError(`Database error: ${submissionError.message || JSON.stringify(submissionError)}`, 500);
@@ -471,6 +500,7 @@ export async function POST(
         console.error('Failed to append CRM form submission activity:', err);
       }
     }
+    timer.mark('activity_insert');
 
     try {
       const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
@@ -479,9 +509,12 @@ export async function POST(
         submission: { id: submission?.id, data: formData, contact_id: contactId ?? null },
       }).catch(() => {});
     } catch (e) { console.error('[webhook-dispatch-form-submitted-error]', e); }
+    timer.mark('webhook_dispatch');
 
     // Enqueue workflow automations onto Inngest (durable — survives this
-    // function's teardown after the response is sent)
+    // function's teardown after the response is sent). The same request_id is threaded
+    // through so the automation run's own timing log (workflowTrigger.ts) can be
+    // correlated back to this submission instead of being an unrelated log line.
     try {
       const { TriggerDispatcher } = await import('@/lib/automations/TriggerDispatcher');
       await TriggerDispatcher.dispatch('form_submitted', {
@@ -496,11 +529,13 @@ export async function POST(
           userAgent,
           sourceUrl,
           transactionStatus: transaction_status || null,
-        }
+        },
+        requestId,
       });
     } catch (triggerErr) {
       console.error('[Public Submit] Failed to dispatch workflow trigger:', triggerErr);
     }
+    timer.mark('trigger_dispatch');
 
     return corsResponse({
       success: true,
@@ -511,6 +546,7 @@ export async function POST(
   } catch (err: any) {
     console.error('[Public Submit] Unhandled error:', err);
     return corsError('Internal server error', 500);
+  }
   }
 }
 

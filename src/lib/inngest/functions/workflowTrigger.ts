@@ -3,6 +3,8 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { WorkflowEngine, WorkflowContext } from '@/lib/automations/WorkflowEngine'
 import { AutomationTriggerEvent, TriggerPayload } from '@/lib/automations/TriggerDispatcher'
 import { logger } from '@/shared/logger'
+import { newRequestId } from '@/shared/logger/requestId'
+import { createStepTimer, logRequestComplete } from '@/shared/logger/requestTiming'
 
 interface WorkflowTriggerEventData {
   event: AutomationTriggerEvent
@@ -25,6 +27,11 @@ export const workflowTriggerFn = inngest.createFunction(
   async ({ event: inngestEvent, step }) => {
     const { event, payload } = inngestEvent.data as WorkflowTriggerEventData
     const supabase = createAdminClient()
+    // Reuses the originating form-submit request's request_id when present (threaded through
+    // TriggerDispatcher) so this run's timing correlates back to that HTTP request instead of
+    // being an unrelated log line; falls back to a fresh id for any other trigger source.
+    const requestId = payload.requestId || newRequestId()
+    const timer = createStepTimer()
 
     const workflows = await step.run('find-matching-workflows', async () => {
       const { data, error } = await supabase
@@ -37,9 +44,19 @@ export const workflowTriggerFn = inngest.createFunction(
       if (error) throw error
       return data ?? []
     })
+    timer.mark('find_matching_workflows')
 
     if (workflows.length === 0) {
       logger.info({ event, formId: payload.formId }, 'workflow_trigger.no_matching_workflows')
+      logRequestComplete({
+        requestId,
+        route: 'automation.workflow_trigger',
+        method: 'INNGEST',
+        status: 200,
+        durationMs: timer.totalMs(),
+        steps: timer.steps(),
+        workspaceId: payload.workspaceId,
+      })
       return { matched: 0 }
     }
 
@@ -53,9 +70,27 @@ export const workflowTriggerFn = inngest.createFunction(
       metadata: payload.metadata,
     }
 
-    for (const wf of workflows) {
-      await step.run(`run-workflow-${wf.id}`, async () => {
-        await WorkflowEngine.runWorkflow(wf.id, context)
+    let runError: unknown = null
+    try {
+      for (const wf of workflows) {
+        await step.run(`run-workflow-${wf.id}`, async () => {
+          await WorkflowEngine.runWorkflow(wf.id, context)
+        })
+        timer.mark(`run_workflow_${wf.id}`)
+      }
+    } catch (err) {
+      runError = err
+      throw err
+    } finally {
+      logRequestComplete({
+        requestId,
+        route: 'automation.workflow_trigger',
+        method: 'INNGEST',
+        status: runError ? 500 : 200,
+        durationMs: timer.totalMs(),
+        steps: timer.steps(),
+        workspaceId: payload.workspaceId,
+        error: runError,
       })
     }
 
