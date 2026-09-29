@@ -105,16 +105,20 @@ export const PublishManager = {
       if (!snapRes.success) throw new Error(snapRes.error);
 
       // 4. Mark parent form status as published and save published_version mapping
-      const { error: publishErr } = await supabase
+      const { data: publishedRows, error: publishErr } = await supabase
         .from('forms')
         .update({
           status: 'published',
           published_version: snapRes.version?.version_number,
           published_at: new Date().toISOString()
         })
-        .eq('id', formId);
+        .eq('id', formId)
+        .select('id');
 
       if (publishErr) throw publishErr;
+      if (!publishedRows || publishedRows.length === 0) {
+        throw new Error('Publish did not apply — you may not have permission to publish this form.');
+      }
 
       // 5. Track in audit logs
       await AuditLogger.logAction(
@@ -137,12 +141,16 @@ export const PublishManager = {
   async unpublishForm(formId: string, actor: string): Promise<{ success: boolean; error?: string }> {
     const supabase = createClient();
     try {
-      const { error } = await supabase
+      const { data: rows, error } = await supabase
         .from('forms')
         .update({ status: 'draft' })
-        .eq('id', formId);
+        .eq('id', formId)
+        .select('id');
 
       if (error) throw error;
+      if (!rows || rows.length === 0) {
+        throw new Error('Unpublish did not apply — you may not have permission to unpublish this form.');
+      }
 
       await AuditLogger.logAction(formId, 'unpublish', actor, 'Deactivated form to Draft mode', {});
       return { success: true };

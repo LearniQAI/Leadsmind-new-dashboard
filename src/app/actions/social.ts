@@ -191,13 +191,16 @@ export async function updateScheduledPost(postId: string, updates: {
     }
     patch.updated_at = new Date().toISOString();
 
-    const { error: updateErr } = await supabase
+    const { data: updated, error: updateErr } = await supabase
       .from('social_posts')
       .update(patch)
       .eq('id', postId)
       .eq('workspace_id', workspaceId)
-      .eq('status', 'scheduled');
+      .eq('status', 'scheduled')
+      .select('id')
+      .maybeSingle();
     if (updateErr) throw updateErr;
+    if (!updated) return { error: 'Post is not in an editable (scheduled) state.' };
 
     return { success: true };
   } catch (error: any) {

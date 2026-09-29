@@ -124,11 +124,30 @@ export function WorkflowEditor({ workflowId, onSaved }: WorkflowEditorProps) {
   const saveWorkflow = async () => {
     setSaving(true);
     try {
+      // An active workflow saved down to zero steps used to run on every trigger
+      // with no error and no execution log row — indistinguishable from never
+      // firing at all. Block that combination instead of saving it silently.
+      if (steps.length === 0) {
+        const { data: wf } = await supabase.from('workflows').select('is_active').eq('id', workflowId).single();
+        if (wf?.is_active) {
+          toast.error('This automation is active but has no actions — add a step, or turn it off before saving with no steps.');
+          setSaving(false);
+          return;
+        }
+      }
+
       // 1. Update workflow metadata
-      await supabase
+      const { data: updatedWorkflow, error: metaErr } = await supabase
         .from('workflows')
         .update({ name, trigger_type: triggerType, updated_at: new Date().toISOString() })
-        .eq('id', workflowId);
+        .eq('id', workflowId)
+        .select('id')
+        .maybeSingle();
+
+      if (metaErr) throw metaErr;
+      if (!updatedWorkflow) {
+        throw new Error('Save did not apply — you may not have permission to edit this automation.');
+      }
 
       // 2. Delete existing steps
       await supabase.from('workflow_steps').delete().eq('workflow_id', workflowId);

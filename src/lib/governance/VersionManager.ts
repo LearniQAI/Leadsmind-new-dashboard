@@ -79,15 +79,20 @@ export const VersionManager = {
       }
 
       // Overwrite the parent form configuration to match the snapshot
-      const { error: updateErr } = await supabase
+      const { data: rolledBack, error: updateErr } = await supabase
         .from('forms')
         .update({
           fields: version.snapshot.fields || [],
           config: version.snapshot.config || {}
         })
-        .eq('id', formId);
+        .eq('id', formId)
+        .select('id')
+        .maybeSingle();
 
       if (updateErr) throw updateErr;
+      if (!rolledBack) {
+        throw new Error('Rollback did not apply — you may not have permission to edit this form.');
+      }
 
       return { success: true, snapshot: version.snapshot };
     } catch (err: any) {

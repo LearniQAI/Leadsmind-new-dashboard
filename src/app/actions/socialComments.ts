@@ -67,7 +67,7 @@ export async function replyToSocialComment(commentRowId: string, message: string
     const result = await replyToPlatformComment(comment.platform, conn.credentials, comment.comment_id, message, supabase, workspaceId);
     if (result.success === false) return { error: result.error };
 
-    const { error: updateErr } = await supabase
+    const { data: updated, error: updateErr } = await supabase
       .from('social_comments')
       .update({
         status: 'replied',
@@ -76,8 +76,18 @@ export async function replyToSocialComment(commentRowId: string, message: string
         replied_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq('id', commentRowId);
+      .eq('id', commentRowId)
+      .eq('workspace_id', workspaceId)
+      .select('id')
+      .maybeSingle();
     if (updateErr) throw updateErr;
+    if (!updated) {
+      // The reply was already sent to the platform above; only our local status
+      // tracking failed to persist. Surface this distinctly so the caller doesn't
+      // re-send the reply, which would duplicate it on the real platform.
+      logger.error({ workspaceId, commentRowId }, 'social.comments.reply.status_persist_failed_after_send');
+      return { error: 'Reply was sent, but we could not update its status. Refresh before retrying to avoid a duplicate reply.' };
+    }
 
     return { success: true, replyId: result.replyId };
   } catch (error: any) {
