@@ -40,6 +40,10 @@ export interface ContinueLearningCourse {
   lastLessonId?: string | null;
   lastPositionSeconds?: number | null;
   enrolledAt?: string | null;
+  /** From the shared resolver: first incomplete lesson in current course order (or the in-progress one). */
+  continueLessonId?: string | null;
+  continueLabel?: string | null;
+  progressState?: 'not_started' | 'in_progress' | 'complete';
 }
 
 export function pickContinueLearningCourse<T extends ContinueLearningCourse>(
@@ -66,11 +70,15 @@ export default function ContinueLearningBanner({
   if (!course) return null;
 
   const pct = course.progressPercentage || 0;
-  const started = pct > 0 || (course.completedLessons ?? 0) > 0 || !!course.lastLessonId;
+  const started = course.progressState ? course.progressState !== 'not_started' : pct > 0 || (course.completedLessons ?? 0) > 0 || !!course.lastLessonId;
 
-  const href = course.lastLessonId
-    ? `/student/courses/${course.id}?restore=true&lessonId=${course.lastLessonId}&t=${course.lastPositionSeconds || 0}`
-    : `/student/courses/${course.id}`;
+  // Resume the resolver's target. Playback position only applies when that target is the lesson
+  // the student was last on; any other lesson starts from the top.
+  const href = course.continueLessonId
+    ? `/student/courses/${course.id}?restore=true&lessonId=${course.continueLessonId}&t=${course.continueLessonId === course.lastLessonId ? course.lastPositionSeconds || 0 : 0}`
+    : course.lastLessonId
+      ? `/student/courses/${course.id}?restore=true&lessonId=${course.lastLessonId}&t=${course.lastPositionSeconds || 0}`
+      : `/student/courses/${course.id}`;
 
   return (
     <Link
@@ -94,7 +102,7 @@ export default function ContinueLearningBanner({
                 <span>
                   {course.completedLessons ?? 0}/{course.totalLessons} lessons
                 </span>
-                <span className="font-semibold !text-dash-text">{pct}%</span>
+                <span className="font-semibold !text-dash-text">{course.continueLabel || `${pct}%`}</span>
               </div>
               <Progress value={pct} className="h-1.5 bg-dash-surface" />
             </div>

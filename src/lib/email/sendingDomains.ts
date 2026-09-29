@@ -294,6 +294,11 @@ export async function updateSendingDomainIdentity(
  * identical HTML from hello@zainulhassan.site landed in Inbox as "Zain Ul Hassan" and in Spam as
  * "LeadsMind", in two separate Gmail mailboxes. Chain: the domain's own From name → the workspace
  * name → the domain itself, each taken only if it passes validateSenderName.
+ *
+ * "Verified" here means spf_status && dkim_status, not the provider's aggregate `status` label —
+ * see checkManagedFromDomain's comment. The aggregate label also folds in the optional
+ * tracking-subdomain CNAME, so gating on it here would make the same domain un-sendable from
+ * simply for having open/click tracking enabled with a not-yet-propagated CNAME.
  */
 export async function resolveManagedFromIdentity(workspaceId: string) {
   const db = createAdminClient();
@@ -301,7 +306,8 @@ export async function resolveManagedFromIdentity(workspaceId: string) {
     .from('sender_domains')
     .select('id, domain_name, from_local_part, from_name, is_default, status, paused_at, workspaces(name, postal_address)')
     .eq('workspace_id', workspaceId)
-    .eq('status', 'verified')
+    .eq('spf_status', true)
+    .eq('dkim_status', true)
     .order('is_default', { ascending: false })
     .order('created_at', { ascending: true })
     .limit(1)

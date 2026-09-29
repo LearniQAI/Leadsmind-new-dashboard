@@ -8,12 +8,15 @@ import {
   ArrowLeft, Plus, MoveUp, MoveDown, Trash2, Eye, ShieldCheck,
   CheckCircle, AlertTriangle, Monitor, Smartphone, Moon, Sun, Save, Sparkles, Upload,
   Image as ImageIcon, Columns, Quote, Hourglass, MousePointerClick, AlignLeft, GitBranch, Loader2,
-  Pencil, Users, Filter, GripVertical
+  Pencil, Users, Filter, GripVertical, MoreVertical, CalendarClock
 } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { TagIconGlyph } from '@/lib/tags/tagIcons';
 import AISparkDrawer from '@/components/common/AISparkDrawer';
-import { dispatchCampaignNow, updateCampaign, sendTestEmailAction, getCampaignAudienceReach } from '@/app/actions/marketing';
+import { updateCampaign, sendTestEmailAction, getCampaignAudienceReach, sendCampaignNow, cancelScheduledCampaign } from '@/app/actions/marketing';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
 import { renderEmailLayout, compileCampaignHtml, EmailBlock, BrandKit } from '@/lib/builder/emailRenderer';
 import { checkEmailContent, type EmailContentWarning } from '@/lib/builder/emailContentCheck';
 import { DashModal, DashModalContent, DashModalHeader, DashModalTitle, DashModalFooter } from '@/components/dashboard-ui/Modal';
@@ -86,12 +89,14 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
   const [testEmail, setTestEmail] = useState(userEmail);
   const [testSending, setTestSending] = useState(false);
 
-  // Deploy / Automate State
+  // Schedule / Automate modal state — the ONLY place "schedule for later" and the auto-sender
+  // toggle live now. Immediate "Send" is a separate, single-purpose confirm dialog below.
   const [deployModalOpen, setDeployModalOpen] = useState(false);
-  // Every immediate send (header "Send now" and the Send dialog's "Send now") confirms first.
+  // The one immediate-send confirmation, opened directly by the header "Send" button.
   const [confirmSendNowOpen, setConfirmSendNowOpen] = useState(false);
+  const [sendState, setSendState] = useState<'idle' | 'sending' | 'sent'>('idle');
   // The audience is configured ONLY in the campaign's Settings dialog (one source of truth). The
-  // Send dialog shows it read-only; "Edit audience" opens that same Settings dialog in place.
+  // Send/Schedule dialogs show it read-only; "Edit audience" opens that same Settings dialog in place.
   const [tagOptions, setTagOptions] = useState<TagOption[]>(availableTags);
   const [savedCampaign, setSavedCampaign] = useState<any>(initialCampaign);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -106,6 +111,10 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
   const [isAutomated, setIsAutomated] = useState(() => !!initialCampaign.segment?.is_automated);
   // The Settings audience is the ONLY audience: nothing can be sent without one.
   const canSend = hasSavedAudience;
+  // A genuine future schedule on THIS campaign (mirrors CampaignsClient's isGenuinelyScheduled) —
+  // drives the "Scheduled for…/Cancel" strip under the campaign name.
+  const isGenuinelyScheduled = savedCampaign.status === 'scheduled' && !!savedCampaign.scheduled_for && !isAutomated;
+  const [cancelingSchedule, setCancelingSchedule] = useState(false);
 
   const [preheaderText, setPreheaderText] = useState(initialCampaign.preview_text || '');
   const [scheduledFor, setScheduledFor] = useState(() => {
@@ -310,7 +319,7 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
   // Live, count-only size of the SAVED audience while the Send dialog is open.
   const segmentKey = JSON.stringify(savedSegment);
   useEffect(() => {
-    if (!deployModalOpen) return;
+    if (!deployModalOpen && !confirmSendNowOpen) return;
     if (!hasSavedAudience) { setReach(null); setReachError(null); return; }
     let cancelled = false;
     setReachLoading(true);
@@ -322,13 +331,14 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
     });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deployModalOpen, segmentKey]);
+  }, [deployModalOpen, confirmSendNowOpen, segmentKey]);
 
-  // Launch / Automate Action
-  const handleDeploy = async (mode: 'now' | 'schedule') => {
+  // Schedule for later, or save + activate the auto-sender. Real immediate sending is a SEPARATE
+  // function below (handleSendNow) that reuses the exact same action as the campaign card — this
+  // function never dispatches anything itself, it only ever writes status/scheduled_for.
+  const handleDeploy = async (mode: 'automate' | 'schedule') => {
     setSaving(true);
     try {
-      // 1. Compile final HTML
       // Same compile as handleSave (tokens intact). Resolving here bakes an empty
       // unsubscribe href and "Valued Customer" into every email.
       const compiledHtml = compileCampaignHtml(blocks, brandKit, preheaderText);
@@ -358,6 +368,10 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
         combineMode: savedTagIds.length > 0 && (savedRuleCount > 0 || savedSegmentId) ? savedSegment.combineMode : undefined,
       };
 
+      // scheduled_for stays null for the auto-sender (it has no single send time — it fires
+      // per-contact going forward) and is set to the exact chosen moment for a real schedule.
+      // send_immediately (set inside updateCampaign's enqueue) is false either way, so the
+      // predictive best-time-to-send logic keeps applying exactly as it did before this change.
       const result = await updateCampaign(campaignId, {
         builder_json: blocks,
         body_html: compiledHtml,
@@ -370,13 +384,6 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
       if (result.error) {
         toastCampaignSendError(result.error, router.push);
       } else {
-        if (mode === 'now' && !isAutomated && (result.matchedContactsCount || 0) > 0) {
-          const dispatchResult = await dispatchCampaignNow(campaignId);
-          if (dispatchResult.error) {
-            toastCampaignSendError(dispatchResult.error, router.push);
-            return;
-          }
-        }
         const directSent = result.directSent?.length ?? 0;
         if (result.directFailed?.length) {
           toast.warning(`${result.directFailed.length} direct address(es) failed to send: ${result.directFailed.map((f: { email: string }) => f.email).join(', ')}`);
@@ -389,25 +396,95 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
         toast.success(
           isAutomated
             ? `Automated campaign activated! ${countMsg}`
-            : mode === 'schedule'
-              ? `Campaign scheduled for ${new Date(scheduledFor).toLocaleString()}. ${countMsg}`
-              : `Broadcast started immediately! ${countMsg}`
+            : `Campaign scheduled for ${new Date(scheduledFor).toLocaleString()}. ${countMsg}`
         );
         setDeployModalOpen(false);
-        // A real "Send now" (not scheduling, not just enabling an auto-sender) has actually gone
-        // out — take the user back to the campaigns list rather than leaving them on the now-sent
-        // campaign's builder. router.push (not the literal leadsmind.io URL) so this still resolves
-        // correctly in local/staging environments, not just production.
-        if (mode === 'now' && !isAutomated) {
-          router.push('/campaigns');
-        } else {
-          router.refresh();
-        }
+        setSavedCampaign((prev: any) => ({ ...prev, ...result.data }));
+        router.refresh();
       }
     } catch (err: any) {
       toast.error('Failed to deploy campaign.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // The ONE real immediate-send path in this builder. It saves the current design first (so
+  // sendCampaignNow reads fresh body_html), then calls the EXACT SAME server action the campaign
+  // card's "Send now" button calls — no second send implementation. send_immediately gets set to
+  // true inside that action's updateCampaign call, which is what actually bypasses the predictive
+  // best-time-to-send delay; nothing here fakes urgency or adds an artificial wait.
+  const handleSendNow = async () => {
+    setSendState('sending');
+    setSaving(true);
+    try {
+      const compiledHtml = compileCampaignHtml(blocks, brandKit, preheaderText);
+      const textBlock = blocks.find(b => b.type === 'text');
+      const plainTextPreview = textBlock?.content.body?.slice(0, 100) || 'Your LeadsMind Email Broadcast';
+
+      const saveResult = await updateCampaign(campaignId, {
+        builder_json: blocks,
+        body_html: compiledHtml,
+        preview_text: preheaderText || plainTextPreview.replace(/\{\{[^}]+\}\}/g, '').trim(),
+      });
+      if (saveResult.error) {
+        toastCampaignSendError(saveResult.error, router.push);
+        setSendState('idle');
+        return;
+      }
+
+      const result = await sendCampaignNow(campaignId);
+      if (result.error) {
+        toastCampaignSendError(result.error, router.push);
+        setSendState('idle');
+        return;
+      }
+
+      if (result.directFailed?.length) {
+        toast.warning(`${result.directFailed.length} direct address(es) failed to send: ${result.directFailed.map((f: { email: string }) => f.email).join(', ')}`);
+      }
+      if (result.directSkipped?.length) {
+        toast.info(`Skipped ${result.directSkipped.length} unsubscribed/invalid address(es).`);
+      }
+      if (result.dispatchWarning) {
+        toast.warning(result.dispatchWarning);
+      } else {
+        const total = (result.matchedContactsCount || 0) + (result.directSent?.length || 0);
+        toast.success(`Sending now to ${total} recipient${total === 1 ? '' : 's'}.`);
+      }
+
+      setSendState('sent');
+      if (result.data) setSavedCampaign((prev: any) => ({ ...prev, ...result.data }));
+      // Leave the dialog showing "Sent" for a beat before closing and returning to the campaigns
+      // list — a real send has gone out, so this isn't a fake delay on the send itself, only on
+      // how long the confirmation stays visible.
+      setTimeout(() => {
+        setConfirmSendNowOpen(false);
+        router.push('/campaigns');
+      }, 900);
+    } catch {
+      toast.error('Failed to send the campaign.');
+      setSendState('idle');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Reuses the same cancel action as the campaign card: reverts a genuine future schedule back to
+  // draft and drops its not-yet-claimed queue rows.
+  const handleCancelSchedule = async () => {
+    setCancelingSchedule(true);
+    try {
+      const res = await cancelScheduledCampaign(campaignId);
+      if (res.error) { toast.error(res.error); return; }
+      setSavedCampaign((prev: any) => ({ ...prev, ...(res.data ?? {}) }));
+      setScheduledFor('');
+      toast.success('Scheduled send canceled. Campaign reverted to draft.');
+      router.refresh();
+    } catch {
+      toast.error('Could not cancel the scheduled send. Please try again.');
+    } finally {
+      setCancelingSchedule(false);
     }
   };
 
@@ -632,8 +709,23 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
             <h1 className="text-[15px] font-extrabold !text-dash-text leading-tight mb-0.5 tracking-tight truncate">
               {initialCampaign.name}
             </h1>
-            <p className="text-[10.5px] !text-dash-textMuted font-semibold truncate">
-              Subject: <span className="text-dash-accent font-bold">{initialCampaign.subject || 'None'}</span>
+            <p className="text-[10.5px] !text-dash-textMuted font-semibold truncate flex items-center gap-2">
+              <span>Subject: <span className="text-dash-accent font-bold">{initialCampaign.subject || 'None'}</span></span>
+              {isGenuinelyScheduled && (
+                <span className="inline-flex items-center gap-1.5 text-dash-accent">
+                  <span className="w-1 h-1 rounded-full bg-dash-border" />
+                  <CalendarClock size={11} />
+                  Scheduled for {new Date(savedCampaign.scheduled_for).toLocaleString()}
+                  <button
+                    type="button"
+                    onClick={handleCancelSchedule}
+                    disabled={cancelingSchedule}
+                    className="underline decoration-dotted underline-offset-2 hover:!text-dash-text font-bold"
+                  >
+                    {cancelingSchedule ? 'Canceling…' : 'Cancel'}
+                  </button>
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -667,20 +759,41 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
 
           <div className="w-px h-6 bg-dash-border mx-0.5" />
 
-          <DashButton onClick={() => setTestModalOpen(true)} disabled={saving || blocks.length === 0} size="sm" variant="secondary">
-            Send test
-          </DashButton>
+          {/* Overflow menu: only the de-emphasized "Send test email" utility lives here now, so it
+              no longer competes visually with the two primary actions (Send / Schedule). */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                title="More actions"
+                className="w-9 h-9 rounded-xl bg-dash-surface border border-dash-border flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:border-dash-text/20 transition-colors motion-reduce:transition-none shrink-0"
+              >
+                <MoreVertical size={15} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-white border border-dash-border shadow-lg rounded-xl min-w-[180px]">
+              <DropdownMenuItem
+                onClick={() => setTestModalOpen(true)}
+                disabled={blocks.length === 0}
+                className="flex items-center gap-2 cursor-pointer !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg mx-1 px-3 py-2 text-xs"
+              >
+                Send test email
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-          {!isAutomated && initialCampaign.status !== 'sent' && (
-            <DashButton onClick={() => setConfirmSendNowOpen(true)} disabled={saving || blocks.length === 0 || !canSend} title={canSend ? undefined : 'Add an audience in Settings first'} size="sm" variant="secondary">
-              Send now
+          {!isAutomated && savedCampaign.status !== 'sent' && (
+            <DashButton onClick={() => setDeployModalOpen(true)} disabled={saving} size="sm" variant="secondary">
+              Schedule for later
             </DashButton>
           )}
 
           <button
             type="button"
-            onClick={() => setDeployModalOpen(true)}
-            className="h-9 px-5 rounded-xl bg-gradient-to-b from-green to-green/90 hover:from-green/95 hover:to-green/85 text-white text-[12.5px] font-bold flex items-center gap-2 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_1px_1px_rgba(0,0,0,0.08)] hover:shadow-md hover:-translate-y-px active:translate-y-0 transition-all motion-reduce:transition-none"
+            onClick={() => { setSendState('idle'); setConfirmSendNowOpen(true); }}
+            disabled={saving || blocks.length === 0 || !canSend || isAutomated || savedCampaign.status === 'sent'}
+            title={canSend ? undefined : 'Add an audience in Settings first'}
+            className="h-9 px-5 rounded-xl bg-gradient-to-b from-green to-green/90 hover:from-green/95 hover:to-green/85 disabled:opacity-40 disabled:pointer-events-none text-white text-[12.5px] font-bold flex items-center gap-2 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_1px_1px_rgba(0,0,0,0.08)] hover:shadow-md hover:-translate-y-px active:translate-y-0 transition-all motion-reduce:transition-none"
           >
             Send
           </button>
@@ -856,22 +969,65 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
 
                   {selectedBlock.type === 'features' && (
                     <div className="space-y-3">
-                      <div className="text-[10px] font-bold !text-dash-textMuted">Features columns</div>
+                      <div className="flex items-center justify-between">
+                        <div className="text-[10px] font-bold !text-dash-textMuted">Features columns</div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const cols = [...(selectedBlock.content.columns || [])];
+                              if (cols.length <= 2) return;
+                              cols.pop();
+                              updateBlockContent({ columns: cols });
+                            }}
+                            disabled={(selectedBlock.content.columns || []).length <= 2}
+                            className="text-[9px] font-bold text-dash-textMuted hover:text-dash-text disabled:opacity-30 disabled:cursor-not-allowed px-1.5 py-1 rounded border border-dash-border"
+                          >
+                            − Remove
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const cols = [...(selectedBlock.content.columns || [])];
+                              if (cols.length >= 4) return;
+                              cols.push({ title: 'New Feature', description: 'Feature description.' });
+                              updateBlockContent({ columns: cols });
+                            }}
+                            disabled={(selectedBlock.content.columns || []).length >= 4}
+                            className="text-[9px] font-bold text-dash-accent hover:text-dash-accent/80 disabled:opacity-30 disabled:cursor-not-allowed px-1.5 py-1 rounded border border-dash-border"
+                          >
+                            + Add column
+                          </button>
+                        </div>
+                      </div>
                       {(selectedBlock.content.columns || []).map((col: any, colIdx: number) => (
                         <div key={colIdx} className="p-2.5 bg-dash-surface border border-dash-border rounded-lg space-y-2">
-                          <div>
+                          <div className="flex items-center justify-between">
                             <label className="block text-[9px] !text-dash-textMuted">Column {colIdx + 1} title</label>
-                            <input
-                              type="text"
-                              value={col.title || ''}
-                              onChange={(e) => {
-                                const cols = [...selectedBlock.content.columns];
-                                cols[colIdx] = { ...cols[colIdx], title: e.target.value };
-                                updateBlockContent({ columns: cols });
-                              }}
-                              className="w-full bg-white border border-dash-border rounded-md p-1.5 text-[10.5px] !text-dash-text focus:outline-none focus:border-dash-accent"
-                            />
+                            {(selectedBlock.content.columns || []).length > 2 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const cols = [...selectedBlock.content.columns];
+                                  cols.splice(colIdx, 1);
+                                  updateBlockContent({ columns: cols });
+                                }}
+                                className="text-[9px] font-bold text-red-500 hover:text-red-600"
+                              >
+                                Remove
+                              </button>
+                            )}
                           </div>
+                          <input
+                            type="text"
+                            value={col.title || ''}
+                            onChange={(e) => {
+                              const cols = [...selectedBlock.content.columns];
+                              cols[colIdx] = { ...cols[colIdx], title: e.target.value };
+                              updateBlockContent({ columns: cols });
+                            }}
+                            className="w-full bg-white border border-dash-border rounded-md p-1.5 text-[10.5px] !text-dash-text focus:outline-none focus:border-dash-accent"
+                          />
                           <div>
                             <label className="block text-[9px] !text-dash-textMuted">Column {colIdx + 1} desc</label>
                             <textarea
@@ -1468,11 +1624,12 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
         </DashModalContent>
       </DashModal>
 
-      {/* Send / Automate Modal */}
+      {/* Schedule / Automate Modal — real immediate sending lives in the "Send" confirm dialog
+          below, not here, so there is exactly one place per action. */}
       <DashModal open={deployModalOpen} onOpenChange={setDeployModalOpen}>
         <DashModalContent className="max-w-md">
           <DashModalHeader>
-            <DashModalTitle>Send <span className="text-dash-accent">campaign</span></DashModalTitle>
+            <DashModalTitle>Schedule <span className="text-dash-accent">campaign</span></DashModalTitle>
           </DashModalHeader>
           <div className="space-y-6">
             {contentCheck.warnings.length > 0 && <DeliverabilityWarnings warnings={contentCheck.warnings} withIntro />}
@@ -1578,18 +1735,13 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
               Cancel
             </DashButton>
             {isAutomated ? (
-              <DashButton onClick={() => handleDeploy('now')} disabled={saving || !hasSavedAudience}>
+              <DashButton onClick={() => handleDeploy('automate')} disabled={saving || !hasSavedAudience}>
                 {saving ? 'Processing...' : 'Save & enable auto-sender'}
               </DashButton>
             ) : (
-              <>
-                <DashButton variant="secondary" onClick={() => handleDeploy('schedule')} disabled={saving || !scheduledFor || !hasSavedAudience}>
-                  {saving ? 'Processing...' : 'Schedule for later'}
-                </DashButton>
-                <DashButton onClick={() => setConfirmSendNowOpen(true)} disabled={saving || !canSend}>
-                  {saving ? 'Processing...' : 'Send now'}
-                </DashButton>
-              </>
+              <DashButton onClick={() => handleDeploy('schedule')} disabled={saving || !scheduledFor || !hasSavedAudience}>
+                {saving ? 'Processing...' : 'Schedule for later'}
+              </DashButton>
             )}
           </DashModalFooter>
         </DashModalContent>
@@ -1607,20 +1759,31 @@ export function EmailBuilderClient({ campaignId, initialCampaign, brandKit: init
 
       <ConfirmDialog
         isOpen={confirmSendNowOpen}
-        onClose={() => setConfirmSendNowOpen(false)}
-        onConfirm={() => handleDeploy('now')}
-        title="Send this campaign now?"
+        onClose={() => { if (sendState !== 'sending') setConfirmSendNowOpen(false); }}
+        onConfirm={handleSendNow}
+        title="Send this campaign?"
         description={
           <div className="space-y-3">
-            <p>{`The current design will be saved and emailed immediately to this campaign's audience${
-              initialCampaign.status === 'scheduled' && initialCampaign.scheduled_for
-                ? `, skipping its schedule (${new Date(initialCampaign.scheduled_for).toLocaleString()})`
-                : ''
-            }. Unsubscribed and invalid addresses are skipped. This can't be undone.`}</p>
-            {contentCheck.warnings.length > 0 && <DeliverabilityWarnings warnings={contentCheck.warnings} withIntro />}
+            <p>
+              {sendState === 'sent'
+                ? 'Sent.'
+                : sendState === 'sending'
+                  ? 'Sending…'
+                  : `This campaign will be sent to ${
+                      reachLoading ? 'its audience' : reach ? `${reach.emailReach.toLocaleString()} recipient${reach.emailReach === 1 ? '' : 's'}` : 'its audience'
+                    } shortly${
+                      isGenuinelyScheduled
+                        ? `, skipping its schedule for ${new Date(savedCampaign.scheduled_for).toLocaleString()}`
+                        : ''
+                    }. Unsubscribed and invalid addresses are skipped. This can't be undone.`
+              }
+            </p>
+            {sendState === 'idle' && contentCheck.warnings.length > 0 && <DeliverabilityWarnings warnings={contentCheck.warnings} withIntro />}
           </div>
         }
-        confirmLabel="Send now"
+        confirmLabel={sendState === 'sending' ? 'Sending…' : sendState === 'sent' ? 'Sent' : 'Send'}
+        confirmDisabled={sendState !== 'idle'}
+        keepOpenOnConfirm
         variant="warning"
       />
     </div>

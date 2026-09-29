@@ -47,7 +47,7 @@ export type LessonCanvasItem = { spacing?: CanvasSpacing } & (
       /** The builder's own typography for this block, per breakpoint (textBlockStyle). */
       textStyle?: CanvasTextStyle;
     }
-  | { kind: 'richtext'; html: string; align: string; textStyle?: CanvasTextStyle }
+  | { kind: 'richtext'; html: string; align: string; textStyle?: CanvasTextStyle; listItemSpacing?: number }
   | {
       kind: 'image';
       src: string;
@@ -226,7 +226,13 @@ function emitLeaf(name: string | undefined, p: Record<string, any>, out: LessonC
     case 'Text': {
       const html = typeof p.text === 'string' ? p.text : '';
       if (html.trim()) {
-        out.push({ kind: 'richtext', html, align: p.textAlign || 'left', ...textStyleFor(name, p) });
+        out.push({
+          kind: 'richtext',
+          html,
+          align: p.textAlign || 'left',
+          ...(typeof p.listItemSpacing === 'number' ? { listItemSpacing: p.listItemSpacing } : {}),
+          ...textStyleFor(name, p),
+        });
       }
       return;
     }

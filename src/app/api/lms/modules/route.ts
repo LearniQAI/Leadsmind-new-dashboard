@@ -4,6 +4,7 @@ import { requireLmsInstructor } from '@/lib/lms/access';
 import { ForbiddenError, NotFoundError, toClientError } from '@/shared/errors/AppError';
 import { logger } from '@/shared/logger';
 import { recomputeCoursePreviewLessons } from '@/lib/lms/coursePreview';
+import { getModuleDeleteImpact } from '@/lib/lms/moduleDeleteImpact';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,7 +65,6 @@ export async function POST(req: NextRequest) {
       title,
       description = '',
       icon = '📚',
-      publish_status = 'draft',
       nqf_level = '',
       required_for_completion = true,
       drip_days = 0,
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
         title,
         description,
         icon,
-        publish_status,
+        publish_status: 'draft', // always DRAFT — lifecycle changes only via PATCH /api/lms/courses/{courseId}/modules/{moduleId}
         nqf_level,
         required_for_completion,
         drip_days,
@@ -123,18 +123,33 @@ export async function PATCH(req: NextRequest) {
     const adminClient = createAdminClient();
 
     const body = await req.json();
-    const { title, description, icon, publish_status, nqf_level, required_for_completion, drip_days, position, is_active } = body;
+
+    // This route edits module CONTENT settings only. Lifecycle (status / active) and order each have
+    // exactly one validated path; accepting them here would re-open the cross-module hole those closed.
+    const LIFECYCLE_FIELDS = ['publish_status', 'is_active', 'published_at', 'status'] as const;
+    const ORDER_FIELDS = ['position', 'order_index'] as const;
+    if (LIFECYCLE_FIELDS.some((f) => body?.[f] !== undefined)) {
+      return NextResponse.json(
+        { error: 'Module status cannot be changed here. Use PATCH /api/lms/courses/{courseId}/modules/{moduleId} with { status }.', code: 'USE_STATUS_ENDPOINT' },
+        { status: 400 }
+      );
+    }
+    if (ORDER_FIELDS.some((f) => body?.[f] !== undefined)) {
+      return NextResponse.json(
+        { error: 'Module order cannot be changed here. Use PATCH /api/lms/courses/{courseId}/modules/reorder.', code: 'USE_REORDER_ENDPOINT' },
+        { status: 400 }
+      );
+    }
+
+    const { title, description, icon, nqf_level, required_for_completion, drip_days } = body;
 
     const updatePayload: any = {};
     if (title !== undefined) updatePayload.title = title;
     if (description !== undefined) updatePayload.description = description;
     if (icon !== undefined) updatePayload.icon = icon;
-    if (publish_status !== undefined) updatePayload.publish_status = publish_status;
     if (nqf_level !== undefined) updatePayload.nqf_level = nqf_level;
     if (required_for_completion !== undefined) updatePayload.required_for_completion = required_for_completion;
     if (drip_days !== undefined) updatePayload.drip_days = drip_days;
-    if (position !== undefined) updatePayload.position = position;
-    if (is_active !== undefined) updatePayload.is_active = is_active;
     updatePayload.updated_at = new Date().toISOString();
 
     const { data: moduleRow, error } = await adminClient
@@ -146,13 +161,6 @@ export async function PATCH(req: NextRequest) {
       .single();
 
     if (error) throw error;
-
-    // Course Start Method 3: reordering a module changes real course-wide lesson order for
-    // every lesson in it — recompute() is a no-op for any course not on
-    // free_preview_then_paywall.
-    if (position !== undefined && moduleRow?.course_id) {
-      await recomputeCoursePreviewLessons(moduleRow.course_id);
-    }
 
     return NextResponse.json({ data: moduleRow });
   } catch (err: any) {
@@ -171,26 +179,31 @@ export async function DELETE(req: NextRequest) {
     const { workspaceId } = await requireLmsInstructor();
     const adminClient = createAdminClient();
 
-    // Fetched before the delete (which cascades to every lesson in this module) — course_id
-    // is needed for the post-delete recompute below.
-    const { data: existing } = await adminClient
-      .from('course_modules')
-      .select('course_id')
-      .eq('id', id)
-      .eq('workspace_id', workspaceId)
-      .maybeSingle();
+    // Fetched before the delete (which cascades to every lesson in this module and, through them, to
+    // every student's progress on those lessons).
+    const impact = await getModuleDeleteImpact(adminClient, { workspaceId, moduleId: id });
+    if (!impact) throw new NotFoundError('Module');
 
-    const { error } = await adminClient
+    // Not a hard block: restructuring a course is legitimate. But destroying student progress needs an
+    // explicit confirmation that the caller has seen the stakes (the UI fetches them from /impact).
+    if (impact.progressRows > 0 && searchParams.get('confirmProgressLoss') !== 'true') {
+      return NextResponse.json(
+        { error: 'Deleting this module would remove student progress. Confirm to proceed.', code: 'PROGRESS_WOULD_BE_LOST', impact },
+        { status: 409 }
+      );
+    }
+
+    const { data: deleted, error } = await adminClient
       .from('course_modules')
       .delete()
       .eq('id', id)
-      .eq('workspace_id', workspaceId);
+      .eq('workspace_id', workspaceId)
+      .select('id');
 
     if (error) throw error;
+    if (!deleted || deleted.length !== 1) throw new NotFoundError('Module');
 
-    if (existing?.course_id) {
-      await recomputeCoursePreviewLessons(existing.course_id);
-    }
+    await recomputeCoursePreviewLessons(impact.courseId);
 
     return NextResponse.json({ success: true });
   } catch (err: any) {

@@ -13,6 +13,12 @@ import { pickBoxStyle, stripBoxStyleKeys } from '@/lib/builder/boxStyle';
 import { RICH_TEXT_CLASS, BLOCK_FONT_ATTR, BLOCK_FONT_VAR, fontStack } from '@/lib/builder/blockTypography';
 import { loadGoogleFontFamily } from '@/lib/builder/loadGoogleFont';
 
+const LIST_TAG_RE = /<(ul|ol)[\s>]/i;
+/** True once this paragraph's stored HTML contains a bullet/numbered list (see Paragraph's disabled-branch wrapper). */
+function hasListMarkup(html: string): boolean {
+  return LIST_TAG_RE.test(html);
+}
+
 export interface ParagraphProps {
  text: string;
  fontSize: number;
@@ -27,6 +33,10 @@ export interface ParagraphProps {
  letterSpacing?: number;
  /** Same theme-inheritance mechanism as Heading.tsx — see its comment. */
  useThemeFont?: boolean;
+ /** Gap between list items (px), when this paragraph's text is a <ul>/<ol> (list-style panel
+  *  control). Not itself responsive — a deliberately small, low-risk addition alongside the
+  *  larger existing responsive typography system (see ParagraphSettings). */
+ listItemSpacing?: number;
 }
 
 export const Paragraph = (allProps: ParagraphProps & any) => {
@@ -52,6 +62,7 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
   letterSpacing_mobile,
   letterSpacing_tablet,
   useThemeFont,
+  listItemSpacing,
   dragRef,
   ...props
  } = allProps;
@@ -134,6 +145,10 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
     fontFamily: fontFamily ? fontStack(fontFamily) : undefined,
     ...(fontFamily ? { [BLOCK_FONT_VAR]: fontStack(fontFamily) } : {}),
     letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined,
+    // List item gap (globals.css: `.tiptap li + li` / `.builder-rich-text li + li`). Set here on
+    // the shared outer wrapper so both the editor and Preview/published branches below pick it up
+    // through normal CSS custom-property inheritance — one place to set it, not two.
+    ...(typeof listItemSpacing === 'number' ? ({ ['--lm-list-gap' as any]: `${listItemSpacing}px` }) : {}),
    }}
   >
     {enabled ? (
@@ -141,14 +156,33 @@ export const Paragraph = (allProps: ParagraphProps & any) => {
       // bare `p { ... }` rule can't override the size / weight / line-height /
       // letter-spacing set on the wrapper above (see .tiptap p in globals.css for
       // the matching fix on TipTap's own inner <p>).
+      //
+      // Kept as a <p>, exactly as before: TipTap's own list nodes (<ul>/<ol>) end up nested
+      // inside it once list support is used, which is invalid content for a real <p> — but
+      // React builds this via the DOM API (createElement/appendChild), never innerHTML, so the
+      // browser's HTML parser never gets a chance to reflow/split it the way it would if this
+      // were raw markup. Harmless in practice, and every existing paragraph (and every test
+      // asserting this element's own shape) stays byte-identical.
       <p className="outline-none w-full m-0 p-0" style={INHERIT_TYPOGRAPHY}>
         <InlineTextEditor
           value={text}
           onChange={(val) => setProp((props: any) => { props.text = val; }, 500)}
+          onImmediateChange={(val) => setProp((props: any) => { props.text = val; })}
+          enableListToolbar
         />
       </p>
    ) : (
-    <p className={RICH_TEXT_CLASS} style={{ ...INHERIT_TYPOGRAPHY, margin: 0 }} dangerouslySetInnerHTML={{ __html: displayText }} />
+    // The published/Preview branch DOES inject raw HTML via dangerouslySetInnerHTML — here a
+    // <ul>/<ol> nested inside a real <p> WOULD hit the browser's real HTML-parsing auto-close
+    // rules (splitting the <p>, producing stray empty paragraphs; a real bug, caught live). Only
+    // switch the wrapper to <div> for a paragraph that actually contains a list, so ordinary text
+    // (still the overwhelming majority) renders through the exact unchanged <p> every existing
+    // test and page already expects.
+    hasListMarkup(displayText) ? (
+      <div className={RICH_TEXT_CLASS} style={{ ...INHERIT_TYPOGRAPHY, margin: 0 }} dangerouslySetInnerHTML={{ __html: displayText }} />
+    ) : (
+      <p className={RICH_TEXT_CLASS} style={{ ...INHERIT_TYPOGRAPHY, margin: 0 }} dangerouslySetInnerHTML={{ __html: displayText }} />
+    )
    )}
   </div>
  );

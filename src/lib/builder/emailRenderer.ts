@@ -123,6 +123,10 @@ export function renderEmailLayout(
   // A visible placeholder, not a silently blank line: sending is refused without a real address
   // (POSTAL_ADDRESS_REQUIRED_MESSAGE), but this on-screen preview has no such gate of its own.
   const postalAddress = escapeHtml(brandKit.postalAddress?.trim() || 'Postal address not yet set — required before sending');
+  // Absolute origin for the countdown block's live image (see case 'countdown' below) — email
+  // clients fetch it directly, with no app context, so a relative src won't resolve. Same
+  // fallback chain as buildUnsubscribeLink (lib/email/unsubscribeLink.ts).
+  const countdownImageBaseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://leadsmind-new-dashboard.vercel.app';
 
   // Render individual blocks
   let blocksHtml = '';
@@ -248,50 +252,24 @@ export function renderEmailLayout(
       case 'countdown': {
         const targetDate = block.content.targetDate || '';
         const label = block.content.label || 'OFFER EXPIRES IN:';
-        
-        // Calculate remaining time statically
-        let days = '00', hours = '00', minutes = '00', seconds = '00';
-        if (targetDate) {
-          const distance = new Date(targetDate).getTime() - Date.now();
-          if (distance > 0) {
-            days = String(Math.floor(distance / (1000 * 60 * 60 * 24))).padStart(2, '0');
-            hours = String(Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))).padStart(2, '0');
-            minutes = String(Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
-            seconds = String(Math.floor((distance % (1000 * 60)) / 1000)).padStart(2, '0');
-          }
-        }
+
+        // Live countdown: rendered server-side, AT FETCH TIME, by /api/campaigns/countdown-image
+        // (see src/lib/builder/countdownImage.ts) — never baked as static digits here. Email
+        // clients don't run JS, so a real "live" timer in email is always an <img> that a server
+        // recomputes on every request (same technique Mailchimp/Klaviyo use), not text compiled
+        // once at save/schedule/send-now. Cache-Control: no-store on that route means every open
+        // (by every recipient, at whatever time they actually open it) shows real time remaining.
+        const countdownImageUrl = `${countdownImageBaseUrl}/api/campaigns/countdown-image`
+          + `?target=${encodeURIComponent(targetDate)}`
+          + `&label=${encodeURIComponent(label)}`
+          + `&color=${encodeURIComponent(primaryColor)}`;
 
         blockContentHtml = `
-          <!-- COUNTDOWN BLOCK -->
+          <!-- COUNTDOWN BLOCK (live, server-rendered at open time) -->
           <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 24px; text-align: center;">
             <tr>
-              <td>
-                <div style="font-family: ${defaultFont}; font-size: 10.5px; font-weight: bold; color: ${primaryColor}; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px;">
-                  ${label}
-                </div>
-                <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 auto;">
-                  <tr>
-                    ${[
-                      { value: days, label: 'Days' },
-                      { value: hours, label: 'Hrs' },
-                      { value: minutes, label: 'Mins' },
-                      { value: seconds, label: 'Secs' }
-                    ].map(item => `
-                      <td style="padding: 0 4px;">
-                        <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; width: 50px; height: 50px;">
-                          <tr>
-                            <td align="center" style="font-family: ${defaultFont}; font-size: 16px; font-weight: 800; color: #0f172a; line-height: 1;">
-                              ${item.value}
-                              <div style="font-size: 8px; font-weight: normal; color: #64748b; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.5px;">
-                                ${item.label}
-                              </div>
-                            </td>
-                          </tr>
-                        </table>
-                      </td>
-                    `).join('')}
-                  </tr>
-                </table>
+              <td align="center">
+                <img src="${countdownImageUrl}" width="300" height="96" alt="Countdown timer" style="display: block; border: 0; max-width: 300px; width: 100%; height: auto;" />
               </td>
             </tr>
           </table>

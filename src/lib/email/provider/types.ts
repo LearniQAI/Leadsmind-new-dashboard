@@ -19,8 +19,12 @@ export type DomainStatus =
 
 /** One DNS record exactly as the provider requires it. */
 export interface DomainDnsRecord {
-  /** What the record proves: sender policy, signing key, or something else the provider needs. */
-  purpose: 'SPF' | 'DKIM' | 'OTHER';
+  /**
+   * What the record proves: sender policy, signing key, the optional open/click tracking
+   * subdomain, or something else the provider needs. TRACKING never gates sending — see
+   * checkManagedFromDomain's comment — it only unlocks open/click stats.
+   */
+  purpose: 'SPF' | 'DKIM' | 'TRACKING' | 'OTHER';
   type: string;
   /** Host relative to the DNS zone, as the provider tells users to enter it. */
   name: string;

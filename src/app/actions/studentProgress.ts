@@ -1,5 +1,6 @@
 'use server';
 
+import { isModuleStudentVisible } from '@/lib/lms/studentVisibility';
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getUser } from '@/lib/auth';
 import { getOrCreateStudentContact } from './studentEnrollments';
@@ -343,12 +344,12 @@ export async function submitModuleQuizAttempt(payload: {
     const { data: quizModule } = quiz
       ? await adminClient
           .from('course_modules')
-          .select('id, is_active')
+          .select('id, is_active, publish_status')
           .eq('id', quiz.module_id)
           .eq('course_id', payload.courseId)
           .maybeSingle()
       : { data: null };
-    if (!quiz || !quizModule || quizModule.is_active === false) {
+    if (!quiz || !quizModule || !isModuleStudentVisible(quizModule)) {
       return { error: 'Quiz not found in this course.' };
     }
     const visible = await getStudentVisibleModuleQuizzes(adminClient, [quiz.module_id]);

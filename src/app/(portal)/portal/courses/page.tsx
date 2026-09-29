@@ -7,6 +7,7 @@ import MetaData from '@/hooks/useMetaData';
 import { BookOpen, GraduationCap, Play, Award, User, Clock } from 'lucide-react';
 import LiveClassCountdown from '@/components/portal/LiveClassCountdown';
 import BuyCourseButton from '@/components/portal/BuyCourseButton';
+import { loadCourseResolutions } from '@/lib/lms/continueLearning';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,29 +29,13 @@ export default async function PortalCoursesPage() {
 
   const enrollments = dbEnrollments || [];
 
-  // Fetch total lesson count for each course
-  const { data: dbLessonsCount } = await supabase
-    .from('course_lessons')
-    .select('id, course_id');
-
-  const lessonsCountMap = new Map<string, number>();
-  (dbLessonsCount || []).forEach((l: any) => {
-    lessonsCountMap.set(l.course_id, (lessonsCountMap.get(l.course_id) || 0) + 1);
+  // Order, completion % and continue target come from the shared per-course resolver (only this
+  // student's enrolled courses are read — never every course's lessons).
+  const resolutions = await loadCourseResolutions(supabase, {
+    contactIds: [contact.id],
+    courseIds: enrollments.map((e: any) => e.course_id),
+    lastLessonByCourse: Object.fromEntries(enrollments.map((e: any) => [e.course_id, e.last_lesson_id || null])),
   });
-
-  // Fetch completed lessons for the contact
-  const completedCountMap = new Map<string, number>();
-  if (enrollments.length > 0) {
-    const { data: completedRecords } = await supabase
-      .from('course_progress')
-      .select('id, course_id, lesson_id')
-      .eq('contact_id', contact.id)
-      .not('completed_at', 'is', null);
-    
-    (completedRecords || []).forEach((r: any) => {
-      completedCountMap.set(r.course_id, (completedCountMap.get(r.course_id) || 0) + 1);
-    });
-  }
 
   // Fetch expert sessions with instructor details
   const courseIds = enrollments.map(e => e.course_id);
@@ -79,6 +64,7 @@ export default async function PortalCoursesPage() {
 
   const { data: dbUpsellCourses } = await upsellQuery;
   const upsellCourses = dbUpsellCourses || [];
+  const upsellResolutions = await loadCourseResolutions(supabase, { contactIds: [], courseIds: upsellCourses.map((c: any) => c.id) });
 
   return (
     <MetaData pageTitle="My Courses">
@@ -112,10 +98,11 @@ export default async function PortalCoursesPage() {
               const course = e.courses;
               if (!course) return null;
 
-              const totalLessons = lessonsCountMap.get(course.id) || 0;
-              const completedLessons = completedCountMap.get(course.id) || 0;
-              const progress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
-              const isCompleted = progress === 100;
+              const res = resolutions.get(course.id)!;
+              const totalLessons = res.totalLessons;
+              const completedLessons = res.completedLessons;
+              const progress = res.percentage;
+              const isCompleted = res.state === 'complete';
 
               const now = new Date();
 
@@ -142,8 +129,8 @@ export default async function PortalCoursesPage() {
               );
 
               // Position restore path
-              const playLink = e.last_lesson_id
-                ? `/student/courses/${course.id}?restore=true&lessonId=${e.last_lesson_id}&t=${e.last_position_seconds || 0}`
+              const playLink = res.target
+                ? `/student/courses/${course.id}?restore=true&lessonId=${res.target.lessonId}&t=${res.target.lessonId === e.last_lesson_id ? e.last_position_seconds || 0 : 0}`
                 : `/student/courses/${course.id}`;
 
               return (
@@ -263,7 +250,7 @@ export default async function PortalCoursesPage() {
                       href={playLink}
                       className="inline-flex items-center gap-1.5 px-5 h-10 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-black uppercase tracking-wider transition-all shadow-lg shadow-purple-600/10 hover:shadow-purple-600/20 active:scale-95 ml-auto"
                     >
-                      {e.last_lesson_id ? 'Resume Learning' : 'Start Learning'} <Play size={10} fill="white" />
+                      {res.state === 'not_started' ? 'Start Learning' : res.state === 'complete' ? 'Review Course' : 'Resume Learning'} <Play size={10} fill="white" />
                     </Link>
                   </div>
                 </div>
@@ -286,7 +273,7 @@ export default async function PortalCoursesPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {upsellCourses.map((course, idx) => {
-                const totalLessons = lessonsCountMap.get(course.id) || 0;
+                const totalLessons = upsellResolutions.get(course.id)?.totalLessons ?? 0;
 
                 return (
                   <div 

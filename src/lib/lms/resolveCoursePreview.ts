@@ -39,11 +39,14 @@ export async function resolveCoursePreview(
       .select('id, title, position')
       .eq('course_id', courseId)
       .eq('is_active', true)
+      .in('publish_status', ['published', 'coming_soon'])
       .order('position', { ascending: true }),
   ]);
 
-  const lessons = lessonMeta || [];
   const modules = moduleMeta || [];
+  // A lesson inside a DRAFT/INACTIVE module is never previewable, even if the lesson itself is flagged is_preview.
+  const visibleModuleIds = new Set(modules.map((m: any) => m.id));
+  const lessons = (lessonMeta || []).filter((l: any) => visibleModuleIds.has(l.module_id));
   const requestedLesson = requestedLessonId
     ? lessons.find((l: any) => l.id === requestedLessonId)
     : lessons.find((l: any) => l.is_preview) || lessons[0];

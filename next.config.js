@@ -48,7 +48,13 @@ const nextConfig = {
         // never installed in the production bundle and that code path never runs
         // there, but marking it external keeps webpack from trying to statically
         // bundle it at build time regardless.
-        serverComponentsExternalPackages: ["puppeteer-core", "puppeteer", "@sparticuz/chromium", "cheerio", "undici", "@resvg/resvg-js", "pdfjs-dist", "isomorphic-dompurify", "jsdom"],
+        // satori + harfbuzzjs added for the countdown-image route (src/lib/builder/countdownImage.ts):
+        // harfbuzzjs loads its hb.wasm via a relative dynamic path at runtime, same class of bug as
+        // pdfjs-dist's worker above — webpack's bundling rewrites the require into
+        // .next/server/vendor-chunks/hb.wasm without ever actually copying the wasm file there
+        // ("failed to asynchronously prepare wasm: ENOENT ... hb.wasm"), live-confirmed in dev.
+        // Marking both external lets Node's own module resolution (which works) load them instead.
+        serverComponentsExternalPackages: ["puppeteer-core", "puppeteer", "@sparticuz/chromium", "cheerio", "undici", "@resvg/resvg-js", "pdfjs-dist", "isomorphic-dompurify", "jsdom", "satori", "harfbuzzjs"],
         outputFileTracingExcludes: {
             '*': [
                 'node_modules/@swc/core-linux-x64-gnu',

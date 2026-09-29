@@ -7,8 +7,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const state: {
   progress: any; enrollment: any; lesson: any; course: any; blocks: any[]; completions: any[];
-  inserted: any[]; updated: any[];
-} = { progress: null, enrollment: null, lesson: null, course: null, blocks: [], completions: [], inserted: [], updated: [] };
+  inserted: any[]; updated: any[]; moduleStatus: string; moduleActive: boolean;
+} = { progress: null, enrollment: null, lesson: null, course: null, blocks: [], completions: [], inserted: [], updated: [], moduleStatus: 'published', moduleActive: true };
 
 function builder(table: string) {
   const ctx: any = { table, filters: {} };
@@ -39,6 +39,8 @@ function resolveOne(ctx: any) {
   }
 }
 function resolveMany(ctx: any) {
+  // The student-visibility lookup (lessons + their module) awaited as a list.
+  if (ctx.table === 'course_lessons') return { data: [{ id: 'L1', is_active: true, module: { is_active: state.moduleActive, publish_status: state.moduleStatus } }], error: null };
   if (ctx.table === 'content_blocks') return { data: state.blocks, error: null };
   if (ctx.table === 'lesson_block_completions') return { data: state.completions, error: null };
   if (ctx.table === 'quiz_questions') return { data: [], error: null };
@@ -63,6 +65,30 @@ beforeEach(() => {
   state.completions = []; // not completed
   state.inserted = [];
   state.updated = [];
+  state.moduleStatus = 'published';
+  state.moduleActive = true;
+});
+
+describe('markLessonCompleteForContact — hidden modules', () => {
+  it('refuses a lesson in a DRAFT module, even with the override, and writes nothing', async () => {
+    state.moduleStatus = 'draft';
+    const res = await markLessonCompleteForContact('ws1', 'c1', 'course1', 'L1', { allowIncomplete: true });
+    expect(res).toEqual({ error: 'Lesson not found in this course' });
+    expect(state.inserted).toEqual([]);
+  });
+
+  it('refuses a lesson in an INACTIVE module', async () => {
+    state.moduleActive = false;
+    const res = await markLessonCompleteForContact('ws1', 'c1', 'course1', 'L1', { allowIncomplete: true });
+    expect(res).toEqual({ error: 'Lesson not found in this course' });
+    expect(state.inserted).toEqual([]);
+  });
+
+  it('a coming_soon module is still allowed through this gate (it is locked by drip/prereq rules instead)', async () => {
+    state.moduleStatus = 'coming_soon';
+    const res = await markLessonCompleteForContact('ws1', 'c1', 'course1', 'L1', { allowIncomplete: true });
+    expect(res).not.toEqual({ error: 'Lesson not found in this course' });
+  });
 });
 
 describe('markLessonCompleteForContact — strict completion mode', () => {

@@ -7,7 +7,7 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { createEmailCampaign, getEmailCampaigns, sendCampaignNow } from '@/app/actions/marketing';
+import { createEmailCampaign, getEmailCampaigns, sendCampaignNow, cancelScheduledCampaign } from '@/app/actions/marketing';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { DashCard } from '@/components/dashboard-ui/Card';
@@ -28,6 +28,9 @@ import { toastCampaignSendError } from '@/lib/campaigns/sendErrorToast';
 // never finish, so they're excluded.
 const isSendingNow = (c: any) => c.status === 'scheduled' && !c.scheduled_for && !c.segment?.is_automated;
 const canSendNow = (c: any) => (c.status === 'draft' || (c.status === 'scheduled' && !!c.scheduled_for)) && !c.segment?.is_automated;
+// A genuine future schedule (has a scheduled_for), as opposed to "sending now" (scheduled with no
+// scheduled_for) or an auto-sender (which has no single schedule to cancel).
+const isGenuinelyScheduled = (c: any) => c.status === 'scheduled' && !!c.scheduled_for && !c.segment?.is_automated;
 
 
 interface SegmentOption { id: string; name: string; }
@@ -59,6 +62,8 @@ export default function CampaignsClient({
 
   const [sendNowCampaign, setSendNowCampaign] = useState<any>(null);
   const [sendingNowId, setSendingNowId] = useState<string | null>(null);
+  const [cancelCampaign, setCancelCampaign] = useState<any>(null);
+  const [cancelling, setCancelling] = useState(false);
 
   // While any card shows "Sending", re-read the campaigns (status, sent_at, total_sent) every
   // few seconds so the badge and stats flip to the real result without a manual reload. Stops
@@ -91,6 +96,22 @@ export default function CampaignsClient({
       toast.error('Could not send the campaign. Please try again.');
     } finally {
       setSendingNowId(null);
+    }
+  };
+
+  const handleCancelScheduled = async () => {
+    if (!cancelCampaign) return;
+    setCancelling(true);
+    try {
+      const res = await cancelScheduledCampaign(cancelCampaign.id);
+      if (res.error) { toast.error(res.error); return; }
+      setCampaigns(prev => prev.map(c => c.id === cancelCampaign.id ? { ...c, ...(res.data ?? {}) } : c));
+      toast.success('Scheduled send canceled. Campaign reverted to draft.');
+      setCancelCampaign(null);
+    } catch {
+      toast.error('Could not cancel the scheduled send. Please try again.');
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -268,6 +289,15 @@ export default function CampaignsClient({
                     : campaign.sent_at ? `Sent ${new Date(campaign.sent_at).toLocaleDateString()}` : 'Not sent'}
               </div>
               <div className="flex gap-2">
+                {isGenuinelyScheduled(campaign) && (
+                  <DashButton
+                    onClick={() => setCancelCampaign(campaign)}
+                    variant="secondary"
+                    size="sm"
+                  >
+                    Cancel
+                  </DashButton>
+                )}
                 {canSendNow(campaign) && (
                   <DashButton
                     onClick={() => setSendNowCampaign(campaign)}
@@ -330,6 +360,16 @@ export default function CampaignsClient({
           ? `"${sendNowCampaign?.name}" is scheduled for ${new Date(sendNowCampaign.scheduled_for).toLocaleString()}. Sending now skips that schedule and emails its whole audience immediately. This can't be undone.`
           : `"${sendNowCampaign?.name}" will be emailed to its whole audience immediately. Unsubscribed and invalid addresses are skipped. This can't be undone.`}
         confirmLabel="Send now"
+        variant="warning"
+      />
+
+      <ConfirmDialog
+        isOpen={!!cancelCampaign}
+        onClose={() => setCancelCampaign(null)}
+        onConfirm={handleCancelScheduled}
+        title="Cancel scheduled send?"
+        description={`"${cancelCampaign?.name}" will revert to a draft and its ${cancelCampaign?.scheduled_for ? `${new Date(cancelCampaign.scheduled_for).toLocaleString()} ` : ''}schedule will be removed. It won't be sent until you schedule or send it again.`}
+        confirmLabel={cancelling ? 'Canceling...' : 'Cancel send'}
         variant="warning"
       />
 

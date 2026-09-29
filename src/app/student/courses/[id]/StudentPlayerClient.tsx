@@ -70,6 +70,8 @@ interface StudentPlayerClientProps {
   course: any;
   modules: any[];
   lessons: any[];
+  /** Lesson to open first (resolver: in-progress lesson, else first incomplete in course order). */
+  initialLessonId?: string | null;
   initialCompletedLessonIds: string[];
   enrollment: any;
   studentName?: string | null;
@@ -113,6 +115,7 @@ export default function StudentPlayerClient({
   course,
   modules,
   lessons,
+  initialLessonId,
   initialCompletedLessonIds,
   enrollment,
   studentName: studentNameProp,
@@ -120,7 +123,7 @@ export default function StudentPlayerClient({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [completedLessonIds, setCompletedLessonIds] = useState<string[]>(initialCompletedLessonIds);
-  const [activeLesson, setActiveLesson] = useState<any>(lessons[0] || null);
+  const [activeLesson, setActiveLesson] = useState<any>((initialLessonId && lessons.find((l) => l.id === initialLessonId)) || lessons[0] || null);
   const [isPending, startTransition] = useTransition();
   const [lowBandwidthMode, setLowBandwidthMode] = useState(false);
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
@@ -981,11 +984,18 @@ export default function StudentPlayerClient({
       // alignment and background (canvasBlockTypeProps); paragraphs inside one block sit flush,
       // as they do in the builder.
       const type = canvasBlockTypeProps(item);
+      // Bullet/numbered-list markers + item spacing (globals.css: .lm-richtext ul/ol/li) — the
+      // builder's "List style" / "Space between items" controls, read straight from the stored
+      // HTML, same as the builder canvas and Preview render the identical <ul>/<ol> markup.
+      const style: React.CSSProperties = {
+        ...type.style,
+        ...(typeof item.listItemSpacing === 'number' ? ({ ['--lm-list-gap' as any]: `${item.listItemSpacing}px` }) : {}),
+      };
       return (
         <div
           key={idx}
-          style={type.style}
-          className={`text-[15px] leading-relaxed ${type.setsColor ? '' : '!text-dash-text'} ${CANVAS_INLINE_HTML} [&_p]:my-0 [&_ul]:my-0 [&_ol]:my-0 [&_ol]:list-decimal [&_ol]:pl-5 ${
+          style={style}
+          className={`lm-richtext text-[15px] leading-relaxed ${type.setsColor ? '' : '!text-dash-text'} ${CANVAS_INLINE_HTML} [&_p]:my-0 ${
             item.align === 'center' ? 'text-center' : item.align === 'right' ? 'text-right' : ''
           } ${type.className}`}
           dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(item.html) }}

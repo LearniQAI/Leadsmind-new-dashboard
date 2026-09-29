@@ -1,5 +1,6 @@
 'use server';
 
+import { loadCourseResolutions } from '@/lib/lms/continueLearning';
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getUser, getCurrentWorkspaceId, getUserRole } from '@/lib/auth';
 import { stripe } from '@/lib/stripe';
@@ -469,43 +470,27 @@ export async function getEnrolledCoursesWithProgress() {
     // Deactivated enrolments must drop off the student's dashboard, not just the roster.
     const enrollments = (enrollmentsRaw || []).filter((e: any) => isEnrolmentActive(e));
 
-    // 2. Fetch real lesson COMPLETIONS for these contacts (admin client bypasses RLS).
-    // completed_at IS NOT NULL is load-bearing: the player heartbeat also writes
-    // course_progress rows with completed_at:null purely to remember a video's playback
-    // position — those must never count toward progress %.
-    const { data: progressLogs, error: progressError } = await adminClient
-      .from('course_progress')
-      .select('course_id, lesson_id')
-      .not('completed_at', 'is', null)
-      .in('contact_id', contactIds);
-
-    if (progressError) throw progressError;
-
-    // 3. Fetch all course lessons count for enrolled courses using admin client to bypass RLS
+    // 2-3. Per-course order, completion % and continue target from ONE shared resolver
+    // (lib/lms/continueLearning.ts). Every course is resolved from its own modules, lessons and
+    // progress rows only, keyed by lesson id — completing or reordering one course cannot move
+    // another, and progress counts only lessons the student can actually see (active lesson in
+    // an active module), so deactivating a module doesn't make 100% unreachable.
+    // completed_at IS NOT NULL is load-bearing: the player heartbeat also writes course_progress
+    // rows with completed_at:null purely to remember a video's playback position.
     const courseIds = (enrollments || []).map((e: any) => e.course?.id).filter(Boolean);
-    
-    let lessonCounts: Record<string, number> = {};
-    if (courseIds.length > 0) {
-      const { data: lessons, error: lessonsError } = await adminClient
-        .from('course_lessons')
-        .select('course_id, id')
-        .in('course_id', courseIds);
-      
-      if (lessonsError) throw lessonsError;
-      
-      (lessons || []).forEach((l: any) => {
-        lessonCounts[l.course_id] = (lessonCounts[l.course_id] || 0) + 1;
-      });
-    }
+    const lastLessonByCourse: Record<string, string | null> = {};
+    for (const e of enrollments as any[]) if (e.course?.id) lastLessonByCourse[e.course.id] = e.last_lesson_id || null;
+    const resolutions = await loadCourseResolutions(adminClient, { contactIds, courseIds, lastLessonByCourse });
 
     // 4. Construct response
     const coursesWithProgress = (enrollments || [])
       .filter((e: any) => e.course)
       .map((e: any) => {
         const c = e.course;
-        const totalLessons = lessonCounts[c.id] || 0;
-        const completedLessons = (progressLogs || []).filter((p: any) => p.course_id === c.id).length;
-        const progressPercentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+        const res = resolutions.get(c.id)!;
+        const totalLessons = res.totalLessons;
+        const completedLessons = res.completedLessons;
+        const progressPercentage = res.percentage;
 
         return {
           enrollmentId: e.id,
@@ -526,7 +511,10 @@ export async function getEnrolledCoursesWithProgress() {
           thumbnail_url: c.thumbnail_url,
           totalLessons,
           completedLessons,
-          progressPercentage
+          progressPercentage,
+          progressState: res.state,
+          continueLessonId: res.target?.lessonId ?? null,
+          continueLabel: res.label
         };
       });
 
