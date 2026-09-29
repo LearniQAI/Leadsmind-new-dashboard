@@ -134,3 +134,69 @@ export async function findOrCreateEmailConversation(
 
   return { id: created.id, isNew: true };
 }
+
+/**
+ * Find-or-create an UNLINKED email conversation for a sender that isn't (yet) a real CRM
+ * contact — automated/transactional mail imported for full-inbox visibility without polluting
+ * Contacts (Gmail full-inbox-import decision). Keyed by the sender's address via
+ * external_thread_id (conversations_workspace_id_platform_external_thread_id_key), not contact_id,
+ * so every message from e.g. "Google Play" or a newsletter collapses into one thread per address
+ * instead of a contact per message. If the address later becomes a real contact, new mail files
+ * under the normal contact-based conversation instead; this older thread is left as history.
+ */
+export async function findOrCreateUnlinkedEmailConversation(
+  supabase: any,
+  workspaceId: string,
+  address: string,
+  title?: string | null,
+  at?: string,
+): Promise<{ id: string; isNew: boolean } | { error: string }> {
+  const threadId = address.trim().toLowerCase();
+  const { data: existing } = await supabase
+    .from('conversations')
+    .select('id, last_message_at')
+    .eq('workspace_id', workspaceId)
+    .eq('platform', 'email')
+    .eq('external_thread_id', threadId)
+    .maybeSingle();
+
+  if (existing) {
+    const stamp = at || new Date().toISOString();
+    if (!at || !existing.last_message_at || new Date(stamp) > new Date(existing.last_message_at)) {
+      await supabase.from('conversations').update({ last_message_at: stamp }).eq('id', existing.id);
+    }
+    return { id: existing.id, isNew: false };
+  }
+
+  const { data: created, error } = await supabase
+    .from('conversations')
+    .insert({
+      workspace_id: workspaceId,
+      contact_id: null,
+      platform: 'email',
+      external_thread_id: threadId,
+      title: title || address,
+      last_message_at: at || new Date().toISOString(),
+    })
+    .select('id')
+    .single();
+
+  // Lost a race with a concurrent create (conversations_workspace_id_platform_external_thread_id_key).
+  if (error && (error as any).code === '23505') {
+    const { data: winner } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+      .eq('platform', 'email')
+      .eq('external_thread_id', threadId)
+      .maybeSingle();
+    if (winner) return { id: winner.id, isNew: false };
+  }
+
+  if (error || !created) {
+    logger.error({ err: error, workspaceId, address: threadId }, 'email.contact_conversation.unlinked_conversation_create_failed');
+    return { error: error?.message || 'Failed to create conversation' };
+  }
+
+  return { id: created.id, isNew: true };
+}

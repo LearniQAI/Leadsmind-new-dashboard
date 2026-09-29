@@ -18,6 +18,9 @@ interface ConversationListProps {
   assigneeFilter: string;
   onAssigneeFilterChange: (filter: string) => void;
   activeChannels?: string[];
+  /** Real per-channel unread totals (same live store as the list's own badges), keyed by raw
+   *  conversation.platform — drives the badge on each channel tab. */
+  channelUnread?: Record<string, number>;
   /** Real per-channel connection status — drives which empty state a channel
    *  tab shows (a "Connect" prompt vs. plain "no conversations yet"). email
    *  needs no external connection, so it's never 'disconnected' here. */
@@ -51,13 +54,15 @@ export function ConversationList({
   assigneeFilter,
   onAssigneeFilterChange,
   activeChannels = [],
+  channelUnread = {},
   channelStatus = {},
   onComposeEmail,
   onConnectChannel,
 }: ConversationListProps) {
+  const allUnread = Object.values(channelUnread).reduce((n, c) => n + c, 0);
   const channelTabs = [
-    { id: 'all', label: 'All' },
-    ...activeChannels.map((id) => ({ id, label: getPlatformMeta(id).label })),
+    { id: 'all', label: 'All', unread: allUnread },
+    ...activeChannels.map((id) => ({ id, label: getPlatformMeta(id).label, unread: channelUnread[id] || 0 })),
   ];
 
   return (
@@ -89,22 +94,45 @@ export function ConversationList({
           )}
         </div>
 
-        {/* Channel tabs — text-forward, Instagram tab-bar style */}
-        <div className="flex gap-4 overflow-x-auto common-scrollbar">
+        {/* Channel tabs — icon-first pills that wrap to a new row instead of scrolling/truncating,
+            so every channel stays fully visible & labeled regardless of how many exist. */}
+        <div className="flex flex-wrap gap-1.5">
           {channelTabs.map((c) => {
             const isActive = filter === c.id;
+            const meta = c.id === 'all' ? null : getPlatformMeta(c.id);
+            const Icon = meta?.Icon;
             return (
               <button
                 key={c.id}
                 onClick={() => onFilterChange(c.id)}
+                style={
+                  isActive && meta
+                    ? { backgroundColor: meta.soft, color: meta.color, borderColor: meta.border }
+                    : undefined
+                }
                 className={cn(
-                  "shrink-0 pb-2 text-[13.5px] transition-colors motion-reduce:transition-none border-b-2",
+                  "inline-flex items-center gap-1.5 shrink-0 h-8 pl-2.5 pr-3 rounded-full border text-[12.5px] font-semibold",
+                  "transition-all duration-200 motion-reduce:transition-none",
                   isActive
-                    ? "font-semibold text-black border-black"
-                    : "font-medium text-[#8E8E8E] border-transparent hover:text-black"
+                    ? meta
+                      ? "border-transparent"
+                      : "bg-black text-white border-transparent"
+                    : "bg-transparent text-[#8E8E8E] border-[#EFEFEF] hover:text-black hover:border-[#D8D8D8] hover:bg-[#FAFAFA]"
                 )}
               >
-                {c.label}
+                {Icon && <Icon width={15} height={15} className="shrink-0" />}
+                <span>{c.label}</span>
+                {c.unread > 0 && (
+                  <span
+                    className={cn(
+                      "shrink-0 min-w-[16px] h-4 px-1 rounded-full text-[10px] font-bold flex items-center justify-center leading-none",
+                      isActive ? "bg-white/70" : "bg-[#EFEFEF] text-[#6B6B6B]"
+                    )}
+                    style={isActive && meta ? { color: meta.color } : undefined}
+                  >
+                    {c.unread > 99 ? '99+' : c.unread}
+                  </span>
+                )}
               </button>
             );
           })}

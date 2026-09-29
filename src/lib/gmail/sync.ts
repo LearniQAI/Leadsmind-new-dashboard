@@ -7,13 +7,19 @@
 // Import:   "Import existing conversations" -> an email_import_jobs row the cron worker pages through
 //           (runImportJobs), counting first for a real "X of Y" progress figure. Resumable.
 //
-// Filing (both paths, decided with the product owner):
-//   - one conversation per CONTACT (every other channel does the same); Gmail's threadId is stored per
-//     message for reply threading;
-//   - existing contact -> filed; unknown address -> a contact is created ONLY if the user has emailed
-//     them from this mailbox (they sent this message, or Gmail has sent mail to them); everyone else
-//     (newsletters, notifications, cold inbound) is skipped and counted;
-//   - Spam / Trash / Drafts / Chats / Promotions / Social / Updates / Forums are always skipped;
+// Filing (both paths, decided with the product owner; loosened for full-inbox mirroring):
+//   - one conversation per CONTACT (every other channel does the same) when the sender is a real
+//     contact candidate; Gmail's threadId is stored per message for reply threading;
+//   - a sender becomes/uses a CRM contact only if: an existing contact already matches, OR the user
+//     has emailed them from this mailbox (they sent this message, or Gmail has sent mail to them),
+//     OR the message looks like genuine person-to-person mail (a real display-name format, not a
+//     no-reply/notification-style address or name) - looksLikePersonSender();
+//   - everyone else (newsletters, receipts, notifications, cold automated mail) is still IMPORTED and
+//     shown in Conversations for full-inbox visibility, but filed into an UNLINKED conversation keyed
+//     by sender address (findOrCreateUnlinkedEmailConversation) instead of creating a CRM contact;
+//   - Spam / Trash / Drafts / Chats are always skipped; Promotions / Social / Updates / Forums are no
+//     longer skipped (full-inbox mirroring decision) - they're imported and unlinked like other
+//     automated mail unless the sender independently qualifies as a real contact;
 //   - mail between teammates / the user's own addresses is internal and never filed;
 //   - duplicates are the database's job (batch 3 unique indexes): the same email arriving via Resend,
 //     a teammate's mailbox, a LeadsMind send (batch 4), or a re-run is stored once.
@@ -26,7 +32,11 @@ import {
   toCalendarConnectionRow,
 } from '@/lib/calendar/connections';
 import { insertEmailMessage } from '@/lib/email/emailMessageStore';
-import { findOrCreateContactByEmail, findOrCreateEmailConversation } from '@/lib/email/contactConversation';
+import {
+  findOrCreateContactByEmail,
+  findOrCreateEmailConversation,
+  findOrCreateUnlinkedEmailConversation,
+} from '@/lib/email/contactConversation';
 import { INBOUND_EMAIL_DOMAIN } from '@/lib/email/inboundAddress';
 import { parseGmailMessage, stripQuotedReply, type ParsedGmailMessage } from './parse';
 import { logger } from '@/shared/logger';
@@ -35,14 +45,35 @@ const GMAIL_API = 'https://gmail.googleapis.com/gmail/v1/users/me';
 const REQUEST_TIMEOUT_MS = 15_000;
 const SYNC_LEASE_MS = 90_000;
 
-export const SKIP_LABELS = new Set([
-  'SPAM', 'TRASH', 'DRAFT', 'CHAT',
-  'CATEGORY_PROMOTIONS', 'CATEGORY_SOCIAL', 'CATEGORY_UPDATES', 'CATEGORY_FORUMS',
-]);
+// Promotions/Social/Updates/Forums are no longer here (full-inbox mirroring decision): that mail is
+// imported and shown, just filed unlinked instead of skipped. Spam/Trash/Drafts/Chats still serve no
+// purpose in Conversations under any configuration.
+export const SKIP_LABELS = new Set(['SPAM', 'TRASH', 'DRAFT', 'CHAT']);
 
 /** Gmail search used by imports and downtime recovery (mirrors SKIP_LABELS server-side). */
-export const IMPORT_BASE_QUERY =
-  '-in:spam -in:trash -in:drafts -in:chats -category:promotions -category:social -category:updates -category:forums';
+export const IMPORT_BASE_QUERY = '-in:spam -in:trash -in:drafts -in:chats';
+
+// ---- automated-sender heuristic (full-inbox mirroring: import everything, but don't let every
+// no-reply/notification sender create a CRM contact) --------------------------------------------
+
+/** Local-part / display-name tokens that mark a sender as transactional/automated, not a person. */
+const AUTOMATED_SENDER_PATTERN =
+  /\b(no.?reply|do.?not.?reply|notifications?|alerts?|updates?|newsletters?|marketing|mailer(-daemon)?|bounces?|automated|autoresponder|digest|billing|invoices?|receipts?|confirmations?|verify|verification|security|support|accounts?|admin|info|hello|contact|sales|team|service|system)\b/i;
+
+/**
+ * True when a message looks like genuine person-to-person mail: a real "First Last"-shaped display
+ * name, and neither the name nor the address's local part matches a known transactional pattern.
+ * Deliberately conservative - ambiguous senders (no display name, generic local part) fall through
+ * to "not a contact candidate" rather than risk flooding Contacts, matching the product decision.
+ */
+export function looksLikePersonSender(name: string | null | undefined, address: string): boolean {
+  const trimmed = (name || '').trim();
+  if (!trimmed || trimmed.toLowerCase() === address.toLowerCase()) return false;
+  if (AUTOMATED_SENDER_PATTERN.test(trimmed)) return false;
+  if (AUTOMATED_SENDER_PATTERN.test(address.split('@')[0] || '')) return false;
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  return words.length >= 2 && words.every((w) => /^[A-Za-zÀ-ÖØ-öø-ÿ'-]+$/.test(w));
+}
 
 export class GmailApiError extends Error {
   constructor(public status: number, message: string, public reason: string | null = null) {
@@ -154,7 +185,8 @@ async function resolveContact(ctx: MailboxContext, address: string, name: string
     .limit(1)
     .maybeSingle();
   if (existing) return existing.id;
-  if (!userSentThis && !(await hasSentTo(ctx, address))) return null;
+  const isRealContactCandidate = userSentThis || (await hasSentTo(ctx, address)) || looksLikePersonSender(name, address);
+  if (!isRealContactCandidate) return null; // still filed - see findOrCreateUnlinkedEmailConversation
   const created = await findOrCreateContactByEmail(admin, ctx.mailbox.workspace_id, address, name);
   if ('error' in created) throw new Error(`contact create failed: ${created.error}`);
   return created.id;
@@ -197,8 +229,11 @@ export async function fileGmailMessage(ctx: MailboxContext, msg: ParsedGmailMess
 
   for (const person of counterparts) {
     const contactId = await contactFor(ctx, person.address, person.name ?? null, outbound);
-    if (!contactId) continue;
-    const conv = await findOrCreateEmailConversation(admin, ctx.mailbox.workspace_id, contactId, person.name || person.address, msg.date);
+    // No real-contact candidate: still file the message (full-inbox mirroring), just unlinked from
+    // Contacts - one conversation per automated sender address instead of a contact per message.
+    const conv = contactId
+      ? await findOrCreateEmailConversation(admin, ctx.mailbox.workspace_id, contactId, person.name || person.address, msg.date)
+      : await findOrCreateUnlinkedEmailConversation(admin, ctx.mailbox.workspace_id, person.address, person.name || person.address, msg.date);
     if ('error' in conv) throw new Error(`conversation create failed: ${conv.error}`);
 
     const res = await insertEmailMessage(admin, {
