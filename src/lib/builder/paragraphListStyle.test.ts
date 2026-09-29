@@ -72,6 +72,11 @@ describe('setParagraphListStyle', () => {
       expect(getParagraphListStyle('<ol><li>a</li></ol><p><br></p>')).toBe('number');
     });
 
+    it('a Select-All that reaches the trailing filler can turn it into a genuinely empty <li> — dropped, not resurfaced as a blank paragraph', () => {
+      const withEmptyItem = '<ul><li><p>Alpha</p></li><li><p>Bravo</p></li><li><p><br></p></li></ul><p></p>';
+      expect(setParagraphListStyle(withEmptyItem, 'none')).toBe('<p>Alpha</p><p>Bravo</p>');
+    });
+
     it('a genuinely mixed block (two real top-level nodes) is still "none"', () => {
       expect(getParagraphListStyle('<ul><li>a</li></ul><p>Real text</p>')).toBe('none');
     });

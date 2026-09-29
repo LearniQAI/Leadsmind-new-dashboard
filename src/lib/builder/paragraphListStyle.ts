@@ -38,8 +38,17 @@ export function setParagraphListStyle(html: string, style: ParagraphListStyle): 
       if (child.tagName === 'UL' || child.tagName === 'OL') {
         for (const li of Array.from(child.children)) {
           if (li.tagName !== 'LI') continue;
+          // A Select-All that reaches TipTap's trailing filler paragraph turns it into a genuinely
+          // empty <li> when a list is toggled on — not real content, so it's dropped here the same
+          // way a top-level filler paragraph is, rather than resurfacing as a stray blank line.
+          if (!(li.textContent || '').trim()) continue;
           const p = document().createElement('p');
-          p.innerHTML = li.innerHTML;
+          // TipTap always wraps an <li>'s content in its own <p> ("<li><p>text</p></li>"; the
+          // simpler "<li>text</li>" shape only occurs in hand-authored HTML). Re-wrapping that
+          // inner <p> in another <p> is invalid markup — the browser silently splits it into an
+          // extra empty paragraph next to the real one when this HTML is loaded back into the
+          // editor. Unwrap the single inner <p> instead of nesting it.
+          p.innerHTML = li.children.length === 1 && li.children[0].tagName === 'P' ? li.children[0].innerHTML : li.innerHTML;
           out.appendChild(p);
         }
       } else {
