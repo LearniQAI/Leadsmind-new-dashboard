@@ -391,6 +391,19 @@ export default function ConversationsClient({
       ? { ...entry, unread_count: entry.id === activeConvId ? 0 : convIdsOf(entry).reduce((n, id) => n + (unread.byConversation[id] || 0), 0) }
       : entry;
 
+  // Per-channel unread totals for the channel selector's badges — same live store as everything
+  // else here, just summed by raw conversation.platform instead of by contact.
+  const channelUnread = React.useMemo(() => {
+    const totals: Record<string, number> = {};
+    if (!unread.loaded) return totals;
+    for (const conv of initialConversations) {
+      if (conv.id === activeConvId) continue;
+      const n = unread.byConversation[conv.id] || 0;
+      if (n) totals[conv.platform] = (totals[conv.platform] || 0) + n;
+    }
+    return totals;
+  }, [initialConversations, unread, activeConvId]);
+
   const filteredConversations = consolidatedConversations.map(withUnread).filter(c => {
     const matchesFilter = filter === 'all' || c.availablePlatforms.some((p: any) => p.platform === filter);
     const matchesSearch = !searchQuery || 
@@ -557,6 +570,7 @@ export default function ConversationsClient({
           assigneeFilter={assigneeFilter}
           onAssigneeFilterChange={setAssigneeFilter}
           activeChannels={activeChannels}
+          channelUnread={channelUnread}
           channelStatus={channelStatus}
           onComposeEmail={() => setShowComposeModal(true)}
           onConnectChannel={handleReconnect}
