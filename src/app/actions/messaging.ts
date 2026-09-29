@@ -13,6 +13,7 @@ import { getWorkspaceEmailConfig } from '@/lib/email/resolveConfig';
 import { EmailAutomationService } from '@/lib/automations/EmailAutomationService';
 import { UnifiedActivityEngine } from '@/lib/crm/UnifiedActivityEngine';
 import { logger } from '@/shared/logger';
+import { isCloudApiHealthy } from '@/lib/messaging/cloudApiHealth';
 import { toClientError } from '@/shared/errors/AppError';
 import { subscribeWabaToMetaWebhook } from '@/lib/meta/subscribeWebhook';
 
@@ -998,14 +999,6 @@ export async function fetchMetaWhatsAppAccounts(businessId: string) {
     logger.error({ err, businessId }, 'messaging.meta_api.whatsapp_accounts.fetch.failed');
     return [];
   }
-}
-
-// A number only receives real Cloud API traffic in this state — anything else (ON_PREMISE,
-// DISCONNECTED, PENDING, NOT_VERIFIED, etc.) means messages sent to it never reach Meta's Cloud
-// API layer at all, regardless of anything on our side (confirmed live against a real number that
-// was showing "Connected" in our UI while receiving zero messages).
-export function isCloudApiHealthy(platformType: string | null | undefined, status: string | null | undefined): boolean {
-  return platformType === 'CLOUD_API' && status === 'CONNECTED';
 }
 
 export async function fetchWhatsAppPhoneNumbers(wabaId: string) {

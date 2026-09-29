@@ -3,6 +3,8 @@ import { getUser, getCurrentWorkspaceId } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import { UnauthorizedError, ForbiddenError, NotFoundError, toClientError } from '@/shared/errors/AppError'
 import { logger } from '@/shared/logger'
+import { getRequestId } from '@/shared/logger/requestId'
+import { createStepTimer, logRequestComplete } from '@/shared/logger/requestTiming'
 
 export const dynamic = 'force-dynamic';
 
@@ -79,11 +81,20 @@ const WRITABLE_FIELDS = [
 ] as const;
 
 export async function POST(req: NextRequest) {
+  const requestId = getRequestId(req.headers);
+  const timer = createStepTimer();
+  let workspaceIdForLog: string | null = null;
+  let userIdForLog: string | null = null;
+  let status = 200;
+
   try {
     const user = await getUser();
     if (!user) throw new UnauthorizedError();
+    userIdForLog = user.id;
 
     const { workspaceId, supabase } = await resolveWorkspace(user.id);
+    workspaceIdForLog = workspaceId;
+    timer.mark('auth_workspace_resolve');
 
     const body = await req.json()
     const insertData: Record<string, unknown> = {};
@@ -98,13 +109,26 @@ export async function POST(req: NextRequest) {
       .insert(insertData)
       .select()
       .single()
+    timer.mark('inventory_insert');
 
     if (error) throw error;
     return NextResponse.json({ success: true, inventoryItem: data })
   } catch (err: any) {
     logger.error({ err }, 'inventory.post.failed');
     const clientError = toClientError(err);
+    status = clientError.status;
     return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
+  } finally {
+    logRequestComplete({
+      requestId,
+      route: '/api/inventory',
+      method: 'POST',
+      status,
+      durationMs: timer.totalMs(),
+      steps: timer.steps(),
+      workspaceId: workspaceIdForLog,
+      userId: userIdForLog,
+    });
   }
 }
 

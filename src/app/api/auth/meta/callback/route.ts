@@ -4,6 +4,8 @@ import { encrypt } from '@/lib/encryption'
 import { consumeOAuthStateNonce } from '@/lib/oauth/stateNonce'
 import { logger } from '@/shared/logger'
 import { subscribePageToMetaWebhook, subscribeWabaToMetaWebhook } from '@/lib/meta/subscribeWebhook'
+import { newRequestId } from '@/shared/logger/requestId'
+import { createStepTimer, logRequestComplete } from '@/shared/logger/requestTiming'
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +24,22 @@ const REDIRECT_BASE = process.env.NEXT_PUBLIC_APP_URL
 const INTEGRATIONS_REDIRECT_PATH = '/settings?tab=integrations'
 
 export async function GET(req: Request) {
+  // Browser redirect, not a client fetch — request_id is generated server-side and the query
+  // string (code/state) is never logged, only the static route name/status/steps/sanitized error.
+  const requestId = newRequestId()
+  const timer = createStepTimer()
+  let workspaceIdForLog: string | null = null
+  let status = 200
+  const finish = () => logRequestComplete({
+    requestId,
+    route: '/api/auth/meta/callback',
+    method: 'GET',
+    status,
+    durationMs: timer.totalMs(),
+    steps: timer.steps(),
+    workspaceId: workspaceIdForLog,
+  })
+
   const { searchParams } = new URL(req.url)
   const code = searchParams.get('code')
   const stateStr = searchParams.get('state') ?? ''
@@ -29,12 +47,16 @@ export async function GET(req: Request) {
 
   // User denied access
   if (errorParam) {
+    status = 400
+    finish()
     return NextResponse.redirect(
       `${REDIRECT_BASE}${INTEGRATIONS_REDIRECT_PATH}&meta_oauth=1&error=access_denied`
     )
   }
 
   if (!code || !stateStr) {
+    status = 400
+    finish()
     return NextResponse.redirect(
       `${REDIRECT_BASE}${INTEGRATIONS_REDIRECT_PATH}&meta_oauth=1&error=missing_params`
     )
@@ -49,9 +71,13 @@ export async function GET(req: Request) {
     // requested, in `extra`) — never trust the raw state value as workspace_id/platform.
     const { workspaceId: resolvedWorkspaceId, extra } = await consumeOAuthStateNonce(stateStr, 'meta')
     workspaceId = resolvedWorkspaceId
+    workspaceIdForLog = workspaceId
     platform = (extra.platform ?? 'facebook') as 'facebook' | 'instagram' | 'whatsapp'
+    timer.mark('state_nonce_verify')
   } catch (nonceErr: any) {
+    status = 400
     logger.error({ err: nonceErr }, 'meta_oauth.state_nonce.invalid')
+    finish()
     return NextResponse.redirect(
       `${REDIRECT_BASE}${INTEGRATIONS_REDIRECT_PATH}&meta_oauth=1&error=invalid_state`
     )
@@ -84,6 +110,7 @@ export async function GET(req: Request) {
     const longLivedRes = await fetch(longLivedUrl.toString())
     const longLivedData = await longLivedRes.json()
     const userToken = longLivedData.access_token ?? shortLivedToken
+    timer.mark('token_exchange')
 
     // STEP 1 - Always fetch pages with full fields:
     const pagesRes = await fetch(
@@ -125,6 +152,7 @@ export async function GET(req: Request) {
       last_sync_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }, { onConflict: 'workspace_id,platform' })
+    timer.mark('facebook_page_lookup_and_save')
 
     logger.info({}, 'meta_oauth.facebook.saved')
 
@@ -238,6 +266,7 @@ export async function GET(req: Request) {
       }, { onConflict: 'workspace_id,platform' })
       logger.info({}, 'meta_oauth.instagram.saved')
     }
+    timer.mark('instagram_discovery_and_save')
 
     // STEP 4 - Try to save WhatsApp (non-fatal if fails):
     logger.info({}, 'meta_oauth.whatsapp_discovery.starting')
@@ -356,6 +385,7 @@ export async function GET(req: Request) {
         }
       } catch (err: any) { logger.error({ err: err.message }, 'meta_oauth.whatsapp.phone_discovery_failed') }
     }
+    timer.mark('whatsapp_discovery_and_save')
 
     // STEP 5 - Redirect to success:
     const redirectParams = new URLSearchParams({
@@ -373,9 +403,12 @@ export async function GET(req: Request) {
     )
 
   } catch (err: any) {
+    status = 500
     logger.error({ err: err.message }, 'meta_oauth.callback.failed')
     return NextResponse.redirect(
       `${REDIRECT_BASE}${INTEGRATIONS_REDIRECT_PATH}&meta_oauth=1&error=${encodeURIComponent(err.message)}`
     )
+  } finally {
+    finish()
   }
 }

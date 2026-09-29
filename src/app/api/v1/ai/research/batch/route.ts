@@ -3,6 +3,8 @@ import { db } from '@/server/database/datasource';
 import { ResearchAgent } from '@/server/services/ai/ResearchAgent';
 import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
 import { toClientError } from '@/shared/errors/AppError';
+import { getRequestId } from '@/shared/logger/requestId';
+import { createStepTimer, logRequestComplete } from '@/shared/logger/requestTiming';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +13,11 @@ function sleep(ms: number) {
 }
 
 export async function POST(req: NextRequest) {
+  const requestId = getRequestId(req.headers);
+  const timer = createStepTimer();
+  let workspaceIdForLog: string | null = null;
+  let status = 200;
+
   try {
     // Resolves the real, session-active workspace (the same active_workspace_id cookie +
     // membership convention used everywhere else in this app) — never a client-supplied
@@ -20,6 +27,7 @@ export async function POST(req: NextRequest) {
     // an arbitrary one of the caller's own workspaces for multi-workspace users, which can
     // incorrectly reject legitimate requests against whichever workspace they actually meant.
     const { workspaceId } = await requireWorkspaceRole();
+    workspaceIdForLog = workspaceId;
 
     const body = await req.json();
     const { contactIds, domain } = body;
@@ -67,7 +75,8 @@ export async function POST(req: NextRequest) {
             contactName,
             companyName,
             targetDomain,
-            workspaceId
+            workspaceId,
+            requestId
           );
 
           return { contactId, success: true, report };
@@ -79,6 +88,7 @@ export async function POST(req: NextRequest) {
 
       const chunkResults = await Promise.all(chunkPromises);
       results.push(...chunkResults);
+      timer.mark(`chunk_${i}_${i + chunk.length - 1}`);
 
       // Sleep between chunks to distribute API load and prevent rate limit exhaustion
       if (i + chunkSize < targets.length) {
@@ -90,6 +100,17 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error('[Batch Research API] Exception:', error.message);
     const clientError = toClientError(error);
+    status = clientError.status;
     return NextResponse.json({ error: clientError.error, code: clientError.code }, { status: clientError.status });
+  } finally {
+    logRequestComplete({
+      requestId,
+      route: '/api/v1/ai/research/batch',
+      method: 'POST',
+      status,
+      durationMs: timer.totalMs(),
+      steps: timer.steps(),
+      workspaceId: workspaceIdForLog,
+    });
   }
 }

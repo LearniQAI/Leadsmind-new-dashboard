@@ -5,6 +5,7 @@ import { useDashboardContext } from '@/components/layouts/DashboardProvider'
 import { Plus, Minus, Edit2, Trash2, Search, X, AlertTriangle, Layers, Tag, DollarSign } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { newClientRequestId } from '@/lib/http/requestId'
 
 interface InventoryItem {
   id: string
@@ -130,7 +131,7 @@ export default function InventoryPage() {
       } else {
         res = await fetch('/api/inventory', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-request-id': newClientRequestId() },
           body: JSON.stringify(payload)
         })
       }

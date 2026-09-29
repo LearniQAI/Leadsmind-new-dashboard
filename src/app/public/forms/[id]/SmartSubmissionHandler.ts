@@ -1,6 +1,7 @@
 'use client';
 
 import { AttributionData } from './AttributionCapture';
+import { newClientRequestId } from '@/lib/http/requestId';
 
 export interface SmartSubmissionPayload {
   formId: string;
@@ -27,6 +28,7 @@ export async function submitSmartForm(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-request-id': newClientRequestId(),
       },
       body: JSON.stringify({
         data: payload.data,
