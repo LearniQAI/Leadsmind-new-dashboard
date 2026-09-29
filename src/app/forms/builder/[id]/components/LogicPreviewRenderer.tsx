@@ -81,6 +81,10 @@ function ActiveRuleIndicatorInner({
               const targetLabel = rule.action === 'skip_step'
                 ? formState.steps.find(s => s.id === rule.targetId)?.title || rule.targetId
                 : formState.fields.find(f => f.id === rule.targetId)?.label || rule.targetId;
+              const currentVal = runtimeState.values[rule.triggerFieldId];
+              const currentStr = currentVal === undefined || currentVal === null || currentVal === ''
+                ? '(empty)'
+                : String(currentVal);
 
               return (
                 <div key={rule.id} className={cn("px-4 py-2.5 border-b border-dash-border last:border-none", isActive && "bg-dash-accent/5")}>
@@ -96,6 +100,11 @@ function ActiveRuleIndicatorInner({
                     <span>→ {rule.action.replace(/_/g, ' ')}</span>
                     <span className="!text-dash-text">{targetLabel}</span>
                   </div>
+                  {!isActive && (
+                    <div className="mt-1 ml-3.5 text-[9px] !text-dash-textMuted italic">
+                      Not matched — current value: &quot;{currentStr}&quot;
+                    </div>
+                  )}
                 </div>
               );
             })}

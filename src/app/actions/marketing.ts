@@ -227,7 +227,7 @@ export async function getFormSubmissionsData(formId: string) {
 
   const { data: submissions, error: submissionsError } = await adminSupabase
    .from('form_submissions')
-   .select('*, contact:contacts(first_name, last_name, email)')
+   .select('*, contact:contacts(first_name, last_name, email), automation_jobs:form_automation_jobs(status, attempts, max_attempts, last_error, created_at, completed_at)')
    .eq('form_id', formId)
    .order('submitted_at', { ascending: false });
 
@@ -318,6 +318,22 @@ export async function toggleFormWorkflowActive(formId: string, workflowId: strin
   }
 
   const adminSupabase = createAdminClient();
+
+  // A workflow with zero steps can already be saved (WorkflowEditor allows deleting
+  // every step and saving), and previously activating one silently produced no visible
+  // effect on submit — no error, no execution row, indistinguishable from the trigger
+  // never firing. Block activation at the source instead.
+  if (isActive) {
+   const { count, error: countError } = await adminSupabase
+    .from('workflow_steps')
+    .select('id', { count: 'exact', head: true })
+    .eq('workflow_id', workflowId);
+   if (countError) throw countError;
+   if (!count) {
+    return { error: 'Add at least one action before activating this automation.' };
+   }
+  }
+
   const { error } = await adminSupabase.from('workflows').update({ is_active: isActive }).eq('id', workflowId).eq('form_id', formId);
   if (error) throw error;
   return { success: true };
@@ -1569,7 +1585,11 @@ export async function deleteCampaignAction(id: string) {
 }
 
 export async function updateForm(id: string, updates: any) {
- await requireModuleAccess('marketing');
+ try {
+  await requireModuleAccess('marketing');
+ } catch (accessError: any) {
+  return { error: accessError.message || 'Unauthorized' };
+ }
  try {
   try {
    await requireFormAccess(id, 'write');

@@ -14,7 +14,7 @@ const ACTION_LABELS: Record<string, { label: string; icon: React.ReactNode }> = 
 };
 
 export function LogicBuilder() {
-  const { state, dispatch } = useFormBuilder();
+  const { state, dispatch, requestImmediateFlush } = useFormBuilder();
   const { fields, steps, logicRules } = state;
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<LogicRule | null>(null);
@@ -39,12 +39,14 @@ export function LogicBuilder() {
     } else {
       dispatch({ type: 'ADD_LOGIC_RULE', rule });
     }
+    requestImmediateFlush();
     setModalOpen(false);
     setEditingRule(null);
   };
 
   const handleRemoveRule = (id: string) => {
     dispatch({ type: 'REMOVE_LOGIC_RULE', id });
+    requestImmediateFlush();
   };
 
   const handleUseStarter = (triggerLabel: string, action: LogicRule['action']) => {
@@ -63,6 +65,7 @@ export function LogicBuilder() {
       targetId: action === 'skip_step' ? (steps[1]?.id || steps[0]?.id || '') : targetField.id,
     };
     dispatch({ type: 'ADD_LOGIC_RULE', rule });
+    requestImmediateFlush();
   };
 
   const fieldMap = new Map(fields.map(f => [f.id, f]));
