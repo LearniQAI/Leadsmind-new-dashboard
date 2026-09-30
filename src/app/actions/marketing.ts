@@ -227,7 +227,7 @@ export async function getFormSubmissionsData(formId: string) {
 
   const { data: submissions, error: submissionsError } = await adminSupabase
    .from('form_submissions')
-   .select('*, contact:contacts(first_name, last_name, email), automation_jobs:form_automation_jobs(status, attempts, max_attempts, last_error, created_at, completed_at)')
+   .select('*, contact:contacts(first_name, last_name, email), automation_jobs:form_automation_jobs(status, attempts, max_attempts, last_error, workflows_matched, created_at, completed_at)')
    .eq('form_id', formId)
    .order('submitted_at', { ascending: false });
 

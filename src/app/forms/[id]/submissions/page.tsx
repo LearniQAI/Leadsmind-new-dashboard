@@ -38,6 +38,51 @@ function SourceBadge({ sourceType }: { sourceType: string | null }) {
   );
 }
 
+interface AutomationJob {
+  status: 'queued' | 'running' | 'succeeded' | 'failed';
+  attempts: number;
+  max_attempts: number;
+  last_error: string | null;
+  workflows_matched: number | null;
+  created_at: string;
+  completed_at: string | null;
+}
+
+const AUTOMATION_BADGE_STYLES: Record<AutomationJob['status'] | 'no_match', string> = {
+  queued: 'bg-amber/10 text-amber',
+  running: 'bg-dash-accent/10 text-dash-accent',
+  succeeded: 'bg-green/10 text-green',
+  failed: 'bg-red/10 text-red',
+  no_match: 'bg-dash-textMuted/10 text-dash-textMuted',
+};
+
+// form_automation_jobs (see supabase/migrations/20260930000023_form_submission_job_queue.sql) —
+// one row per submission's automation dispatch. Most recent by created_at in the (normally
+// single-row) array the nested select returns.
+function latestJob(sub: any): AutomationJob | null {
+  const jobs = sub.automation_jobs as AutomationJob[] | null | undefined;
+  if (!jobs || jobs.length === 0) return null;
+  return [...jobs].sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+}
+
+function AutomationBadge({ job }: { job: AutomationJob | null }) {
+  if (!job) return null;
+  // 'succeeded' with zero matched workflows means the trigger ran but there was nothing
+  // configured to run — worth distinguishing from an automation that actually fired, so a form
+  // with no workflows attached doesn't read as if something happened on every submission.
+  const noMatch = job.status === 'succeeded' && job.workflows_matched === 0;
+  const style = AUTOMATION_BADGE_STYLES[noMatch ? 'no_match' : job.status];
+  const label = noMatch ? 'No matching workflow' : `Automation: ${job.status}`;
+  return (
+    <span
+      title={job.status === 'failed' ? job.last_error || undefined : undefined}
+      className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md ${style}`}
+    >
+      {label}{job.attempts > 1 ? ` (attempt ${job.attempts})` : ''}
+    </span>
+  );
+}
+
 interface TagOption {
   id: string;
   name: string;
@@ -467,6 +512,7 @@ export default function SubmissionsPage({ params }: { params: { id: string } }) 
                       <DashTableCell>
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <SourceBadge sourceType={sub.source_type} />
+                          <AutomationBadge job={latestJob(sub)} />
                           {sub.contact_sync_error && (
                             <span
                               title={sub.contact_sync_error}
@@ -542,6 +588,25 @@ export default function SubmissionsPage({ params }: { params: { id: string } }) 
                   </div>
                 </div>
               )}
+              {selectedSubmission && (() => {
+                const job = latestJob(selectedSubmission);
+                if (!job) return null;
+                return (
+                  <div className="mb-6 bg-dash-surface border border-dash-border rounded-xl p-4">
+                    <span className="text-[9px] font-bold !text-dash-textMuted mb-2 block">Automation run</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <AutomationBadge job={job} />
+                      <span className="text-[11px] !text-dash-textMuted">
+                        {job.attempts} attempt{job.attempts === 1 ? '' : 's'}
+                        {job.completed_at ? ` · finished ${new Date(job.completed_at).toLocaleString()}` : ''}
+                      </span>
+                    </div>
+                    {job.status === 'failed' && job.last_error && (
+                      <p className="text-[11px] text-red mt-2">{job.last_error}</p>
+                    )}
+                  </div>
+                );
+              })()}
               <div className="grid grid-cols-2 gap-4 mb-8">
                 <div className="bg-dash-surface rounded-xl p-4 border border-dash-border">
                   <span className="text-[9px] font-bold !text-dash-textMuted mb-1 block">Contact email</span>
