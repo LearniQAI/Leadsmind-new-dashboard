@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { CanvasLessonImage } from './CanvasLessonImage';
-import { CanvasItemSpacing } from './CanvasItemSpacing';
+import { renderCanvasList } from './CanvasColumns';
 import { CANVAS_INLINE_HTML, canvasBlockTypeProps, useCanvasHeadingFonts } from './canvasHeadingType';
 import { CanvasDivider } from './CanvasDivider';
 import { CanvasContentBox, contentBoxCta } from './CanvasContentBox';
@@ -224,9 +224,7 @@ export default function PreviewLessonClient({
               <h1 className="font-display text-xl font-bold !text-dash-text">{activeLesson.title}</h1>
               <div className="space-y-5">
                 {activeLesson.canvasItems && activeLesson.canvasItems.length > 0
-                  ? activeLesson.canvasItems.map((item: any, idx: number) => (
-                      <CanvasItemSpacing key={idx} spacing={item.spacing}>{renderPreviewCanvasItem(item, idx)}</CanvasItemSpacing>
-                    ))
+                  ? renderCanvasList(activeLesson.canvasItems, renderPreviewCanvasItem)
                   : (activeLesson.contentBlocks || []).map((block: any) => (
                       <PreviewBlock key={block.id} block={block} />
                     ))}

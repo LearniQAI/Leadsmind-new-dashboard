@@ -25,6 +25,16 @@ import {
 } from '@/lib/builder/spacing';
 import { textBlockCss, type TextCss } from '@/lib/builder/textBlockStyle';
 import { frameBorderStyle } from '@/lib/builder/frameStyle';
+import { validColumnWidths } from '@/lib/builder/columnWidths';
+import { columnCountFor } from '@/lib/builder/columnSlots';
+
+/**
+ * Set on every item inside a Columns block that the author drag-resized (Columns.columnWidths).
+ * Consecutive items sharing `group` are laid out side by side by the student/preview renderer
+ * (components/lms/CanvasColumns); `index` is which column of the row the item belongs to. Columns
+ * blocks that were never resized carry no tag and keep the stacked reading view they always had.
+ */
+export type CanvasColumnTag = { group: string; index: number; widths: number[]; gap: number };
 
 /** A value resolved per breakpoint with the builder's own resolver; a missing device = unset. */
 export type CanvasResponsive = Partial<Record<Device, string>>;
@@ -35,7 +45,7 @@ export type CanvasTextStyle = Partial<Record<Device, TextCss>>;
 /** Universal top/bottom spacing, fully resolved per breakpoint (CSS lengths). Absent = none. */
 export type CanvasSpacing = Record<Device, Partial<Record<SpacingKey, string>>>;
 
-export type LessonCanvasItem = { spacing?: CanvasSpacing } & (
+export type LessonCanvasItem = { spacing?: CanvasSpacing; columns?: CanvasColumnTag } & (
   | {
       kind: 'heading';
       level: string;
@@ -100,6 +110,7 @@ function nodeToItems(
   tree: Record<string, CraftNode>,
   out: LessonCanvasItem[],
   seen: Set<string>,
+  nodeId = '',
 ): void {
   if (!node) return;
   const name = node.type?.resolvedName;
@@ -107,10 +118,25 @@ function nodeToItems(
 
   if (name && CONTAINER_TYPES.has(name)) {
     const start = out.length;
+    // Only a Columns block with valid manual widths is laid out as columns.
+    const widths = name === 'Columns' ? validColumnWidths(p.columnWidths, columnCountFor(p.layout)) : undefined;
+    let col = 0;
     for (const childId of node.nodes || []) {
       if (seen.has(childId)) continue;
       seen.add(childId);
-      nodeToItems(tree[childId], tree, out, seen);
+      const before = out.length;
+      nodeToItems(tree[childId], tree, out, seen, childId);
+      if (widths) {
+        // Child k sits in column (k mod columns-per-row); a wrapped row repeats the same widths.
+        const tag: CanvasColumnTag = {
+          group: `${nodeId}:${Math.floor(col / widths.length)}`,
+          index: col % widths.length,
+          widths,
+          gap: typeof p.gap === 'number' ? p.gap : 16,
+        };
+        for (let i = before; i < out.length; i++) if (!out[i].columns) out[i] = { ...out[i], columns: tag };
+        col++;
+      }
     }
     applyContainerMargins(out, start, p);
     return;
