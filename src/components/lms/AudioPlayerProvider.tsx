@@ -17,6 +17,10 @@ import { recordAudioProgress } from "@/app/actions/audioProgress";
 // Progress/completion recording lives HERE (not in the full player) so listening still counts
 // toward completion while only the mini bar is visible.
 
+// A single failed load is often transient (a slow/timed-out Drive fetch on a big file) — retried
+// with linear backoff (1.5s * attempt) before the player gives up and shows an error.
+const MAX_LOAD_RETRIES = 3;
+
 export interface AudioTrack {
   assetId: string;
   contentBlockId: string;
