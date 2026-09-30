@@ -17,6 +17,10 @@ import { recordAudioProgress } from "@/app/actions/audioProgress";
 // Progress/completion recording lives HERE (not in the full player) so listening still counts
 // toward completion while only the mini bar is visible.
 
+// A single failed load is often transient (a slow/timed-out Drive fetch on a big file) — retried
+// with linear backoff (1.5s * attempt) before the player gives up and shows an error.
+const MAX_LOAD_RETRIES = 3;
+
 export interface AudioTrack {
   assetId: string;
   contentBlockId: string;
@@ -43,6 +47,8 @@ interface AudioPlayerContextValue {
   isPlaying: boolean;
   isLoading: boolean;
   hasError: boolean;
+  /** Drive/stream failure reason once diagnosed (e.g. 'not_shared', 'quota'); null if unknown. */
+  errorCode: string | null;
   /** Changes only at loadedmetadata (or on load()/close()) — safe to read in a component that
    *  should NOT re-render on every playback tick, unlike useAudioTime()'s duration field which
    *  is bundled with currentTime and therefore changes every tick regardless of which field is
@@ -134,6 +140,10 @@ export function AudioPlayerProvider({
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
+  // Why it failed, from the stream route's JSON (null until the diagnosis returns).
+  const [errorCode, setErrorCode] = useState<string | null>(null);
+  const retryCountRef = useRef(0);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [duration, setDuration] = useState(0);
   const [playbackRate, setPlaybackRateState] = useState(1);
   // Every full player currently on screen (a lesson can hold several audio blocks). Was a single
@@ -179,13 +189,18 @@ export function AudioPlayerProvider({
     // Same track already loaded (e.g. re-opening the full player after navigating back) — do
     // NOT touch audio.src, that would restart playback and cause exactly the gap this
     // architecture exists to avoid.
-    if (trackRef.current?.assetId === next.assetId) {
+    // Exception: a source that has failed must be reloaded, or every block sharing the asset would
+    // stay stuck on the error forever.
+    if (trackRef.current?.assetId === next.assetId && !audio.error) {
       setTrack(next);
       return;
     }
 
     setTrack(next);
     setHasError(false);
+    setErrorCode(null);
+    retryCountRef.current = 0;
+    if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
     setIsLoading(true);
     setDuration(0);
     publishTimeSnapshot({ currentTime: 0, duration: 0, bufferedEnd: 0 });
@@ -374,8 +389,30 @@ export function AudioPlayerProvider({
     const onWaiting = () => setIsLoading(true);
     const onPlaying = () => setIsLoading(false);
     const onError = () => {
+      // A single failed load is often transient (a slow/timed-out Drive fetch on a big file), so
+      // retry with backoff — resuming where it stopped — before declaring the audio unavailable.
+      if (retryCountRef.current < MAX_LOAD_RETRIES && audio.src) {
+        const attempt = ++retryCountRef.current;
+        const resumeAt = audio.currentTime;
+        setIsLoading(true);
+        retryTimerRef.current = setTimeout(() => {
+          if (resumeAt > 0) pendingResumeRef.current = resumeAt;
+          audio.load();
+        }, 1500 * attempt);
+        return;
+      }
       setHasError(true);
       setIsLoading(false);
+      // The element only says "failed"; ask the stream route WHY (a 1-byte range) so the player can
+      // tell an instructor whether it's sharing, quota, or a genuine outage.
+      const src = audio.src;
+      fetch(src, { headers: { Range: 'bytes=0-0' } })
+        .then(async (res) => {
+          if (res.ok) return;
+          const body = await res.json().catch(() => null);
+          if (audio.src === src) setErrorCode(typeof body?.code === 'string' ? body.code : `http_${res.status}`);
+        })
+        .catch(() => {});
     };
     const onProgress = () => {
       if (audio.buffered.length > 0) {
@@ -411,6 +448,7 @@ export function AudioPlayerProvider({
     isPlaying,
     isLoading,
     hasError,
+    errorCode,
     duration,
     playbackRate,
     isFullViewActive: !!track && fullViewBlockIds.has(track.contentBlockId),
@@ -428,7 +466,7 @@ export function AudioPlayerProvider({
     getTimeSnapshot,
     getAnalyser,
   }), [
-    track, isPlaying, isLoading, hasError, duration, playbackRate,
+    track, isPlaying, isLoading, hasError, errorCode, duration, playbackRate,
     fullViewBlockIds, completedAssetIds, load, play, pause, toggle, seek, skip,
     setPlaybackRate, close, registerFullView, subscribeTime, getTimeSnapshot, getAnalyser,
   ]);

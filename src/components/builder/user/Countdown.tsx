@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useNode } from '@craftjs/core';
+import { useNode, useEditor } from '@craftjs/core';
+import { PlainInlineText } from './InlineTextEditor';
 
 export const Countdown = ({ endDate, title, dragRef, ...props }: any) => {
- const { connectors: { connect, drag } } = useNode();
+ const { connectors: { connect, drag }, actions: { setProp } } = useNode();
+ const { enabled } = useEditor((state) => ({ enabled: state.options.enabled }));
  const [timeLeft, setTimeLeft] = useState<any>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
  useEffect(() => {
@@ -46,7 +48,16 @@ export const Countdown = ({ endDate, title, dragRef, ...props }: any) => {
    }}
    className="p-6 text-center space-y-4"
   >
-   {title && <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">{title}</h3>}
+   {(title || enabled) && (
+     <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+       {enabled ? (
+         <PlainInlineText
+           value={title || ''}
+           onChange={(val) => setProp((p: any) => { p.title = val; }, 500)}
+         />
+       ) : title}
+     </h3>
+   )}
    <div className="flex justify-center gap-3">
     <TimeBlock value={timeLeft.days} label="Days" />
     <TimeBlock value={timeLeft.hours} label="Hours" />

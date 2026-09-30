@@ -7,6 +7,81 @@ import StarterKit from '@tiptap/starter-kit';
 import { List, ListOrdered } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+// Every builder block sits inside a Craft node element that is HTML5-draggable (the whole
+// block is a drag source) — a mousedown inside any inline editor is taken as the start of a
+// block drag instead of a text edit/selection unless the nearest draggable ancestor is
+// switched off for the length of that gesture. Shared by InlineTextEditor (rich text) and
+// PlainInlineText (single-line, non-HTML fields like a Button's label) below.
+function useSuspendAncestorDragOnMouseDown<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const handleMouseDownCapture = () => {
+    const dragHost = ref.current?.closest<HTMLElement>('[draggable="true"]');
+    if (!dragHost) return;
+    dragHost.setAttribute('draggable', 'false');
+    const restore = () => {
+      window.removeEventListener('mouseup', restore, true);
+      window.removeEventListener('dragend', restore, true);
+      dragHost.setAttribute('draggable', 'true');
+    };
+    window.addEventListener('mouseup', restore, true);
+    window.addEventListener('dragend', restore, true);
+  };
+  return { ref, handleMouseDownCapture };
+}
+
+/**
+ * A single-line, plain-text (no HTML) inline editor for props that render as a bare string
+ * outside the editor (e.g. a Button's `text`, a Countdown's `title`) — InlineTextEditor's
+ * TipTap instance always produces HTML (`editor.getHTML()`), which is right for Heading/
+ * Paragraph/Navbar/Footer (they already render their value via `dangerouslySetInnerHTML`
+ * when not editing) but would leak literal `<p>...</p>` tags into a prop that's inserted as
+ * plain JSX text `{text}` on the published page.
+ */
+export const PlainInlineText = ({
+  value,
+  onChange,
+  className = '',
+  style = {},
+  as: Tag = 'span',
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  className?: string;
+  style?: React.CSSProperties;
+  as?: 'span' | 'div' | 'h3';
+}) => {
+  const { ref, handleMouseDownCapture } = useSuspendAncestorDragOnMouseDown<HTMLElement>();
+
+  // Controlled contentEditable: only push `value` into the DOM when it's not the live edit
+  // target, so a re-render triggered by our own onChange (setProp -> new `value` prop) never
+  // resets the caret mid-keystroke.
+  useEffect(() => {
+    const el = ref.current;
+    if (el && document.activeElement !== el && el.textContent !== value) {
+      el.textContent = value;
+    }
+  }, [value, ref]);
+
+  return (
+    <Tag
+      ref={ref as any}
+      contentEditable
+      suppressContentEditableWarning
+      onMouseDownCapture={handleMouseDownCapture}
+      onInput={(e: React.FormEvent<HTMLElement>) => onChange(e.currentTarget.textContent || '')}
+      onKeyDown={(e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') e.preventDefault(); // single-line field, no line breaks
+      }}
+      onPaste={(e: React.ClipboardEvent) => {
+        e.preventDefault();
+        document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
+      }}
+      className={cn('outline-none focus:outline-none', className)}
+      style={style}
+    />
+  );
+};
+
 interface InlineTextEditorProps {
   value: string;
   onChange: (val: string) => void;
@@ -61,25 +136,12 @@ export const InlineTextEditor = ({
     }
   }, [value, editor]);
 
-  // Every builder block sits inside a Craft node element that is HTML5-draggable (the whole block
-  // is a drag source). In Chrome a mousedown on the editor's empty space — past the end of a line,
-  // which is exactly where a "backward" (right-to-left) selection starts — is taken as the start of
-  // that block drag instead of a text selection: dragstart fires, nothing is selected, and Ctrl+C
-  // copies nothing. Forward drags only escape it because they start on a glyph. So for the length
-  // of a mouse gesture that begins inside the editor, the draggable ancestor is switched off.
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const handleMouseDownCapture = () => {
-    const dragHost = wrapperRef.current?.closest<HTMLElement>('[draggable="true"]');
-    if (!dragHost) return;
-    dragHost.setAttribute('draggable', 'false');
-    const restore = () => {
-      window.removeEventListener('mouseup', restore, true);
-      window.removeEventListener('dragend', restore, true);
-      dragHost.setAttribute('draggable', 'true');
-    };
-    window.addEventListener('mouseup', restore, true);
-    window.addEventListener('dragend', restore, true);
-  };
+  // In Chrome a mousedown on the editor's empty space — past the end of a line, which is
+  // exactly where a "backward" (right-to-left) selection starts — is taken as the start of
+  // the ancestor block's drag instead of a text selection: dragstart fires, nothing is
+  // selected, and Ctrl+C copies nothing. Forward drags only escape it because they start on a
+  // glyph. See useSuspendAncestorDragOnMouseDown above.
+  const { ref: wrapperRef, handleMouseDownCapture } = useSuspendAncestorDragOnMouseDown<HTMLDivElement>();
 
   if (!editor) {
     return null;
