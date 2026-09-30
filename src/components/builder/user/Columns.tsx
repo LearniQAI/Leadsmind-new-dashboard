@@ -207,9 +207,14 @@ export const Columns = ({
         aria-label={`Resize columns ${i + 1} and ${i + 2}`}
         onPointerDown={startResize(i)}
         className={cn(
+          // pointer-events tracks opacity exactly (not just group-hover): while invisible this
+          // strip must not hit-test above the column content it overlaps, or a native HTML5
+          // dragover/drop aimed at that column resolves to this handle instead and never
+          // reaches the Column canvas underneath — the one place in the builder a drop could
+          // silently fail depending on where in a Columns block the cursor lands.
           "absolute top-1 bottom-1 z-20 flex w-3 -translate-x-1/2 cursor-col-resize touch-none items-center justify-center",
-          "opacity-0 group-hover:opacity-100 transition-opacity motion-reduce:transition-none",
-          (selected || draft) && "opacity-100"
+          "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity motion-reduce:transition-none",
+          (selected || draft) && "opacity-100 pointer-events-auto"
         )}
         style={{ left: x }}
       >

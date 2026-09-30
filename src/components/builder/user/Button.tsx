@@ -7,6 +7,7 @@ import * as LucideIcons from 'lucide-react';
 import { resolveLink } from '@/lib/builder/utils';
 import { BUTTON_SIZE_CLASSES, buttonInlineStyle } from '@/lib/builder/buttonStyle';
 import { useBuilder } from '../BuilderContext';
+import { PlainInlineText } from './InlineTextEditor';
 
 
 
@@ -38,7 +39,7 @@ export const UserButton = (allProps: ButtonProps & any) => {
     dragRef,
     ...props 
   } = allProps;
- const { connectors: { connect, drag } } = useNode();
+ const { connectors: { connect, drag }, actions: { setProp } } = useNode();
  const { enabled } = useEditor((state) => ({ enabled: state.options.enabled }));
  const { websiteData } = useBuilder();
  const [loading, setLoading] = React.useState(false);
@@ -165,7 +166,13 @@ export const UserButton = (allProps: ButtonProps & any) => {
       ) : (
         <>
           {icon && iconPosition === 'left' && <IconComponent size={size === 'xl' ? 24 : 18} />}
-          {text}
+          {enabled ? (
+            <PlainInlineText
+              value={text}
+              onChange={(val) => setProp((p: ButtonProps) => { p.text = val; }, 500)}
+              className="inline-block min-w-[1ch]"
+            />
+          ) : text}
           {icon && iconPosition === 'right' && <IconComponent size={size === 'xl' ? 24 : 18} className="group-hover:translate-x-1 transition-transform" />}
         </>
       )}
