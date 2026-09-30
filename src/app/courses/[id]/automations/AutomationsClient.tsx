@@ -140,7 +140,7 @@ export default function AutomationsClient({ course }: AutomationsClientProps) {
     <div className="space-y-6 font-body">
       {/* Breadcrumbs */}
       <div className="flex items-center gap-1.5 text-xs font-bold !text-dash-textMuted">
-        <span className="hover:!text-dash-accent transition-colors motion-reduce:transition-none cursor-pointer" onClick={() => router.push("/courses")}>Courses</span>
+        <span className="hover:!text-dash-accent transition-colors motion-reduce:transition-none cursor-pointer" onClick={() => router.push("/courses")}>LMS</span>
         <span>›</span>
         <span className="hover:!text-dash-accent transition-colors motion-reduce:transition-none cursor-pointer" onClick={() => router.push(`/courses/${course.id}`)}>{course.title}</span>
         <span>›</span>

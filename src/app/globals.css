@@ -740,6 +740,15 @@
 /* Universal top/bottom block spacing in the flattened student lesson view
    (components/lms/CanvasItemSpacing). Values are resolved per breakpoint server-side; the
    breakpoints are the builder's own (autoDetectViewport: mobile <= 767px, tablet <= 1023px). */
+/* Drag-resized Columns block in the student/preview reading view (components/lms/CanvasColumns):
+   one column on small screens, the author's percentages from 768px up. */
+.lm-canvas-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 768px) {
+  .lm-canvas-cols { grid-template-columns: var(--lm-cols); }
+}
 .lm-canvas-spacing {
   display: flow-root;
 }

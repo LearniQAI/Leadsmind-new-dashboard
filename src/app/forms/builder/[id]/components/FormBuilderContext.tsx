@@ -11,6 +11,7 @@ const BuilderContext = createContext<{
   state: BuilderState;
   dispatch: React.Dispatch<BuilderAction>;
   saveForm: () => Promise<void>;
+  requestImmediateFlush: () => void;
   addField: (type: FieldType, index?: number, labelOverride?: string) => void;
 } | undefined>(undefined);
 
@@ -24,6 +25,8 @@ export function FormBuilderProvider({
   const [state, dispatch] = useReducer(builderReducer, initialState);
   const stateRef = useRef(state);
   const didInitialize = useRef(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingImmediateFlushRef = useRef(false);
 
   useEffect(() => {
     stateRef.current = state;
@@ -145,25 +148,66 @@ export function FormBuilderProvider({
       }
     } catch (err) {
       console.error('[Builder] Auto-save error:', err);
+      const message = err instanceof Error ? err.message : 'Auto-save failed unexpectedly.';
+      toast.error(`Auto-save failed: ${message}`);
       dispatch({ type: 'SET_SAVING', isSaving: false });
     }
   };
 
-  // Auto-save debouncer (5 seconds)
+  // Cancels any pending debounced save and saves right now, from whatever
+  // is in stateRef at the moment it's called. Safe to call from
+  // beforeunload/unmount handlers (state has already settled by then) but
+  // NOT safe to call synchronously right after dispatch() in the same
+  // event handler — stateRef.current only gets synced to the new state by
+  // an effect that hasn't run yet at that point, so it would flush the
+  // pre-dispatch snapshot. Use requestImmediateFlush() for that case.
+  const flushSave = async () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    await handleSave();
+  };
+
+  // Marks the next debounce-effect run (which fires after the dispatch that
+  // triggered it has committed and stateRef is synced) to save with zero
+  // delay instead of waiting 5s. Logic-rule add/edit/delete call this right
+  // after dispatch — a rule the user just changed must not sit exposed to
+  // the debounce window, where a refresh or navigation-away would silently
+  // lose it.
+  const requestImmediateFlush = () => {
+    pendingImmediateFlushRef.current = true;
+  };
+
+  // Auto-save debouncer (5 seconds, or 0 when requestImmediateFlush() was
+  // called since the last run).
   useEffect(() => {
     if (!state.hasUnsavedChanges || !state.formId) return;
 
-    const timer = setTimeout(() => {
-      handleSave();
-    }, 5000);
+    const immediate = pendingImmediateFlushRef.current;
+    pendingImmediateFlushRef.current = false;
 
-    return () => clearTimeout(timer);
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null;
+      handleSave();
+    }, immediate ? 0 : 5000);
+
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+    };
   }, [state.fields, state.steps, state.logicRules, state.progressBarType, state.formName, state.hasUnsavedChanges]);
 
-  // Unsaved changes window listener
+  // Unsaved changes window listener. Firing flushSave here is best-effort —
+  // a full page unload can cut the request off before it lands — but it's
+  // strictly better than doing nothing, and the confirm dialog's own delay
+  // often gives it enough time to complete.
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (state.hasUnsavedChanges) {
+        flushSave();
         e.preventDefault();
         e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
         return e.returnValue;
@@ -174,8 +218,20 @@ export function FormBuilderProvider({
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [state.hasUnsavedChanges]);
 
+  // Route-change flush: client-side (SPA) navigation away from the builder
+  // unmounts this provider without a full page unload, so the in-flight
+  // fetch survives — unlike beforeunload, this one isn't best-effort.
+  useEffect(() => {
+    return () => {
+      if (stateRef.current.hasUnsavedChanges) {
+        flushSave();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
-    <BuilderContext.Provider value={{ state, dispatch, saveForm: handleSave, addField }}>
+    <BuilderContext.Provider value={{ state, dispatch, saveForm: handleSave, requestImmediateFlush, addField }}>
       {children}
     </BuilderContext.Provider>
   );

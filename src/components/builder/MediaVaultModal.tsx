@@ -9,6 +9,7 @@ import { getMediaAssets, saveMediaAsset, deleteMediaAsset } from '@/app/actions/
 import { createClient } from '@/lib/supabase/client';
 import { getActiveWorkspaceId } from '@/lib/workspace/activeWorkspaceClient';
 import { toast } from 'sonner';
+import { checkImageFile, IMAGE_ACCEPT, IMAGE_HINT } from '@/lib/builder/imageUpload';
 
 interface MediaVaultModalProps {
   isOpen: boolean;
@@ -32,6 +33,9 @@ export const MediaVaultModal = ({
 
   // Upload states
   const [isUploading, setIsUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchLibrary = async () => {
@@ -47,6 +51,11 @@ export const MediaVaultModal = ({
       setIsLoading(false);
     }
   };
+
+  // A stale error from the last attempt shouldn't greet the next time the vault opens.
+  useEffect(() => {
+    if (!isOpen) { setUploadError(null); setIsDragging(false); }
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen && activeTab === 'library') {
@@ -102,38 +111,89 @@ export const MediaVaultModal = ({
     }
   }, [activeTab]);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Storage's JS client has no upload progress, so the object is POSTed to the Storage REST
+  // endpoint directly (same auth, same RLS) to get real byte-level progress for larger files.
+  const putWithProgress = (path: string, file: File, contentType: string, token: string) =>
+    new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/builder-media/${path}`);
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.setRequestHeader('apikey', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
+      xhr.setRequestHeader('Content-Type', contentType);
+      xhr.setRequestHeader('cache-control', 'max-age=3600');
+      xhr.setRequestHeader('x-upsert', 'false');
+      xhr.upload.onprogress = (ev) => { if (ev.lengthComputable) setProgress(Math.round((ev.loaded / ev.total) * 100)); };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) return resolve();
+        let msg = '';
+        try { msg = JSON.parse(xhr.responseText)?.message || ''; } catch { /* non-JSON body */ }
+        if (xhr.status === 401 || xhr.status === 403) reject(new Error("You don't have permission to upload to this workspace. Sign in again and retry."));
+        else if (xhr.status === 413) reject(new Error('The server rejected the file as too large.'));
+        else if (xhr.status === 507 || /quota|storage.*(full|limit)/i.test(msg)) reject(new Error('Your workspace storage is full.'));
+        else reject(new Error(msg || `The server rejected the upload (HTTP ${xhr.status}).`));
+      };
+      xhr.onerror = () => reject(new Error('Network error — check your connection and try again.'));
+      xhr.ontimeout = () => reject(new Error('The upload timed out — try again.'));
+      xhr.send(file);
+    });
+
+  // Shared by click-to-browse and drag-and-drop so both behave identically.
+  const uploadFile = async (file: File) => {
+    if (isUploading) return;
+    setUploadError(null);
+    const check = await checkImageFile(file);
+    if ('error' in check) {
+      setUploadError(check.error);
+      toast.error(check.error);
+      return;
+    }
     setIsUploading(true);
-
+    setProgress(0);
+    let filePath = '';
+    const supabase = createClient();
     try {
-      const supabase = createClient();
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.floor(Math.random() * 10000)}.${fileExt}`;
-      const filePath = `${getActiveWorkspaceId()}/vault/${fileName}`;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Your session has expired. Sign in again and retry.');
+      // Extension comes from the verified bytes, never from the user-supplied name.
+      filePath = `${getActiveWorkspaceId()}/vault/${Date.now()}-${Math.floor(Math.random() * 10000)}.${check.kind.ext}`;
+      await putWithProgress(filePath, file, check.kind.mime, session.access_token);
 
-      const { error: uploadError } = await supabase.storage
-        .from('builder-media')
-        .upload(filePath, file, { cacheControl: '3600', upsert: false });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('builder-media')
-        .getPublicUrl(filePath);
-
-      // Save to database
-      await saveMediaAsset(publicUrl, file.name, file.size, file.type, 'Uploaded');
-      toast.success('File added to workspace media vault.');
+      const { data: { publicUrl } } = supabase.storage.from('builder-media').getPublicUrl(filePath);
+      const saved = await saveMediaAsset(publicUrl, file.name, file.size, check.kind.mime, 'Uploaded');
+      if (!saved?.success) {
+        // Don't leave an orphaned object that the library can never show.
+        await supabase.storage.from('builder-media').remove([filePath]).catch(() => {});
+        throw new Error(saved?.error || 'The image uploaded but could not be added to your library.');
+      }
+      toast.success('Image uploaded.');
+      // Apply it right away (the caller sets it as the element's source) — no second click, no refresh.
+      onSelect(publicUrl);
+      onOpenChange(false);
       setActiveTab('library');
-      fetchLibrary();
     } catch (err: any) {
-      console.error(err);
-      toast.error('Upload failed: ' + err.message);
+      const message = err?.message || 'Upload failed. Please try again.';
+      setUploadError(message);
+      toast.error(message);
     } finally {
       setIsUploading(false);
+      setProgress(0);
     }
+  };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Reset so choosing the same file again (e.g. after fixing a failure) still fires onChange.
+    e.target.value = '';
+    if (file) await uploadFile(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files || []);
+    if (files.length === 0) return;
+    if (files.length > 1) toast.info('Only one image at a time — uploading the first.');
+    void uploadFile(files[0]);
   };
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
@@ -264,24 +324,48 @@ export const MediaVaultModal = ({
             {activeTab === 'upload' && (
               <div className="h-full flex flex-col items-center justify-center">
                 <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full max-w-md p-10 border-2 border-dashed border-slate-200 hover:border-slate-300 bg-slate-100 hover:bg-slate-200 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all motion-reduce:transition-none gap-4"
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Upload an image: click to browse or drop a file here"
+                  aria-busy={isUploading}
+                  onClick={() => { if (!isUploading) fileInputRef.current?.click(); }}
+                  onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !isUploading) { e.preventDefault(); fileInputRef.current?.click(); } }}
+                  onDragOver={(e) => { e.preventDefault(); if (!isUploading) setIsDragging(true); }}
+                  onDragEnter={(e) => { e.preventDefault(); if (!isUploading) setIsDragging(true); }}
+                  onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragging(false); }}
+                  onDrop={handleDrop}
+                  className={`w-full max-w-md p-10 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center transition-all motion-reduce:transition-none gap-4 outline-none focus-visible:ring-2 focus-visible:ring-slate-400 ${
+                    isDragging ? 'border-slate-900 bg-slate-200' : 'border-slate-200 hover:border-slate-300 bg-slate-100 hover:bg-slate-200'
+                  } ${isUploading ? 'cursor-wait' : 'cursor-pointer'}`}
                 >
                   {isUploading ? (
                     <Loader2 className="w-8 h-8 animate-spin motion-reduce:animate-none text-slate-400" />
                   ) : (
                     <Upload className="w-8 h-8 text-slate-500" />
                   )}
-                  <div className="text-center">
-                    <p className="text-xs font-bold text-slate-700">Click or drag image to upload</p>
-                    <p className="text-[10px] text-slate-500 mt-1">JPG, PNG, GIF up to 5MB</p>
+                  <div className="text-center w-full">
+                    <p className="text-xs font-bold text-slate-700">
+                      {isUploading ? `Uploading… ${progress}%` : isDragging ? 'Drop to upload' : 'Click or drag image to upload'}
+                    </p>
+                    {isUploading ? (
+                      <div className="mt-3 h-1.5 w-full rounded-full bg-slate-300 overflow-hidden" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
+                        <div className="h-full bg-slate-900 transition-[width] duration-150 motion-reduce:transition-none" style={{ width: `${progress}%` }} />
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-slate-500 mt-1">{IMAGE_HINT}</p>
+                    )}
                   </div>
                 </div>
+                {uploadError && (
+                  <p role="alert" className="mt-4 w-full max-w-md rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-medium text-red-700">
+                    {uploadError}
+                  </p>
+                )}
                 <input
                   type="file"
                   ref={fileInputRef}
                   onChange={handleUpload}
-                  accept="image/*"
+                  accept={IMAGE_ACCEPT}
                   className="hidden"
                 />
               </div>

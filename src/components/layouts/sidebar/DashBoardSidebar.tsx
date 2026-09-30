@@ -44,19 +44,22 @@ const DashBoardSidebar = () => {
     setIsCollapse(!isCollapse);
   };
 
-  // Clicking a sub-link no longer forces a collapse — navigating shouldn't
-  // change the user's chosen expanded/collapsed state.
-  const handleSubLinkNavigate = () => {};
+  // Clicking a sub-link doesn't touch the user's expanded/collapsed choice, but
+  // it does dismiss the hover preview. (The pathname effect below covers real
+  // navigations; this also covers clicking the link of the page you're already
+  // on, where the pathname doesn't change.)
+  const handleSubLinkNavigate = () => setHoveredModuleId(null);
 
   // "True" active module — what the rail's own selected/highlighted state shows.
   // Never affected by hover; only by an actual click-to-pin or real navigation.
   const activeModuleId = manualModuleId ?? activeNav?.moduleId ?? null;
 
-  // Hovering a rail module temporarily previews its sub-nav content, purely as
-  // an at-rest convenience. It must never outlive the hover itself — the moment
-  // the pointer leaves the rail/sub-nav region (see onMouseLeave below),
-  // hoveredModuleId resets to null and the preview collapses back to whatever
-  // the true active module actually is, per matchActiveNav(pathname).
+  // Hovering a rail module opens its sub-nav preview, and the preview is sticky:
+  // it does NOT close on mouseleave (a per-element leave is what made moving
+  // diagonally from the rail item onto the sub-panel flicker-close it). It only
+  // closes when (a) a sub-item is clicked / the route changes, or (b) another
+  // rail module is hovered, which replaces it. Leaving the sidebar entirely
+  // leaves it open. On close it falls back to the real active module.
   const [hoveredModuleId, setHoveredModuleId] = useState<string | null>(null);
   useEffect(() => {
     setHoveredModuleId(null);
@@ -131,11 +134,9 @@ const DashBoardSidebar = () => {
           </button>
         </div>
 
-        {/* Desktop: rail + contextual sub-nav. onMouseLeave sits on this shared
-            wrapper (not on NavRail alone) so moving the pointer from the rail
-            into the sub-panel to click an item doesn't trip the revert-to-real-
-            active logic — the rail and its preview panel count as one region. */}
-        <div className="hidden lg:flex flex-1 min-h-0" onMouseLeave={() => setHoveredModuleId(null)}>
+        {/* Desktop: rail + contextual sub-nav (no mouseleave handling — see
+            hoveredModuleId above). */}
+        <div className="hidden lg:flex flex-1 min-h-0">
           <NavRail
             modules={visibleModules}
             activeModuleId={activeModuleId}

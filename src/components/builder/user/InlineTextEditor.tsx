@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
@@ -61,12 +61,32 @@ export const InlineTextEditor = ({
     }
   }, [value, editor]);
 
+  // Every builder block sits inside a Craft node element that is HTML5-draggable (the whole block
+  // is a drag source). In Chrome a mousedown on the editor's empty space — past the end of a line,
+  // which is exactly where a "backward" (right-to-left) selection starts — is taken as the start of
+  // that block drag instead of a text selection: dragstart fires, nothing is selected, and Ctrl+C
+  // copies nothing. Forward drags only escape it because they start on a glyph. So for the length
+  // of a mouse gesture that begins inside the editor, the draggable ancestor is switched off.
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const handleMouseDownCapture = () => {
+    const dragHost = wrapperRef.current?.closest<HTMLElement>('[draggable="true"]');
+    if (!dragHost) return;
+    dragHost.setAttribute('draggable', 'false');
+    const restore = () => {
+      window.removeEventListener('mouseup', restore, true);
+      window.removeEventListener('dragend', restore, true);
+      dragHost.setAttribute('draggable', 'true');
+    };
+    window.addEventListener('mouseup', restore, true);
+    window.addEventListener('dragend', restore, true);
+  };
+
   if (!editor) {
     return null;
   }
 
   return (
-    <div className={`w-full h-full ${className}`} style={style}>
+    <div ref={wrapperRef} onMouseDownCapture={handleMouseDownCapture} className={`w-full h-full ${className}`} style={style}>
       {enableListToolbar && (
         // Standard rich-text-editor pattern: a small floating toolbar over a non-empty text
         // selection. No such toolbar exists elsewhere in this builder to extend, so this is new —

@@ -4,9 +4,21 @@ import { getUser, getUserRoleForWorkspace } from '@/lib/auth';
 import { getOrCreateStudentContact } from '@/app/actions/studentEnrollments';
 import { enrolmentInactiveReason } from '@/lib/lms/enrolment';
 import { googleDriveLinkProvider } from '@/lib/lms/audio/googleDriveLinkProvider';
+import { readCachedAudio, fillAudioCache } from '@/lib/lms/audio/audioCache';
+import { waitUntil } from '@vercel/functions';
 import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
+// The first play of a Drive file also copies it into Storage in the background (audioCache.ts);
+// a 40 MB file at Drive's ~1 MB/s needs far more than the default.
+export const maxDuration = 300;
+
+// One asset row is immutable once created (google_drive_file_id is never updated), so the bytes
+// behind /api/audio/<assetId>/stream never change: the browser may keep them for good. `private`
+// keeps shared caches/CDNs out (access is per-user); the ETag is the validator Chrome needs to
+// cache the partial-content (206) responses a media element makes.
+const CACHE_CONTROL = 'private, max-age=31536000, immutable';
+const etagFor = (asset: any) => `"${asset.google_drive_file_id}-${asset.size_bytes ?? 'x'}"`;
 
 // Access-gated proxy: never exposes the raw Drive link to the client. Since one audio_assets
 // row can now be attached to MANY content_blocks (real "one audio file, many uses" — see
@@ -38,7 +50,7 @@ async function resolveAccess(assetId: string, contentBlockId: string | null) {
 
   const { data: asset, error: assetErr } = await adminClient
     .from('audio_assets')
-    .select('id, google_drive_file_id, status')
+    .select('id, google_drive_file_id, status, size_bytes')
     .eq('id', assetId)
     .maybeSingle();
   if (assetErr) throw assetErr;
@@ -91,13 +103,28 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: access.error }, { status: access.status });
     }
     const fileId = (access.asset as any).google_drive_file_id;
+    const etag = etagFor(access.asset);
+    const validators = { 'cache-control': CACHE_CONTROL, etag };
+
+    // Unchanged for this browser (it revalidated, e.g. after a hard refresh): no bytes at all.
+    if (req.headers.get('if-none-match') === etag && !req.headers.get('range')) {
+      return new NextResponse(null, { status: 304, headers: validators });
+    }
 
     const range = parseRange(req.headers.get('range'));
+    const cached = await readCachedAudio(fileId, range);
+    if (cached) {
+      return new NextResponse(cached.body as any, { status: cached.status, headers: { ...cached.headers, ...validators } });
+    }
+
     const stream = await googleDriveLinkProvider.getStream(fileId, range);
+    // Miss: this request streams straight from Drive (nobody waits on the copy), and the file is
+    // stored in the background so every later request is served from Storage.
+    if (stream.status !== 416) waitUntil(fillAudioCache(fileId));
 
     return new NextResponse(stream.body as any, {
       status: stream.status,
-      headers: stream.headers,
+      headers: stream.status === 416 ? stream.headers : { ...stream.headers, ...validators },
     });
   } catch (err: any) {
     logger.error({ err, params }, 'lms.audio.stream.failed');
@@ -118,7 +145,7 @@ export async function HEAD(req: NextRequest, { params }: { params: Promise<{ id:
     // Drive has no true HEAD support — request a 1-byte range to surface Content-Range (and
     // therefore total size) without pulling the whole file.
     const stream = await googleDriveLinkProvider.getStream(fileId, { start: 0, end: 0 });
-    const headers = { ...stream.headers };
+    const headers: Record<string, string> = { ...stream.headers, 'cache-control': CACHE_CONTROL, etag: etagFor(access.asset) };
     delete headers['content-length'];
     return new NextResponse(null, { status: 200, headers });
   } catch (err: any) {

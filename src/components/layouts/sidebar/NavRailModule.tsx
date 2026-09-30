@@ -87,10 +87,6 @@ const NavRailModule: React.FC<NavRailModuleProps> = ({
     onHoverModule(module.id);
   };
 
-  const handleLeave = () => {
-    onHoverModule(null);
-  };
-
   const handleClick = () => {
     if (isDirectLink) return;
     onSelectModule(module.id);
@@ -161,7 +157,6 @@ const NavRailModule: React.FC<NavRailModuleProps> = ({
       ref={triggerRef}
       className="group relative w-full flex justify-center"
       onMouseEnter={handleEnter}
-      onMouseLeave={handleLeave}
       onFocus={handleEnter}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}

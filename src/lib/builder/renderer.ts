@@ -1,5 +1,7 @@
 import { CraftContent, CraftNode } from '@/types/builder.types';
 import { formatPseudoClasses } from './utils';
+import { validColumnWidths, gridTemplateFor } from './columnWidths';
+import { columnCountFor } from './columnSlots';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -262,7 +264,10 @@ function renderNode(node: CraftNode, allNodes: CraftContent, nodeId: string): st
       if (props.layout === '4') gridTemplate = 'grid-template-columns: repeat(4, minmax(0, 1fr));';
       if (props.layout === '1/3-2/3') gridTemplate = 'grid-template-columns: 1fr 2fr;';
       if (props.layout === '2/3-1/3') gridTemplate = 'grid-template-columns: 2fr 1fr;';
-      
+      // Manual drag-resize (Columns.columnWidths) overrides the preset's ratio.
+      const manualWidths = validColumnWidths(props.columnWidths, columnCountFor(props.layout));
+      if (manualWidths) gridTemplate = `grid-template-columns: ${gridTemplateFor(manualWidths)};`;
+
       return `<div ${classesStr} style="display: grid; gap: ${props.gap}px; padding: ${props.padding}px; ${gridTemplate} ${mapPropsToStyle(props)}">${fullChildren}</div>`;
 
     case 'Spacer':

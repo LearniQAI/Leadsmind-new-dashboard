@@ -4,6 +4,39 @@ import { evaluateLogicRules, LogicRule } from '@/app/forms/builder/[id]/componen
 import { validatePublicStep, PublicFieldSchema } from '@/app/public/forms/[id]/PublicValidationEngine';
 import { getRequestId } from '@/shared/logger/requestId';
 import { createStepTimer, logRequestComplete } from '@/shared/logger/requestTiming';
+import { waitUntil } from '@vercel/functions';
+import { logger, safeLog } from '@/shared/logger';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Validates the client-generated idempotency key: must be a real UUID (fixed length, so this
+// also bounds its max length) or absent — this route is unauthenticated, so a malformed value is
+// silently dropped (treated as "no key given") rather than trusted or surfaced as an error.
+function validateClientSubmissionId(value: unknown): string | null {
+  return typeof value === 'string' && UUID_RE.test(value) ? value : null;
+}
+
+// Bounds worst-case function time well above the <2s target (rate limiting, DB round trips,
+// and the bounded, now-concurrent Inngest enqueues below — worst case ~3.5s for both together)
+// so a genuinely stuck request is killed by the platform rather than hanging indefinitely. 20s
+// (not a tighter value) leaves real headroom over the ~10.6s worst-case measured in the
+// blackhole test before this change made the two enqueues concurrent, since DB round-trip time
+// here was itself already close to half of that.
+export const maxDuration = 20;
+
+const INNGEST_ENQUEUE_TIMEOUT_MS = 3000;
+
+// Bounded wait, not a cancellation: the underlying call keeps running (the Inngest client's own
+// AbortSignal timeout — src/lib/inngest.ts — is what actually cancels a hung fetch), this just
+// stops the response from waiting on it past `timeoutMs`. Used for both Inngest enqueue calls on
+// this route (webhook dispatch, workflow trigger) so neither can push the response past its
+// <2s target the way the unbounded `await dispatchWebhook(...)` briefly did.
+async function raceWithTimeout(promise: Promise<unknown>, timeoutMs: number): Promise<boolean> {
+  return Promise.race([
+    promise.then(() => false),
+    new Promise<boolean>((resolve) => setTimeout(() => resolve(true), timeoutMs)),
+  ]);
+}
 
 // Simple in-memory rate limit scaffold (per IP, per form, per minute)
 // In production this would be backed by Redis or Upstash
@@ -86,7 +119,8 @@ export async function POST(
       return corsError('Invalid request body', 400);
     }
 
-    const { data: formData, workspace_id, steps_completed, attribution, is_returning, contact_token, transaction_id, transaction_status, attachments, variant_id } = body;
+    const { data: formData, workspace_id, steps_completed, attribution, is_returning, contact_token, transaction_id, transaction_status, attachments, variant_id, client_submission_id: rawClientSubmissionId } = body;
+    const clientSubmissionId = validateClientSubmissionId(rawClientSubmissionId);
 
     if (!formData || typeof formData !== 'object') {
       return corsError('Submission data is required', 400);
@@ -98,6 +132,30 @@ export async function POST(
     workspaceIdForLog = workspace_id;
 
     const supabase = getAdminSupabase();
+
+    // Fast idempotency short-circuit: a double-click or client retry replays the exact same
+    // client_submission_id. Catching it here — before any contact write, tag assignment,
+    // webhook, or automation dispatch — means a retry costs one indexed SELECT and produces
+    // none of those side effects a second time, not just "no duplicate DB row." The RPC below
+    // still enforces uniqueness under real concurrency (two requests racing past this check
+    // simultaneously); this is the cheap common-case path, not the only guard.
+    if (clientSubmissionId) {
+      const { data: existingSubmission } = await supabase
+        .from('form_submissions')
+        .select('id')
+        .eq('form_id', id)
+        .eq('client_submission_id', clientSubmissionId)
+        .maybeSingle();
+      if (existingSubmission) {
+        timer.mark('idempotency_short_circuit');
+        return corsResponse({
+          success: true,
+          submission_id: existingSubmission.id,
+          message: 'Form submitted successfully',
+        });
+      }
+    }
+    timer.mark('idempotency_check');
 
     // 1. Verify the form exists, is published, and belongs to the claimed workspace
     const { data: form, error: formError } = await supabase
@@ -445,45 +503,91 @@ export async function POST(
     }
     timer.mark('contact_write');
 
-    // 4. Insert the form submission record first — the activity logged just
-    // below references its id, so an activity can never exist without a
-    // corresponding submission row. (Full three-way transaction — contact
-    // upsert + submission insert + activity log — is a further improvement;
-    // this is the ordering-only fix: submission before activity.)
-    const { data: submission, error: submissionError } = await supabase
-      .from('form_submissions')
-      .insert({
-        workspace_id: form.workspace_id,
-        form_id: id,
-        data: formData,
-        source_url: sourceUrl,
-        source_type: 'embed',
-        user_agent: userAgent,
-        steps_completed: steps_completed || 1,
-        attribution: attribution || {},
-        is_returning: !!existingContact || is_returning,
-        contact_id: contactId,
-        attachments: parsedAttachments,
-        transaction_id: transaction_id || null,
-        transaction_status: transaction_status || (transaction_id ? 'processing' : 'pending'),
-        contact_sync_error: contactSyncError,
-        variant_id: verifiedVariantId
+    // 4. Atomically insert the submission (idempotent on client_submission_id) and its
+    // automation job row — a single RPC call is one Postgres transaction, so a crash between
+    // "submission exists" and "job exists" is no longer possible (previously two separate
+    // .insert() calls), and (form_id, client_submission_id) uniqueness is enforced under real
+    // concurrency by the DB constraint, not just by the short-circuit SELECT above.
+    // Built once, before the RPC, so the exact same object can (a) be persisted onto the job row
+    // for the reconciler to replay verbatim and (b) be sent to Inngest right below — jobId is
+    // added to both only after the RPC returns it.
+    const triggerPayloadBase = {
+      formId: id,
+      workspaceId: workspace_id,
+      formName: form.name || 'Form',
+      values: formData,
+      completionPercentage: 100,
+      attribution: attribution || {},
+      isReturningContact: !!existingContact || is_returning,
+      metadata: {
+        userAgent,
+        sourceUrl,
+        transactionStatus: transaction_status || null,
+      },
+      requestId,
+      contactId,
+    };
+
+    const { data: rpcResult, error: rpcError } = await supabase
+      .rpc('create_form_submission_with_job', {
+        p_form_id: id,
+        p_workspace_id: form.workspace_id,
+        p_client_submission_id: clientSubmissionId,
+        p_contact_id: contactId,
+        p_data: formData,
+        p_source_url: sourceUrl,
+        p_source_type: 'embed',
+        p_user_agent: userAgent,
+        p_steps_completed: steps_completed || 1,
+        p_attribution: attribution || {},
+        // Wrapped in !!(...): `existingContact` falsy + client-sent `is_returning` absent (the
+        // common case — a first-time visitor, no `is_returning` in the request body) evaluates
+        // to `undefined`, which JSON.stringify (used by supabase-js to serialize the RPC body)
+        // silently drops from the request entirely — PostgREST then fails to match the function
+        // signature at all (looks like a schema-cache error, isn't one). Live-caught: every
+        // first-time-submitter RPC call failed with PGRST202 until this was wrapped.
+        p_is_returning: !!(existingContact || is_returning),
+        p_attachments: parsedAttachments,
+        p_transaction_id: transaction_id || null,
+        p_transaction_status: transaction_status || (transaction_id ? 'processing' : 'pending'),
+        p_contact_sync_error: contactSyncError,
+        p_variant_id: verifiedVariantId,
+        p_job_type: 'workflow_trigger',
+        // jobId itself isn't known yet (the RPC hasn't returned it) — the reconciler injects the
+        // job's own row id as jobId when it reads this back, rather than needing it pre-embedded.
+        p_job_payload: { event: 'form_submitted', payload: triggerPayloadBase },
       })
-      .select('id')
       .single();
 
-    timer.mark('submission_insert');
+    timer.mark('submission_and_job_insert');
 
-    if (submissionError) {
-      console.error('[Public Submit] Submission error:', submissionError);
-      return corsError(`Database error: ${submissionError.message || JSON.stringify(submissionError)}`, 500);
+    if (rpcError || !rpcResult) {
+      console.error('[Public Submit] Submission error:', rpcError);
+      return corsError(`Database error: ${rpcError?.message || 'submission failed'}`, 500);
     }
 
-    // 5. Append form submission activity to CRM contact if available — logged
-    // only after the submission row exists, referencing its id.
+    const { submission_id: submissionId, is_duplicate: isDuplicate, job_id: jobId } = rpcResult as {
+      submission_id: string; is_duplicate: boolean; job_id: string | null;
+    };
+
+    if (isDuplicate) {
+      // Lost the race to a concurrent request with the same client_submission_id — that request
+      // already owns (or will own) the tag assignment / activity / webhook / automation dispatch
+      // below. Firing them again here would double-run automations for one real submission.
+      timer.mark('duplicate_race_detected');
+      return corsResponse({
+        success: true,
+        submission_id: submissionId,
+        message: 'Form submitted successfully',
+      });
+    }
+
+    // 5. Append form submission activity to CRM contact if available. Not needed for the
+    // response, so it runs after the response is sent (waitUntil keeps the serverless function
+    // alive for it) instead of adding its latency to what the visitor waits on.
     if (contactId) {
-      try {
-        await supabase.from('contact_activities').insert({
+      waitUntil(
+        Promise.resolve(supabase.from('contact_activities').insert({
           workspace_id: workspace_id,
           contact_id: contactId,
           type: 'system',
@@ -492,54 +596,78 @@ export async function POST(
             form_id: id,
             form_name: form.name,
             source_url: sourceUrl,
-            submission_id: submission.id,
+            submission_id: submissionId,
             submitted_at: new Date().toISOString()
           }
+        })).then(({ error }) => {
+          if (error) console.error('Failed to append CRM form submission activity:', error);
+        })
+      );
+    }
+    timer.mark('activity_insert_scheduled');
+
+    // Both enqueues below only send a small event to Inngest (a few ms in the normal case) —
+    // actual webhook delivery and the automation run itself happen out-of-band. Each is bounded
+    // by its own 3s race (previously sequential: up to 6s worst-case together, close to this
+    // route's own maxDuration; now concurrent via Promise.allSettled so the worst case for BOTH
+    // together is ~3.5s, not ~6s).
+    const webhookTask = (async () => {
+      try {
+        const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
+        const webhookDispatchPromise = dispatchWebhook(workspace_id, 'form.submitted', {
+          form: { id, name: form?.name ?? null },
+          submission: { id: submissionId, data: formData, contact_id: contactId ?? null },
         });
-      } catch (err) {
-        console.error('Failed to append CRM form submission activity:', err);
+        const webhookTimedOut = await raceWithTimeout(webhookDispatchPromise, INNGEST_ENQUEUE_TIMEOUT_MS);
+        if (webhookTimedOut) {
+          // Structured, not a raw error object — there's nothing to sanitize here beyond that
+          // (the timeout itself carries no response body/exception content that could leak
+          // provider details), but logged via the shared logger rather than console.warn to
+          // match this route's other completion logging and stay queryable the same way.
+          safeLog(() => logger.warn({ requestId, jobId, submissionId, workspaceId: workspace_id }, 'public_submit.webhook_enqueue_timeout'));
+          if (jobId) {
+            waitUntil(
+              Promise.resolve(
+                supabase.from('form_automation_jobs').update({ webhook_enqueue_timed_out: true }).eq('id', jobId)
+              ).then(({ error }) => {
+                if (error) safeLog(() => logger.warn({ err: error, jobId }, 'public_submit.webhook_timeout_flag_write_failed'));
+              })
+            );
+          }
+        }
+      } catch (e) { console.error('[webhook-dispatch-form-submitted-error]', e); }
+    })();
+
+    // Enqueue workflow automations onto Inngest (durable — survives this function's teardown
+    // after the response is sent; this is just the enqueue call, a few ms, not the automation
+    // run itself). The same request_id is threaded through so the automation run's own timing
+    // log (workflowTrigger.ts) can be correlated back to this submission, and jobId lets it
+    // update the form_automation_jobs row created above as it runs.
+    const triggerTask = (async () => {
+      try {
+        const { TriggerDispatcher } = await import('@/lib/automations/TriggerDispatcher');
+        const dispatchPromise = TriggerDispatcher.dispatch('form_submitted', {
+          ...triggerPayloadBase,
+          jobId: jobId ?? undefined,
+        });
+        // job row already exists as 'queued' — the reconciler cron re-sends it if the enqueue
+        // genuinely never landed — so stopping the wait here just protects this response's own
+        // latency, not correctness.
+        const timedOut = await raceWithTimeout(dispatchPromise, INNGEST_ENQUEUE_TIMEOUT_MS);
+        if (timedOut) {
+          console.warn('[Public Submit] Inngest enqueue exceeded timeout; job left queued for reconciler', { jobId });
+        }
+      } catch (triggerErr) {
+        console.error('[Public Submit] Failed to dispatch workflow trigger:', triggerErr);
       }
-    }
-    timer.mark('activity_insert');
+    })();
 
-    try {
-      const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
-      dispatchWebhook(workspace_id, 'form.submitted', {
-        form: { id, name: form?.name ?? null },
-        submission: { id: submission?.id, data: formData, contact_id: contactId ?? null },
-      }).catch(() => {});
-    } catch (e) { console.error('[webhook-dispatch-form-submitted-error]', e); }
-    timer.mark('webhook_dispatch');
-
-    // Enqueue workflow automations onto Inngest (durable — survives this
-    // function's teardown after the response is sent). The same request_id is threaded
-    // through so the automation run's own timing log (workflowTrigger.ts) can be
-    // correlated back to this submission instead of being an unrelated log line.
-    try {
-      const { TriggerDispatcher } = await import('@/lib/automations/TriggerDispatcher');
-      await TriggerDispatcher.dispatch('form_submitted', {
-        formId: id,
-        workspaceId: workspace_id,
-        formName: form.name || 'Form',
-        values: formData,
-        completionPercentage: 100,
-        attribution: attribution || {},
-        isReturningContact: !!existingContact || is_returning,
-        metadata: {
-          userAgent,
-          sourceUrl,
-          transactionStatus: transaction_status || null,
-        },
-        requestId,
-      });
-    } catch (triggerErr) {
-      console.error('[Public Submit] Failed to dispatch workflow trigger:', triggerErr);
-    }
-    timer.mark('trigger_dispatch');
+    await Promise.allSettled([webhookTask, triggerTask]);
+    timer.mark('webhook_and_trigger_dispatch');
 
     return corsResponse({
       success: true,
-      submission_id: submission.id,
+      submission_id: submissionId,
       message: 'Form submitted successfully',
     });
 

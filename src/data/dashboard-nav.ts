@@ -159,7 +159,7 @@ const dashboardNav: NavModule[] = [
   {
     id: "learning",
     module: "learning",
-    label: "Courses",
+    label: "LMS",
     icon: "icon-training",
     items: [
       { id: 24, label: "Courses", icon: "icon-training", link: "/courses" },
@@ -185,7 +185,7 @@ const dashboardNav: NavModule[] = [
     label: "Settings",
     icon: "fa-light fa-gear",
     items: [
-      { id: 29, label: "Settings", icon: "fa-light fa-gear", link: "/settings" },
+      { id: 29, label: "Advanced settings", icon: "fa-light fa-gear", link: "/settings" },
       { id: 32, label: "Integrations", icon: "fa-light fa-plug", link: "/settings/integrations-hub" },
       { id: 33, label: "Developer & API", icon: "fa-light fa-code", link: "/settings/developer" },
       { id: 22, label: "Support", icon: "fa-light fa-life-ring", link: "/support" },

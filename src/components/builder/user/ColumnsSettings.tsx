@@ -24,7 +24,8 @@ export const ColumnsSettings = () => {
   // A preset sets the grid AND makes sure there's a real column slot for each of its columns
   // (lib/builder/columnSlots). Switching to fewer never deletes: extra columns wrap to a new row.
   const choose = (next: string) => {
-    setProp((props: any) => { props.layout = next; });
+    // A preset also resets any manual drag-resize back to its own (even / 1:2 / 2:1) split.
+    setProp((props: any) => { props.layout = next; delete props.columnWidths; });
     ensureColumnSlots(editorActions, query, id, columnCountFor(next));
   };
 

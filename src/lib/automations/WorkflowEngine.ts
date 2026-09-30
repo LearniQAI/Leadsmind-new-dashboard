@@ -29,6 +29,9 @@ export interface WorkflowContext {
   attribution?: Record<string, any>;
   isReturningContact?: boolean;
   metadata?: Record<string, any>;
+  // Caller-resolved CRM contact id (e.g. from the form-submit route's own
+  // contact upsert). Preferred over the in-engine email heuristic below.
+  contactId?: string | null;
 }
 
 export const WorkflowEngine = {
@@ -60,26 +63,40 @@ export const WorkflowEngine = {
         .eq('workflow_id', workflowId)
         .order('position', { ascending: true });
 
-      if (stepsErr || !steps || steps.length === 0) return;
-
-      // 3. Resolve CRM contact
-      let userEmail = '';
-      for (const [k, v] of Object.entries(context.values)) {
-        if (k.toLowerCase().includes('email') && typeof v === 'string' && v.includes('@')) {
-          userEmail = v.trim();
-          break;
-        }
-      }
-      const contactId = await CRMActionHandler.resolveContactId(userEmail, context.workspaceId, supabase);
-
-      // workflow_executions.contact_id is NOT NULL at the DB level — attempting
-      // to start an execution without a resolved contact would fail the insert
-      // and abort silently. Fail loudly here instead so it's visible in logs.
+      // 3. Resolve CRM contact — prefer the caller's own resolution (e.g. the
+      // public form-submit route's contact upsert) over this heuristic, which
+      // only catches a form field whose *id* happens to contain "email".
+      let contactId = context.contactId ?? null;
       if (!contactId) {
-        logger.error(
-          { workflowId, workspaceId: context.workspaceId, userEmail },
-          'workflow_engine.contact_resolution_failed'
-        );
+        let userEmail = '';
+        for (const [k, v] of Object.entries(context.values)) {
+          if (k.toLowerCase().includes('email') && typeof v === 'string' && v.includes('@')) {
+            userEmail = v.trim();
+            break;
+          }
+        }
+        contactId = await CRMActionHandler.resolveContactId(userEmail, context.workspaceId, supabase);
+      }
+
+      // Previously a workflow with no steps, or one whose contact couldn't be
+      // resolved, returned here with zero DB trace — indistinguishable in the
+      // Execution Logs UI from "the trigger never fired". contact_id is now
+      // nullable on workflow_executions specifically so these cases can still
+      // be logged as a failed run instead of vanishing silently.
+      if (stepsErr || !steps || steps.length === 0) {
+        const executionId = await AutomationLogger.startExecution({
+          workflowId,
+          workspaceId: context.workspaceId,
+          contactId,
+          status: 'running',
+          context: context.values
+        });
+        if (executionId) {
+          await AutomationLogger.updateExecution(executionId, {
+            status: 'failed',
+            errorMessage: 'Workflow has no steps configured — nothing to run.'
+          });
+        }
         return;
       }
 
@@ -93,6 +110,16 @@ export const WorkflowEngine = {
       });
 
       if (!executionId) return;
+
+      if (!contactId) {
+        // Steps exist but no contact could be resolved. Some step types
+        // (e.g. create_task) don't need one, so don't abort the whole run —
+        // but record it so it's visible if every step then fails needing one.
+        logger.warn(
+          { workflowId, workspaceId: context.workspaceId },
+          'workflow_engine.contact_resolution_failed'
+        );
+      }
 
         // Goal Tracking Interceptor: Evaluate goals before executing any steps
         const goalRules = workflow.goal_rules || [];

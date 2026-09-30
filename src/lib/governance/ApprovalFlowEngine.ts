@@ -44,10 +44,13 @@ export class ApprovalFlowEngine {
   public static async resolveApproval(workspaceId: string, requestId: string, approverId: string, status: 'approved' | 'rejected') {
     const supabase = await createServerClient();
     
-    await supabase.from('approval_requests').update({
+    const { data, error } = await supabase.from('approval_requests').update({
       status,
       resolved_at: new Date().toISOString()
-    }).eq('id', requestId).eq('workspace_id', workspaceId);
+    }).eq('id', requestId).eq('workspace_id', workspaceId).select('id').maybeSingle();
+
+    if (error) throw error;
+    if (!data) throw new Error('Approval was not resolved — you may not have permission to act on this request.');
 
     await WorkspaceAuditEngine.logAction(
       workspaceId,

@@ -86,6 +86,10 @@ export function usePublicForm(
   const [skipStepIds, setSkipStepIds] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
+  // Idempotency key for this submit attempt — stable across a double-click/retry of the SAME
+  // attempt, regenerated only after a successful submit (see handleSubmit below) so the next,
+  // separate submission gets its own key rather than reusing a now-consumed one.
+  const [clientSubmissionId, setClientSubmissionId] = useState(() => crypto.randomUUID());
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const [attribution, setAttribution] = useState<AttributionData>({});
@@ -295,6 +299,11 @@ export function usePublicForm(
   };
 
   const handleSubmit = async () => {
+    // Guards against a fast double-click firing two overlapping submit calls before React
+    // re-renders with submitting=true — the server-side idempotency key is the real guarantee
+    // (this only saves a redundant request in the common case).
+    if (submitting) return;
+
     const stepErrors = validatePublicStep(stepFields, values, hiddenFieldIds);
     if (Object.keys(stepErrors).length > 0) {
       setErrors(stepErrors);
@@ -317,7 +326,8 @@ export function usePublicForm(
       attribution,
       isReturningContact: !!returningContact,
       contactToken: searchParams.get('lm_token'),
-      variantId: variantId || undefined
+      variantId: variantId || undefined,
+      clientSubmissionId,
     });
 
     setSubmitting(false);
@@ -326,6 +336,8 @@ export function usePublicForm(
       if (tracker) tracker.trackSubmit();
       persistence.clearPersistence();
       setCompleted(true);
+      // Next submission (a genuinely new attempt, not a retry of this one) needs its own key.
+      setClientSubmissionId(crypto.randomUUID());
     } else {
       setSubmitError(result.error || 'Submission failed. Please try again.');
     }

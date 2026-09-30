@@ -30,7 +30,7 @@ export default function CourseWorkspaceHeader({
           onClick={() => router.push("/courses")}
           className="transition-colors hover:!text-dash-text"
         >
-          Courses
+          LMS
         </button>
         <span className="!text-dash-border">/</span>
         <span className="truncate font-semibold !text-dash-text">{courseTitle}</span>
