@@ -17,9 +17,12 @@ function validateClientSubmissionId(value: unknown): string | null {
 }
 
 // Bounds worst-case function time well above the <2s target (rate limiting, DB round trips,
-// and the bounded Inngest enqueue below) so a genuinely stuck request is killed by the platform
-// rather than hanging indefinitely.
-export const maxDuration = 10;
+// and the bounded, now-concurrent Inngest enqueues below — worst case ~3.5s for both together)
+// so a genuinely stuck request is killed by the platform rather than hanging indefinitely. 20s
+// (not a tighter value) leaves real headroom over the ~10.6s worst-case measured in the
+// blackhole test before this change made the two enqueues concurrent, since DB round-trip time
+// here was itself already close to half of that.
+export const maxDuration = 20;
 
 const INNGEST_ENQUEUE_TIMEOUT_MS = 3000;
 
@@ -603,60 +606,64 @@ export async function POST(
     }
     timer.mark('activity_insert_scheduled');
 
-    // dispatchWebhook only enqueues onto Inngest (a few ms in the normal case) — actual delivery,
-    // retries and the per-call 10s timeout happen in webhookDispatchFn. Bounded the same way as
-    // the trigger dispatch below: this enqueue call has no timeout of its own (it's the same
-    // inngest.send() call chain), so a hung network path to Inngest's ingestion endpoint could
-    // otherwise block this response indefinitely — the same failure mode diagnosed for the
-    // workflow-trigger enqueue, previously unguarded here.
-    try {
-      const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
-      const webhookDispatchPromise = dispatchWebhook(workspace_id, 'form.submitted', {
-        form: { id, name: form?.name ?? null },
-        submission: { id: submissionId, data: formData, contact_id: contactId ?? null },
-      });
-      const webhookTimedOut = await raceWithTimeout(webhookDispatchPromise, INNGEST_ENQUEUE_TIMEOUT_MS);
-      if (webhookTimedOut) {
-        // Structured, not a raw error object — there's nothing to sanitize here beyond that (the
-        // timeout itself carries no response body/exception content that could leak provider
-        // details), but logged via the shared logger rather than console.warn to match this
-        // route's other completion logging and stay queryable the same way.
-        safeLog(() => logger.warn({ requestId, jobId, submissionId, workspaceId: workspace_id }, 'public_submit.webhook_enqueue_timeout'));
-        if (jobId) {
-          waitUntil(
-            Promise.resolve(
-              supabase.from('form_automation_jobs').update({ webhook_enqueue_timed_out: true }).eq('id', jobId)
-            ).then(({ error }) => {
-              if (error) safeLog(() => logger.warn({ err: error, jobId }, 'public_submit.webhook_timeout_flag_write_failed'));
-            })
-          );
+    // Both enqueues below only send a small event to Inngest (a few ms in the normal case) —
+    // actual webhook delivery and the automation run itself happen out-of-band. Each is bounded
+    // by its own 3s race (previously sequential: up to 6s worst-case together, close to this
+    // route's own maxDuration; now concurrent via Promise.allSettled so the worst case for BOTH
+    // together is ~3.5s, not ~6s).
+    const webhookTask = (async () => {
+      try {
+        const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
+        const webhookDispatchPromise = dispatchWebhook(workspace_id, 'form.submitted', {
+          form: { id, name: form?.name ?? null },
+          submission: { id: submissionId, data: formData, contact_id: contactId ?? null },
+        });
+        const webhookTimedOut = await raceWithTimeout(webhookDispatchPromise, INNGEST_ENQUEUE_TIMEOUT_MS);
+        if (webhookTimedOut) {
+          // Structured, not a raw error object — there's nothing to sanitize here beyond that
+          // (the timeout itself carries no response body/exception content that could leak
+          // provider details), but logged via the shared logger rather than console.warn to
+          // match this route's other completion logging and stay queryable the same way.
+          safeLog(() => logger.warn({ requestId, jobId, submissionId, workspaceId: workspace_id }, 'public_submit.webhook_enqueue_timeout'));
+          if (jobId) {
+            waitUntil(
+              Promise.resolve(
+                supabase.from('form_automation_jobs').update({ webhook_enqueue_timed_out: true }).eq('id', jobId)
+              ).then(({ error }) => {
+                if (error) safeLog(() => logger.warn({ err: error, jobId }, 'public_submit.webhook_timeout_flag_write_failed'));
+              })
+            );
+          }
         }
-      }
-    } catch (e) { console.error('[webhook-dispatch-form-submitted-error]', e); }
-    timer.mark('webhook_dispatch');
+      } catch (e) { console.error('[webhook-dispatch-form-submitted-error]', e); }
+    })();
 
     // Enqueue workflow automations onto Inngest (durable — survives this function's teardown
     // after the response is sent; this is just the enqueue call, a few ms, not the automation
     // run itself). The same request_id is threaded through so the automation run's own timing
     // log (workflowTrigger.ts) can be correlated back to this submission, and jobId lets it
     // update the form_automation_jobs row created above as it runs.
-    try {
-      const { TriggerDispatcher } = await import('@/lib/automations/TriggerDispatcher');
-      const dispatchPromise = TriggerDispatcher.dispatch('form_submitted', {
-        ...triggerPayloadBase,
-        jobId: jobId ?? undefined,
-      });
-      // job row already exists as 'queued' — the reconciler cron re-sends it if the enqueue
-      // genuinely never landed — so stopping the wait here just protects this response's own
-      // latency, not correctness.
-      const timedOut = await raceWithTimeout(dispatchPromise, INNGEST_ENQUEUE_TIMEOUT_MS);
-      if (timedOut) {
-        console.warn('[Public Submit] Inngest enqueue exceeded timeout; job left queued for reconciler', { jobId });
+    const triggerTask = (async () => {
+      try {
+        const { TriggerDispatcher } = await import('@/lib/automations/TriggerDispatcher');
+        const dispatchPromise = TriggerDispatcher.dispatch('form_submitted', {
+          ...triggerPayloadBase,
+          jobId: jobId ?? undefined,
+        });
+        // job row already exists as 'queued' — the reconciler cron re-sends it if the enqueue
+        // genuinely never landed — so stopping the wait here just protects this response's own
+        // latency, not correctness.
+        const timedOut = await raceWithTimeout(dispatchPromise, INNGEST_ENQUEUE_TIMEOUT_MS);
+        if (timedOut) {
+          console.warn('[Public Submit] Inngest enqueue exceeded timeout; job left queued for reconciler', { jobId });
+        }
+      } catch (triggerErr) {
+        console.error('[Public Submit] Failed to dispatch workflow trigger:', triggerErr);
       }
-    } catch (triggerErr) {
-      console.error('[Public Submit] Failed to dispatch workflow trigger:', triggerErr);
-    }
-    timer.mark('trigger_dispatch');
+    })();
+
+    await Promise.allSettled([webhookTask, triggerTask]);
+    timer.mark('webhook_and_trigger_dispatch');
 
     return corsResponse({
       success: true,
