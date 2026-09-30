@@ -1,7 +1,7 @@
 import { CraftContent, CraftNode } from '@/types/builder.types';
 import { formatPseudoClasses } from './utils';
 import { validColumnWidths, gridTemplateFor } from './columnWidths';
-import { columnCountFor } from './columnSlots';
+import { columnCountFor } from './columnCount';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 

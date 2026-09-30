@@ -10,9 +10,8 @@
 import React from 'react';
 import { Element } from '@craftjs/core';
 
-/** Column count each layout preset lays out per row (the asymmetric splits are 2 columns). */
-export const COLUMN_COUNT: Record<string, number> = { '1': 1, '2': 2, '3': 3, '4': 4, '1/3-2/3': 2, '2/3-1/3': 2 };
-export const columnCountFor = (layout: string | undefined) => COLUMN_COUNT[layout ?? ''] ?? 2;
+// Pure helpers live in columnCount.ts so server code can use them without loading Craft.
+export { COLUMN_COUNT, columnCountFor } from './columnCount';
 
 /**
  * Add empty Column containers until `columnsId` has at least `count` children. Never removes
