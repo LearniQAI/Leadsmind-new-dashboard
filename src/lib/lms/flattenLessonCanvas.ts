@@ -26,7 +26,7 @@ import {
 import { textBlockCss, type TextCss } from '@/lib/builder/textBlockStyle';
 import { frameBorderStyle } from '@/lib/builder/frameStyle';
 import { validColumnWidths } from '@/lib/builder/columnWidths';
-import { columnCountFor } from '@/lib/builder/columnSlots';
+import { columnCountFor } from '@/lib/builder/columnCount';
 
 /**
  * Set on every item inside a Columns block that the author drag-resized (Columns.columnWidths).
