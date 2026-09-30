@@ -117,6 +117,8 @@ export function createDriveMediaCache({ bucket, maxBytes, logPrefix }: DriveMedi
       await ensureBucket();
       locked = await acquireLock(fileId);
       if (!locked) return;
+      // A request that missed just before another fill finished lands here: don't download again.
+      if (await signedUrlFor(fileId)) return;
 
       const stream = await streamDriveFile(fileId);
       const declared = Number(stream.headers['content-length'] ?? 0);
