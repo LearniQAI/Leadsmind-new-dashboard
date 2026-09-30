@@ -9,13 +9,30 @@ import { Inngest } from 'inngest'
 // kills the invocation, which is consistent with a real production incident where a form-submit
 // request hung for 4-5 minutes. This wraps every fetch this client makes (sends, and any other
 // internal Inngest API traffic) with a bounded AbortSignal so a hung connection is cancelled
-// instead of blocking indefinitely. 10s (not the submit route's own tighter 3s budget) because
-// this client is shared with function-execution machinery (step checkpointing etc. inside
-// workflowTriggerFn) that has no <2s target of its own — callers on the request path that need a
-// tighter bound (e.g. the public form-submit route) additionally race this with their own
-// shorter timeout rather than relying on this alone.
+// instead of blocking indefinitely.
+//
+// 10s, verified (not guessed) to be safe for everything this app's Inngest usage actually does:
+// grepped every importer of this client (9 files) — all either call inngest.send() with a small
+// event payload (ids, counts, booleans) or register a step.run()-only function (workflowTrigger,
+// webhookDispatch, campaignDispatch). None of this codebase's functions use step.fetch or
+// step.invoke (grepped, zero matches) — the only step tools that would route a user-supplied,
+// potentially-long-running call through this SAME client fetch. Actual external calls made
+// *inside* a step.run callback (e.g. webhookDispatchFn's webhook delivery fetches) already carry
+// their own separate AbortSignal.timeout and never touch this client's fetch at all. If a new
+// caller later adds step.fetch/step.invoke with a payload that can legitimately exceed 10s,
+// raise this value (and re-verify) rather than removing the timeout.
+//
+// Preserves any AbortSignal the SDK/caller already passes rather than overwriting it — a step
+// tool wiring its own cancellation (e.g. workflow-level cancellation, waitForSignal-adjacent
+// tooling) must still be able to abort this fetch on its own terms; AbortSignal.any() aborts as
+// soon as either signal does, so this timeout is additive, never a way to out-wait a real caller
+// cancellation.
 function fetchWithTimeout(timeoutMs: number): typeof fetch {
-  return (input, init) => fetch(input, { ...init, signal: AbortSignal.timeout(timeoutMs) })
+  return (input, init) => {
+    const timeoutSignal = AbortSignal.timeout(timeoutMs)
+    const signal = init?.signal ? AbortSignal.any([init.signal, timeoutSignal]) : timeoutSignal
+    return fetch(input, { ...init, signal })
+  }
 }
 
 export const inngest = new Inngest({

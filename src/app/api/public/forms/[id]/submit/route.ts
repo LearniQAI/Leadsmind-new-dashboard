@@ -5,6 +5,7 @@ import { validatePublicStep, PublicFieldSchema } from '@/app/public/forms/[id]/P
 import { getRequestId } from '@/shared/logger/requestId';
 import { createStepTimer, logRequestComplete } from '@/shared/logger/requestTiming';
 import { waitUntil } from '@vercel/functions';
+import { logger, safeLog } from '@/shared/logger';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -536,7 +537,13 @@ export async function POST(
         p_user_agent: userAgent,
         p_steps_completed: steps_completed || 1,
         p_attribution: attribution || {},
-        p_is_returning: !!existingContact || is_returning,
+        // Wrapped in !!(...): `existingContact` falsy + client-sent `is_returning` absent (the
+        // common case — a first-time visitor, no `is_returning` in the request body) evaluates
+        // to `undefined`, which JSON.stringify (used by supabase-js to serialize the RPC body)
+        // silently drops from the request entirely — PostgREST then fails to match the function
+        // signature at all (looks like a schema-cache error, isn't one). Live-caught: every
+        // first-time-submitter RPC call failed with PGRST202 until this was wrapped.
+        p_is_returning: !!(existingContact || is_returning),
         p_attachments: parsedAttachments,
         p_transaction_id: transaction_id || null,
         p_transaction_status: transaction_status || (transaction_id ? 'processing' : 'pending'),
@@ -610,7 +617,20 @@ export async function POST(
       });
       const webhookTimedOut = await raceWithTimeout(webhookDispatchPromise, INNGEST_ENQUEUE_TIMEOUT_MS);
       if (webhookTimedOut) {
-        console.warn('[Public Submit] Webhook enqueue exceeded timeout; not blocking response further', { submissionId });
+        // Structured, not a raw error object — there's nothing to sanitize here beyond that (the
+        // timeout itself carries no response body/exception content that could leak provider
+        // details), but logged via the shared logger rather than console.warn to match this
+        // route's other completion logging and stay queryable the same way.
+        safeLog(() => logger.warn({ requestId, jobId, submissionId, workspaceId: workspace_id }, 'public_submit.webhook_enqueue_timeout'));
+        if (jobId) {
+          waitUntil(
+            Promise.resolve(
+              supabase.from('form_automation_jobs').update({ webhook_enqueue_timed_out: true }).eq('id', jobId)
+            ).then(({ error }) => {
+              if (error) safeLog(() => logger.warn({ err: error, jobId }, 'public_submit.webhook_timeout_flag_write_failed'));
+            })
+          );
+        }
       }
     } catch (e) { console.error('[webhook-dispatch-form-submitted-error]', e); }
     timer.mark('webhook_dispatch');
