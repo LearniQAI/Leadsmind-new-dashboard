@@ -7,6 +7,7 @@ import { DraggableItem } from './Sidebar';
 import { BLOCK_TYPE_META } from './user/LessonBlockPreviews';
 import {
   Type,
+  Pilcrow,
   Heading as HeadingIcon,
   Square,
   Columns as ColumnsIcon,
@@ -42,6 +43,11 @@ import {
 // a new component.
 const TEXT_ELEMENTS = [
   { name: 'Text', icon: Type, component: <RESOLVER.Text text="Custom Text" fontSize={16} /> },
+  // Paragraph is its own component (user/Paragraph.tsx), distinct from Text: rich text with
+  // bullet/numbered lists, muted-grey body colour and relaxed line height. It was registered in
+  // RESOLVER and used by the templates but never offered here. Dropped with a friendly placeholder
+  // and a little vertical padding so it never lands as a bare, near-invisible line.
+  { name: 'Paragraph', icon: Pilcrow, component: <RESOLVER.Paragraph text="Write your paragraph here…" fontSize={16} paddingTop={8} paddingBottom={8} /> },
   { name: 'Headline', icon: HeadingIcon, component: <RESOLVER.Heading level="h2" text="Heading" fontWeight="bold" textAlign="left" color="#111827" /> },
 ];
 
