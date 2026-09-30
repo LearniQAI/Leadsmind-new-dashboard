@@ -68,6 +68,7 @@ export const workflowTriggerFn = inngest.createFunction(
       attribution: payload.attribution,
       isReturningContact: payload.isReturningContact,
       metadata: payload.metadata,
+      contactId: payload.contactId,
     }
 
     let runError: unknown = null

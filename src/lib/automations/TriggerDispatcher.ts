@@ -24,6 +24,10 @@ export interface TriggerPayload {
   attribution?: Record<string, any>;
   isReturningContact?: boolean;
   metadata?: Record<string, any>;
+  // Caller-resolved CRM contact id, when the trigger source already did its
+  // own contact resolution (e.g. the public form-submit route). WorkflowEngine
+  // uses this instead of re-deriving it from a weaker heuristic when present.
+  contactId?: string | null;
   // Carries the originating HTTP request's request_id (e.g. the form-submit route's) through to
   // the Inngest-run workflow trigger, so its own timing log can be correlated back to the request
   // that caused it instead of appearing as an unrelated log line.

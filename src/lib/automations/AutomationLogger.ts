@@ -7,9 +7,11 @@ export interface WorkflowExecutionLog {
   id?: string;
   workflowId: string;
   workspaceId: string;
-  // workflow_executions.contact_id is NOT NULL — callers must resolve a
-  // contact before starting an execution (see WorkflowEngine.runWorkflow).
-  contactId: string;
+  // workflow_executions.contact_id is nullable — a run can be logged even
+  // when no contact could be resolved (e.g. no steps configured, or the
+  // submission had no email/phone to match), so it's still visible instead
+  // of vanishing with no DB trace (see WorkflowEngine.runWorkflow).
+  contactId: string | null;
   status: 'running' | 'completed' | 'failed' | 'cancelled';
   currentStep?: number;
   errorMessage?: string | null;
