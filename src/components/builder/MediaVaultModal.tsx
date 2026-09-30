@@ -142,7 +142,7 @@ export const MediaVaultModal = ({
     if (isUploading) return;
     setUploadError(null);
     const check = await checkImageFile(file);
-    if (!check.ok) {
+    if ('error' in check) {
       setUploadError(check.error);
       toast.error(check.error);
       return;

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth/requireAuth';
-import { validateExternalUrl, UrlValidationError } from '@/lib/security/validateUrl';
+import { safeFetch, UrlValidationError } from '@/lib/security/validateUrl';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,20 +13,19 @@ export async function POST(req: NextRequest) {
     const { url } = await req.json();
     if (!url) return NextResponse.json({ error: 'Source URL is required.' }, { status: 400 });
 
-    let validUrl: URL;
+    // safeFetch validates the URL, resolves + pins the host address and re-validates every redirect.
+    let response: Response;
     try {
-      validUrl = validateExternalUrl(url);
-    } catch (e) {
-      const message = e instanceof UrlValidationError ? e.message : 'Invalid URL.';
-      return NextResponse.json({ error: message }, { status: 400 });
-    }
-
-    const response = await fetch(validUrl.toString(), {
+      response = await safeFetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
       },
       signal: AbortSignal.timeout(5000),
-    });
+      });
+    } catch (e) {
+      if (e instanceof UrlValidationError) return NextResponse.json({ error: e.message }, { status: 400 });
+      throw e;
+    }
 
     if (!response.ok) {
       return NextResponse.json({ error: `Scraper reached unreachable server: HTTP ${response.status}` }, { status: 400 });
