@@ -5,6 +5,7 @@ import { getOrCreateStudentContact } from '@/app/actions/studentEnrollments';
 import { enrolmentInactiveReason } from '@/lib/lms/enrolment';
 import { googleDriveLinkProvider } from '@/lib/lms/audio/googleDriveLinkProvider';
 import { readCachedAudio, fillAudioCache } from '@/lib/lms/audio/audioCache';
+import { DriveStreamError, type DriveFailureCode } from '@/lib/lms/drive/driveLinkSource';
 import { waitUntil } from '@vercel/functions';
 import { logger } from '@/shared/logger';
 
@@ -127,9 +128,31 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       headers: stream.status === 416 ? stream.headers : { ...stream.headers, ...validators },
     });
   } catch (err: any) {
-    logger.error({ err, params }, 'lms.audio.stream.failed');
-    return NextResponse.json({ error: 'Failed to stream audio' }, { status: 500 });
+    return streamFailure(err, 'lms.audio.stream.failed');
   }
+}
+
+// Drive failures carry a code the player turns into actionable copy (see AudioDrivePlayer); the
+// status is chosen so a proxy/log reader can tell a Drive problem (502/503/504) from ours (500).
+const DRIVE_FAILURE_STATUS: Record<DriveFailureCode, number> = {
+  not_shared: 404,
+  quota: 503,
+  forbidden: 403,
+  not_media: 502,
+  timeout: 504,
+  upstream: 502,
+};
+
+function streamFailure(err: unknown, event: string) {
+  if (err instanceof DriveStreamError) {
+    logger.error({ code: err.code, upstreamStatus: err.upstreamStatus }, event);
+    return NextResponse.json(
+      { error: 'Failed to stream audio', code: err.code },
+      { status: DRIVE_FAILURE_STATUS[err.code] }
+    );
+  }
+  logger.error({ err }, event);
+  return NextResponse.json({ error: 'Failed to stream audio', code: 'server' }, { status: 500 });
 }
 
 export async function HEAD(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -149,7 +172,7 @@ export async function HEAD(req: NextRequest, { params }: { params: Promise<{ id:
     delete headers['content-length'];
     return new NextResponse(null, { status: 200, headers });
   } catch (err: any) {
-    logger.error({ err, params }, 'lms.audio.stream.head_failed');
-    return new NextResponse(null, { status: 500 });
+    const failure = streamFailure(err, 'lms.audio.stream.head_failed');
+    return new NextResponse(null, { status: failure.status });
   }
 }

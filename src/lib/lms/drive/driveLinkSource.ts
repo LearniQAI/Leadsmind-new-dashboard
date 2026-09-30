@@ -85,7 +85,43 @@ export function clampRange(range: ByteRange | undefined, maxChunkBytes: number):
   return { start, end };
 }
 
-/** Proxies the file's bytes, honoring an optional byte range. */
+/** Why a Drive byte fetch failed, in terms an admin can act on (see DriveStreamError). */
+export type DriveFailureCode =
+  | 'not_shared' // 404 to an API-key request: not "Anyone with the link", or deleted
+  | 'quota' // Drive's per-file download / rate quota is exhausted; clears on its own
+  | 'forbidden' // 403 for another reason, e.g. the owner disabled downloading
+  | 'not_media' // 200 but an HTML page, not media bytes
+  | 'timeout' // Drive didn't answer in time
+  | 'upstream'; // anything else
+
+export class DriveStreamError extends Error {
+  constructor(public code: DriveFailureCode, public upstreamStatus: number | null, message: string) {
+    super(message);
+    this.name = 'DriveStreamError';
+  }
+}
+
+// Time allowed for Drive to START answering. Deliberately not AbortSignal.timeout(): that would also
+// abort the body read, killing a long legitimate stream. Without any limit a stalled Drive connection
+// holds the request open until the platform's max duration and the player just sees a dead source.
+const DRIVE_CONNECT_TIMEOUT_MS = 20_000;
+
+async function classifyDriveFailure(res: Response): Promise<DriveStreamError> {
+  let reason = '';
+  try {
+    reason = (await res.json())?.error?.errors?.[0]?.reason ?? '';
+  } catch {
+    /* body wasn't JSON */
+  }
+  if (res.status === 404) return new DriveStreamError('not_shared', 404, 'Drive returned 404');
+  if (res.status === 403 || res.status === 429) {
+    const quota = res.status === 429 || /quota|ratelimit/i.test(reason);
+    return new DriveStreamError(quota ? 'quota' : 'forbidden', res.status, `Drive returned ${res.status} (${reason || 'no reason'})`);
+  }
+  return new DriveStreamError('upstream', res.status, `Drive returned ${res.status}`);
+}
+
+/** Proxies the file's bytes, honoring an optional byte range. Throws DriveStreamError on failure. */
 export async function streamDriveFile(fileId: string, range?: ByteRange): Promise<DriveStreamResult> {
   const url = `${DRIVE_FILES_ENDPOINT}/${encodeURIComponent(fileId)}?alt=media&key=${apiKey()}`;
   const headers: Record<string, string> = {};
@@ -93,7 +129,17 @@ export async function streamDriveFile(fileId: string, range?: ByteRange): Promis
     headers.Range = `bytes=${range.start}-${range.end ?? ''}`;
   }
 
-  const res = await fetch(url, { headers });
+  const controller = new AbortController();
+  const connectTimer = setTimeout(() => controller.abort(), DRIVE_CONNECT_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(url, { headers, signal: controller.signal });
+  } catch (err) {
+    logger.error({ err, fileId }, 'lms.drive.stream.connect_failed');
+    throw new DriveStreamError('timeout', null, 'Drive did not respond in time');
+  } finally {
+    clearTimeout(connectTimer);
+  }
   // A range starting at/after EOF (a seek racing a stale duration) — pass Drive's 416 through as
   // a real 416 so the media element handles it, rather than surfacing it as a server error.
   if (res.status === 416) {
@@ -105,11 +151,19 @@ export async function streamDriveFile(fileId: string, range?: ByteRange): Promis
     };
   }
   if (!res.ok && res.status !== 206) {
-    logger.error({ status: res.status, fileId }, 'lms.drive.stream.upstream_failure');
-    throw new Error(`Drive stream failed with status ${res.status}`);
+    const failure = await classifyDriveFailure(res);
+    logger.error({ status: res.status, fileId, code: failure.code }, 'lms.drive.stream.upstream_failure');
+    throw failure;
   }
   if (!res.body) {
-    throw new Error('Drive stream returned no body');
+    throw new DriveStreamError('upstream', res.status, 'Drive stream returned no body');
+  }
+  // Drive can answer 200 with an HTML page (e.g. a virus-scan / quota interstitial) instead of
+  // bytes. The API endpoint doesn't normally, but an HTML body must never be proxied as "audio".
+  if ((res.headers.get('content-type') ?? '').toLowerCase().startsWith('text/html')) {
+    await res.body.cancel();
+    logger.error({ fileId }, 'lms.drive.stream.html_instead_of_media');
+    throw new DriveStreamError('not_media', res.status, 'Drive returned an HTML page instead of file bytes');
   }
 
   const outHeaders: Record<string, string> = {};
