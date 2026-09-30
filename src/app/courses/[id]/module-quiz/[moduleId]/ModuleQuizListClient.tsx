@@ -130,7 +130,7 @@ export default function ModuleQuizListClient({ course, courseModule, initialQuiz
   return (
     <div className="space-y-6">
       <nav className="flex items-center gap-2 text-[13px] !text-dash-textMuted">
-        <Link href="/courses" className="hover:!text-dash-text">Courses</Link>
+        <Link href="/courses" className="hover:!text-dash-text">LMS</Link>
         <span className="opacity-40">/</span>
         <Link href={`/courses/${course.id}`} className="truncate hover:!text-dash-text">{course.title}</Link>
         <span className="opacity-40">/</span>
