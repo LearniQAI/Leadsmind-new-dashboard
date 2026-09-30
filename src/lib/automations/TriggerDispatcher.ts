@@ -32,6 +32,11 @@ export interface TriggerPayload {
   // the Inngest-run workflow trigger, so its own timing log can be correlated back to the request
   // that caused it instead of appearing as an unrelated log line.
   requestId?: string;
+  // The form_automation_jobs row this dispatch is for (see supabase/migrations/
+  // 20260930000023_form_submission_job_queue.sql). workflowTriggerFn updates this row's
+  // status/attempts as it runs, and the stuck-job reconciler cron re-sends this same event
+  // (payload unchanged) if the row is still 'queued' after 2 minutes.
+  jobId?: string;
 }
 
 export const TriggerDispatcher = {
@@ -47,6 +52,12 @@ export const TriggerDispatcher = {
   ): Promise<void> {
     try {
       await inngest.send({
+        // Inngest's own idempotency: an event with the same id sent again (e.g. the stuck-job
+        // reconciler re-sending this exact job) will not invoke the function a second time,
+        // regardless of whether the first invocation is still in flight or already finished.
+        // Only set when this dispatch is for a tracked job — untracked trigger sources (not yet
+        // migrated to the job-queue path) keep today's at-least-once, no-dedupe behavior.
+        ...(payload.jobId ? { id: payload.jobId } : {}),
         name: 'workflow/trigger',
         data: { event, payload, requestId: payload.requestId },
       });

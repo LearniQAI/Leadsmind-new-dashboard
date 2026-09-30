@@ -26,6 +26,10 @@
       "schedule": "*/15 * * * *"
     },
     {
+      "path": "/api/cron/workers/automation-jobs-reconciler",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/workers/social-scheduled-dispatch",
       "schedule": "*/5 * * * *"
     },

@@ -12,6 +12,10 @@ export interface SmartSubmissionPayload {
   isReturningContact: boolean;
   contactToken?: string | null;
   variantId?: string;
+  // Idempotency key: same value across retries/double-clicks of ONE submit attempt, regenerated
+  // by the caller after a successful submit or a form reset. The server enforces this as a real
+  // UUID and a unique (form_id, client_submission_id) pair.
+  clientSubmissionId: string;
 }
 
 export interface SmartSubmissionResult {
@@ -38,6 +42,7 @@ export async function submitSmartForm(
         is_returning: payload.isReturningContact,
         contact_token: payload.contactToken,
         variant_id: payload.variantId || null,
+        client_submission_id: payload.clientSubmissionId,
       }),
     });
 
