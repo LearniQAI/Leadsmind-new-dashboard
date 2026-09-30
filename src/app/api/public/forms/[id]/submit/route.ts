@@ -22,6 +22,18 @@ export const maxDuration = 10;
 
 const INNGEST_ENQUEUE_TIMEOUT_MS = 3000;
 
+// Bounded wait, not a cancellation: the underlying call keeps running (the Inngest client's own
+// AbortSignal timeout — src/lib/inngest.ts — is what actually cancels a hung fetch), this just
+// stops the response from waiting on it past `timeoutMs`. Used for both Inngest enqueue calls on
+// this route (webhook dispatch, workflow trigger) so neither can push the response past its
+// <2s target the way the unbounded `await dispatchWebhook(...)` briefly did.
+async function raceWithTimeout(promise: Promise<unknown>, timeoutMs: number): Promise<boolean> {
+  return Promise.race([
+    promise.then(() => false),
+    new Promise<boolean>((resolve) => setTimeout(() => resolve(true), timeoutMs)),
+  ]);
+}
+
 // Simple in-memory rate limit scaffold (per IP, per form, per minute)
 // In production this would be backed by Redis or Upstash
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -584,14 +596,22 @@ export async function POST(
     }
     timer.mark('activity_insert_scheduled');
 
-    // dispatchWebhook only enqueues onto Inngest (a few ms) — actual delivery, retries and the
-    // per-call 10s timeout happen in webhookDispatchFn, so this stays on the fast path.
+    // dispatchWebhook only enqueues onto Inngest (a few ms in the normal case) — actual delivery,
+    // retries and the per-call 10s timeout happen in webhookDispatchFn. Bounded the same way as
+    // the trigger dispatch below: this enqueue call has no timeout of its own (it's the same
+    // inngest.send() call chain), so a hung network path to Inngest's ingestion endpoint could
+    // otherwise block this response indefinitely — the same failure mode diagnosed for the
+    // workflow-trigger enqueue, previously unguarded here.
     try {
       const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
-      await dispatchWebhook(workspace_id, 'form.submitted', {
+      const webhookDispatchPromise = dispatchWebhook(workspace_id, 'form.submitted', {
         form: { id, name: form?.name ?? null },
         submission: { id: submissionId, data: formData, contact_id: contactId ?? null },
       });
+      const webhookTimedOut = await raceWithTimeout(webhookDispatchPromise, INNGEST_ENQUEUE_TIMEOUT_MS);
+      if (webhookTimedOut) {
+        console.warn('[Public Submit] Webhook enqueue exceeded timeout; not blocking response further', { submissionId });
+      }
     } catch (e) { console.error('[webhook-dispatch-form-submitted-error]', e); }
     timer.mark('webhook_dispatch');
 
@@ -606,14 +626,10 @@ export async function POST(
         ...triggerPayloadBase,
         jobId: jobId ?? undefined,
       });
-      // Bounded wait, not a cancellation: if the enqueue is still running past 3s we stop
-      // blocking the response on it (the job row already exists as 'queued' — the reconciler
-      // cron re-sends it if the enqueue genuinely never landed) rather than let a slow Inngest
-      // call push this request past its <2s target.
-      const timedOut = await Promise.race([
-        dispatchPromise.then(() => false),
-        new Promise<boolean>((resolve) => setTimeout(() => resolve(true), INNGEST_ENQUEUE_TIMEOUT_MS)),
-      ]);
+      // job row already exists as 'queued' — the reconciler cron re-sends it if the enqueue
+      // genuinely never landed — so stopping the wait here just protects this response's own
+      // latency, not correctness.
+      const timedOut = await raceWithTimeout(dispatchPromise, INNGEST_ENQUEUE_TIMEOUT_MS);
       if (timedOut) {
         console.warn('[Public Submit] Inngest enqueue exceeded timeout; job left queued for reconciler', { jobId });
       }
