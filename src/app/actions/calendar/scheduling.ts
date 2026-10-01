@@ -57,12 +57,21 @@ async function getExternalBusyIntervals(
   }
 }
 
+/** 'YYYY-MM-DD' of an instant as seen on the wall clock of an IANA timezone. */
+function localDateInTimeZone(date: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+}
+
 function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date): boolean {
   return aStart < bEnd && aEnd > bStart;
 }
 
 export async function validateSlot(calendarId: string, startTime: string, endTime: string) {
-  const dateStr = startTime.split('T')[0];
+  // The calendar-local date, NOT startTime.split('T')[0]: startTime is a UTC ISO string, so for a
+  // non-UTC calendar a late-evening/early-morning slot sits on a different UTC date than the one
+  // getAvailableSlots() generates it under, and was wrongly rejected as "not available".
+  const { data: tzRow } = await createAdminClient().from('booking_calendars').select('timezone').eq('id', calendarId).maybeSingle();
+  const dateStr = localDateInTimeZone(parseISO(startTime), tzRow?.timezone || 'UTC');
 
   const available = await getAvailableSlots(calendarId, dateStr);
   const isStillAvailable = available.some(s => s.start === startTime);
@@ -334,10 +343,42 @@ export async function getAvailableSlots(calendarId: string, date: string) {
   // per-calendar owner column) — same resolution external-busy lookups use.
   const userId = (await resolveHostUserId(supabase, calendar, calendarId)) ?? calendar.workspace_id;
 
-  const { data: profileRows } = await supabase
-    .from('host_availability_profiles')
-    .select('*')
-    .eq('user_id', userId);
+  // Every lookup below depends only on (calendar, userId, date), not on each other — fetched in one
+  // parallel round trip instead of ~8 sequential ones (each is a network hop to the database).
+  const startOfDayStr = `${date}T00:00:00Z`;
+  const endOfDayStr = `${date}T23:59:59Z`;
+  const isClass = isGroupSessionType(calendar.calendar_type);
+  const nowForLeases = new Date();
+  const [
+    { data: profileRows },
+    holidays,
+    { data: overrides },
+    { data: existing },
+    { data: activeLeases },
+    { data: hostUser },
+    externalBusyIntervals,
+  ] = await Promise.all([
+    supabase.from('host_availability_profiles').select('*').eq('user_id', userId),
+    getHolidaysInRange(userId, date, date),
+    supabase.from('meet_date_overrides').select('*').eq('user_id', userId).eq('override_date', date).maybeSingle(),
+    // Group-session calendars (Class, Webinar): a slot with an existing session is NOT blocked — it
+    // stays bookable until at capacity, then it's a "join waitlist" slot. Every other calendar type:
+    // an existing appointment blocks the slot (1:1).
+    supabase
+      .from('appointments')
+      .select(isClass ? 'id, start_time, end_time, max_attendees, current_attendee_count, waitlist_enabled' : 'start_time, end_time')
+      .eq('calendar_id', calendarId)
+      .eq('status', 'scheduled')
+      .gte('start_time', startOfDayStr)
+      .lte('start_time', endOfDayStr),
+    supabase
+      .from('booking_leases')
+      .select('slot_time')
+      .eq('calendar_id', calendarId)
+      .or(`status.eq.confirmed,and(status.eq.holding,expires_at.gt.${nowForLeases.toISOString()})`),
+    supabase.from('users').select('eskom_suburb_id').eq('id', userId).maybeSingle(),
+    getExternalBusyIntervals(supabase, calendar, calendarId, startOfDayStr, endOfDayStr),
+  ]);
 
   const bufferTime = profileRows?.[0]?.buffer_time ?? calendar.buffer_time ?? 15;
   const minimumNoticePeriod = profileRows?.[0]?.minimum_notice_period ?? 120;
@@ -354,18 +395,10 @@ export async function getAvailableSlots(calendarId: string, date: string) {
     return [];
   }
 
-  // 4. Fetch SA public holidays and overrides
-  const holidays = await getHolidaysInRange(userId, date, date);
+  // 4. SA public holidays and overrides (fetched above)
   if (holidays.includes(date)) {
     return []; // Completely closed on public holidays
   }
-
-  const { data: overrides } = await supabase
-    .from('meet_date_overrides')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('override_date', date)
-    .maybeSingle();
 
   if (overrides && !overrides.enabled) {
     return []; // Blocked override day
@@ -398,24 +431,7 @@ export async function getAvailableSlots(calendarId: string, date: string) {
 
   if (daySlots.length === 0) return [];
 
-  // 6. Retrieve active bookings (internal appointments)
-  const startOfDayStr = `${date}T00:00:00Z`;
-  const endOfDayStr = `${date}T23:59:59Z`;
-
-  // Group-session calendars (Class, Webinar) — a slot with an existing
-  // session is NOT blocked — it stays bookable until it's at capacity, then
-  // it's a "join waitlist" slot. Every other calendar type: an existing
-  // appointment blocks the slot (1:1).
-  const isClass = isGroupSessionType(calendar.calendar_type);
-
-  const { data: existing } = await supabase
-    .from('appointments')
-    .select(isClass ? 'id, start_time, end_time, max_attendees, current_attendee_count, waitlist_enabled' : 'start_time, end_time')
-    .eq('calendar_id', calendarId)
-    .eq('status', 'scheduled')
-    .gte('start_time', startOfDayStr)
-    .lte('start_time', endOfDayStr);
-
+  // 6. Active bookings (internal appointments) — fetched above
   const bookedIntervals = isClass
     ? []
     : (existing || []).map(a => ({ start: parseISO((a as any).start_time), end: parseISO((a as any).end_time) }));
@@ -424,23 +440,11 @@ export async function getAvailableSlots(calendarId: string, date: string) {
     isClass ? (existing || []).map((s: any) => [parseISO(s.start_time).getTime(), s]) : []
   );
 
-  // 7. Retrieve active PayFast checkout leases (5-min holds)
-  const { data: activeLeases } = await supabase
-    .from('booking_leases')
-    .select('slot_time')
-    .eq('calendar_id', calendarId)
-    .or(`status.eq.confirmed,and(status.eq.holding,expires_at.gt.${now.toISOString()})`);
-
+  // 7. Active PayFast checkout leases (5-min holds) — fetched above
   const leasedTimes = (activeLeases || []).map(l => parseISO(l.slot_time).getTime());
 
   // 8. Fetch EskomSePush Outages for Host's physical office location
   let outages: any[] = [];
-  const { data: hostUser } = await supabase
-    .from('users')
-    .select('eskom_suburb_id')
-    .eq('id', userId)
-    .maybeSingle();
-
   if (hostUser?.eskom_suburb_id) {
     outages = await getEskomOutages(
       hostUser.eskom_suburb_id,
@@ -449,15 +453,8 @@ export async function getAvailableSlots(calendarId: string, date: string) {
     );
   }
 
-  // 8b. External calendar (Google / Outlook) busy times for the host — Task 62.
+  // 8b. External calendar (Google / Outlook) busy times for the host — Task 62 (fetched above).
   // A connected calendar's real events remove slots from this booking page.
-  const externalBusyIntervals = await getExternalBusyIntervals(
-    supabase,
-    calendar,
-    calendarId,
-    startOfDayStr,
-    endOfDayStr
-  );
 
   // 9. Process Slots Chunking
   const slots = [];

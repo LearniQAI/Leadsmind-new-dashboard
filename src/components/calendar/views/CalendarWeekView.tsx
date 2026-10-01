@@ -103,12 +103,13 @@ export default function CalendarWeekView({ appointments }: CalendarWeekViewProps
                    return (
                      <div
                        key={appt.id}
-                       className="absolute left-1 right-1 rounded-lg p-2 text-[11px] font-bold border border-dash-border shadow-lg overflow-hidden group hover:z-30 transition-all motion-reduce:transition-none"
+                       className="bg-dash-accent/10 text-[#0B3FC2] dark:bg-dash-accent/30 dark:text-white absolute left-1 right-1 rounded-lg p-2 text-[11px] font-bold border border-dash-border shadow-lg overflow-hidden group hover:z-30 transition-all motion-reduce:transition-none"
                        style={{
                          top: `${60 + top}px`,
                          minHeight: '50px',
-                         backgroundColor: appt.color || 'rgba(19, 89, 255, 0.08)',
-                         color: appt.text_color || '#1359FF',
+                         // 1px per minute, matching the 60px-per-hour grid, so long meetings don't overlap the next slot
+                         height: `${Math.max(50, Math.round((new Date(appt.end_time).getTime() - start.getTime()) / 60000) || 0)}px`,
+                         ...(appt.color ? { backgroundColor: appt.color, color: appt.text_color || '#0F172A' } : {}),
                          borderLeft: `4px solid ${appt.border_color || '#1359FF'}`
                        }}
                      >

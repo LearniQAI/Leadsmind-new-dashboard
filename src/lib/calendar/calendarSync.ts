@@ -18,6 +18,9 @@ import {
   type CalendarEventSyncResult,
 } from '@/lib/calendar/googleMeet';
 import { updateOutlookCalendarEventTime, deleteOutlookCalendarEvent } from '@/lib/calendar/outlookCalendarEvents';
+
+/** Hard cap on external calendar calls made while a user is waiting on a booking/availability response. */
+const EXTERNAL_FETCH_TIMEOUT_MS = 8000;
 import { updateZoomMeetingTime, deleteZoomMeeting } from '@/lib/calendar/zoomMeeting';
 import { updateTeamsMeetingTime, deleteTeamsMeeting } from '@/lib/calendar/teamsMeeting';
 
@@ -74,6 +77,7 @@ export async function getExternalBusySlots(
           `https://www.googleapis.com/calendar/v3/freeBusy`,
           {
             method: 'POST',
+            signal: AbortSignal.timeout(EXTERNAL_FETCH_TIMEOUT_MS),
             headers: {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${token}`,
@@ -97,6 +101,7 @@ export async function getExternalBusySlots(
           `https://graph.microsoft.com/v1.0/me/calendar/getSchedule`,
           {
             method: 'POST',
+            signal: AbortSignal.timeout(EXTERNAL_FETCH_TIMEOUT_MS),
             headers: {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${token}`,

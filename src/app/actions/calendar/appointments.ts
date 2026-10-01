@@ -3,7 +3,7 @@
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId, requireWorkspaceAccess } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
-import { validateSlot, getRoundRobinAssignee } from './scheduling';
+import { validateSlot, getRoundRobinAssignee, getAvailableSlots } from './scheduling';
 import { createSupportTicket } from '@/lib/calendar/crossConnect';
 import { logger } from '@/shared/logger';
 import { NotFoundError, ValidationError, toClientError } from '@/shared/errors/AppError';
@@ -55,6 +55,52 @@ async function executeAction<T>(action: (supabase: any, workspaceId: string) => 
   }
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const CONFIRMATION_WAIT_MS = 8000;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+async function findByOperationId(supabase: any, workspaceId: string, operationId: string) {
+  const { data } = await supabase
+    .from('appointments')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .eq('client_operation_id', operationId)
+    .maybeSingle();
+  return data ?? null;
+}
+
+/**
+ * Bookable start times for one calendar on one calendar-local date, for the staff booking dialog.
+ * The list is exactly what validateSlot() will accept on submit (same generator), so a time the
+ * user can pick is a time the server will take. `timezone` is the calendar's IANA zone: every
+ * slot's `timeLabel` is rendered in it, and the dialog shows it explicitly.
+ */
+export async function getStaffBookableSlots(calendarId: string, date: string) {
+  return executeAction(async (supabase, workspaceId) => {
+    if (!UUID_RE.test(calendarId ?? '') || !DATE_RE.test(date ?? '')) {
+      throw new ValidationError('Choose a calendar and a date.');
+    }
+    const { data: calendar } = await supabase
+      .from('booking_calendars')
+      .select('timezone, slot_duration')
+      .eq('id', calendarId)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+    if (!calendar) throw new NotFoundError('Calendar');
+
+    const slots = await getAvailableSlots(calendarId, date);
+    return {
+      timezone: (calendar.timezone as string) || 'UTC',
+      slotDuration: (calendar.slot_duration as number) || 30,
+      slots: (slots as any[]).map((s) => ({
+        start: s.start as string,
+        end: s.end as string,
+        timeLabel: s.timeLabel as string,
+      })),
+    };
+  });
+}
+
 export async function getAppointments() {
   return executeAction(async (supabase, workspaceId) => {
     const { data, error } = await supabase
@@ -84,14 +130,45 @@ export async function createAppointment(payload: {
   skipValidation?: boolean;
   /** Task 71 — an optional room/desk/equipment reserved for this exact slot. */
   resourceId?: string | null;
+  /**
+   * One UUID per booking-dialog open. A replay (double-click, retry after a timeout) with the same
+   * id returns the original appointment instead of creating a second one. Enforced by
+   * UNIQUE (workspace_id, client_operation_id).
+   */
+  clientOperationId?: string | null;
 }) {
   return executeAction(async (supabase, workspaceId) => {
+    // 0. Idempotency. Checked BEFORE slot validation: on a replay the original booking now occupies
+    // the slot, so validating again would wrongly report a conflict with itself.
+    const operationId = payload.clientOperationId ?? null;
+    if (operationId !== null && !UUID_RE.test(operationId)) {
+      throw new ValidationError('Invalid booking request. Please close and reopen the dialog.');
+    }
+    if (operationId) {
+      const replay = await findByOperationId(supabase, workspaceId, operationId);
+      if (replay) return replay;
+    }
+
+    // A contact id from the browser is untrusted: '' (no contact picked) must become NULL — a ''
+    // uuid is a Postgres 22P02 — and a real id must belong to THIS workspace.
+    const contactId = payload.contactId || null;
+    if (contactId) {
+      if (!UUID_RE.test(contactId)) throw new ValidationError('Invalid contact.');
+      const { data: contactRow } = await supabase
+        .from('contacts')
+        .select('id')
+        .eq('id', contactId)
+        .eq('workspace_id', workspaceId)
+        .maybeSingle();
+      if (!contactRow) throw new ValidationError('That contact no longer exists. Please pick another.');
+    }
+
     // 1. Fetch Calendar Metadata — scoped to the verified workspace so a
     // caller can't attach an appointment to another workspace's calendar by
     // supplying a calendarId that belongs elsewhere.
     const { data: calendar, error: calError } = await supabase
       .from('booking_calendars')
-      .select('calendar_type, meeting_mode, capacity, location')
+      .select('calendar_type, meeting_mode, capacity, location, timezone')
       .eq('id', payload.calendarId)
       .eq('workspace_id', workspaceId)
       .single();
@@ -133,7 +210,8 @@ export async function createAppointment(payload: {
       .insert({
         workspace_id: workspaceId,
         calendar_id: payload.calendarId,
-        contact_id: payload.contactId,
+        contact_id: contactId,
+        client_operation_id: operationId,
         user_id: assigneeId,
         title: payload.title,
         start_time: payload.startTime,
@@ -143,6 +221,8 @@ export async function createAppointment(payload: {
         resource_id: payload.resourceId || null,
         metadata: {
           ...(payload.metadata || {}),
+          // The IANA zone the slot was booked in (the calendar's), stored explicitly so the time is never ambiguous.
+          booking_timezone: calendar.timezone || 'UTC',
           engine_type: calendar.calendar_type,
           original_engine_mode: calendar.meeting_mode
         },
@@ -152,6 +232,16 @@ export async function createAppointment(payload: {
       .single();
 
     if (error) {
+      // Two identical submits racing: the loser fails either the UNIQUE (workspace_id,
+      // client_operation_id) constraint (23505) or — because both rows also claim the same slot —
+      // the appointments_no_overlap exclusion (23P01), and Postgres reports whichever it checks
+      // first. Either way, if a row with OUR operation id now exists, that is the winner of this
+      // same submit: hand it back so both callers see one booking, not a bogus "slot taken".
+      const errCode = (error as { code?: string }).code;
+      if (operationId && (errCode === '23505' || errCode === '23P01')) {
+        const winner = await findByOperationId(supabase, workspaceId, operationId);
+        if (winner) return winner;
+      }
       // Resource check first — a resource-conflict insert also fails the
       // calendar_id EXCLUDE constraint's WHERE clause the same way, but
       // Postgres only ever raises ONE violation (whichever constraint it hits
@@ -195,7 +285,12 @@ export async function createAppointment(payload: {
     // with no actual dispatch). Best-effort: notification failure must not
     // fail an appointment creation that already succeeded.
     try {
-      await sendBookingConfirmation(data.id, { reason: 'booked' });
+      // Capped: the booking is already saved, so a slow email provider must not keep the dialog
+      // spinning. The send keeps running after we stop waiting; a late failure is still logged.
+      await Promise.race([
+        sendBookingConfirmation(data.id, { reason: 'booked' }),
+        new Promise<void>((resolve) => setTimeout(resolve, CONFIRMATION_WAIT_MS)),
+      ]);
     } catch (notifyErr) {
       logger.error({ err: notifyErr, appointmentId: data.id }, 'calendar.appointment.confirmation_email.failed');
     }

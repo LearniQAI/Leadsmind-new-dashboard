@@ -49,6 +49,7 @@ export async function createGoogleMeetLink(
 
     const eventResponse = await fetch(`${EVENTS_BASE}?conferenceDataVersion=1`, {
       method: 'POST',
+      signal: AbortSignal.timeout(8000),
       headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         summary: appointmentDetails.title,

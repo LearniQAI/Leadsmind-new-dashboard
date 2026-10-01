@@ -125,10 +125,9 @@ export default function CalendarMonthView({
                       e.stopPropagation();
                       onAppointmentClick?.(appt);
                     }}
-                    className="px-2 py-1 rounded-lg text-[11px] font-semibold truncate border border-dash-border shadow-sm cursor-pointer hover:scale-[1.02] motion-reduce:hover:scale-100 transition-transform motion-reduce:transition-none active:scale-[0.98] motion-reduce:active:scale-100"
+                    className="bg-dash-accent/10 text-[#0B3FC2] dark:bg-dash-accent/30 dark:text-white px-2 py-1 rounded-lg text-[11px] font-semibold truncate border border-dash-border shadow-sm cursor-pointer hover:scale-[1.02] motion-reduce:hover:scale-100 transition-transform motion-reduce:transition-none active:scale-[0.98] motion-reduce:active:scale-100"
                     style={{
-                      backgroundColor: appt.color || 'rgba(19, 89, 255, 0.08)',
-                      color: appt.text_color || '#1359FF',
+                      ...(appt.color ? { backgroundColor: appt.color, color: appt.text_color || '#0F172A' } : {}),
                       borderLeft: `3px solid ${appt.border_color || '#1359FF'}`
                     }}
                   >

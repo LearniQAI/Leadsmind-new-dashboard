@@ -75,12 +75,11 @@ export default function CalendarDayView({ appointments }: CalendarDayViewProps) 
                return (
                  <div
                    key={appt.id}
-                   className="absolute left-4 right-4 rounded-xl p-4 text-[13px] font-bold border border-dash-border shadow-xl overflow-hidden group hover:z-30 transition-all motion-reduce:transition-none"
+                   className="bg-dash-accent/10 text-[#0B3FC2] dark:bg-dash-accent/30 dark:text-white absolute left-4 right-4 rounded-xl p-4 text-[13px] font-bold border border-dash-border shadow-xl overflow-hidden group hover:z-30 transition-all motion-reduce:transition-none"
                    style={{
                      top: `${top}px`,
                      minHeight: '80px',
-                     backgroundColor: appt.color || 'rgba(19, 89, 255, 0.08)',
-                     color: appt.text_color || '#1359FF',
+                     ...(appt.color ? { backgroundColor: appt.color, color: appt.text_color || '#0F172A' } : {}),
                      borderLeft: `5px solid ${appt.border_color || '#1359FF'}`
                    }}
                  >
