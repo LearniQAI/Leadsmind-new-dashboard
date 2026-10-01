@@ -90,17 +90,31 @@ export const Columns = ({
    latest = resizeAdjacent(start, index, ((ev.clientX - x0) / track) * 100);
    setDraft(latest);
   };
-  const end = () => {
+  const stop = () => {
    window.removeEventListener('pointermove', move);
    window.removeEventListener('pointerup', end);
    window.removeEventListener('pointercancel', end);
-   if (latest !== start) setProp((p: any) => { p.columnWidths = latest; });
+   window.removeEventListener('keydown', onKey);
+   window.removeEventListener('blur', cancel);
+   stopRef.current = null;
    setDraft(null);
   };
+  const end = () => {
+   stop();
+   if (latest !== start) setProp((p: any) => { p.columnWidths = latest; });
+  };
+  const cancel = () => stop(); // Escape / window blur: abandon the drag, keep the old widths
+  const onKey = (ev: KeyboardEvent) => { if (ev.key === 'Escape') cancel(); };
+  stopRef.current = stop;
   window.addEventListener('pointermove', move);
   window.addEventListener('pointerup', end);
   window.addEventListener('pointercancel', end);
+  window.addEventListener('keydown', onKey);
+  window.addEventListener('blur', cancel);
  };
+ // A resize in flight when the block unmounts must not leave window listeners behind.
+ const stopRef = React.useRef<(() => void) | null>(null);
+ React.useEffect(() => () => stopRef.current?.(), []);
 
  // A Columns block with no children has nothing for its grid to lay out — every preset showed
  // "EMPTY COLUMNS GRID". In the editor, give an empty one real column slots for its preset
@@ -154,10 +168,13 @@ export const Columns = ({
  // (Static class strings, so Tailwind's scanner keeps them.) The template rides in a CSS var.
  if (widths) {
   gridStyle = perRow >= 4
-   ? "grid-cols-1 md:grid-cols-2 lg:[grid-template-columns:var(--lm-cols)] [&>*]:w-full"
-   : "grid-cols-1 md:[grid-template-columns:var(--lm-cols)] [&>*]:w-full";
+   ? "grid-cols-1 md:grid-cols-2 lg:[grid-template-columns:var(--lm-cols)] [&>*:not([data-col-overlay])]:w-full"
+   : "grid-cols-1 md:[grid-template-columns:var(--lm-cols)] [&>*:not([data-col-overlay])]:w-full";
   // ^ [&>*]:w-full: a 'fixed' column Container is mx-auto (shrinks to its content), which would
-  //   make a resized column look unchanged. Only applied once widths are manual.
+  //   make a resized column look unchanged. Only applied once widths are manual. It must skip the
+  //   resize handles (data-col-overlay): they are direct children too, and `>*` outranks their
+  //   w-3 in the stylesheet, which made each handle as wide as the whole grid after the first
+  //   resize — an invisible, hit-testable sheet over the columns that swallowed drops and clicks.
  }
 
  return (
@@ -212,7 +229,7 @@ export const Columns = ({
           // dragover/drop aimed at that column resolves to this handle instead and never
           // reaches the Column canvas underneath — the one place in the builder a drop could
           // silently fail depending on where in a Columns block the cursor lands.
-          "absolute top-1 bottom-1 z-20 flex w-3 -translate-x-1/2 cursor-col-resize touch-none items-center justify-center",
+          "absolute top-1 bottom-1 z-20 flex !w-3 -translate-x-1/2 cursor-col-resize touch-none items-center justify-center",
           "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity motion-reduce:transition-none",
           (selected || draft) && "opacity-100 pointer-events-auto"
         )}
