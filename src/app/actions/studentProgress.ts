@@ -7,6 +7,7 @@ import { getOrCreateStudentContact } from './studentEnrollments';
 import { gradeQuizAttempt } from '@/lib/lms/gradeQuiz';
 import { gradeModuleQuizAttempt } from '@/lib/lms/gradeModuleQuiz';
 import { getStudentVisibleModuleQuizzes } from '@/lib/lms/moduleQuizzes';
+import { getEffectiveQuizSettingsFor } from '@/lib/lms/moduleQuizSettings';
 import { getModuleCompletionStatus } from '@/lib/lms/moduleCompletion';
 import { markLessonCompleteForContact } from '@/lib/lms/completeLesson';
 import { enrolmentInactiveReason } from '@/lib/lms/enrolment';
@@ -363,8 +364,24 @@ export async function submitModuleQuizAttempt(payload: {
       return { error: 'Complete every lesson in this module before taking its quiz.' };
     }
 
+    // Effective attempt cap (module default / per-quiz override). Enforced here, server-side, so
+    // it holds even if the page is bypassed. NOTE: count-then-insert is not atomic (unlike the
+    // lesson-quiz trigger), so two simultaneous submits could overshoot the cap by one.
+    const effective = await getEffectiveQuizSettingsFor(adminClient, { id: quiz.id, module_id: moduleId });
+    if (effective.maxAttempts > 0) {
+      const { count: used, error: usedErr } = await adminClient
+        .from('module_quiz_attempts')
+        .select('id', { count: 'exact', head: true })
+        .eq('quiz_id', quiz.id)
+        .eq('student_id', contactId);
+      if (usedErr) throw usedErr;
+      if ((used ?? 0) >= effective.maxAttempts) {
+        return { error: 'You have used all your attempts for this quiz. Ask your instructor to reset them.', code: 'ATTEMPTS_EXHAUSTED' };
+      }
+    }
+
     const { score, passed, rawScore, maxScore, autoRawScore, pendingManual } =
-      await gradeModuleQuizAttempt(quiz.id, payload.answers);
+      await gradeModuleQuizAttempt(quiz.id, payload.answers, moduleId);
 
     const { error: attemptErr } = await adminClient
       .from('module_quiz_attempts')

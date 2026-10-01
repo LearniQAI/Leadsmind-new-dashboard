@@ -13,6 +13,7 @@ import {
   MoreHorizontal,
   Pencil,
   Plus,
+  SlidersHorizontal,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -151,14 +152,23 @@ export default function ModuleQuizListClient({ course, courseModule, initialQuiz
             {courseModule.title}
           </h1>
           <p className="text-[13px] leading-relaxed !text-dash-textMuted">
-            Students see published quizzes once they finish the module&apos;s lessons, and must pass every one of them to complete the course.
+            Students see published quizzes once they finish the module&apos;s lessons. Pass mark, attempts, time limit and completion rules are set once for the whole module in Module quiz settings.
           </p>
         </div>
-        {quizzes.length > 0 && (
-          <button onClick={openCreate} disabled={isPending} className={btnPrimary}>
-            <Plus /> Create new quiz
-          </button>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Quiet outlined button in the brand blue: the module's shared rules, secondary to creating. */}
+          <Link
+            href={`${basePath}/settings`}
+            className="inline-flex h-11 items-center gap-2 rounded-full border border-dash-accent/25 bg-white px-5 text-[12px] font-semibold text-dash-accent transition-colors hover:border-dash-accent/50 hover:bg-dash-accent/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-accent/40 focus-visible:ring-offset-2 motion-reduce:transition-none [&_svg]:size-4"
+          >
+            <SlidersHorizontal /> Module quiz settings
+          </Link>
+          {quizzes.length > 0 && (
+            <button onClick={openCreate} disabled={isPending} className={btnPrimary}>
+              <Plus /> Create new quiz
+            </button>
+          )}
+        </div>
       </div>
 
       {loadError ? (

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import React, { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import {
@@ -40,10 +40,24 @@ const textInput =
 // shown, so we don't flash an optimistic number.
 const CLIENT_PREVIEWABLE = new Set(['mcq', 'true_false', 'short_answer']);
 
+function shuffled<T>(items: T[]): T[] {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+function formatClock(totalSeconds: number) {
+  const s = Math.max(0, totalSeconds);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
 export default function StudentQuizClient({
   courseId,
   quiz,
-  questions,
+  questions: questionsProp,
   settings,
   attemptsCount,
   hasPassedRemedial,
@@ -53,6 +67,18 @@ export default function StudentQuizClient({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
+  // Module quizzes run on EFFECTIVE settings (module defaults / per-quiz override — resolved
+  // server-side by lib/lms/moduleQuizSettings.ts and handed in here already merged). The timer
+  // and shuffle are module-quiz-only: lesson quizzes keep their existing behaviour.
+  const passMark = settings?.pass_percentage ?? 70;
+  const timeLimitMinutes = isModuleScope ? Number(settings?.time_limit_minutes) || 0 : 0;
+  const shuffleQuestions = isModuleScope && !!settings?.randomize_questions;
+  const isRequired = isModuleScope && settings?.is_required !== false;
+  // Module: total attempts allowed, -1 = unlimited. Lesson: legacy `|| 3`.
+  const attemptCap: number = isModuleScope ? Number(settings?.max_attempts ?? -1) : settings?.max_attempts || 3;
+  const hasAttemptCap = attemptCap > 0;
+
+  const [questions, setQuestions] = useState<any[]>(questionsProp);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -60,6 +86,15 @@ export default function StudentQuizClient({
   const [passed, setPassed] = useState(false);
   const [pendingReview, setPendingReview] = useState(false);
   const [uploadingQid, setUploadingQid] = useState<string | null>(null);
+  // Attempts used = what the server counted when the page loaded + submissions made since.
+  const [submittedHere, setSubmittedHere] = useState(0);
+  const attemptsUsed = attemptsCount + submittedHere;
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+
+  // Shuffle after mount (not during render) so server and client markup agree.
+  useEffect(() => {
+    if (shuffleQuestions) setQuestions(shuffled(questionsProp));
+  }, [shuffleQuestions, questionsProp]);
 
   const activeQuestion = questions[currentIndex] || null;
   const setAnswer = (qId: string, value: any) => setAnswers((prev) => ({ ...prev, [qId]: value }));
@@ -107,7 +142,7 @@ export default function StudentQuizClient({
       });
       const pct = totalPoints > 0 ? Math.round((scoreTotal / totalPoints) * 100) : 0;
       setFinalScore(pct);
-      setPassed(pct >= (settings?.pass_percentage ?? 70));
+      setPassed(pct >= passMark);
     }
 
     startTransition(async () => {
@@ -120,6 +155,7 @@ export default function StudentQuizClient({
           toast.error(res.error);
           return;
         }
+        setSubmittedHere((n) => n + 1);
         if ((res as any).pendingReview) {
           setPendingReview(true);
           setPassed(false);
@@ -141,6 +177,48 @@ export default function StudentQuizClient({
     });
   };
 
+  // Lesson quizzes: an exhausted cap is lifted by the remedial path. Module quizzes: it is a hard
+  // stop until the instructor resets attempts. (Locked is judged on the attempts the server
+  // counted at page load, so finishing your last attempt still shows your result.)
+  const isLocked = hasAttemptCap && attemptsCount >= attemptCap && (isModuleScope || !hasPassedRemedial);
+  const attemptsLeft = hasAttemptCap ? Math.max(0, attemptCap - attemptsUsed) : null;
+
+  // Countdown. Starts when the quiz is on screen, auto-submits whatever is answered at zero.
+  // (Client-side pacing: the server doesn't see a start time.)
+  const timerRunning = timeLimitMinutes > 0 && !isSubmitted && !isLocked && questions.length > 0;
+  const handleSubmitRef = useRef(handleSubmit);
+  handleSubmitRef.current = handleSubmit;
+  useEffect(() => {
+    if (!timerRunning) {
+      setSecondsLeft(null);
+      return;
+    }
+    const endsAt = Date.now() + timeLimitMinutes * 60_000;
+    setSecondsLeft(timeLimitMinutes * 60);
+    const tick = setInterval(() => {
+      const left = Math.round((endsAt - Date.now()) / 1000);
+      if (left <= 0) {
+        clearInterval(tick);
+        setSecondsLeft(0);
+        toast.warning("Time's up — submitting your answers.");
+        handleSubmitRef.current();
+      } else {
+        setSecondsLeft(left);
+      }
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [timerRunning, timeLimitMinutes, submittedHere]);
+
+  const retake = () => {
+    setAnswers({});
+    setCurrentIndex(0);
+    setIsSubmitted(false);
+    setPassed(false);
+    setPendingReview(false);
+    setFinalScore(0);
+    if (shuffleQuestions) setQuestions(shuffled(questionsProp));
+  };
+
   if (questions.length === 0) {
     return (
       <div className={`${card} text-center`}>
@@ -156,9 +234,6 @@ export default function StudentQuizClient({
     );
   }
 
-  const maxAttempts = settings?.max_attempts || 3;
-  const isLocked = attemptsCount >= maxAttempts && !(isModuleScope || hasPassedRemedial);
-
   if (isLocked) {
     return (
       <div className={`${card} space-y-5 text-center`}>
@@ -169,7 +244,7 @@ export default function StudentQuizClient({
           <span className={`${eyebrow} block`}>Attempts used</span>
           <h2 className="font-display text-[19px] font-semibold !text-dash-text">Attempts exceeded</h2>
           <p className="mx-auto max-w-md text-[12px] leading-relaxed !text-dash-textMuted">
-            You&apos;ve used all {attemptsCount} allowed attempts for this assessment.
+            You&apos;ve used all {attemptsCount} allowed {attemptsCount === 1 ? 'attempt' : 'attempts'} for this assessment.
             {isModuleScope
               ? ' Contact your instructor to reset your attempts.'
               : ' Complete the AI-powered remedial learning path to unlock the quiz.'}
@@ -219,8 +294,18 @@ export default function StudentQuizClient({
             <p className="text-[12px] !text-dash-textMuted">
               {pendingReview
                 ? 'This quiz includes a file upload. Your instructor will grade it and your result will appear in My Results.'
-                : `Passing threshold: ${settings?.pass_percentage ?? 70}%`}
+                : `Passing threshold: ${passMark}%`}
             </p>
+            {!pendingReview && !passed && isModuleScope && (
+              <p className="text-[12px] !text-dash-textMuted">
+                {isRequired ? 'You need to pass this quiz to complete the course. ' : ''}
+                {attemptsLeft === null
+                  ? 'You can retake it as many times as you like.'
+                  : attemptsLeft > 0
+                  ? `You have ${attemptsLeft} ${attemptsLeft === 1 ? 'attempt' : 'attempts'} left.`
+                  : 'You have no attempts left — contact your instructor to reset them.'}
+              </p>
+            )}
           </div>
         </div>
 
@@ -322,6 +407,11 @@ export default function StudentQuizClient({
               Start AI remedial session
             </button>
           )}
+          {isModuleScope && !passed && !pendingReview && (attemptsLeft === null || attemptsLeft > 0) && (
+            <button onClick={retake} className={`${btnPrimary} w-full`}>
+              Retake quiz
+            </button>
+          )}
           <button
             onClick={() => router.push(`/student/courses/${courseId}`)}
             className={`${passed ? btnPrimary : btnSecondary} w-full`}
@@ -345,6 +435,30 @@ export default function StudentQuizClient({
           Question {currentIndex + 1} of {questions.length}
         </span>
       </div>
+
+      {isModuleScope && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11.5px] !text-dash-textMuted">
+          <span>Pass mark <strong className="!text-dash-text">{passMark}%</strong></span>
+          <span>
+            {attemptsLeft === null ? (
+              'Unlimited attempts'
+            ) : (
+              <>Attempt <strong className="!text-dash-text">{Math.min(attemptsUsed + 1, attemptCap)}</strong> of {attemptCap}</>
+            )}
+          </span>
+          {isRequired && <span>Required to complete the course</span>}
+          {secondsLeft !== null && (
+            <span
+              role="timer"
+              className={`ml-auto inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold tabular-nums ${
+                secondsLeft <= 60 ? 'bg-rose-50 text-rose-600' : secondsLeft <= 300 ? 'bg-amber-50 text-amber-700' : 'bg-dash-surface !text-dash-text'
+              }`}
+            >
+              <Clock3 size={12} /> {formatClock(secondsLeft)}
+            </span>
+          )}
+        </div>
+      )}
 
       {hasFileUploadQuestion && (
         <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-[11.5px] leading-relaxed text-amber-800">

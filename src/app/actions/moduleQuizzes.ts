@@ -154,8 +154,105 @@ export async function updateModuleQuiz(
   }
 }
 
+// ---- Module quiz settings -------------------------------------------------------------------
+// One module_quiz_defaults row per module: the ONLY source of grading/pacing/completion rules for
+// every quiz in the module (there is no per-quiz override). See moduleQuizSettings.ts. Field set =
+// exactly what the student side enforces.
+
+export interface ModuleQuizRules {
+  passPercentage: number;
+  /** minutes, 0 = no limit */
+  timeLimitMinutes: number;
+  /** total attempts, -1 = unlimited */
+  maxAttempts: number;
+  randomizeQuestions: boolean;
+  isRequired: boolean;
+}
+
+export interface ModuleQuizSettingsOverview {
+  /** null until the instructor saves module settings for the first time */
+  defaults: ModuleQuizRules | null;
+  quizzes: { id: string; title: string; status: 'draft' | 'published' }[];
+}
+
+function validateRules(r: ModuleQuizRules): string | null {
+  const int = (n: unknown) => typeof n === 'number' && Number.isInteger(n);
+  if (!int(r.passPercentage) || r.passPercentage < 0 || r.passPercentage > 100) return 'Passing score must be between 0 and 100.';
+  if (!int(r.timeLimitMinutes) || r.timeLimitMinutes < 0 || r.timeLimitMinutes > 600) return 'Time limit must be between 0 and 600 minutes.';
+  if (!int(r.maxAttempts) || (r.maxAttempts !== -1 && (r.maxAttempts < 1 || r.maxAttempts > 100))) {
+    return 'Max attempts must be unlimited or between 1 and 100.';
+  }
+  return null;
+}
+
+export async function getModuleQuizSettingsOverview(moduleId: string): Promise<{ data?: ModuleQuizSettingsOverview; error?: string }> {
+  try {
+    const { workspaceId } = await requireLmsInstructor();
+    const db = createAdminClient();
+    if (!(await loadModuleInWorkspace(db, moduleId, workspaceId))) return { error: 'Module not found.' };
+
+    const [defaultsRes, quizzesRes] = await Promise.all([
+      db.from('module_quiz_defaults').select('*').eq('module_id', moduleId).maybeSingle(),
+      db.from('module_quizzes').select('id, title, status, position, created_at').eq('module_id', moduleId)
+        .order('position', { ascending: true }).order('created_at', { ascending: true }),
+    ]);
+    if (defaultsRes.error) throw defaultsRes.error;
+    if (quizzesRes.error) throw quizzesRes.error;
+
+    const d = defaultsRes.data as any;
+    return {
+      data: {
+        defaults: d
+          ? {
+              passPercentage: d.pass_percentage,
+              timeLimitMinutes: d.time_limit_minutes ?? 0,
+              maxAttempts: d.max_attempts,
+              randomizeQuestions: !!d.randomize_questions,
+              isRequired: d.is_required,
+            }
+          : null,
+        quizzes: (quizzesRes.data || []).map((q: any) => ({ id: q.id, title: q.title, status: q.status })),
+      },
+    };
+  } catch (err: any) {
+    logger.error({ err, moduleId }, 'module_quiz_defaults.overview.failed');
+    return { error: 'Could not load the module quiz settings.' };
+  }
+}
+
+export async function saveModuleQuizDefaults(moduleId: string, rules: ModuleQuizRules): Promise<{ success?: true; error?: string }> {
+  try {
+    const invalid = validateRules(rules);
+    if (invalid) return { error: invalid };
+    const { workspaceId } = await requireLmsInstructor();
+    const db = createAdminClient();
+    const courseModule = await loadModuleInWorkspace(db, moduleId, workspaceId);
+    if (!courseModule) return { error: 'Module not found.' };
+
+    const { error } = await db.from('module_quiz_defaults').upsert(
+      {
+        module_id: moduleId,
+        workspace_id: workspaceId,
+        pass_percentage: rules.passPercentage,
+        time_limit_minutes: rules.timeLimitMinutes,
+        max_attempts: rules.maxAttempts,
+        randomize_questions: !!rules.randomizeQuestions,
+        is_required: !!rules.isRequired,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'module_id' },
+    );
+    if (error) throw error;
+    revalidatePath(`/courses/${courseModule.course_id}/module-quiz/${moduleId}`);
+    return { success: true };
+  } catch (err: any) {
+    logger.error({ err, moduleId }, 'module_quiz_defaults.save.failed');
+    return { error: 'Could not save the module quiz settings.' };
+  }
+}
+
 /**
- * Deletes the quiz with its questions and settings (FK cascade). Student attempts are kept as
+ * Deletes the quiz with its questions (FK cascade). Student attempts are kept as
  * history with quiz_id set to NULL, and a deleted quiz is no longer required for completion.
  */
 export async function deleteModuleQuiz(quizId: string): Promise<{ success?: true; error?: string }> {
