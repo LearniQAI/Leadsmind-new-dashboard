@@ -5,6 +5,7 @@ import { sendSMS } from '@/lib/sms';
 import { resolveWorkspaceTwilioCredentials } from '@/lib/twilio/resolveWorkspaceTwilioCredentials';
 import { meetingLinkNote, type MeetingLinkStatus } from '@/lib/calendar/meetingLinkStatus';
 import { sendWhatsAppAppointmentReminder } from '@/lib/calendar/whatsappReminder';
+import { formatWhenForMessage } from '@/lib/calendar/displayTime';
 import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
@@ -37,6 +38,7 @@ export async function GET(request) {
       .from('appointments')
       .select(`
         id, title, start_time, meeting_link, workspace_id, metadata,
+        calendar:booking_calendars(timezone),
         contact:contacts(id, first_name, last_name, email, phone, opted_out, sms_opt_out)
       `)
       .in('status', ['confirmed', 'scheduled'])
@@ -105,12 +107,17 @@ export async function GET(request) {
       const linkStatus = ((apt as any).metadata?.meeting_link_status as MeetingLinkStatus) ?? 'none';
       const note = meetingLinkNote(linkStatus, 'booker');
 
+      // The calendar's wall clock with the zone named — never the server's locale (UTC on Vercel).
+      const calRel: any = (apt as any).calendar;
+      const aptTimeZone: string | null = (Array.isArray(calRel) ? calRel[0] : calRel)?.timezone ?? null;
+      const whenText = formatWhenForMessage(apt.start_time, null, aptTimeZone);
+
       const messageText = [
         `Hi ${name || 'there'},`,
         ``,
         `Just a quick reminder that your meeting "${apt.title}" is coming up in ${typeStr}!`,
         ``,
-        `Start time: ${new Date(apt.start_time).toLocaleString()}`,
+        `Start time: ${whenText}`,
         apt.meeting_link ? `Meeting Link: ${apt.meeting_link}` : null,
         note,
         ``,
@@ -118,7 +125,7 @@ export async function GET(request) {
       ].filter((l) => l !== null).join('\n');
 
       const smsText = [
-        `Reminder: "${apt.title}" starts in ${typeStr}.`,
+        `Reminder: "${apt.title}" starts in ${typeStr} (${whenText}).`,
         apt.meeting_link ? `Link: ${apt.meeting_link}` : note,
       ].filter(Boolean).join(' ');
 
@@ -159,7 +166,7 @@ export async function GET(request) {
             ? { id: contact.id, first_name: contact.first_name ?? null, phone: contact.phone ?? null, opted_out: contact.opted_out, sms_opt_out: contact.sms_opt_out }
             : { id: '', first_name: null, phone: null },
           lastCustomerMessageAt: contact ? waWindowMap.get(contact.id) : null,
-          appointment: { id: apt.id, title: apt.title, start_time: apt.start_time },
+          appointment: { id: apt.id, title: apt.title, start_time: apt.start_time, timezone: aptTimeZone },
           smsBody: smsText,
         });
         if (wa.status === 'sent') whatsappSentCount++;

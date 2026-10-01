@@ -275,7 +275,7 @@ export async function cancelAppointmentFromPortal(appointmentId: string) {
     });
 
     try {
-      await sendCancellationNotice(appointmentId, new Date(appt.start_time).toLocaleString());
+      await sendCancellationNotice(appointmentId, appt.start_time);
     } catch (notifyErr) {
       logger.error({ err: notifyErr, appointmentId }, 'portal_bookings.cancellation_email.failed');
     }
@@ -425,7 +425,7 @@ export async function rescheduleAppointmentFromPortal(appointmentId: string, new
     });
 
     try {
-      await sendRescheduleNotice(appointmentId, new Date(appt.start_time).toLocaleString());
+      await sendRescheduleNotice(appointmentId, appt.start_time);
     } catch (notifyErr) {
       logger.error({ err: notifyErr, appointmentId }, 'portal_bookings.reschedule_email.failed');
     }

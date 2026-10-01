@@ -104,3 +104,27 @@ export function tzLabel(timeZone: string, at: string | Date = new Date()): strin
 export function formatRange12(start: string | Date, end: string | Date, timeZone: string): string {
   return `${formatTime12(start, timeZone)} – ${formatTime12(end, timeZone)}`;
 }
+
+/**
+ * One human line for e-mails / SMS / notices: 'Wednesday, October 7, 2026 · 17:30–18:00 (Africa/Johannesburg, GMT+2)'.
+ * Always the CALENDAR's wall clock with the zone named — never the server's locale, which on Vercel is UTC and
+ * would silently print the wrong clock time for any other zone. `end` is optional ('… · 17:30 (…)').
+ */
+export function formatWhenForMessage(start: string | Date, end: string | Date | null | undefined, timeZone: string | null | undefined): string {
+  const tz = safeZone(timeZone);
+  const date = formatDateLong(start, tz);
+  const time = end ? `${formatTime24(start, tz)}–${formatTime24(end, tz)}` : formatTime24(start, tz);
+  const short = tzShort(tz, start);
+  return `${date} · ${time} (${short === tz ? tz : `${tz}, ${short}`})`;
+}
+
+const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+
+/**
+ * Callers of the cancel/reschedule notices used to pass a pre-formatted `toLocaleString()` (server locale, no zone).
+ * They now pass the ISO instant; this renders an ISO instant in the calendar's zone and leaves any other
+ * (already-formatted) string untouched, so an old caller degrades to the old text rather than breaking.
+ */
+export function whenFromInstantOrText(value: string, timeZone: string | null | undefined): string {
+  return ISO_INSTANT.test(value) ? formatWhenForMessage(value, null, timeZone) : value;
+}

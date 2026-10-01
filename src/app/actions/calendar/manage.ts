@@ -147,7 +147,7 @@ export async function cancelAppointmentByToken(token: string) {
   }
 
   const supabase = createAdminClient();
-  const previousWhen = new Date(appointment.start_time).toLocaleString();
+  const previousWhen = appointment.start_time; // ISO instant: the notice renders it in the calendar timezone
 
   const updatePayload: Record<string, any> = { status: 'cancelled', updated_at: new Date().toISOString() };
   // Group/class sessions track capacity via max_attendees/current_attendee_count
@@ -221,7 +221,7 @@ export async function rescheduleAppointmentByToken(token: string, newSlot: strin
   }
 
   const supabase = createAdminClient();
-  const previousWhen = new Date(appointment.start_time).toLocaleString();
+  const previousWhen = appointment.start_time; // ISO instant: the notice renders it in the calendar timezone
   const duration = appointment.calendar?.slot_duration || 30;
   const newStart = parseISO(newSlot);
   const newEnd = addMinutes(newStart, duration);

@@ -435,13 +435,13 @@ export async function updateRecurringScopeCore(
           .update({ status: 'cancelled', is_exception: true, updated_at: nowIso })
           .eq('id', apt.id);
         if (recEventId) await cancelGoogleEventInstance(googleHostId, recEventId, occurrenceAnchor);
-        try { await sendCancellationNotice(apt.id, new Date(apt.start_time).toLocaleString()); } catch { /* best-effort */ }
+        try { await sendCancellationNotice(apt.id, apt.start_time); } catch { /* best-effort */ }
         revalidatePath('/calendar');
         return { success: true as const, data: { scope: 'this', action: 'cancel', affected: 1 } };
       }
       const newStart = new Date(params.newStartTime!);
       const newEnd = new Date(newStart.getTime() + series.duration_minutes * 60000);
-      const previousWhen = new Date(apt.start_time).toLocaleString();
+      const previousWhen = apt.start_time;
       const { error: updErr } = await supabase
         .from('appointments')
         .update({ start_time: newStart.toISOString(), end_time: newEnd.toISOString(), is_exception: true, status: 'scheduled', updated_at: nowIso })
@@ -500,7 +500,7 @@ export async function updateRecurringScopeCore(
           .eq('id', series.id);
         if (recEventId) await updateGoogleRecurringEventRule(googleHostId, recEventId, truncated);
       }
-      try { await sendCancellationNotice(apt.id, new Date(apt.start_time).toLocaleString()); } catch { /* best-effort */ }
+      try { await sendCancellationNotice(apt.id, apt.start_time); } catch { /* best-effort */ }
       revalidatePath('/calendar');
       return { success: true as const, data: { scope: 'following', action: 'cancel', affected: ids.length } };
     }
@@ -514,7 +514,7 @@ export async function updateRecurringScopeCore(
       }
       await supabase.from('recurring_series').update({ status: 'cancelled', updated_at: nowIso }).eq('id', series.id);
       if (recEventId) await deleteGoogleCalendarEvent(googleHostId, recEventId);
-      try { await sendCancellationNotice(apt.id, new Date(apt.start_time).toLocaleString()); } catch { /* best-effort */ }
+      try { await sendCancellationNotice(apt.id, apt.start_time); } catch { /* best-effort */ }
       revalidatePath('/calendar');
       return { success: true as const, data: { scope: 'all', action: 'cancel', affected: ids.length } };
     }
@@ -542,7 +542,7 @@ export async function updateRecurringScopeCore(
         endIso: new Date(new Date(newDtstart).getTime() + series.duration_minutes * 60000).toISOString(),
       });
     }
-    try { await sendRescheduleNotice(apt.id, new Date(apt.start_time).toLocaleString()); } catch { /* best-effort */ }
+    try { await sendRescheduleNotice(apt.id, apt.start_time); } catch { /* best-effort */ }
     revalidatePath('/calendar');
     return { success: true as const, data: { scope: 'all', action: 'reschedule', affected: shifted } };
   } catch (err: any) {

@@ -4,7 +4,7 @@ import { generateManageToken } from '@/lib/calendar/manageToken';
 import { generateWaitlistToken } from '@/lib/calendar/waitlistToken';
 import { meetingLinkNote, type MeetingLinkStatus } from '@/lib/calendar/meetingLink';
 import { logger } from '@/shared/logger';
-import { format } from 'date-fns';
+import { formatWhenForMessage, whenFromInstantOrText } from '@/lib/calendar/displayTime';
 
 // Booking-completion notifications for the Calendar & Booking module.
 // Deliberately reuses the project's one established email-sending mechanism
@@ -74,16 +74,11 @@ async function resolveHostEmail(workspaceId: string, userId: string | null): Pro
 }
 
 function formatWhen(startIso: string, endIso: string, timezone: string | null): string {
-  // Calendars carry an explicit timezone (scheduling.ts's slot computation
-  // already treats calendar.timezone as the source of truth for wall-clock
-  // times) — state it explicitly rather than rendering an ambiguous local
-  // time, per this task's explicit requirement. The booker's own browser
-  // timezone isn't captured anywhere in the appointments/contacts schema, so
-  // there's nothing truthful to convert into instead.
-  const tz = timezone || 'UTC';
-  const start = new Date(startIso);
-  const end = new Date(endIso);
-  return `${format(start, 'EEEE, MMMM d, yyyy')} · ${format(start, 'HH:mm')}–${format(end, 'HH:mm')} (${tz})`;
+  // Calendars carry an explicit timezone (scheduling.ts's slot computation treats calendar.timezone as the source of
+  // truth for wall-clock times). Render the CALENDAR's clock and name the zone: the previous version formatted with the
+  // process timezone (UTC on Vercel) but labelled the result with the calendar's zone, so a Johannesburg booking at
+  // 17:30 went out as "15:30 (Africa/Johannesburg)". The booker's own browser zone isn't stored anywhere.
+  return formatWhenForMessage(startIso, endIso, timezone);
 }
 
 function bookerName(contact: AppointmentForNotification['contact']): string {
@@ -181,9 +176,10 @@ function calendarSyncWarning(apt: AppointmentForNotification, action: 'moved' | 
   return `\n⚠ This booking's ${action === 'cancelled' ? 'cancellation' : 'new time'} could not be synced to your connected Google/Outlook calendar — please update (or remove) the event there manually, or reconnect the calendar in Settings.`;
 }
 
-export async function sendCancellationNotice(appointmentId: string, when: string) {
+export async function sendCancellationNotice(appointmentId: string, whenInstantOrText: string) {
   const apt = await loadAppointment(appointmentId);
   if (!apt) return;
+  const when = whenFromInstantOrText(whenInstantOrText, apt.calendar?.timezone ?? null);
   const host = await resolveHostEmail(apt.workspace_id, apt.user_id);
 
   if (apt.contact?.email) {
@@ -212,9 +208,10 @@ export async function sendCancellationNotice(appointmentId: string, when: string
   }
 }
 
-export async function sendRescheduleNotice(appointmentId: string, previousWhen: string) {
+export async function sendRescheduleNotice(appointmentId: string, previousWhenInstantOrText: string) {
   const apt = await loadAppointment(appointmentId);
   if (!apt) return;
+  const previousWhen = whenFromInstantOrText(previousWhenInstantOrText, apt.calendar?.timezone ?? null);
   const newWhen = formatWhen(apt.start_time, apt.end_time, apt.calendar?.timezone ?? null);
   const host = await resolveHostEmail(apt.workspace_id, apt.user_id);
   const manageToken = generateManageToken(apt.id);
