@@ -124,7 +124,7 @@ describe('idempotent inventory create (real session, Zain Workspace)', () => {
     const op = randomUUID();
     const body = { name: name('burst'), sku: `B-${runId}`, client_operation_id: op };
     const results = await Promise.all(Array.from({ length: 12 }, () => post(body)));
-    expect(results.every((r) => r.status === 200)).toBe(true);
+    expect(results.map((r) => `${r.status}${r.json.error ? ":" + r.json.error : ""}`)).toEqual(Array(12).fill("200"));
     expect(new Set(results.map((r) => r.json.inventoryItem.id)).size).toBe(1);
     expect(await rowsFor('burst')).toHaveLength(1);
   });
@@ -134,7 +134,7 @@ describe('idempotent inventory create (real session, Zain Workspace)', () => {
     const b = await post({ name: name('multi'), client_operation_id: randomUUID() });
     const c = await post({ name: name('multi') });
     const d = await post({ name: name('multi') });
-    expect([a, b, c, d].every((r) => r.status === 200)).toBe(true);
+    expect([a, b, c, d].map((r) => `${r.status}${r.json.error ? ":" + r.json.error : ""}`)).toEqual(["200", "200", "200", "200"]);
     expect(await rowsFor('multi')).toHaveLength(4);
   });
 
@@ -142,6 +142,31 @@ describe('idempotent inventory create (real session, Zain Workspace)', () => {
     expect((await post({ name: name('bad'), client_operation_id: 'not-a-uuid' })).status).toBe(400);
     expect((await post({ name: name('bad'), client_operation_id: 42 })).status).toBe(400);
     expect(await rowsFor('bad')).toHaveLength(0);
+  });
+
+  it('SKU uniqueness: a different item reusing a SKU (any case/whitespace) is a 409; blank SKUs are exempt; PATCH clashes are 409', async () => {
+    const sku = `U-${runId}`;
+    const a = await post({ name: name('sku-a'), sku, client_operation_id: randomUUID() });
+    expect(a.status).toBe(200);
+    const clash = await post({ name: name('sku-b'), sku: ` ${sku.toLowerCase()} `, client_operation_id: randomUUID() });
+    expect(clash.status).toBe(409);
+    expect(clash.json.code).toBe('CONFLICT');
+    expect(await rowsFor('sku-b')).toHaveLength(0);
+    // a genuine replay of the first create still returns the original row, not a conflict
+    const replayOp = randomUUID();
+    const r1 = await post({ name: name('sku-r'), sku: `R-${runId}`, client_operation_id: replayOp });
+    const r2 = await post({ name: name('sku-r'), sku: `R-${runId}`, client_operation_id: replayOp });
+    expect([r1.status, r2.status]).toEqual([200, 200]);
+    expect(r2.json.inventoryItem.id).toBe(r1.json.inventoryItem.id);
+    // blank / missing SKUs never collide
+    const blanks = await Promise.all([post({ name: name('blank'), sku: '' }), post({ name: name('blank'), sku: '  ' }), post({ name: name('blank') })]);
+    expect(blanks.every((r) => r.status === 200)).toBe(true);
+    // PATCH onto another item's SKU
+    const other = await post({ name: name('sku-p'), sku: `P-${runId}` });
+    const res = await route.PATCH(new NextRequest(`https://app.test/api/inventory?id=${other.json.inventoryItem.id}`, {
+      method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sku }),
+    }));
+    expect(res.status).toBe(409);
   });
 
   it('records per-step timings for the POST', async () => {

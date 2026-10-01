@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUser, getCurrentWorkspaceId } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
-import { UnauthorizedError, ForbiddenError, NotFoundError, toClientError } from '@/shared/errors/AppError'
+import { UnauthorizedError, ForbiddenError, NotFoundError, ConflictError, toClientError } from '@/shared/errors/AppError'
 import { logger } from '@/shared/logger'
 import { getRequestId } from '@/shared/logger/requestId'
 import { createStepTimer, logRequestComplete } from '@/shared/logger/requestTiming'
@@ -80,7 +80,11 @@ const WRITABLE_FIELDS = [
   'quantity_in_stock', 'reorder_level', 'cost_price', 'selling_price', 'supplier', 'status'
 ] as const;
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// Unique violation on the per-workspace SKU index (case/whitespace-insensitive, blank SKUs exempt).
+const isSkuClash = (error: { code?: string; message?: string } | null) =>
+  error?.code === '23505' && (error.message ?? '').includes('inventory_items_workspace_sku_key');
+
+const UUID_RE =/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function POST(req: NextRequest) {
   const requestId = getRequestId(req.headers);
@@ -145,6 +149,9 @@ export async function POST(req: NextRequest) {
         timer.mark('idempotent_replay');
         if (existing) return NextResponse.json({ success: true, inventoryItem: existing, replayed: true });
       }
+      // Checked after the replay lookup: a genuine replay of a successful create violates the
+      // SKU index too, and must return the original row, not a conflict.
+      if (isSkuClash(error)) throw new ConflictError('An item with this SKU already exists in this workspace');
       throw error;
     }
     return NextResponse.json({ success: true, inventoryItem: data })
@@ -191,6 +198,7 @@ export async function PATCH(req: NextRequest) {
       .select()
       .maybeSingle()
 
+    if (isSkuClash(error)) throw new ConflictError('An item with this SKU already exists in this workspace');
     if (error) throw error;
     if (!data) throw new NotFoundError('Inventory item');
     return NextResponse.json({ success: true, inventoryItem: data })
