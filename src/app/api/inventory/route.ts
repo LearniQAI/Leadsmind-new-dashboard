@@ -15,13 +15,13 @@ const ALLOWED_INVENTORY_ROLES = ['admin', 'owner'];
 // client-supplied workspaceId in query/body is never trusted. Returns an RLS-respecting
 // client scoped to the caller's own session, so cross-tenant access is structurally blocked
 // at the database layer as well, not just here.
-async function resolveWorkspace(userId: string) {
+async function resolveWorkspace(userId: string, existingClient?: Awaited<ReturnType<typeof createServerClient>>) {
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) {
     throw new ForbiddenError('No active workspace selected');
   }
 
-  const supabaseUser = await createServerClient();
+  const supabaseUser = existingClient ?? await createServerClient();
   const { data: membership } = await supabaseUser
     .from('workspace_members')
     .select('role')
@@ -80,6 +80,8 @@ const WRITABLE_FIELDS = [
   'quantity_in_stock', 'reorder_level', 'cost_price', 'selling_price', 'supplier', 'status'
 ] as const;
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function POST(req: NextRequest) {
   const requestId = getRequestId(req.headers);
   const timer = createStepTimer();
@@ -88,21 +90,41 @@ export async function POST(req: NextRequest) {
   let status = 200;
 
   try {
-    const user = await getUser();
+    // The session lookup, the Supabase client and the body parse are independent of each
+    // other; the membership check and the insert both depend on them, so they stay serial.
+    const [user, supabaseClient, body] = await Promise.all([
+      getUser(),
+      createServerClient(),
+      req.json().catch(() => null),
+    ]);
     if (!user) throw new UnauthorizedError();
     userIdForLog = user.id;
 
-    const { workspaceId, supabase } = await resolveWorkspace(user.id);
+    const { workspaceId, supabase } = await resolveWorkspace(user.id, supabaseClient);
     workspaceIdForLog = workspaceId;
     timer.mark('auth_workspace_resolve');
 
-    const body = await req.json()
+    if (!body || typeof body !== 'object') {
+      status = 400;
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+
     const insertData: Record<string, unknown> = {};
     for (const field of WRITABLE_FIELDS) {
       if (field in body) insertData[field] = body[field];
     }
     // workspace_id is never taken from the client body, regardless of what it claims
     insertData.workspace_id = workspaceId;
+
+    // Idempotency key: one per "Add item" modal session, re-sent on every retry/double-submit.
+    const clientOperationId = body.client_operation_id;
+    if (clientOperationId !== undefined && clientOperationId !== null) {
+      if (typeof clientOperationId !== 'string' || !UUID_RE.test(clientOperationId)) {
+        status = 400;
+        return NextResponse.json({ error: 'client_operation_id must be a UUID' }, { status: 400 });
+      }
+      insertData.client_operation_id = clientOperationId;
+    }
 
     const { data, error } = await supabase
       .from('inventory_items')
@@ -111,7 +133,20 @@ export async function POST(req: NextRequest) {
       .single()
     timer.mark('inventory_insert');
 
-    if (error) throw error;
+    if (error) {
+      // A repeat of an operation that already succeeded: return the original row, don't insert.
+      if (error.code === '23505' && typeof insertData.client_operation_id === 'string') {
+        const { data: existing } = await supabase
+          .from('inventory_items')
+          .select()
+          .eq('workspace_id', workspaceId)
+          .eq('client_operation_id', insertData.client_operation_id)
+          .maybeSingle();
+        timer.mark('idempotent_replay');
+        if (existing) return NextResponse.json({ success: true, inventoryItem: existing, replayed: true });
+      }
+      throw error;
+    }
     return NextResponse.json({ success: true, inventoryItem: data })
   } catch (err: any) {
     logger.error({ err }, 'inventory.post.failed');
