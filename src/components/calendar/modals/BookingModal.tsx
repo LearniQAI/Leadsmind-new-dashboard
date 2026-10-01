@@ -421,6 +421,7 @@ export default function BookingModal({
 
       if (res.success) {
         setBooked(res.data || {});
+        for (const w of (res.data?.warnings ?? []) as string[]) toast.warning(w);
         if (repeat !== 'none' && res.data) {
           const { occurrencesCreated, occurrencesSkipped } = res.data;
           toast.success(
@@ -452,6 +453,16 @@ export default function BookingModal({
   };
 
   // ---- render helpers ---------------------------------------------------------
+  // Changing Start slides End by the same amount, so the meeting keeps its length instead of ending up before it starts.
+  const onEditStartChange = (next: string) => {
+    const toMin = (v: string) => { const m = v.match(/^([0-9]{1,2}):([0-9]{2})$/); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
+    const prevStart = toMin(editStart); const prevEnd = toMin(editEnd); const nextStart = toMin(next);
+    setEditStart(next);
+    if (prevStart !== null && prevEnd !== null && nextStart !== null && prevEnd > prevStart) {
+      const end = Math.min(nextStart + (prevEnd - prevStart), 23 * 60 + 59);
+      setEditEnd(`${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`);
+    }
+  };
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const prettyDate = date ? format(parseISO(date), 'EEE, MMM d, yyyy') : '';
 
@@ -653,7 +664,7 @@ export default function BookingModal({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={labelCls} htmlFor="edit-start">Start ({tzShort(editTz, date ? `${date}T12:00:00Z` : undefined)})</label>
-            <Input id="edit-start" type="time" value={editStart} onChange={(e) => setEditStart(e.target.value)} className={cn(inputCls, 'px-3')} />
+            <Input id="edit-start" type="time" value={editStart} onChange={(e) => onEditStartChange(e.target.value)} className={cn(inputCls, 'px-3')} />
           </div>
           <div>
             <label className={labelCls} htmlFor="edit-end">End ({tzShort(editTz, date ? `${date}T12:00:00Z` : undefined)})</label>
@@ -809,6 +820,11 @@ export default function BookingModal({
       <p className="text-[13px] !text-dash-textMuted">
         {title.trim()} · {prettyDate} · {slotLabel} ({tzLabel(slotTimezone, slotStart || undefined)})
       </p>
+      {Array.isArray(booked?.warnings) && booked.warnings.length > 0 && (
+        <ul className="text-left text-[12px] !text-amber space-y-1 max-w-[420px]" data-testid="booking-warnings">
+          {booked.warnings.map((w: string) => <li key={w} className="flex items-start gap-1.5"><AlertTriangle size={13} className="mt-0.5 shrink-0" /> {w}</li>)}
+        </ul>
+      )}
       <DashButton variant="primary" size="lg" className="mt-2 px-10" onClick={onClose}>Done</DashButton>
     </div>
   );

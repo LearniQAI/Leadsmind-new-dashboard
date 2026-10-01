@@ -39,10 +39,27 @@ vi.mock('next/headers', () => ({
 }));
 vi.mock('next/cache', () => ({ revalidatePath: () => {}, revalidateTag: () => {} }));
 const mail = { sent: 0 };
+// Failure injection for the "booking is saved first, follow-ups can only warn" tests. Default = normal behaviour.
+const inject = vi.hoisted(() => ({ link: 'real' as 'real' | 'fail' | 'hang', mail: 'ok' as 'ok' | 'fail' | 'slow' }));
 vi.mock('@/lib/calendar/notifications', async (orig) => ({
   ...(await orig<any>()),
-  sendBookingConfirmation: async () => { mail.sent++; }, // no real e-mail from a test
+  sendBookingConfirmation: async () => {
+    if (inject.mail === 'fail') throw new Error('injected: email provider down');
+    if (inject.mail === 'slow') await new Promise((r) => setTimeout(r, 12_000));
+    mail.sent++; // no real e-mail from a test
+  },
 }));
+vi.mock('@/lib/calendar/meetingLink', async (orig) => {
+  const real = await orig<any>();
+  return {
+    ...real,
+    resolveMeetingLink: (...args: any[]) => {
+      if (inject.link === 'fail') return Promise.reject(new Error('injected: google api down'));
+      if (inject.link === 'hang') return new Promise(() => {});
+      return real.resolveMeetingLink(...args);
+    },
+  };
+});
 
 let admin: any;
 let A: any;
@@ -263,6 +280,51 @@ describe.skipIf(!RUN)('staff booking flow (real session, Zain Workspace)', () =>
     const e = await book({ start: f.toISOString(), end: f.toISOString() }, { clientOperationId: randomUUID(), staffBooking: true });
     expect(e.success).toBe(false); expect(e.error).toMatch(/end after it starts/);
     report.staffSanity = { past: p.error, endBeforeStart: e.error };
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // Booking is persisted FIRST; meeting link / confirmation e-mail can only produce warnings.
+  // ---------------------------------------------------------------------------------------------
+  it('follow-up failures never fail the booking: link error, link hang (5s cap), e-mail error and slow e-mail all save the row and return warnings', async () => {
+    const at = (days: number) => { const d = new Date(Date.now() + days * 86_400_000); d.setUTCHours(11, 0, 0, 0); return { start: d.toISOString(), end: new Date(d.getTime() + 1_800_000).toISOString() }; };
+    const results: Record<string, any> = {};
+    try {
+      inject.link = 'fail';
+      const a = track(await book(at(80), { clientOperationId: randomUUID(), staffBooking: true }));
+      expect(a.success).toBe(true);
+      expect(a.data.warnings.join(' ')).toMatch(/meeting link could not be created. /);
+      expect((await admin.from('appointments').select('id').eq('id', a.data.id)).data.length).toBe(1);
+      results.linkFails = a.data.warnings;
+
+      inject.link = 'hang';
+      const t0 = Date.now();
+      const b = track(await book(at(81), { clientOperationId: randomUUID(), staffBooking: true }));
+      const hangMs = Date.now() - t0;
+      expect(b.success).toBe(true);
+      expect(hangMs).toBeLessThan(15_000); // 5s cap + the normal DB round trips, not forever
+      expect(b.data.warnings.join(' ')).toMatch(/meeting link could not be created in time/);
+      results.linkHangs = { ms: hangMs, warnings: b.data.warnings };
+
+      inject.link = 'real'; inject.mail = 'fail';
+      const c = track(await book(at(82), { clientOperationId: randomUUID(), staffBooking: true }));
+      expect(c.success).toBe(true);
+      expect(c.data.warnings.join(' ')).toMatch(/confirmation email could not be sent/);
+      results.emailFails = c.data.warnings;
+
+      inject.mail = 'slow';
+      const t1 = Date.now();
+      const d = track(await book(at(83), { clientOperationId: randomUUID(), staffBooking: true }));
+      const slowMs = Date.now() - t1;
+      expect(d.success).toBe(true);
+      expect(d.data.warnings.join(' ')).toMatch(/taking longer than usual/);
+      results.emailSlow = { ms: slowMs, warnings: d.data.warnings };
+
+      const { data: rows } = await admin.from('appointments').select('id,status').in('id', [a.data.id, b.data.id, c.data.id, d.data.id]);
+      expect(rows.length).toBe(4);
+    } finally {
+      inject.link = 'real'; inject.mail = 'ok';
+    }
+    report.followUpWarnings = results;
   });
 
   // ---------------------------------------------------------------------------------------------

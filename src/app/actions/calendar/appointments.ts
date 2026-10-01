@@ -60,7 +60,10 @@ async function executeAction<T>(action: (supabase: any, workspaceId: string) => 
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const CONFIRMATION_WAIT_MS = 8000;
+// After the booking row is saved, each follow-up step (meeting link, confirmation email) gets this long. A slow or
+// failing step never fails the booking: it becomes a warning on the result.
+const CONFIRMATION_WAIT_MS = 5000;
+const MEETING_LINK_WAIT_MS = 5000;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 async function findByOperationId(supabase: any, workspaceId: string, operationId: string) {
@@ -284,29 +287,50 @@ export async function createAppointment(payload: {
     //    lib/calendar/meetingLink.ts. google_meet => real Google Meet link or
     //    an honest LeadsMind-room fallback; zoom => null + a "coming soon"
     //    status; internal/custom => unchanged.
-    const resolved = await resolveMeetingLink({
-      appointmentId: data.id,
-      requestedMode: effectiveMode,
-      hostUserId: assigneeId,
-      workspaceId,
-      calendarCustomLink: calendar.location ?? null,
-      title: data.title,
-      startTime: data.start_time,
-      endTime: data.end_time,
-    });
-    const resolvedMetadata = applyResolvedMeetingLink(data.metadata, resolved);
-    await supabase
-      .from('appointments')
-      .update({
-        meeting_link: resolved.meetingLink,
-        meeting_mode: resolved.meetingMode,
-        metadata: resolvedMetadata,
-      })
-      .eq('id', data.id)
-      .eq('workspace_id', workspaceId);
-    data.meeting_link = resolved.meetingLink;
-    data.meeting_mode = resolved.meetingMode;
-    data.metadata = resolvedMetadata;
+    // The booking is already saved at this point: from here on, nothing may fail it. Each step has a hard time
+    // limit and reports trouble as a warning.
+    const warnings: string[] = [];
+    try {
+      const resolved = await Promise.race([
+        resolveMeetingLink({
+          appointmentId: data.id,
+          requestedMode: effectiveMode,
+          hostUserId: assigneeId,
+          workspaceId,
+          calendarCustomLink: calendar.location ?? null,
+          title: data.title,
+          startTime: data.start_time,
+          endTime: data.end_time,
+        }),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('meeting_link_timeout')), MEETING_LINK_WAIT_MS)),
+      ]);
+      const resolvedMetadata = applyResolvedMeetingLink(data.metadata, resolved);
+      const { data: linkRows, error: linkErr } = await supabase
+        .from('appointments')
+        .update({
+          meeting_link: resolved.meetingLink,
+          meeting_mode: resolved.meetingMode,
+          metadata: resolvedMetadata,
+        })
+        .eq('id', data.id)
+        .eq('workspace_id', workspaceId)
+        .select('id');
+      // Zero rows updated is a silent no-op (RLS / concurrent delete), not success.
+      if (linkErr || !linkRows || linkRows.length === 0) {
+        logger.error({ err: linkErr, appointmentId: data.id }, 'calendar.appointment.meeting_link_update.failed');
+        warnings.push('The booking is saved, but its meeting link could not be attached. Open the booking to add one.');
+      } else {
+        data.meeting_link = resolved.meetingLink;
+        data.meeting_mode = resolved.meetingMode;
+        data.metadata = resolvedMetadata;
+      }
+    } catch (linkError) {
+      logger.error({ err: linkError, appointmentId: data.id }, 'calendar.appointment.meeting_link.failed');
+      const timedOut = (linkError as Error)?.message === 'meeting_link_timeout';
+      warnings.push(timedOut
+        ? 'The booking is saved, but the meeting link could not be created in time. Open the booking to add one.'
+        : 'The booking is saved, but the meeting link could not be created. Open the booking to add one.');
+    }
 
     // 8. Notification Orchestration — real send, not just a log line (see
     // calendar.md Part B: this used to be a misleadingly-named log statement
@@ -315,12 +339,14 @@ export async function createAppointment(payload: {
     try {
       // Capped: the booking is already saved, so a slow email provider must not keep the dialog
       // spinning. The send keeps running after we stop waiting; a late failure is still logged.
-      await Promise.race([
-        sendBookingConfirmation(data.id, { reason: 'booked' }),
-        new Promise<void>((resolve) => setTimeout(resolve, CONFIRMATION_WAIT_MS)),
+      const outcome = await Promise.race([
+        sendBookingConfirmation(data.id, { reason: 'booked' }).then(() => 'sent' as const),
+        new Promise<'slow'>((resolve) => setTimeout(() => resolve('slow'), CONFIRMATION_WAIT_MS)),
       ]);
+      if (outcome === 'slow') warnings.push('The booking is saved. The confirmation email is taking longer than usual and may arrive late.');
     } catch (notifyErr) {
       logger.error({ err: notifyErr, appointmentId: data.id }, 'calendar.appointment.confirmation_email.failed');
+      warnings.push('The booking is saved, but the confirmation email could not be sent.');
     }
 
     // (round-robin booking_count is incremented atomically inside getRoundRobinAssignee)
@@ -342,7 +368,7 @@ export async function createAppointment(payload: {
     }
 
     revalidatePath('/calendar');
-    return data;
+    return { ...data, warnings };
   });
 }
 
