@@ -15,6 +15,7 @@ import {
 } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { apptZone, dayKeyInZone, formatTime24, formatTime12, formatDateShort, tzShort } from '@/lib/calendar/displayTime';
 
 interface CalendarMonthViewProps {
   appointments: any[];
@@ -90,7 +91,9 @@ export default function CalendarMonthView({
       {/* Calendar Grid */}
       <div className="grid grid-cols-7 auto-rows-fr min-h-[700px]">
         {calendarDays.map((day, i) => {
-          const dayAppointments = appointments.filter(appt => isSameDay(new Date(appt.start_time), day));
+          // Each appointment sits on the day it falls on in ITS CALENDAR'S timezone, not the browser's.
+          const dayKey = format(day, 'yyyy-MM-dd');
+          const dayAppointments = appointments.filter(appt => dayKeyInZone(appt.start_time, apptZone(appt).timeZone) === dayKey);
           const isCurrentMonth = isSameMonth(day, monthStart);
           const isToday = isSameDay(day, new Date());
 
@@ -121,18 +124,18 @@ export default function CalendarMonthView({
                 {dayAppointments.slice(0, 4).map((appt, idx) => (
                   <div
                     key={appt.id}
+                    title={`${formatTime12(appt.start_time, apptZone(appt).timeZone)} ${tzShort(apptZone(appt).timeZone, appt.start_time)} · ${appt.title}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       onAppointmentClick?.(appt);
                     }}
-                    className="px-2 py-1 rounded-lg text-[11px] font-semibold truncate border border-dash-border shadow-sm cursor-pointer hover:scale-[1.02] motion-reduce:hover:scale-100 transition-transform motion-reduce:transition-none active:scale-[0.98] motion-reduce:active:scale-100"
+                    className="bg-dash-accent/10 text-[#0B3FC2] dark:bg-dash-accent/30 dark:text-white px-2 py-1 rounded-lg text-[11px] font-semibold truncate border border-dash-border shadow-sm cursor-pointer hover:scale-[1.02] motion-reduce:hover:scale-100 transition-transform motion-reduce:transition-none active:scale-[0.98] motion-reduce:active:scale-100"
                     style={{
-                      backgroundColor: appt.color || 'rgba(19, 89, 255, 0.08)',
-                      color: appt.text_color || '#1359FF',
+                      ...(appt.color ? { backgroundColor: appt.color, color: appt.text_color || '#0F172A' } : {}),
                       borderLeft: `3px solid ${appt.border_color || '#1359FF'}`
                     }}
                   >
-                    {format(new Date(appt.start_time), 'HH:mm')} {appt.title}
+                    {formatTime24(appt.start_time, apptZone(appt).timeZone)} <span className="opacity-70 font-medium">{tzShort(apptZone(appt).timeZone, appt.start_time)}</span> {appt.title}
                   </div>
                 ))}
                 {dayAppointments.length > 4 && (

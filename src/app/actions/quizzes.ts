@@ -5,6 +5,7 @@ import { getCurrentWorkspaceId } from '@/lib/auth';
 import { requireLmsInstructor } from '@/lib/lms/access';
 import { gradeWithManualAwards, MANUAL_REVIEW_TYPES } from '@/lib/lms/quizGrading';
 import { applyAiGradingPass } from '@/lib/lms/aiGradeAnswer';
+import { getEffectiveQuizSettingsFor } from '@/lib/lms/moduleQuizSettings';
 import { markLessonCompleteForContact } from '@/lib/lms/completeLesson';
 import { logger } from '@/shared/logger';
 
@@ -17,7 +18,7 @@ import { logger } from '@/shared/logger';
 // tables or of QuizPlayer.tsx (its only real caller, itself removed alongside this) outside of
 // this file and comments documenting the earlier audit; all five tables had 0 real rows. The
 // real, live systems — quiz_questions/quiz_settings/quiz_attempts (lesson-scoped) and
-// module_quiz_questions/module_quiz_settings/module_quiz_attempts (module-scoped) — are
+// module_quiz_questions/module_quiz_attempts (module-scoped) — are
 // untouched by this removal; see gradeModuleQuiz.ts/gradeQuiz.ts for grading and
 // studentProgress.ts for the real submit actions.
 
@@ -216,7 +217,6 @@ export async function gradeQuizAttemptManualReview(input: {
 
     const attemptTable = input.scope === 'module' ? 'module_quiz_attempts' : 'quiz_attempts';
     const qTable = input.scope === 'module' ? 'module_quiz_questions' : 'quiz_questions';
-    const sTable = input.scope === 'module' ? 'module_quiz_settings' : 'quiz_settings';
     // A lesson quiz is identified by its lesson; a module quiz by its own quiz_id (a module can
     // hold several quizzes). Events still carry the module/lesson id below.
     const scopeCol = input.scope === 'module' ? 'quiz_id' : 'lesson_id';
@@ -237,8 +237,16 @@ export async function gradeQuizAttemptManualReview(input: {
     if (!scopeId) return { error: 'This quiz has been deleted, so the attempt can no longer be graded.' };
     const [{ data: questions }, { data: settings }] = await Promise.all([
       db.from(qTable).select('*').eq(scopeCol, scopeId),
-      db.from(sTable).select('pass_percentage').eq(scopeCol, scopeId).maybeSingle(),
+      // Lesson quizzes keep their own settings row; module quizzes have none (the module's rules apply).
+      input.scope === 'module'
+        ? Promise.resolve({ data: null as { pass_percentage: number | null } | null })
+        : db.from('quiz_settings').select('pass_percentage').eq('lesson_id', scopeId).maybeSingle(),
     ]);
+    // A module quiz's pass mark is the MODULE's.
+    const effectivePass =
+      input.scope === 'module'
+        ? (await getEffectiveQuizSettingsFor(db, { id: scopeId, module_id: attempt.module_id })).passPercentage
+        : null;
 
     // Only accept awards for real file_upload questions on this quiz; ignore anything else.
     const manualIds = new Set(
@@ -249,7 +257,7 @@ export async function gradeQuizAttemptManualReview(input: {
       if (manualIds.has(qid)) cleanAwards[qid] = Number(pts) || 0;
     }
 
-    const passPct = settings?.pass_percentage ?? 70;
+    const passPct = effectivePass ?? settings?.pass_percentage ?? 70;
     const result = await applyAiGradingPass(
       gradeWithManualAwards(questions || [], attempt.answers || {}, cleanAwards, passPct),
       questions || [],

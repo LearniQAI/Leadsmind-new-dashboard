@@ -4,6 +4,7 @@ import React from 'react';
 import { format } from 'date-fns';
 import { Clock, User, MapPin, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { apptZone, dayKeyInZone, formatTime12, formatDateShort, tzShort } from '@/lib/calendar/displayTime';
 
 interface CalendarListViewProps {
   appointments: any[];
@@ -49,10 +50,10 @@ export default function CalendarListView({ appointments }: CalendarListViewProps
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
                       <span className="text-[13px] font-semibold !text-dash-text">
-                        {format(new Date(appt.start_time), 'MMM d, yyyy')}
+                        {formatDateShort(appt.start_time, apptZone(appt).timeZone)}
                       </span>
                       <span className="text-[11px] !text-dash-textMuted flex items-center gap-1 mt-0.5 font-medium">
-                        <Clock size={10} /> {format(new Date(appt.start_time), 'h:mm a')}
+                        <Clock size={10} /> {formatTime12(appt.start_time, apptZone(appt).timeZone)} <span className="font-bold">{tzShort(apptZone(appt).timeZone, appt.start_time)}</span>
                       </span>
                     </div>
                   </td>

@@ -123,13 +123,19 @@ export async function sendInvoiceEmail(params: {
   });
 
   if (markSent) {
-    const { error: updateError } = await supabase
+    const { data: updatedRows, error: updateError } = await supabase
       .from('invoices')
       .update({ status: 'sent' })
       .eq('id', invoice.id)
-      .eq('workspace_id', workspaceId);
+      .eq('workspace_id', workspaceId)
+      .select('id');
 
     if (updateError) throw updateError;
+    // Zero rows updated would be a silent no-op (the email is out but the invoice still reads 'draft').
+    if (!updatedRows || updatedRows.length === 0) {
+      logger.error({ invoiceId, workspaceId }, 'invoice.auto_send.mark_sent_zero_rows');
+      return { success: false, error: 'The email was sent, but the invoice status could not be updated. Refresh the page and mark it as sent manually.' };
+    }
   }
 
   try {

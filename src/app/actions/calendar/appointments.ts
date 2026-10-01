@@ -3,7 +3,7 @@
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId, requireWorkspaceAccess } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
-import { validateSlot, getRoundRobinAssignee } from './scheduling';
+import { validateSlot, getRoundRobinAssignee, getAvailableSlots } from './scheduling';
 import { createSupportTicket } from '@/lib/calendar/crossConnect';
 import { logger } from '@/shared/logger';
 import { NotFoundError, ValidationError, toClientError } from '@/shared/errors/AppError';
@@ -50,9 +50,62 @@ async function executeAction<T>(action: (supabase: any, workspaceId: string) => 
     return { success: true, data };
   } catch (err: any) {
     logger.error({ err }, 'calendar.appointment_action.failed');
+    // requireWorkspaceAccess throws the plain @/lib/errors classes, not AppError, so toClientError would
+    // flatten them to a generic message. Their messages are safe and tell the user what to do.
+    if (err?.name === 'UnauthorizedError') return { success: false, error: 'Unauthorized' };
+    if (err?.name === 'ForbiddenError') return { success: false, error: String(err.message || 'Forbidden') };
     const clientError = toClientError(err);
     return { success: false, error: clientError.error };
   }
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+// After the booking row is saved, each follow-up step (meeting link, confirmation email) gets this long. A slow or
+// failing step never fails the booking: it becomes a warning on the result.
+const CONFIRMATION_WAIT_MS = 5000;
+const MEETING_LINK_WAIT_MS = 5000;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+async function findByOperationId(supabase: any, workspaceId: string, operationId: string) {
+  const { data } = await supabase
+    .from('appointments')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .eq('client_operation_id', operationId)
+    .maybeSingle();
+  return data ?? null;
+}
+
+/**
+ * Bookable start times for one calendar on one calendar-local date, for the staff booking dialog.
+ * The list is exactly what validateSlot() will accept on submit (same generator), so a time the
+ * user can pick is a time the server will take. `timezone` is the calendar's IANA zone: every
+ * slot's `timeLabel` is rendered in it, and the dialog shows it explicitly.
+ */
+export async function getStaffBookableSlots(calendarId: string, date: string) {
+  return executeAction(async (supabase, workspaceId) => {
+    if (!UUID_RE.test(calendarId ?? '') || !DATE_RE.test(date ?? '')) {
+      throw new ValidationError('Choose a calendar and a date.');
+    }
+    const { data: calendar } = await supabase
+      .from('booking_calendars')
+      .select('timezone, slot_duration')
+      .eq('id', calendarId)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+    if (!calendar) throw new NotFoundError('Calendar');
+
+    const slots = await getAvailableSlots(calendarId, date);
+    return {
+      timezone: (calendar.timezone as string) || 'UTC',
+      slotDuration: (calendar.slot_duration as number) || 30,
+      slots: (slots as any[]).map((s) => ({
+        start: s.start as string,
+        end: s.end as string,
+        timeLabel: s.timeLabel as string,
+      })),
+    };
+  });
 }
 
 export async function getAppointments() {
@@ -84,14 +137,52 @@ export async function createAppointment(payload: {
   skipValidation?: boolean;
   /** Task 71 — an optional room/desk/equipment reserved for this exact slot. */
   resourceId?: string | null;
+  /**
+   * One UUID per booking-dialog open. A replay (double-click, retry after a timeout) with the same
+   * id returns the original appointment instead of creating a second one. Enforced by
+   * UNIQUE (workspace_id, client_operation_id).
+   */
+  clientOperationId?: string | null;
+  /**
+   * Staff booking from the dashboard dialog: allowed at custom times, inside the minimum-notice window and
+   * beyond the booking horizon. Only the future-start sanity check and the database overlap constraints
+   * (appointments_no_overlap / appointments_resource_no_overlap) still apply. The public/portal booking
+   * paths never set this and keep the full availability rules.
+   */
+  staffBooking?: boolean;
 }) {
   return executeAction(async (supabase, workspaceId) => {
+    // 0. Idempotency. Checked BEFORE slot validation: on a replay the original booking now occupies
+    // the slot, so validating again would wrongly report a conflict with itself.
+    const operationId = payload.clientOperationId ?? null;
+    if (operationId !== null && !UUID_RE.test(operationId)) {
+      throw new ValidationError('Invalid booking request. Please close and reopen the dialog.');
+    }
+    if (operationId) {
+      const replay = await findByOperationId(supabase, workspaceId, operationId);
+      if (replay) return replay;
+    }
+
+    // A contact id from the browser is untrusted: '' (no contact picked) must become NULL — a ''
+    // uuid is a Postgres 22P02 — and a real id must belong to THIS workspace.
+    const contactId = payload.contactId || null;
+    if (contactId) {
+      if (!UUID_RE.test(contactId)) throw new ValidationError('Invalid contact.');
+      const { data: contactRow } = await supabase
+        .from('contacts')
+        .select('id')
+        .eq('id', contactId)
+        .eq('workspace_id', workspaceId)
+        .maybeSingle();
+      if (!contactRow) throw new ValidationError('That contact no longer exists. Please pick another.');
+    }
+
     // 1. Fetch Calendar Metadata — scoped to the verified workspace so a
     // caller can't attach an appointment to another workspace's calendar by
     // supplying a calendarId that belongs elsewhere.
     const { data: calendar, error: calError } = await supabase
       .from('booking_calendars')
-      .select('calendar_type, meeting_mode, capacity, location')
+      .select('calendar_type, meeting_mode, capacity, location, timezone')
       .eq('id', payload.calendarId)
       .eq('workspace_id', workspaceId)
       .single();
@@ -120,9 +211,24 @@ export async function createAppointment(payload: {
     //    when the host has connected Google). See step 7 — no fabricated URLs.
 
     // 5. Validation Logic
-    if (!payload.skipValidation) {
+    const staffOverride = payload.staffBooking === true || payload.skipValidation === true;
+    if (staffOverride) {
+      // Sanity only — the grid, notice period, horizon and working hours are deliberately NOT enforced here.
+      const startMs = Date.parse(payload.startTime);
+      const endMs = Date.parse(payload.endTime);
+      if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) throw new ValidationError('Invalid start or end time.');
+      if (endMs <= startMs) throw new ValidationError('The meeting must end after it starts.');
+      if (endMs - startMs > 12 * 60 * 60 * 1000) throw new ValidationError('A meeting can be at most 12 hours long.');
+      if (startMs < Date.now() - 60_000) throw new ValidationError('That time is in the past. Pick a future time.');
+    } else {
       const validation = await validateSlot(payload.calendarId, payload.startTime, payload.endTime);
       if (!validation.available) {
+        // A retry racing its own original: the original may have inserted between our replay check and this
+        // validation, in which case the slot is "taken" by THIS very request. Hand back that booking.
+        if (operationId) {
+          const own = await findByOperationId(supabase, workspaceId, operationId);
+          if (own) return own;
+        }
         throw new ValidationError(validation.reason);
       }
     }
@@ -133,7 +239,8 @@ export async function createAppointment(payload: {
       .insert({
         workspace_id: workspaceId,
         calendar_id: payload.calendarId,
-        contact_id: payload.contactId,
+        contact_id: contactId,
+        client_operation_id: operationId,
         user_id: assigneeId,
         title: payload.title,
         start_time: payload.startTime,
@@ -143,6 +250,8 @@ export async function createAppointment(payload: {
         resource_id: payload.resourceId || null,
         metadata: {
           ...(payload.metadata || {}),
+          // The IANA zone the slot was booked in (the calendar's), stored explicitly so the time is never ambiguous.
+          booking_timezone: calendar.timezone || 'UTC',
           engine_type: calendar.calendar_type,
           original_engine_mode: calendar.meeting_mode
         },
@@ -152,13 +261,25 @@ export async function createAppointment(payload: {
       .single();
 
     if (error) {
+      // Two identical submits racing: the loser fails either the UNIQUE (workspace_id,
+      // client_operation_id) constraint (23505) or — because both rows also claim the same slot —
+      // the appointments_no_overlap exclusion (23P01), and Postgres reports whichever it checks
+      // first. Either way, if a row with OUR operation id now exists, that is the winner of this
+      // same submit: hand it back so both callers see one booking, not a bogus "slot taken".
+      const errCode = (error as { code?: string }).code;
+      if (operationId && (errCode === '23505' || errCode === '23P01')) {
+        const winner = await findByOperationId(supabase, workspaceId, operationId);
+        if (winner) return winner;
+      }
       // Resource check first — a resource-conflict insert also fails the
       // calendar_id EXCLUDE constraint's WHERE clause the same way, but
       // Postgres only ever raises ONE violation (whichever constraint it hits
       // first), so isSlotConflictError() already excludes the resource case —
       // order here just keeps the two branches readable.
       if (isResourceConflictError(error)) throw new ValidationError(RESOURCE_CONFLICT_MESSAGE);
-      if (isSlotConflictError(error)) throw new ValidationError(SLOT_CONFLICT_MESSAGE);
+      if (isSlotConflictError(error)) {
+        throw new ValidationError(staffOverride ? 'That time overlaps an existing booking on this calendar. Pick a different time.' : SLOT_CONFLICT_MESSAGE);
+      }
       throw error;
     }
 
@@ -166,38 +287,66 @@ export async function createAppointment(payload: {
     //    lib/calendar/meetingLink.ts. google_meet => real Google Meet link or
     //    an honest LeadsMind-room fallback; zoom => null + a "coming soon"
     //    status; internal/custom => unchanged.
-    const resolved = await resolveMeetingLink({
-      appointmentId: data.id,
-      requestedMode: effectiveMode,
-      hostUserId: assigneeId,
-      workspaceId,
-      calendarCustomLink: calendar.location ?? null,
-      title: data.title,
-      startTime: data.start_time,
-      endTime: data.end_time,
-    });
-    const resolvedMetadata = applyResolvedMeetingLink(data.metadata, resolved);
-    await supabase
-      .from('appointments')
-      .update({
-        meeting_link: resolved.meetingLink,
-        meeting_mode: resolved.meetingMode,
-        metadata: resolvedMetadata,
-      })
-      .eq('id', data.id)
-      .eq('workspace_id', workspaceId);
-    data.meeting_link = resolved.meetingLink;
-    data.meeting_mode = resolved.meetingMode;
-    data.metadata = resolvedMetadata;
+    // The booking is already saved at this point: from here on, nothing may fail it. Each step has a hard time
+    // limit and reports trouble as a warning.
+    const warnings: string[] = [];
+    try {
+      const resolved = await Promise.race([
+        resolveMeetingLink({
+          appointmentId: data.id,
+          requestedMode: effectiveMode,
+          hostUserId: assigneeId,
+          workspaceId,
+          calendarCustomLink: calendar.location ?? null,
+          title: data.title,
+          startTime: data.start_time,
+          endTime: data.end_time,
+        }),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('meeting_link_timeout')), MEETING_LINK_WAIT_MS)),
+      ]);
+      const resolvedMetadata = applyResolvedMeetingLink(data.metadata, resolved);
+      const { data: linkRows, error: linkErr } = await supabase
+        .from('appointments')
+        .update({
+          meeting_link: resolved.meetingLink,
+          meeting_mode: resolved.meetingMode,
+          metadata: resolvedMetadata,
+        })
+        .eq('id', data.id)
+        .eq('workspace_id', workspaceId)
+        .select('id');
+      // Zero rows updated is a silent no-op (RLS / concurrent delete), not success.
+      if (linkErr || !linkRows || linkRows.length === 0) {
+        logger.error({ err: linkErr, appointmentId: data.id }, 'calendar.appointment.meeting_link_update.failed');
+        warnings.push('The booking is saved, but its meeting link could not be attached. Open the booking to add one.');
+      } else {
+        data.meeting_link = resolved.meetingLink;
+        data.meeting_mode = resolved.meetingMode;
+        data.metadata = resolvedMetadata;
+      }
+    } catch (linkError) {
+      logger.error({ err: linkError, appointmentId: data.id }, 'calendar.appointment.meeting_link.failed');
+      const timedOut = (linkError as Error)?.message === 'meeting_link_timeout';
+      warnings.push(timedOut
+        ? 'The booking is saved, but the meeting link could not be created in time. Open the booking to add one.'
+        : 'The booking is saved, but the meeting link could not be created. Open the booking to add one.');
+    }
 
     // 8. Notification Orchestration — real send, not just a log line (see
     // calendar.md Part B: this used to be a misleadingly-named log statement
     // with no actual dispatch). Best-effort: notification failure must not
     // fail an appointment creation that already succeeded.
     try {
-      await sendBookingConfirmation(data.id, { reason: 'booked' });
+      // Capped: the booking is already saved, so a slow email provider must not keep the dialog
+      // spinning. The send keeps running after we stop waiting; a late failure is still logged.
+      const outcome = await Promise.race([
+        sendBookingConfirmation(data.id, { reason: 'booked' }).then(() => 'sent' as const),
+        new Promise<'slow'>((resolve) => setTimeout(() => resolve('slow'), CONFIRMATION_WAIT_MS)),
+      ]);
+      if (outcome === 'slow') warnings.push('The booking is saved. The confirmation email is taking longer than usual and may arrive late.');
     } catch (notifyErr) {
       logger.error({ err: notifyErr, appointmentId: data.id }, 'calendar.appointment.confirmation_email.failed');
+      warnings.push('The booking is saved, but the confirmation email could not be sent.');
     }
 
     // (round-robin booking_count is incremented atomically inside getRoundRobinAssignee)
@@ -219,7 +368,7 @@ export async function createAppointment(payload: {
     }
 
     revalidatePath('/calendar');
-    return data;
+    return { ...data, warnings };
   });
 }
 

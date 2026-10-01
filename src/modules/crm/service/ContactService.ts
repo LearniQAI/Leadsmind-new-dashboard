@@ -1,5 +1,6 @@
 import { ContactRepository } from "@/modules/crm/repository/ContactRepository";
-import { AppError } from "@/shared/errors/AppError";
+import { AppError, toClientError } from "@/shared/errors/AppError";
+import { sqlStateOf } from "@/shared/errors/dbErrors";
 import { logger } from "@/shared/logger";
 import {
   syncContactTagsToRelational,
@@ -7,13 +8,14 @@ import {
   syncBulkContactTagRemove,
 } from "@/modules/tags/sync/syncContactTags";
 
-type Result<T> = { success: true; data: T } | { success: false; error: string };
+type Result<T> = { success: true; data: T; replayed?: boolean } | { success: false; error: string; code?: string; details?: Record<string, unknown> };
 
 // Maps AppError codes we want to surface verbatim to the client. Anything
 // not in this list falls back to a generic message — repository/DB errors
 // can contain internal details (constraint names, column names, etc.) that
 // shouldn't reach the client, only the logs.
-const CLIENT_SAFE_CODES = new Set(["TAG_EXISTS", "VALIDATION_ERROR"]);
+const CLIENT_SAFE_CODES = new Set(["TAG_EXISTS", "VALIDATION_ERROR", "DUPLICATE_EMAIL"]);
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 async function toResult<T>(fn: () => Promise<T>, logContext: string): Promise<Result<T>> {
   try {
@@ -23,9 +25,13 @@ async function toResult<T>(fn: () => Promise<T>, logContext: string): Promise<Re
     if (err instanceof AppError) {
       logger.error({ context: err.context }, `[${logContext}] ${err.code}: ${err.message}`);
       const message = CLIENT_SAFE_CODES.has(err.code) ? err.message : "Something went wrong. Please try again.";
-      return { success: false, error: message };
+      return { success: false, error: message, code: err.code, ...(err.code === "DUPLICATE_EMAIL" ? { details: err.context } : {}) };
     }
     logger.error({ err }, `[${logContext}] Unexpected error`);
+    // Constraint violations (duplicate, bad id format, missing parent) get a plain-language message; the raw
+    // DB text is logged by toClientError with a request id and never returned.
+    const mapped = toClientError(err);
+    if (mapped.requestId) return { success: false, error: mapped.error, code: mapped.code };
     return { success: false, error: "Something went wrong. Please try again." };
   }
 }
@@ -70,7 +76,7 @@ export class ContactService {
     values: {
       firstName: string;
       lastName: string;
-      email: string;
+      email?: string;
       phone?: string;
       source?: string;
       ownerId?: string;
@@ -79,9 +85,37 @@ export class ContactService {
       consentIp?: string;
       consentFormId?: string;
       processingPurposeScope?: string;
+      /** One UUID per "New client" modal open; a replay returns the contact already created. */
+      clientOperationId?: string | null;
     },
-  ) {
-    return toResult(async () => {
+  ): Promise<Result<any>> {
+    let replayed = false;
+    const result = await toResult(async () => {
+      const operationId = values.clientOperationId ?? null;
+      if (operationId !== null && !UUID_RE.test(operationId)) {
+        throw new AppError("VALIDATION_ERROR", "Invalid request. Please close and reopen the form.", 422);
+      }
+      if (operationId) {
+        const prior = await this.repo.findByOperationId(workspaceId, operationId);
+        if (prior) { replayed = true; return prior; }
+      }
+
+      // A client with this email already exists in the workspace: say so (and which one) instead of letting the
+      // unique key fail with a raw constraint error. Case-insensitive.
+      const email = values.email?.trim() || undefined;
+      if (email) {
+        const existing = await this.repo.findByEmail(workspaceId, email);
+        if (existing) {
+          // The "duplicate" may be THIS very submit's twin that just won the race (same operation id): that's a replay,
+          // not a conflict.
+          if (operationId) {
+            const prior = await this.repo.findByOperationId(workspaceId, operationId);
+            if (prior) { replayed = true; return prior; }
+          }
+          throw new AppError("DUPLICATE_EMAIL", "A client with this email already exists.", 409, { existing });
+        }
+      }
+
       // Affiliate attribution — best-effort, never blocks contact creation.
       let referredByAffiliateId: string | null = null;
       let referredProgrammeId: string | null = null;
@@ -99,11 +133,12 @@ export class ContactService {
       const payload: Record<string, unknown> = {
         first_name: values.firstName,
         last_name: values.lastName,
-        email: values.email,
+        email: email ?? null,
         phone: values.phone,
         source: values.source,
         owner_id: values.ownerId ?? null,
         tags: values.tags ?? [],
+        client_operation_id: operationId,
         referred_by_affiliate_id: referredByAffiliateId,
         referred_programme_id: referredProgrammeId,
       };
@@ -115,7 +150,23 @@ export class ContactService {
       if (values.consentFormId) payload.consent_form_id = values.consentFormId;
       if (values.processingPurposeScope) payload.processing_purpose_scope = values.processingPurposeScope;
 
-      const contact = await this.repo.create(workspaceId, payload);
+      let contact: any;
+      try {
+        contact = await this.repo.create(workspaceId, payload);
+      } catch (err) {
+        // Lost a race: an identical submit (same operation id) or another writer (same email) got there first.
+        if (sqlStateOf(err) === "23505") {
+          if (operationId) {
+            const winner = await this.repo.findByOperationId(workspaceId, operationId);
+            if (winner) { replayed = true; return winner; }
+          }
+          if (email) {
+            const existing = await this.repo.findByEmail(workspaceId, email);
+            if (existing) throw new AppError("DUPLICATE_EMAIL", "A client with this email already exists.", 409, { existing });
+          }
+        }
+        throw err;
+      }
 
       // Best-effort webhook — failure here shouldn't fail contact creation.
       try {
@@ -143,6 +194,7 @@ export class ContactService {
 
       return contact;
     }, "contacts.createContact");
+    return result.success ? { ...result, replayed } : result;
   }
 
   async updateContact(

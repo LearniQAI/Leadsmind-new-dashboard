@@ -10,6 +10,7 @@ import { UnauthorizedError, ForbiddenError } from '@/lib/errors';
 import { logger } from '@/shared/logger';
 import { toClientError, ValidationError } from '@/shared/errors/AppError';
 import { userSafeMessage } from '@/shared/errors/userSafe';
+import { calculateInvoiceTotals } from '@/lib/invoicing/calculations';
 
 function safeRevalidatePath(path: string) {
   try {
@@ -163,10 +164,19 @@ const INVOICE_COLUMNS = [
  'currency',
 ] as const;
 
+// Columns where the form's "empty" ('' from a cleared/untouched input) means "no value". Postgres rejects '' for a
+// timestamp/date (22007) — the form's due date defaults to '' — so a blank must reach the DB as NULL, never as ''.
+const BLANK_IS_NULL = new Set(['due_date', 'invoice_number', 'terms_and_conditions']);
+// issue_date has a column default (today): a blank means "not provided", so the key is omitted rather than nulled.
+const BLANK_IS_OMITTED = new Set(['issue_date']);
+
 function pickInvoiceColumns(data: Record<string, any>) {
  const picked: Record<string, any> = {};
  for (const key of INVOICE_COLUMNS) {
-  if (data[key] !== undefined) picked[key] = data[key];
+  if (data[key] === undefined) continue;
+  const v = data[key];
+  if (BLANK_IS_OMITTED.has(key) && typeof v === 'string' && v.trim() === '') continue;
+  picked[key] = BLANK_IS_NULL.has(key) && typeof v === 'string' && v.trim() === '' ? null : v;
  }
  // Custom field values have no dedicated column — they live in the
  // freeform `metadata` JSONB column instead of a phantom top-level key.
@@ -185,62 +195,151 @@ function validateInvoicePayload(data: Record<string, any>) {
  }
 }
 
-export async function saveInvoice(data: any, options?: { skipAutoNotify?: boolean }) {
- const { workspaceId } = await requireWorkspaceAccess();
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+/** Turns a thrown error into a result the form can show. Unauthorized/Forbidden come from @/lib/errors (plain
+ * Error subclasses), which toClientError would flatten to a generic message. */
+function actionFailure(err: any): { success: false; error: string } {
+ if (err?.name === 'UnauthorizedError') return { success: false, error: 'Your session has expired. Please sign in again.' };
+ if (err?.name === 'ForbiddenError') return { success: false, error: 'You do not have access to this workspace.' };
+ return { success: false, error: toClientError(err).error };
+}
+
+/**
+ * The invoice's money figures, recomputed on the server from the line items with the workspace's REAL VAT
+ * settings (invoice_settings.vat_enabled / vat_rate) through calculateInvoiceTotals — the client's
+ * subtotal/tax/total are never trusted. A line keeps its own tax rate if it has a valid one; a line with none
+ * gets the workspace rate; with VAT switched off in the workspace every line is 0%.
+ */
+function buildInvoiceFigures(
+ rawItems: any[],
+ shipping: unknown,
+ adjustment: unknown,
+ vat: { enabled: boolean; rate: number },
+) {
+ const items = rawItems.map((it: any) => {
+  const quantity = Math.max(0, Number(it?.quantity) || 0);
+  const rate = Math.max(0, Number(it?.rate) || 0);
+  const own = Number(it?.taxRate);
+  const taxRate = vat.enabled ? (Number.isFinite(own) && own >= 0 && it?.taxRate !== '' && it?.taxRate != null ? Math.min(own, 100) : vat.rate) : 0;
+  return { ...it, quantity, rate, taxRate };
+ });
+ const shippingCharges = Number(shipping) || 0;
+ const adj = Number(adjustment) || 0;
+ const totals = calculateInvoiceTotals(items, shippingCharges, adj);
+ return { items, shippingCharges, adjustment: adj, totals };
+}
+
+async function loadVat(supabase: any, workspaceId: string): Promise<{ enabled: boolean; rate: number }> {
+ const { data } = await supabase.from('workspaces').select('invoice_settings').eq('id', workspaceId).maybeSingle();
+ const s = data?.invoice_settings ?? {};
+ return { enabled: !!s.vat_enabled, rate: Math.max(0, Number(s.vat_rate) || 0) };
+}
+
+async function findInvoiceByOperation(supabase: any, workspaceId: string, operationId: string) {
+ const { data } = await supabase
+  .from('invoices')
+  .select('*')
+  .eq('workspace_id', workspaceId)
+  .eq('client_operation_id', operationId)
+  .maybeSingle();
+ return data ?? null;
+}
+
+/** The contact must belong to THIS workspace: invoices.contact_id is a plain FK, so without this a caller could
+ * bill another tenant's contact id. */
+async function assertContactInWorkspace(supabase: any, workspaceId: string, contactId: string) {
+ const { data } = await supabase.from('contacts').select('id').eq('id', contactId).eq('workspace_id', workspaceId).maybeSingle();
+ if (!data) throw new ValidationError('That client no longer exists. Please select another.');
+}
+
+export async function saveInvoice(data: any, options?: { skipAutoNotify?: boolean }) {
  try {
-  validateInvoicePayload(data);
+  return await saveInvoiceInner(data, options);
  } catch (err) {
-  const clientError = toClientError(err);
-  return { success: false, error: clientError.error };
+  logger.error({ err }, 'finance.invoice.save.failed');
+  return actionFailure(err);
+ }
+}
+
+async function saveInvoiceInner(data: any, options?: { skipAutoNotify?: boolean }) {
+ const { workspaceId } = await requireWorkspaceAccess();
+ validateInvoicePayload(data);
+
+ const operationId: string | null = data.clientOperationId ?? data.client_operation_id ?? null;
+ if (operationId !== null && !UUID_RE.test(String(operationId))) {
+  throw new ValidationError('Invalid request. Please reload the page and try again.');
  }
 
  const supabase = await createServerClient();
+
+ // Replay: the same Save re-sent after a lost response / double-click returns the invoice already created.
+ if (operationId) {
+  const prior = await findInvoiceByOperation(supabase, workspaceId, operationId);
+  if (prior) return { success: true as const, data: prior, replayed: true as const };
+ }
+
+ await assertContactInWorkspace(supabase, workspaceId, data.contact_id);
+ const vat = await loadVat(supabase, workspaceId);
+ const figures = buildInvoiceFigures(data.items, data.shipping_charges, data.adjustment, vat);
+
  const { data: invoice, error } = await supabase
   .from('invoices')
-  .insert({ ...pickInvoiceColumns(data), workspace_id: workspaceId, status: data.status || 'draft' })
+  .insert({
+   ...pickInvoiceColumns(data),
+   items: figures.items,
+   shipping_charges: figures.shippingCharges,
+   adjustment: figures.adjustment,
+   subtotal: figures.totals.subtotal,
+   tax_total: figures.totals.taxTotal,
+   total_amount: figures.totals.grandTotal,
+   amount_due: figures.totals.grandTotal,
+   amount_paid: 0,
+   workspace_id: workspaceId,
+   status: data.status || 'draft',
+   client_operation_id: operationId,
+  })
   .select()
   .single();
 
  if (error) {
-  logger.error({ err: error }, 'finance.invoice.save.failed');
-  const clientError = toClientError(error);
-  return { success: false, error: clientError.error };
+  // Lost a race against an identical submit: return the winner's invoice.
+  if (operationId && (error as { code?: string }).code === '23505') {
+   const winner = await findInvoiceByOperation(supabase, workspaceId, operationId);
+   if (winner) return { success: true as const, data: winner, replayed: true as const };
+  }
+  throw error;
  }
 
-  if (invoice) {
-    try {
-      const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
-      dispatchWebhook(invoice.workspace_id, 'invoice.created', {
-        invoice: { id: invoice.id, number: invoice.invoice_number, amount: invoice.total_amount ?? invoice.amount, currency: invoice.currency || 'ZAR', status: invoice.status, contact_id: invoice.contact_id },
-      }).catch(() => {});
-    } catch (e) {
-      logger.error({ err: e, invoiceId: invoice.id }, 'finance.invoice.create_webhook_dispatch.failed');
-    }
-
-    // Auto-email the newly created invoice to the contact — fires only here
-    // (a plain INSERT), never from updateInvoice(), so re-saving an existing
-    // draft never re-sends. Status stays 'draft' (markSent omitted); this
-    // only affects the initial creation from the manual Invoice Builder.
-    // Skipped when the caller (InvoiceBuilder's "Save & Send" button, via
-    // sendInvoiceNow below) is about to send its own markSent:true email
-    // immediately after this returns — otherwise the contact would get two
-    // emails for one click.
-    if (!options?.skipAutoNotify) {
-      try {
-        const { sendInvoiceEmail } = await import('@/lib/invoices/sendInvoiceEmail');
-        const result = await sendInvoiceEmail({ workspaceId: invoice.workspace_id, invoiceId: invoice.id });
-        if (!result.success) {
-          logger.error({ invoiceId: invoice.id, workspaceId: invoice.workspace_id, reason: result.error }, 'finance.invoice.auto_send.failed');
-        }
-      } catch (e) {
-        logger.error({ err: e, invoiceId: invoice.id }, 'finance.invoice.auto_send.failed');
-      }
-    }
+ if (invoice) {
+  try {
+   const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
+   dispatchWebhook(invoice.workspace_id, 'invoice.created', {
+    invoice: { id: invoice.id, number: invoice.invoice_number, amount: invoice.total_amount ?? invoice.amount, currency: invoice.currency || 'ZAR', status: invoice.status, contact_id: invoice.contact_id },
+   }).catch(() => {});
+  } catch (e) {
+   logger.error({ err: e, invoiceId: invoice.id }, 'finance.invoice.create_webhook_dispatch.failed');
   }
 
+  // Auto-email the newly created invoice to the contact — fires only here (a plain INSERT), never from
+  // updateInvoice(), so re-saving an existing draft never re-sends. Status stays 'draft' (markSent omitted).
+  // Skipped when the caller ("Save & Send", via sendInvoiceNow) is about to send its own markSent:true email
+  // immediately after this returns — otherwise the contact would get two emails for one click.
+  if (!options?.skipAutoNotify) {
+   try {
+    const { sendInvoiceEmail } = await import('@/lib/invoices/sendInvoiceEmail');
+    const result = await sendInvoiceEmail({ workspaceId: invoice.workspace_id, invoiceId: invoice.id });
+    if (!result.success) {
+     logger.error({ invoiceId: invoice.id, workspaceId: invoice.workspace_id, reason: result.error }, 'finance.invoice.auto_send.failed');
+    }
+   } catch (e) {
+    logger.error({ err: e, invoiceId: invoice.id }, 'finance.invoice.auto_send.failed');
+   }
+  }
+ }
+
  safeRevalidatePath('/invoices');
- return { success: true, data: invoice };
+ return { success: true as const, data: invoice };
 }
 
 // Backs InvoiceBuilder's "Save & Send" button: called right after
@@ -249,7 +348,12 @@ export async function saveInvoice(data: any, options?: { skipAutoNotify?: boolea
 // auto-notify path). Reuses the same shared sendInvoiceEmail() as every
 // other auto-send call site rather than a third implementation.
 export async function sendInvoiceNow(invoiceId: string) {
- const { workspaceId } = await requireWorkspaceAccess();
+ let workspaceId: string;
+ try {
+  ({ workspaceId } = await requireWorkspaceAccess());
+ } catch (err) {
+  return actionFailure(err);
+ }
 
  try {
   const { sendInvoiceEmail } = await import('@/lib/invoices/sendInvoiceEmail');
@@ -272,33 +376,60 @@ export async function sendInvoiceNow(invoiceId: string) {
 }
 
 export async function updateInvoice(id: string, data: any) {
- const { workspaceId } = await requireWorkspaceAccess();
-
  try {
-  validateInvoicePayload(data);
+  return await updateInvoiceInner(id, data);
  } catch (err) {
-  const clientError = toClientError(err);
-  return { success: false, error: clientError.error };
+  logger.error({ err, invoiceId: id }, 'finance.invoice.update.failed');
+  return actionFailure(err);
  }
+}
+
+async function updateInvoiceInner(id: string, data: any) {
+ const { workspaceId } = await requireWorkspaceAccess();
+ validateInvoicePayload(data);
 
  const supabase = await createServerClient();
- const { data: invoice, error } = await supabase
+ await assertContactInWorkspace(supabase, workspaceId, data.contact_id);
+
+ // What is already paid is a fact on the row, not something the form may overwrite: amount_due is recomputed
+ // against it, and amount_paid is never taken from the client.
+ const { data: existing } = await supabase
   .from('invoices')
-  .update(pickInvoiceColumns(data))
+  .select('id, amount_paid')
   .eq('id', id)
   .eq('workspace_id', workspaceId)
-  .select()
+  .maybeSingle();
+ if (!existing) return { success: false as const, error: 'Invoice not found.' };
+
+ const vat = await loadVat(supabase, workspaceId);
+ const figures = buildInvoiceFigures(data.items, data.shipping_charges, data.adjustment, vat);
+ const paid = Number(existing.amount_paid) || 0;
+ const { amount_paid: _ignoredPaid, ...picked } = pickInvoiceColumns(data);
+
+ const { data: invoice, error } = await supabase
+  .from('invoices')
+  .update({
+   ...picked,
+   items: figures.items,
+   shipping_charges: figures.shippingCharges,
+   adjustment: figures.adjustment,
+   subtotal: figures.totals.subtotal,
+   tax_total: figures.totals.taxTotal,
+   total_amount: figures.totals.grandTotal,
+   amount_due: Math.max(0, Number((figures.totals.grandTotal - paid).toFixed(2))),
+  })
+  .eq('id', id)
+  .eq('workspace_id', workspaceId)
+  .select('id')
   .maybeSingle();
 
- if (error) {
-  logger.error({ err: error, invoiceId: id, workspaceId }, 'finance.invoice.update.failed');
-  const clientError = toClientError(error);
-  return { success: false, error: clientError.error };
- }
- if (!invoice) return { success: false, error: 'Invoice not found.' };
+ if (error) throw error;
+ // Zero rows updated is a failure, not a success: RLS or a concurrent delete turns an UPDATE into a silent no-op.
+ if (!invoice) return { success: false as const, error: 'Invoice not found or you do not have permission to change it.' };
 
  safeRevalidatePath('/invoices');
- return { success: true, data: invoice };
+ const { data: full } = await supabase.from('invoices').select('*').eq('id', id).eq('workspace_id', workspaceId).maybeSingle();
+ return { success: true as const, data: full ?? invoice };
 }
 
 export async function deleteInvoice(id: string) {
@@ -315,6 +446,11 @@ export async function deleteInvoice(id: string) {
 }
 
 export async function updateInvoiceStatus(id: string, status: string) {
+  // 'sent' is never a plain flag: it must mean an invoice email actually went out. Route it through the one gate that
+  // renders the PDF, sends the email and ONLY THEN flips the status. If PDF generation or the provider fails the invoice
+  // stays as it was and the caller gets the error.
+  if (status === 'sent') return sendInvoiceNow(id);
+
   const { workspaceId } = await requireWorkspaceAccess();
   const supabase = await createServerClient();
 

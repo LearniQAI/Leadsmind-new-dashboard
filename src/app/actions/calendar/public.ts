@@ -218,7 +218,9 @@ export async function bookAppointment(
 }
 
 /**
- * Public action to fetch slots for a specific date
+ * Public action to fetch slots for a specific date. Unauthenticated: input validation (UUID calendar id, real date within
+ * yesterday..today+62d) and the per-IP rate limit live in getAvailableSlots, so every caller shares them. Rejected input
+ * returns [] (same as a closed day); a rate-limited caller gets a thrown error the booking UI already catches.
  */
 export async function fetchPublicSlots(calendarId: string, date: string) {
   return await getAvailableSlots(calendarId, date);

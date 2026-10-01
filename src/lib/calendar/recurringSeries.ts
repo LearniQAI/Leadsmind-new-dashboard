@@ -48,6 +48,8 @@ export interface CreateRecurringSeriesPayload {
   endTime: string;   // ISO — first occurrence end
   meetingMode?: string;
   recurrence: RecurrenceInput;
+  /** One UUID per booking-dialog open; a replay returns the series already created. UNIQUE per workspace. */
+  clientOperationId?: string | null;
 }
 
 // revalidatePath throws if called outside a request scope (e.g. the live
@@ -80,6 +82,41 @@ function parseInterval(rrule: string): number {
   return m ? Math.max(1, parseInt(m[1], 10)) : 1;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** The result of a create that already happened, rebuilt from what is stored (idempotent replay). */
+async function replayForOperation(supabase: any, workspaceId: string, operationId: string) {
+  const { data: series } = await supabase
+    .from('recurring_series')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .eq('client_operation_id', operationId)
+    .maybeSingle();
+  if (!series) return null;
+  const { data: occ } = await supabase
+    .from('appointments')
+    .select('id, start_time')
+    .eq('series_id', series.id)
+    .order('start_time', { ascending: true });
+  const rows = occ ?? [];
+  return {
+    success: true as const,
+    replayed: true as const,
+    data: {
+      seriesId: series.id as string,
+      rrule: series.rrule as string,
+      summary: describeRecurrence(series.rrule),
+      occurrencesCreated: series.occurrence_count || rows.length,
+      occurrencesSkipped: 0, // not stored; the original response carried it
+      skippedStarts: [] as string[],
+      meetingLink: series.meeting_link ?? null,
+      meetingLinkStatus: series.meeting_link_status ?? 'none',
+      googleRecurringEventId: series.google_recurring_event_id ?? null,
+      firstAppointmentId: rows[0]?.id ?? null,
+    },
+  };
+}
+
 /**
  * Creates a recurring series: the series row, ONE Google recurring event, and
  * every occurrence as a real appointment. Partial success is honest — an
@@ -92,6 +129,16 @@ export async function createRecurringSeriesCore(
 ) {
   try {
     const supabase = createAdminClient();
+
+    // 0. Idempotency: same operation id => hand back the series already created, create nothing.
+    const operationId = payload.clientOperationId ?? null;
+    if (operationId !== null && !UUID_RE.test(operationId)) {
+      throw new ValidationError('Invalid booking request. Please close and reopen the dialog.');
+    }
+    if (operationId) {
+      const replay = await replayForOperation(supabase, workspaceId, operationId);
+      if (replay) return replay;
+    }
 
     // 1. Calendar (workspace-scoped so a caller can't attach to another tenant's calendar).
     const { data: calendar, error: calErr } = await supabase
@@ -148,9 +195,15 @@ export async function createRecurringSeriesCore(
         status: 'active',
         occurrence_count: 0,
         created_by: userId,
+        client_operation_id: operationId,
       })
       .select()
       .single();
+    if (seriesErr && operationId && (seriesErr as { code?: string }).code === '23505') {
+      // A concurrent identical submit won the UNIQUE (workspace_id, client_operation_id) race.
+      const winner = await replayForOperation(supabase, workspaceId, operationId);
+      if (winner) return winner;
+    }
     if (seriesErr || !series) throw seriesErr || new Error('Series insert failed');
 
     // 5. Insert each occurrence as a real appointment. Individually, so the
@@ -382,13 +435,13 @@ export async function updateRecurringScopeCore(
           .update({ status: 'cancelled', is_exception: true, updated_at: nowIso })
           .eq('id', apt.id);
         if (recEventId) await cancelGoogleEventInstance(googleHostId, recEventId, occurrenceAnchor);
-        try { await sendCancellationNotice(apt.id, new Date(apt.start_time).toLocaleString()); } catch { /* best-effort */ }
+        try { await sendCancellationNotice(apt.id, apt.start_time); } catch { /* best-effort */ }
         revalidatePath('/calendar');
         return { success: true as const, data: { scope: 'this', action: 'cancel', affected: 1 } };
       }
       const newStart = new Date(params.newStartTime!);
       const newEnd = new Date(newStart.getTime() + series.duration_minutes * 60000);
-      const previousWhen = new Date(apt.start_time).toLocaleString();
+      const previousWhen = apt.start_time;
       const { error: updErr } = await supabase
         .from('appointments')
         .update({ start_time: newStart.toISOString(), end_time: newEnd.toISOString(), is_exception: true, status: 'scheduled', updated_at: nowIso })
@@ -447,7 +500,7 @@ export async function updateRecurringScopeCore(
           .eq('id', series.id);
         if (recEventId) await updateGoogleRecurringEventRule(googleHostId, recEventId, truncated);
       }
-      try { await sendCancellationNotice(apt.id, new Date(apt.start_time).toLocaleString()); } catch { /* best-effort */ }
+      try { await sendCancellationNotice(apt.id, apt.start_time); } catch { /* best-effort */ }
       revalidatePath('/calendar');
       return { success: true as const, data: { scope: 'following', action: 'cancel', affected: ids.length } };
     }
@@ -461,7 +514,7 @@ export async function updateRecurringScopeCore(
       }
       await supabase.from('recurring_series').update({ status: 'cancelled', updated_at: nowIso }).eq('id', series.id);
       if (recEventId) await deleteGoogleCalendarEvent(googleHostId, recEventId);
-      try { await sendCancellationNotice(apt.id, new Date(apt.start_time).toLocaleString()); } catch { /* best-effort */ }
+      try { await sendCancellationNotice(apt.id, apt.start_time); } catch { /* best-effort */ }
       revalidatePath('/calendar');
       return { success: true as const, data: { scope: 'all', action: 'cancel', affected: ids.length } };
     }
@@ -489,7 +542,7 @@ export async function updateRecurringScopeCore(
         endIso: new Date(new Date(newDtstart).getTime() + series.duration_minutes * 60000).toISOString(),
       });
     }
-    try { await sendRescheduleNotice(apt.id, new Date(apt.start_time).toLocaleString()); } catch { /* best-effort */ }
+    try { await sendRescheduleNotice(apt.id, apt.start_time); } catch { /* best-effort */ }
     revalidatePath('/calendar');
     return { success: true as const, data: { scope: 'all', action: 'reschedule', affected: shifted } };
   } catch (err: any) {

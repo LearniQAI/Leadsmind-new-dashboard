@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { getCurrentWorkspaceId, requireWorkspaceAccess } from '@/lib/auth';
 import { headers } from 'next/headers';
+import { toClientError } from '@/shared/errors/AppError';
 import { ContactRepository } from '@/modules/crm/repository/ContactRepository';
 import { ContactService } from '@/modules/crm/service/ContactService';
 
@@ -67,7 +68,23 @@ export async function checkDuplicateContact(email: string) {
  return { success: true, exists: result.data.exists, contact: result.data.contact };
 }
 
-export async function createContact(values: any) {
+export async function createContact(values: any): Promise<
+ | { success: true; data: any; replayed?: boolean }
+ | { success: false; error: string; code?: string; existing?: { id: string; first_name: string; last_name: string; email: string | null } }
+> {
+ // The guard sits INSIDE the try: requireWorkspaceAccess() throws, and an unhandled throw from a server action
+ // reaches the browser as an opaque, message-stripped error instead of a result the form can show.
+ try {
+  return await createContactInner(values);
+ } catch (err: any) {
+  if (err?.name === 'UnauthorizedError') return { success: false, error: 'Your session has expired. Please sign in again.', code: 'UNAUTHORIZED' };
+  if (err?.name === 'ForbiddenError') return { success: false, error: 'You do not have access to this workspace.', code: 'FORBIDDEN' };
+  const mapped = toClientError(err);
+  return { success: false, error: mapped.error, code: mapped.code };
+ }
+}
+
+async function createContactInner(values: any) {
  const { workspaceId } = await requireWorkspaceAccess();
 
  // Resolve consent IP from request headers when the caller didn't supply one.
@@ -82,8 +99,14 @@ export async function createContact(values: any) {
  }
 
  const service = await getContactService();
- const result = await service.createContact(workspaceId, { ...values, consentIp });
- if (result.success === false) return { success: false, error: result.error };
+  const result = await service.createContact(workspaceId, { ...values, consentIp });
+ if (result.success === false) {
+  const existing = result.code === 'DUPLICATE_EMAIL' ? (result.details as any)?.existing : undefined;
+  return { success: false as const, error: result.error, code: result.code, ...(existing ? { existing } : {}) };
+ }
+
+ // A replay returned the contact created by the first submit; its side effects already ran once.
+ if (result.replayed) return { success: true as const, data: result.data, replayed: true };
 
  if (result.data?.id) {
   const { publishEvent } = await import('@/lib/events/EventBus');
@@ -91,7 +114,7 @@ export async function createContact(values: any) {
  }
 
  revalidatePath('/contacts');
- return { success: true, data: result.data };
+ return { success: true as const, data: result.data };
 }
 
 export async function updateContact(id: string, values: any) {

@@ -1,5 +1,6 @@
 import { MetaAdapter } from '@/lib/meta/MetaAdapter';
 import { isWithinWhatsAppSessionWindow } from '@/lib/meta/whatsappWindow';
+import { safeZone, formatTime24, tzShort } from '@/lib/calendar/displayTime';
 import { logger } from '@/shared/logger';
 
 // Task 68 — WhatsApp appointment reminders for /api/cron/reminders.
@@ -40,7 +41,7 @@ export interface WhatsAppReminderParams {
   };
   /** conversations.last_customer_message_at for (contact, platform='whatsapp'), for the 24h window. */
   lastCustomerMessageAt?: string | null;
-  appointment: { id: string; title: string | null; start_time: string };
+  appointment: { id: string; title: string | null; start_time: string; /** the calendar's IANA zone; the template's date/time are rendered on that clock */ timezone?: string | null };
   /** The exact body the SMS channel sends — reused verbatim for the in-window free-text path. */
   smsBody: string;
 }
@@ -72,8 +73,10 @@ export async function sendWhatsAppAppointmentReminder(
     if (!TEMPLATE_NAME) return { status: 'skipped', reason: 'no_template' };
 
     const start = new Date(appointment.start_time);
-    const dateStr = start.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-    const timeStr = start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    // The calendar's clock, not the server's locale; the zone is part of the time string so it reads unambiguously.
+    const tz = safeZone(appointment.timezone);
+    const dateStr = new Intl.DateTimeFormat('en-GB', { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }).format(start);
+    const timeStr = `${formatTime24(start, tz)} ${tzShort(tz, start)}`;
     const res = await adapter.sendWhatsAppTemplate(cleanPhone, TEMPLATE_NAME, TEMPLATE_LANG, [
       contact.first_name || 'there',
       dateStr,

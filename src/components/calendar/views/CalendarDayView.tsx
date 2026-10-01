@@ -12,6 +12,7 @@ import {
 import { ChevronLeft, ChevronRight, Clock, MapPin, User, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DashButton } from '@/components/dashboard-ui';
+import { apptZone, dayKeyInZone, wallClock, formatTime12, formatDateShort, tzShort } from '@/lib/calendar/displayTime';
 
 interface CalendarDayViewProps {
   appointments: any[];
@@ -21,7 +22,8 @@ export default function CalendarDayView({ appointments }: CalendarDayViewProps) 
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const hours = Array.from({ length: 24 }).map((_, i) => i);
-  const dayAppointments = appointments.filter(appt => isSameDay(new Date(appt.start_time), currentDate));
+  const currentDayKey = format(currentDate, 'yyyy-MM-dd');
+  const dayAppointments = appointments.filter(appt => dayKeyInZone(appt.start_time, apptZone(appt).timeZone) === currentDayKey);
 
   const nextDay = () => setCurrentDate(addDays(currentDate, 1));
   const prevDay = () => setCurrentDate(subDays(currentDate, 1));
@@ -71,16 +73,16 @@ export default function CalendarDayView({ appointments }: CalendarDayViewProps) 
             {/* Appointments Overlay */}
             {dayAppointments.map(appt => {
                const start = new Date(appt.start_time);
-               const top = (start.getHours() * 80 + (start.getMinutes() / 60) * 80); // px from top
+               const wc = wallClock(start, apptZone(appt).timeZone);
+               const top = (wc.hour * 80 + (wc.minute / 60) * 80); // px from top, on the calendar's own wall clock
                return (
                  <div
                    key={appt.id}
-                   className="absolute left-4 right-4 rounded-xl p-4 text-[13px] font-bold border border-dash-border shadow-xl overflow-hidden group hover:z-30 transition-all motion-reduce:transition-none"
+                   className="bg-dash-accent/10 text-[#0B3FC2] dark:bg-dash-accent/30 dark:text-white absolute left-4 right-4 rounded-xl p-4 text-[13px] font-bold border border-dash-border shadow-xl overflow-hidden group hover:z-30 transition-all motion-reduce:transition-none"
                    style={{
                      top: `${top}px`,
                      minHeight: '80px',
-                     backgroundColor: appt.color || 'rgba(19, 89, 255, 0.08)',
-                     color: appt.text_color || '#1359FF',
+                     ...(appt.color ? { backgroundColor: appt.color, color: appt.text_color || '#0F172A' } : {}),
                      borderLeft: `5px solid ${appt.border_color || '#1359FF'}`
                    }}
                  >
@@ -142,7 +144,7 @@ export default function CalendarDayView({ appointments }: CalendarDayViewProps) 
                   </div>
                   <div className="pb-4">
                     <div className="text-[11px] font-bold !text-dash-textMuted mb-1">
-                      {format(new Date(appt.start_time), 'h:mm a')}
+                      {formatTime12(appt.start_time, apptZone(appt).timeZone)} {tzShort(apptZone(appt).timeZone, appt.start_time)}
                     </div>
                     <div className="text-[13px] font-bold !text-dash-text group-hover:text-dash-accent transition-colors motion-reduce:transition-none">
                       {appt.title}

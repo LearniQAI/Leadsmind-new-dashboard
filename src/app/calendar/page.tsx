@@ -19,7 +19,7 @@ export default async function CalendarPage() {
 
     const { data: appointments } = await supabase
         .from('appointments')
-        .select('*, contact:contacts(first_name, last_name, email)')
+        .select('*, contact:contacts(first_name, last_name, email), calendar:booking_calendars(name, calendar_type, price, timezone), resource:resources(name, type, location)')
         .eq('workspace_id', workspaceId)
         .order('start_time', { ascending: false });
 

@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Wrapper from '@/components/layouts/DefaultWrapper'
 import { useDashboardContext } from '@/components/layouts/DashboardProvider'
 import { Plus, Minus, Edit2, Trash2, Search, X, AlertTriangle, Layers, Tag, DollarSign } from 'lucide-react'
@@ -51,6 +51,23 @@ export default function InventoryPage() {
   const [supplier, setSupplier] = useState('')
   const [status, setStatus] = useState<InventoryItem['status']>('active')
 
+  // Save lock: the ref blocks a second submit in the same tick (state updates are async), the
+  // state drives the disabled/"Saving…" UI. The operation id is minted once per "Add item" modal
+  // session and re-sent on every retry, so the server returns the first row instead of inserting
+  // another if an earlier attempt actually landed.
+  const [submitting, setSubmitting] = useState(false)
+  const submitLock = useRef(false)
+  const createOperationId = useRef<string>('')
+
+  // Mirrors the server's GET filters so a locally-applied row doesn't appear in a view the
+  // server wouldn't have returned it for.
+  const matchesFilters = (item: InventoryItem) => {
+    if (search && !item.name.toLowerCase().includes(search.toLowerCase())) return false
+    if (filterCategory !== 'all' && item.category !== filterCategory) return false
+    return true
+  }
+  const byName = (a: InventoryItem, b: InventoryItem) => a.name.localeCompare(b.name)
+
   const fetchInventory = async () => {
     if (!workspaceId) return
     setLoading(true)
@@ -70,6 +87,7 @@ export default function InventoryPage() {
   }, [workspaceId, search, filterCategory])
 
   const openAddModal = () => {
+    createOperationId.current = newClientRequestId()
     setEditingItem(null)
     setName('')
     setSku('')
@@ -103,10 +121,13 @@ export default function InventoryPage() {
 
   const handleSaveItem = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!workspaceId) return
+    if (!workspaceId || submitLock.current) return
+    submitLock.current = true
+    setSubmitting(true)
 
     const payload = {
       workspace_id: workspaceId,
+      ...(editingItem ? {} : { client_operation_id: createOperationId.current }),
       name,
       sku,
       description,
@@ -139,11 +160,24 @@ export default function InventoryPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
 
+      const saved: InventoryItem | undefined = data.inventoryItem
+      if (saved) {
+        setItems(prev => {
+          const without = prev.filter(i => i.id !== saved.id)
+          return matchesFilters(saved) ? [...without, saved].sort(byName) : without
+        })
+      } else {
+        fetchInventory()
+      }
+
       toast.success(editingItem ? 'Item updated' : 'Item added')
       setItemModalOpen(false)
-      fetchInventory()
     } catch (err: any) {
+      // Modal stays open and every form field keeps its value so the user can just retry.
       toast.error(err.message || 'Error saving inventory item')
+    } finally {
+      submitLock.current = false
+      setSubmitting(false)
     }
   }
 
@@ -164,9 +198,14 @@ export default function InventoryPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
 
+      const saved: InventoryItem | undefined = data.inventoryItem
+      if (saved) {
+        setItems(prev => prev.map(i => (i.id === saved.id ? saved : i)))
+      } else {
+        fetchInventory()
+      }
       toast.success('Stock adjusted successfully')
       setAdjustModalOpen(null)
-      fetchInventory()
     } catch (err: any) {
       toast.error(err.message || 'Failed to adjust stock')
     }
@@ -180,8 +219,8 @@ export default function InventoryPage() {
         const data = await res.json()
         throw new Error(data.error)
       }
+      setItems(prev => prev.filter(i => i.id !== id))
       toast.success('Item deleted')
-      fetchInventory()
     } catch (err: any) {
       toast.error(err.message || 'Error deleting item')
     }
@@ -389,7 +428,7 @@ export default function InventoryPage() {
                 <h3 className="text-[15px] font-bold !text-dash-text">
                   {editingItem ? 'Edit inventory item' : 'Add new inventory item'}
                 </h3>
-                <button onClick={() => setItemModalOpen(false)} className="!text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none">
+                <button onClick={() => setItemModalOpen(false)} disabled={submitting} className="!text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none disabled:opacity-50">
                   <X size={16} />
                 </button>
               </div>
@@ -534,15 +573,17 @@ export default function InventoryPage() {
                   <button
                     type="button"
                     onClick={() => setItemModalOpen(false)}
-                    className="px-4 py-2 border border-dash-border hover:bg-dash-surface text-[11px] font-bold rounded-xl !text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none"
+                    disabled={submitting}
+                    className="px-4 py-2 border border-dash-border hover:bg-dash-surface text-[11px] font-bold rounded-xl !text-dash-textMuted hover:!text-dash-text transition-colors motion-reduce:transition-none disabled:opacity-50"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 bg-dash-accent hover:bg-dash-accent/90 text-[11px] font-bold rounded-xl text-white transition-colors motion-reduce:transition-none"
+                    disabled={submitting}
+                    className="px-5 py-2 bg-dash-accent hover:bg-dash-accent/90 text-[11px] font-bold rounded-xl text-white transition-colors motion-reduce:transition-none disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    {editingItem ? 'Save item' : 'Add item'}
+                    {submitting ? 'Saving…' : editingItem ? 'Save item' : 'Add item'}
                   </button>
                 </div>
               </form>

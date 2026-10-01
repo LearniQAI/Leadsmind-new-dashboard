@@ -25,6 +25,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import QuizAnalyticsConsole from "./QuizAnalyticsConsole";
 import { updateModuleQuiz } from "@/app/actions/moduleQuizzes";
+import Link from "next/link";
 import { PropertyGroup, SliderWithInput, PropertySelect } from "@/components/builder/inspector/primitives";
 
 // Real db question_type values -> a short, readable badge label for the question-list sidebar.
@@ -93,7 +94,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
   // instructor on Questions and making them find it themselves.
   const initialTab = searchParams?.get("tab");
   const [activeTab, setActiveTab] = useState<"questions" | "settings" | "analytics">(
-    initialTab === "analytics" || initialTab === "settings" ? initialTab : "questions"
+    initialTab === "analytics" || (initialTab === "settings" && !isModuleScope) ? initialTab : "questions"
   );
 
   // Quiz settings state
@@ -214,12 +215,13 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
   }, [quiz.id]);
 
   const loadSettings = async () => {
+    // A module quiz has no settings of its own — the module's rules apply (Module quiz settings).
+    if (isModuleScope) {
+      setSettingsVersion((v) => v + 1);
+      return;
+    }
     try {
-      const res = await fetch(
-        isModuleScope
-          ? `/api/lms/module-quiz/settings?quizId=${quiz.id}`
-          : `/api/lms/quiz/settings?lessonId=${quiz.id}`
-      );
+      const res = await fetch(`/api/lms/quiz/settings?lessonId=${quiz.id}`);
       const dataJson = await res.json();
       if (dataJson.data) {
         const s = dataJson.data;
@@ -433,7 +435,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...(isModuleScope ? { quiz_id: quiz.id } : { lesson_id: quiz.id }),
+          lesson_id: quiz.id,
           workspace_id: course.workspace_id || quiz.workspace_id,
           question_type: qTypeMap[type] || 'mcq',
           question_text: questionText,
@@ -491,13 +493,9 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
     }
     setIsSavingSettings(true);
     try {
-      // A module quiz's title lives on its module_quizzes row (a module can hold several
-      // quizzes, each named); it has no description and no course_lessons row. Deliberately no
-      // equivalent of the legacy upsertQuiz()/lms_quizzes write either (see below).
-      if (isModuleScope) {
-        const renamed = await updateModuleQuiz(quiz.id, { title: quizTitle });
-        if (renamed.error) throw new Error(renamed.error);
-      } else {
+      // Lesson quizzes only: a module quiz has no Advanced settings (its rules are the module's,
+      // and it is renamed from the quiz list), so this is never reached for one.
+      {
         // 1. Update course_lessons title and description
         const lessonRes = await fetch(`/api/lms/lessons?id=${quiz.id}`, {
           method: "PATCH",
@@ -523,9 +521,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
         // involved at all.
       }
 
-      // Update settings (quiz_settings for a lesson quiz, module_quiz_settings for a module
-      // quiz — same shape, different table per the Step 1 schema decision).
-      const settingsRes = await fetch(isModuleScope ? '/api/lms/module-quiz/settings' : '/api/lms/quiz/settings', {
+      const settingsRes = await fetch('/api/lms/quiz/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -759,9 +755,10 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
         <div className="flex items-center bg-dash-surface border border-dash-border rounded-xl p-1 shrink-0 gap-0.5">
           {([
             { id: "questions", label: `Questions (${questions.length})`, icon: Layout },
-            { id: "settings", label: "Advanced settings", icon: Sliders },
+            // Module quizzes have no per-quiz settings: the module's rules apply (link below).
+            ...(isModuleScope ? [] : [{ id: "settings", label: "Advanced settings", icon: Sliders }]),
             { id: "analytics", label: "Analytics & attempts", icon: Eye },
-          ] as const).map(({ id, label, icon: Icon }) => (
+          ] as { id: "questions" | "settings" | "analytics"; label: string; icon: LucideIcon }[]).map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setActiveTab(id)}
@@ -774,6 +771,15 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
               <Icon size={13} /> {label}
             </button>
           ))}
+          {isModuleScope && (
+            <Link
+              href={`/courses/${course.id}/module-quiz/${moduleId}/settings`}
+              className="px-4 h-9 rounded-lg text-[11px] font-semibold transition-colors motion-reduce:transition-none flex items-center gap-1.5 !text-dash-textMuted hover:!text-dash-text"
+              title="Pass mark, time limit, attempts, shuffle and completion are set once for the whole module"
+            >
+              <Sliders size={13} /> Module quiz settings
+            </Link>
+          )}
         </div>
       </div>
 
@@ -860,17 +866,17 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
               </div>
             )}
 
-            {/* AI action: its own violet→sky gradient outline, so it reads as a distinct "magic" action and doesn't
-                compete with the solid sky "Add" button. Same handler as before. */}
+            {/* AI action: a quiet outlined card in the brand blue (dash-accent, the LeadsMind logo blue).
+                Hover is one soft tint of that same hue — no gradients. Same handler as before. */}
             <div className="px-5 pb-3">
               <button
                 type="button"
                 onClick={handleGenerateAiQuestions}
                 disabled={isGeneratingQuestions}
-                className="group w-full rounded-xl bg-gradient-to-r from-violet-400 via-sky-400 to-fuchsia-400 p-px shadow-sm shadow-violet-500/10 transition-shadow hover:shadow-md hover:shadow-violet-500/20 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60 focus-visible:ring-offset-2"
+                className="group w-full rounded-xl border border-dash-border bg-white shadow-sm transition-colors hover:border-dash-accent/40 hover:bg-dash-accent/[0.06] disabled:opacity-60 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-accent/50 focus-visible:ring-offset-2"
               >
-                <span className="flex items-center gap-3 rounded-[11px] bg-white px-3 py-2.5 transition-colors group-hover:bg-violet-50/50">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-sky-500 text-white shadow-sm">
+                <span className="flex items-center gap-3 px-3 py-2.5">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-dash-accent text-white shadow-sm">
                     {isGeneratingQuestions ? <Loader2 size={15} className="animate-spin motion-reduce:animate-none" /> : <Sparkles size={15} />}
                   </span>
                   <span className="text-left leading-tight">
@@ -1418,43 +1424,27 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
             </button>
           </div>
 
-          {/* A module quiz has a title (module_quizzes.title, saved by handleSaveSettings) but
-              no description, so only the title field is shown for it. */}
           <PropertyGroup title="Identity">
-            {isModuleScope ? (
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold !text-dash-textMuted block">Quiz title</label>
-                <input
-                  type="text"
-                  value={quizTitle}
-                  onChange={(e) => setQuizTitle(e.target.value)}
-                  className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none"
-                />
-              </div>
-            ) : (
-              <>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-semibold !text-dash-textMuted block">Quiz title</label>
-                  <input
-                    type="text"
-                    value={quizTitle}
-                    onChange={(e) => setQuizTitle(e.target.value)}
-                    className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none"
-                  />
-                </div>
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold !text-dash-textMuted block">Quiz title</label>
+              <input
+                type="text"
+                value={quizTitle}
+                onChange={(e) => setQuizTitle(e.target.value)}
+                className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none"
+              />
+            </div>
 
-                <div className="space-y-1">
-                  <label className="text-[11px] font-semibold !text-dash-textMuted block">Description (optional)</label>
-                  <textarea
-                    value={quizDesc}
-                    onChange={(e) => setQuizDesc(e.target.value)}
-                    rows={3}
-                    placeholder="Provide additional guidelines for this quiz..."
-                    className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none leading-relaxed"
-                  />
-                </div>
-              </>
-            )}
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold !text-dash-textMuted block">Description (optional)</label>
+              <textarea
+                value={quizDesc}
+                onChange={(e) => setQuizDesc(e.target.value)}
+                rows={3}
+                placeholder="Provide additional guidelines for this quiz..."
+                className="w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-xs !text-dash-text outline-none focus:border-dash-accent transition-colors motion-reduce:transition-none leading-relaxed"
+              />
+            </div>
           </PropertyGroup>
 
           <PropertyGroup title="Grading & pacing">
@@ -1527,7 +1517,8 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
         <QuizAnalyticsConsole quiz={quiz} course={course} questions={questions} moduleId={moduleId} />
       )}
 
-      {/* Global Overrides configurations Sheet overlay */}
+      {/* Global overrides sheet — lesson quizzes only (module quizzes have no per-quiz settings). */}
+      {!isModuleScope && (
       <Sheet open={isConfigPaneOpen} onOpenChange={setIsConfigPaneOpen}>
         <SheetContent className="w-[420px] bg-white border-l border-dash-border p-0 overflow-y-auto max-h-screen">
           <div className="flex flex-col h-full">
@@ -1672,6 +1663,7 @@ export default function QuizWorkbenchClient({ course, quiz, moduleId }: QuizWork
           </div>
         </SheetContent>
       </Sheet>
+      )}
 
       {/* Delete Question Confirmation Dialog */}
       <Dialog open={!!questionToDelete} onOpenChange={(open) => !open && setQuestionToDelete(null)}>

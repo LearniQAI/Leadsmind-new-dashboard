@@ -59,12 +59,26 @@ export class ContactRepository {
     return data ?? [];
   }
 
+  /** Case-insensitive: "A@x.com" and "a@x.com" are the same client to a human, even though the DB key is exact. */
   async findByEmail(workspaceId: string, email: string) {
+    const escaped = email.trim().replace(/[\\%_]/g, (c) => '\\' + c);
     const { data, error } = await this.db
       .from('contacts')
-      .select('id, first_name, last_name')
+      .select('id, first_name, last_name, email')
       .eq('workspace_id', workspaceId)
-      .eq('email', email)
+      .ilike('email', escaped)
+      .order('created_at', { ascending: true })
+      .limit(1);
+    if (error) throw new Error(error.message);
+    return data?.[0] ?? null;
+  }
+
+  async findByOperationId(workspaceId: string, operationId: string) {
+    const { data, error } = await this.db
+      .from('contacts')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .eq('client_operation_id', operationId)
       .maybeSingle();
     if (error) throw new Error(error.message);
     return data ?? null;
@@ -76,7 +90,9 @@ export class ContactRepository {
       .insert({ ...payload, workspace_id: workspaceId })
       .select()
       .single();
-    if (error) throw new Error(error.message);
+    // Keep the SQLSTATE on the thrown error: callers branch on it (23505 -> duplicate / replay) and the
+    // central mapper turns it into a user-safe message. The text itself is still never shown.
+    if (error) throw Object.assign(new Error(error.message), { code: error.code });
     return data;
   }
 

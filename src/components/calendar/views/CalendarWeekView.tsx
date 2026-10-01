@@ -14,6 +14,7 @@ import {
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { apptZone, dayKeyInZone, wallClock, formatTime12, formatDateShort, tzShort } from '@/lib/calendar/displayTime';
 
 interface CalendarWeekViewProps {
   appointments: any[];
@@ -70,7 +71,8 @@ export default function CalendarWeekView({ appointments }: CalendarWeekViewProps
         <div className="flex-1 grid grid-cols-7 min-w-[700px]">
           {weekDays.map((day) => {
             const isToday = isSameDay(day, new Date());
-            const dayAppointments = appointments.filter(appt => isSameDay(new Date(appt.start_time), day));
+            const dayKey = format(day, 'yyyy-MM-dd');
+            const dayAppointments = appointments.filter(appt => dayKeyInZone(appt.start_time, apptZone(appt).timeZone) === dayKey);
 
             return (
               <div key={day.toString()} className="relative border-r border-dash-border last:border-r-0">
@@ -98,23 +100,26 @@ export default function CalendarWeekView({ appointments }: CalendarWeekViewProps
                 {/* Appointments Overlay */}
                 {dayAppointments.map(appt => {
                    const start = new Date(appt.start_time);
-                   const top = (start.getHours() * 60 + start.getMinutes()); // px from top
+                   const zone = apptZone(appt).timeZone;
+                   const wc = wallClock(start, zone);
+                   const top = wc.hour * 60 + wc.minute; // px from top, on the calendar's own wall clock
                    // Duration logic would go here for height
                    return (
                      <div
                        key={appt.id}
-                       className="absolute left-1 right-1 rounded-lg p-2 text-[11px] font-bold border border-dash-border shadow-lg overflow-hidden group hover:z-30 transition-all motion-reduce:transition-none"
+                       className="bg-dash-accent/10 text-[#0B3FC2] dark:bg-dash-accent/30 dark:text-white absolute left-1 right-1 rounded-lg p-2 text-[11px] font-bold border border-dash-border shadow-lg overflow-hidden group hover:z-30 transition-all motion-reduce:transition-none"
                        style={{
                          top: `${60 + top}px`,
                          minHeight: '50px',
-                         backgroundColor: appt.color || 'rgba(19, 89, 255, 0.08)',
-                         color: appt.text_color || '#1359FF',
+                         // 1px per minute, matching the 60px-per-hour grid, so long meetings don't overlap the next slot
+                         height: `${Math.max(50, Math.round((new Date(appt.end_time).getTime() - start.getTime()) / 60000) || 0)}px`,
+                         ...(appt.color ? { backgroundColor: appt.color, color: appt.text_color || '#0F172A' } : {}),
                          borderLeft: `4px solid ${appt.border_color || '#1359FF'}`
                        }}
                      >
                        <div className="flex items-center gap-1 mb-1 opacity-70">
                          <Clock size={10} />
-                         {format(start, 'h:mm a')}
+                         {formatTime12(start, zone)} <span className="opacity-70">{tzShort(zone, start)}</span>
                        </div>
                        <div className="truncate">{appt.title}</div>
                      </div>

@@ -1,5 +1,6 @@
 import type { createAdminClient } from '@/lib/supabase/server';
 import { getStudentVisibleModuleQuizzes } from './moduleQuizzes';
+import { getEffectiveQuizSettings } from './moduleQuizSettings';
 
 // Single definition of "this student has genuinely completed this course" for CERTIFICATE issuance,
 // shared by the download route and the assign_certificate automation (Batch 3 / fix 1).
@@ -20,7 +21,8 @@ import { getStudentVisibleModuleQuizzes } from './moduleQuizzes';
 //      can hold several quizzes, and ALL of them must be passed (product decision 2026-09-27).
 //      "Can see" is getStudentVisibleModuleQuizzes: status 'published' with >= 1 question, so a
 //      draft or empty quiz never gates the certificate. A 'pending_review' attempt has
-//      passed = null and does not count.
+//      passed = null and does not count. A quiz whose effective "required for completion"
+//      setting (module default / per-quiz override) is off is skipped.
 //   4. every visible lesson containing an assignment block has an assignment submission whose
 //      grade_status is 'passed' (submitted-but-ungraded or failed does not count).
 //
@@ -28,6 +30,13 @@ import { getStudentVisibleModuleQuizzes } from './moduleQuizzes';
 // active lessons"). That flag today only drives sequential unlock in lock-utils.
 
 type Db = ReturnType<typeof createAdminClient>;
+
+/** Student-visible module quizzes whose EFFECTIVE "required for completion" setting is on. */
+async function getRequiredModuleQuizzes(db: Db, moduleIds: string[]) {
+  const visible = await getStudentVisibleModuleQuizzes(db, moduleIds);
+  const effective = await getEffectiveQuizSettings(db, visible);
+  return visible.filter((q) => effective.get(q.id)?.isRequired !== false);
+}
 
 export interface CompletionInput {
   modules: { id: string; is_active: boolean | null; publish_status: string | null }[];
@@ -141,7 +150,7 @@ export async function getCourseCompletionStatus(
         (ids) => db.from('quiz_attempts').select('lesson_id').eq('student_id', contactId).eq('passed', true).in('lesson_id', ids),
         lessonIds
       ),
-      getStudentVisibleModuleQuizzes(db, moduleIds),
+      getRequiredModuleQuizzes(db, moduleIds),
       inOrEmpty(
         (ids) =>
           db.from('module_quiz_attempts').select('quiz_id').eq('student_id', contactId).eq('passed', true).in('module_id', ids).not('quiz_id', 'is', null),

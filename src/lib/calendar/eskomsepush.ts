@@ -24,6 +24,7 @@ export async function getEskomOutages(
 
   try {
     const response = await fetch(`https://api.sepush.co.za/business/2.0/area?id=${suburbId}`, {
+      signal: AbortSignal.timeout(5000),
       headers: {
         Authorization: apiKey,
       },

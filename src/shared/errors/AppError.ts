@@ -1,3 +1,7 @@
+import { friendlyDbError } from './dbErrors';
+import { logger } from '@/shared/logger';
+import { newRequestId } from '@/shared/logger/requestId';
+
 export class AppError extends Error {
   constructor(
     public readonly code: string,
@@ -66,7 +70,9 @@ export class CreditLimitExceededError extends AppError {
 export function toClientError(error: unknown): {
   error: string;
   code: string;
-  status: number
+  status: number;
+  /** Present when the real error was logged server-side: quote it to support, it finds the raw error. */
+  requestId?: string;
 } {
   if (error instanceof AppError) {
     return {
@@ -74,6 +80,15 @@ export function toClientError(error: unknown): {
       code: error.code,
       status: error.httpStatus,
     };
+  }
+  // Raw Postgres/PostgREST errors: constraint violations are ordinary, fixable situations, so map the
+  // SQLSTATE to a user-safe message. The real error (constraint/column/value) is logged with a
+  // request id and never returned.
+  const friendly = friendlyDbError(error);
+  if (friendly) {
+    const requestId = newRequestId();
+    logger.error({ err: error, requestId, sqlState: friendly.sqlState }, 'db_error.mapped_for_client');
+    return { error: friendly.message, code: friendly.code, status: friendly.status, requestId };
   }
   // Unknown errors never expose their message
   return {

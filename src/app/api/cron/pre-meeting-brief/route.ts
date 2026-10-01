@@ -5,6 +5,7 @@ import { sendEmail } from '@/lib/email';
 import { getUser, requireWorkspaceAccess } from '@/lib/auth';
 import { UnauthorizedError as LibUnauthorizedError, ForbiddenError as LibForbiddenError } from '@/lib/errors';
 import { runCreditGuard, consumeAICredit } from '@/lib/ai/creditGuard';
+import { formatWhenForMessage } from '@/lib/calendar/displayTime';
 import { logger } from '@/shared/logger';
 
 export const dynamic = 'force-dynamic';
@@ -241,10 +242,14 @@ async function handleBriefingCron() {
         const leadScore = reportRecord?.lead_score || 75;
         const suitability = leadScore >= 80 ? 'HIGH FIT TARGET' : leadScore >= 60 ? 'WARM PROSPECT' : 'NURTURE PLAY';
 
+        // The calendar's clock with the zone named, not the server's locale.
+        const briefCal = appointment.calendar_id ? await db('booking_calendars').where({ id: appointment.calendar_id }).first() : null;
+        const briefTimeZone: string | null = briefCal?.timezone ?? null;
+
         const html = `
           <div style="font-family: sans-serif; background: #04091a; color: #eef2ff; padding: 24px; border-radius: 12px; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #3b82f6; border-bottom: 1px solid #1e293b; padding-bottom: 8px;">LeadsMind AI Pre-Meeting Briefing</h2>
-            <p>You have an upcoming appointment with <strong>${contactName}</strong> from <strong>${companyName}</strong> scheduled at ${new Date(appointment.start_time).toLocaleTimeString()}.</p>
+            <p>You have an upcoming appointment with <strong>${contactName}</strong> from <strong>${companyName}</strong> scheduled for ${formatWhenForMessage(appointment.start_time, null, briefTimeZone)}.</p>
             
             <div style="background: #0b0b1e; border: 1px solid rgba(255,255,255,0.05); padding: 16px; border-radius: 8px; margin: 16px 0;">
               <span style="font-size: 11px; text-transform: uppercase; color: #94a3b8; display: block;">Lead Suitability Metric</span>

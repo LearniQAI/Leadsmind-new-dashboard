@@ -88,3 +88,39 @@ describe('calendar_sync_error surfacing (Task 65 Part 1 fix)', () => {
     expect(bodyTo('host@example.com')).not.toMatch(/could not be synced/i);
   });
 });
+
+// A Johannesburg (UTC+2) calendar: every e-mail must show the CALENDAR's clock with the zone named. Previously the
+// text was formatted in the process timezone (UTC on Vercel) but labelled with the calendar zone, and cancel /
+// reschedule notices carried a bare server-locale toLocaleString().
+describe('timezone label + calendar-zone clock in confirmation, reschedule and cancel e-mails', () => {
+  beforeEach(() => {
+    appointmentRow.calendar.timezone = 'Africa/Johannesburg';
+    appointmentRow.start_time = '2026-10-07T15:30:00Z';
+    appointmentRow.end_time = '2026-10-07T16:00:00Z';
+  });
+
+  it('confirmation: 17:30–18:00 (Africa/Johannesburg, GMT+2) to booker and host, not 15:30', async () => {
+    await sendBookingConfirmation('apt-1', { reason: 'booked' });
+    for (const to of ['alice@example.com', 'host@example.com']) {
+      const t = bodyTo(to)!;
+      expect(t).toContain('Wednesday, October 7, 2026 · 17:30–18:00 (Africa/Johannesburg, GMT+2)');
+      expect(t).not.toContain('15:30');
+    }
+  });
+
+  it('reschedule: previous (ISO instant) and new time are both in the calendar zone, labelled', async () => {
+    await sendRescheduleNotice('apt-1', '2026-10-06T08:00:00+00:00');
+    const t = bodyTo('alice@example.com')!;
+    expect(t).toContain('Previous time: Tuesday, October 6, 2026 · 10:00 (Africa/Johannesburg, GMT+2)');
+    expect(t).toContain('New time: Wednesday, October 7, 2026 · 17:30–18:00 (Africa/Johannesburg, GMT+2)');
+    expect(bodyTo('host@example.com')).toContain('from Tuesday, October 6, 2026 · 10:00 (Africa/Johannesburg, GMT+2) to Wednesday, October 7, 2026 · 17:30–18:00');
+  });
+
+  it('cancel: the ISO instant is rendered in the calendar zone with the label; an already-formatted string is left as given', async () => {
+    await sendCancellationNotice('apt-1', '2026-10-07T15:30:00+00:00');
+    expect(bodyTo('alice@example.com')).toContain('(Wednesday, October 7, 2026 · 17:30 (Africa/Johannesburg, GMT+2))');
+    sendEmail.mockClear();
+    await sendCancellationNotice('apt-1', 'Wed 7 Oct, 5:30 PM');
+    expect(bodyTo('alice@example.com')).toContain('(Wed 7 Oct, 5:30 PM)');
+  });
+});
