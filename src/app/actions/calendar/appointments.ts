@@ -50,6 +50,10 @@ async function executeAction<T>(action: (supabase: any, workspaceId: string) => 
     return { success: true, data };
   } catch (err: any) {
     logger.error({ err }, 'calendar.appointment_action.failed');
+    // requireWorkspaceAccess throws the plain @/lib/errors classes, not AppError, so toClientError would
+    // flatten them to a generic message. Their messages are safe and tell the user what to do.
+    if (err?.name === 'UnauthorizedError') return { success: false, error: 'Unauthorized' };
+    if (err?.name === 'ForbiddenError') return { success: false, error: String(err.message || 'Forbidden') };
     const clientError = toClientError(err);
     return { success: false, error: clientError.error };
   }
@@ -136,6 +140,13 @@ export async function createAppointment(payload: {
    * UNIQUE (workspace_id, client_operation_id).
    */
   clientOperationId?: string | null;
+  /**
+   * Staff booking from the dashboard dialog: allowed at custom times, inside the minimum-notice window and
+   * beyond the booking horizon. Only the future-start sanity check and the database overlap constraints
+   * (appointments_no_overlap / appointments_resource_no_overlap) still apply. The public/portal booking
+   * paths never set this and keep the full availability rules.
+   */
+  staffBooking?: boolean;
 }) {
   return executeAction(async (supabase, workspaceId) => {
     // 0. Idempotency. Checked BEFORE slot validation: on a replay the original booking now occupies
@@ -197,9 +208,24 @@ export async function createAppointment(payload: {
     //    when the host has connected Google). See step 7 — no fabricated URLs.
 
     // 5. Validation Logic
-    if (!payload.skipValidation) {
+    const staffOverride = payload.staffBooking === true || payload.skipValidation === true;
+    if (staffOverride) {
+      // Sanity only — the grid, notice period, horizon and working hours are deliberately NOT enforced here.
+      const startMs = Date.parse(payload.startTime);
+      const endMs = Date.parse(payload.endTime);
+      if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) throw new ValidationError('Invalid start or end time.');
+      if (endMs <= startMs) throw new ValidationError('The meeting must end after it starts.');
+      if (endMs - startMs > 12 * 60 * 60 * 1000) throw new ValidationError('A meeting can be at most 12 hours long.');
+      if (startMs < Date.now() - 60_000) throw new ValidationError('That time is in the past. Pick a future time.');
+    } else {
       const validation = await validateSlot(payload.calendarId, payload.startTime, payload.endTime);
       if (!validation.available) {
+        // A retry racing its own original: the original may have inserted between our replay check and this
+        // validation, in which case the slot is "taken" by THIS very request. Hand back that booking.
+        if (operationId) {
+          const own = await findByOperationId(supabase, workspaceId, operationId);
+          if (own) return own;
+        }
         throw new ValidationError(validation.reason);
       }
     }
@@ -248,7 +274,9 @@ export async function createAppointment(payload: {
       // first), so isSlotConflictError() already excludes the resource case —
       // order here just keeps the two branches readable.
       if (isResourceConflictError(error)) throw new ValidationError(RESOURCE_CONFLICT_MESSAGE);
-      if (isSlotConflictError(error)) throw new ValidationError(SLOT_CONFLICT_MESSAGE);
+      if (isSlotConflictError(error)) {
+        throw new ValidationError(staffOverride ? 'That time overlaps an existing booking on this calendar. Pick a different time.' : SLOT_CONFLICT_MESSAGE);
+      }
       throw error;
     }
 

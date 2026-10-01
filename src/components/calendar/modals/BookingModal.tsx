@@ -25,6 +25,8 @@ import { createRecurringSeries } from '@/app/actions/calendar/recurringMeetings'
 import { listResources, getResourceAvailability } from '@/app/actions/calendar/resources';
 import { getCalendarTypeLabel } from '@/lib/calendar/calendarTypes';
 import { cn } from '@/lib/utils';
+import { zonedTimeToUtc } from '@/lib/calendar/timezone';
+import { apptZone, safeZone, wallClock, dayKeyInZone, formatTime12, formatTime24, tzLabel, tzShort } from '@/lib/calendar/displayTime';
 import { toast } from 'sonner';
 
 type MeetingMode = 'google_meet' | 'zoom' | 'phone' | 'in_person' | 'custom_link' | 'client_choice' | 'internal_meet';
@@ -72,7 +74,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 const newOperationId = () => crypto.randomUUID();
 
 // A server rejection that means "that time is gone" — the user must pick another time.
-const isSlotGoneMessage = (msg: string) => /just taken|no longer available|conflicts with|outside the|minimum notice|not available/i.test(msg);
+const isSlotGoneMessage = (msg: string) => /just taken|overlaps an existing|no longer available|conflicts with|outside the|minimum notice|not available/i.test(msg);
 
 const MODE_LABELS: Record<MeetingMode, string> = {
   internal_meet: 'LeadsMind Video (Internal)',
@@ -126,6 +128,12 @@ export default function BookingModal({
   const [slotReloadKey, setSlotReloadKey] = useState(0);
   const slotReqRef = useRef(0);
 
+  // Staff mode: a custom start/duration that does not have to be on the public slot grid. Interpreted on
+  // the CALENDAR's wall clock; the server still enforces the no-overlap constraint.
+  const [customOn, setCustomOn] = useState(false);
+  const [customStart, setCustomStart] = useState('');
+  const [customDuration, setCustomDuration] = useState(30);
+
   // Edit mode only: free-form wall-clock times (staff reschedule is not limited to the public grid).
   const [editStart, setEditStart] = useState('');
   const [editEnd, setEditEnd] = useState('');
@@ -145,7 +153,10 @@ export default function BookingModal({
 
   const browserTz = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
   const selectedCalendar = calendars.find((c) => c.id === calendarId);
-  const slotTimezone = slotState.status === 'ready' ? slotState.timezone : (selectedCalendar?.timezone || 'UTC');
+  const slotTimezone = slotState.status === 'ready' ? slotState.timezone : safeZone(selectedCalendar?.timezone);
+  // Edit mode interprets the time fields on the calendar's wall clock (falls back to the meeting's own zone).
+  const editTz = safeZone(selectedCalendar?.timezone ?? (initialAppointment ? apptZone(initialAppointment).timeZone : 'UTC'));
+  const customDurationOptions = [15, 30, 45, 60, 90, 120];
 
   // 1. Reset everything each time the dialog opens (NOT on every parent re-render — the old effect
   // depended on `calendars`/`allAppointments` and could wipe the user's input mid-edit).
@@ -159,6 +170,7 @@ export default function BookingModal({
     setContactResults([]);
     setContactSearchError(false);
     setSlotStart(''); setSlotEnd(''); setSlotLabel('');
+    setCustomOn(false); setCustomStart(''); setCustomDuration(30);
     setSlotState({ status: 'idle' });
     setRepeat('none'); setRepeatInterval(1); setRepeatEndType('count'); setRepeatCount(4); setRepeatUntil('');
 
@@ -169,9 +181,11 @@ export default function BookingModal({
       setContactId(initialAppointment.contact_id || '');
       setSelectedContact(initialAppointment.contact ? { id: initialAppointment.contact_id, ...initialAppointment.contact } : null);
       setTitle(initialAppointment.title || '');
-      setDate(format(parseISO(initialAppointment.start_time), 'yyyy-MM-dd'));
-      setEditStart(format(parseISO(initialAppointment.start_time), 'HH:mm'));
-      setEditEnd(format(parseISO(initialAppointment.end_time), 'HH:mm'));
+      // The calendar's wall clock, not the browser's.
+      const zone = apptZone(initialAppointment).timeZone;
+      setDate(wallClock(initialAppointment.start_time, zone).date);
+      setEditStart(formatTime24(initialAppointment.start_time, zone));
+      setEditEnd(formatTime24(initialAppointment.end_time, zone));
       setMeetingMode(initialAppointment.meeting_mode || 'internal_meet');
       setResourceId(initialAppointment.resource_id || '');
       return;
@@ -188,7 +202,7 @@ export default function BookingModal({
     if (initialDate) {
       const dateStr = format(initialDate, 'yyyy-MM-dd');
       setDate(dateStr);
-      const hasEvents = allAppointments.some((apt) => format(parseISO(apt.start_time), 'yyyy-MM-dd') === dateStr);
+      const hasEvents = allAppointments.some((apt) => dayKeyInZone(apt.start_time, apptZone(apt).timeZone) === dateStr);
       setStep(hasEvents ? 'agenda' : 'form');
     } else {
       setDate(format(new Date(), 'yyyy-MM-dd'));
@@ -249,15 +263,26 @@ export default function BookingModal({
     return () => controller.abort();
   }, [isOpen, isEdit, calendarId, date, slotReloadKey]);
 
+  // 4b. Custom staff time -> the effective selection (runs after 4, which clears the picked slot on a date change).
+  useEffect(() => {
+    if (!isOpen || isEdit || !customOn) return;
+    const m = customStart.match(/^([01]?[0-9]|2[0-3]):([0-5][0-9])$/);
+    if (!m || !date) { setSlotStart(''); setSlotEnd(''); setSlotLabel(''); return; }
+    const hhmm = `${m[1].padStart(2, '0')}:${m[2]}`;
+    const start = zonedTimeToUtc(date, hhmm, slotTimezone);
+    const end = new Date(start.getTime() + customDuration * 60_000);
+    setSlotStart(start.toISOString()); setSlotEnd(end.toISOString()); setSlotLabel(formatTime12(start, slotTimezone));
+  }, [isOpen, isEdit, customOn, customStart, customDuration, date, slotTimezone]);
+
   // 5. Resource availability for the chosen time (debounced, best effort — DB constraint is the guarantee).
   const resourceWindow = useMemo(() => {
     if (isEdit) {
       if (!date || !editStart || !editEnd) return null;
-      const s = new Date(`${date}T${editStart}`); const e = new Date(`${date}T${editEnd}`);
+      const s = zonedTimeToUtc(date, editStart, editTz); const e = zonedTimeToUtc(date, editEnd, editTz);
       return isNaN(s.getTime()) || isNaN(e.getTime()) || e <= s ? null : { start: s.toISOString(), end: e.toISOString() };
     }
     return slotStart && slotEnd ? { start: slotStart, end: slotEnd } : null;
-  }, [isEdit, date, editStart, editEnd, slotStart, slotEnd]);
+  }, [isEdit, date, editStart, editEnd, editTz, slotStart, slotEnd]);
 
   useEffect(() => {
     if (!isOpen || resources.length === 0 || !resourceWindow) { setResourceAvailability(null); return; }
@@ -317,12 +342,14 @@ export default function BookingModal({
   const titleOk = title.trim().length >= 3;
   const editTimesOk = !!(date && editStart && editEnd && editEnd > editStart);
   // Calendar, date and a real slot are all required before Review / Confirm unlock.
-  const newBookingValid = !!(calendarId && date && slotStart && slotEnd) && titleOk;
+  const inFuture = !!slotStart && new Date(slotStart).getTime() > Date.now();
+  const newBookingValid = !!(calendarId && date && slotStart && slotEnd) && inFuture && titleOk;
   const editValid = !!calendarId && editTimesOk && titleOk;
+  const isCustomSelection = !isEdit && customOn && !!slotStart;
   const repeatValid = repeat === 'none' || (repeatEndType === 'count' ? repeatCount >= 2 && repeatCount <= 60 : !!repeatUntil) && repeatInterval >= 1 && repeatInterval <= 52;
   const canSubmit = (isEdit ? editValid : newBookingValid) && repeatValid && !submitting;
 
-  const fingerprint = JSON.stringify([calendarId, date, slotStart, title.trim(), contactId, meetingMode, resourceId, repeat]);
+  const fingerprint = JSON.stringify([calendarId, date, slotStart, slotEnd, title.trim(), contactId, meetingMode, resourceId, repeat]);
 
   const submit = async () => {
     if (submittingRef.current) return; // second click in the same tick
@@ -334,8 +361,8 @@ export default function BookingModal({
     try {
       let res: any;
       if (isEdit) {
-        const start = new Date(`${date}T${editStart}`);
-        const end = new Date(`${date}T${editEnd}`);
+        const start = zonedTimeToUtc(date, editStart, editTz);
+        const end = zonedTimeToUtc(date, editEnd, editTz);
         res = onSeriesReschedule
           ? await withTimeout(onSeriesReschedule(start.toISOString()), BOOKING_TIMEOUT_MS)
           : await withTimeout(updateAppointment(initialAppointment.id, {
@@ -368,6 +395,7 @@ export default function BookingModal({
           startTime: slotStart,
           endTime: slotEnd,
           meetingMode,
+          clientOperationId: opRef.current.id,
           recurrence: {
             frequency: repeat,
             interval: repeatInterval,
@@ -385,6 +413,9 @@ export default function BookingModal({
           meetingMode,
           resourceId: resourceId || null,
           clientOperationId: opRef.current.id,
+          // Staff booking: custom times / inside the notice window / beyond the booking horizon are allowed.
+          // The no-overlap constraint is still enforced by the database.
+          staffBooking: true,
         }), BOOKING_TIMEOUT_MS);
       }
 
@@ -459,7 +490,7 @@ export default function BookingModal({
         {slotState.status === 'ready' && slotState.slots.length === 0 && (
           <div>
             <p className="text-[13px] font-bold !text-dash-text">No availability on this date</p>
-            <p className="text-[12px] !text-dash-textMuted mt-1">Try another date, or check this calendar's hours on the Availability page.</p>
+            <p className="text-[12px] !text-dash-textMuted mt-1">Try another date, or use a custom time below — staff can book outside the public hours.</p>
           </div>
         )}
         {slotState.status === 'ready' && slotState.slots.length > 0 && (
@@ -472,7 +503,7 @@ export default function BookingModal({
                   type="button"
                   role="option"
                   aria-selected={active}
-                  onClick={() => { setSlotStart(s.start); setSlotEnd(s.end); setSlotLabel(s.timeLabel); setSubmitError(null); }}
+                  onClick={() => { setCustomOn(false); setSlotStart(s.start); setSlotEnd(s.end); setSlotLabel(s.timeLabel); setSubmitError(null); }}
                   className={cn(
                     'h-9 rounded-lg border text-[12px] font-bold transition-colors motion-reduce:transition-none',
                     active
@@ -484,6 +515,49 @@ export default function BookingModal({
                 </button>
               );
             })}
+          </div>
+        )}
+      </div>
+      <div className="mt-2">
+        <button
+          type="button"
+          onClick={() => { setCustomOn((v) => !v); setSlotStart(''); setSlotEnd(''); setSlotLabel(''); setSubmitError(null); }}
+          className="text-[12px] font-bold text-dash-accent hover:underline"
+          aria-expanded={customOn}
+        >
+          {customOn ? '← Back to available times' : 'Need a different time? Use a custom time'}
+        </button>
+        {customOn && (
+          <div className="mt-2 rounded-xl border border-dash-border bg-white p-3 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] font-bold !text-dash-textMuted block mb-1" htmlFor="custom-start">Start (24h, {tzShort(slotTimezone, date ? `${date}T12:00:00Z` : undefined)})</label>
+                <Input
+                  id="custom-start"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  placeholder="HH:MM e.g. 14:15"
+                  maxLength={5}
+                  value={customStart}
+                  onChange={(e) => setCustomStart(e.target.value.replace(/[^0-9:]/g, ''))}
+                  className="bg-white border-dash-border !text-dash-text h-10 px-3"
+                />
+                {customStart && !/^([01]?[0-9]|2[0-3]):([0-5][0-9])$/.test(customStart) && <p className="text-[10px] !text-red mt-1">Use 24-hour HH:MM.</p>}
+              </div>
+              <div>
+                <span className="text-[10px] font-bold !text-dash-textMuted block mb-1">Duration</span>
+                <Select value={String(customDuration)} onValueChange={(v) => setCustomDuration(Number(v))}>
+                  <SelectTrigger className="bg-white border-dash-border !text-dash-text h-10" aria-label="Duration"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-white border-dash-border z-[1100]">
+                    {customDurationOptions.map((m) => <SelectItem key={m} value={String(m)}>{m} minutes</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <p className="text-[11px] !text-dash-textMuted">
+              Custom times skip the public booking hours, minimum notice and booking window. A time that overlaps an existing booking on this calendar is still rejected.
+            </p>
+            {slotStart && !inFuture && <p className="text-[11px] !text-red">That time is in the past — pick a future time.</p>}
           </div>
         )}
       </div>
@@ -578,11 +652,11 @@ export default function BookingModal({
       {isEdit ? (
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={labelCls} htmlFor="edit-start">Start</label>
+            <label className={labelCls} htmlFor="edit-start">Start ({tzShort(editTz, date ? `${date}T12:00:00Z` : undefined)})</label>
             <Input id="edit-start" type="time" value={editStart} onChange={(e) => setEditStart(e.target.value)} className={cn(inputCls, 'px-3')} />
           </div>
           <div>
-            <label className={labelCls} htmlFor="edit-end">End</label>
+            <label className={labelCls} htmlFor="edit-end">End ({tzShort(editTz, date ? `${date}T12:00:00Z` : undefined)})</label>
             <Input id="edit-end" type="time" value={editEnd} onChange={(e) => setEditEnd(e.target.value)} className={cn(inputCls, 'px-3')} />
             {editStart && editEnd && editEnd <= editStart && <p className="text-[10px] !text-red mt-1">End must be after start.</p>}
           </div>
@@ -712,8 +786,9 @@ export default function BookingModal({
         {reviewRow('Calendar', selectedCalendar ? selectedCalendar.name : '—')}
         {reviewRow('Title', title.trim())}
         {reviewRow('Date', prettyDate)}
-        {reviewRow('Time', `${slotLabel} – ${slotEnd ? new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: slotTimezone }).format(parseISO(slotEnd)) : ''}`)}
-        {reviewRow('Timezone', slotTimezone)}
+        {reviewRow('Time', `${slotLabel} – ${slotEnd ? formatTime12(slotEnd, slotTimezone) : ''}`)}
+        {reviewRow('Timezone', tzLabel(slotTimezone, slotStart || undefined))}
+        {isCustomSelection && reviewRow('Custom time', 'Outside the public booking slots')}
         {reviewRow('Contact', selectedContact ? `${selectedContact.first_name} ${selectedContact.last_name}` : 'None')}
         {reviewRow('Meeting mode', MODE_LABELS[meetingMode])}
         {resourceId && reviewRow('Resource', resources.find((r) => r.id === resourceId)?.name || '')}
@@ -732,7 +807,7 @@ export default function BookingModal({
       <CheckCircle2 size={44} className="text-green" />
       <p className="text-[18px] font-bold !text-dash-text">{repeat !== 'none' ? 'Recurring meeting booked' : 'Appointment booked'}</p>
       <p className="text-[13px] !text-dash-textMuted">
-        {title.trim()} · {prettyDate} · {slotLabel} ({slotTimezone})
+        {title.trim()} · {prettyDate} · {slotLabel} ({tzLabel(slotTimezone, slotStart || undefined)})
       </p>
       <DashButton variant="primary" size="lg" className="mt-2 px-10" onClick={onClose}>Done</DashButton>
     </div>
@@ -764,7 +839,7 @@ export default function BookingModal({
           <div className="py-6 space-y-6">
             <div className="space-y-3 max-h-[350px] overflow-y-auto pr-2">
               {allAppointments
-                .filter((apt) => format(parseISO(apt.start_time), 'yyyy-MM-dd') === date)
+                .filter((apt) => dayKeyInZone(apt.start_time, apptZone(apt).timeZone) === date)
                 .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
                 .map((apt) => (
                   <div
@@ -779,7 +854,7 @@ export default function BookingModal({
                       <div className="min-w-0">
                         <p className="text-[14px] font-bold !text-dash-text group-hover:text-dash-accent transition-colors motion-reduce:transition-none truncate">{apt.title}</p>
                         <p className="text-[11px] !text-dash-textMuted flex items-center gap-1.5 mt-0.5 font-bold">
-                          {format(parseISO(apt.start_time), 'h:mm a')} - {format(parseISO(apt.end_time), 'h:mm a')}
+                          {formatTime12(apt.start_time, apptZone(apt).timeZone)} - {formatTime12(apt.end_time, apptZone(apt).timeZone)} {tzShort(apptZone(apt).timeZone, apt.start_time)}
                         </p>
                       </div>
                     </div>
@@ -799,7 +874,7 @@ export default function BookingModal({
           <>
             {renderForm()}
             <DialogFooter className="border-t border-dash-border pt-4 mt-2 gap-2">
-              {!isEdit && date && allAppointments.some((apt) => format(parseISO(apt.start_time), 'yyyy-MM-dd') === date) && (
+              {!isEdit && date && allAppointments.some((apt) => dayKeyInZone(apt.start_time, apptZone(apt).timeZone) === date) && (
                 <DashButton variant="ghost" onClick={() => setStep('agenda')} className="flex-1">Back to Agenda</DashButton>
               )}
               {isEdit ? (
