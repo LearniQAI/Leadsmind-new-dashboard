@@ -1,3 +1,11 @@
+// MANUAL ONLY. This hits the live project and writes real rows, so it never runs unless asked for:
+//   - it is not matched by the main vitest config (src/** only) and so not by `npm test` or the Vercel build;
+//   - even if someone points vitest at this file, the whole suite (and its hooks) is a no-op unless
+//     RUN_LIVE_BOOKING_TESTS=1 is set. Run it with:  npm run test:live:booking
+// Test rows are tagged: every appointment / recurring series this file creates has a title starting
+// with "bkflow-" (and every calendar name with "bkflow-"), and the sweep deletes by that tag BOTH before
+// (leftovers from a killed run) and after (this run) - so an interrupted run can't leave rows behind.
+//
 // Live verification of the staff booking path (BookingModal -> getStaffBookableSlots / createAppointment)
 // under a REAL signed-in user session, against the live project, in Zain Workspace only.
 //
@@ -12,10 +20,12 @@ import { randomUUID } from 'crypto';
 import { createServerClient as ssrClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 
+const RUN = process.env.RUN_LIVE_BOOKING_TESTS === '1';
 const ZAIN_WS = 'b83f0966-837e-4952-9cd4-480be4ca3f16';
 const ZAIN_ADMIN_EMAIL = 'zainalimuhammad5857@gmail.com';
 const OTHER_WS_CONTACT_WS = '1f061259-810e-42a9-82a8-2a3836264b77';
-const PREFIX = `bkflow-${randomUUID().slice(0, 8)}`;
+const TAG = 'bkflow-';
+const PREFIX = `${TAG}${randomUUID().slice(0, 8)}`;
 
 let activeJar = new Map<string, string>();
 vi.mock('next/headers', () => ({
@@ -62,7 +72,22 @@ const book = (slot: { start: string; end: string }, extra: Record<string, any> =
   timed('createAppointment', () => A.createAppointment({ calendarId, title: `${PREFIX} booking`, startTime: slot.start, endTime: slot.end, meetingMode: 'internal_meet', ...extra }));
 const track = (r: any) => { if (r?.success && r.data?.id) createdIds.add(r.data.id); return r; };
 
+/** Deletes every tagged test row in Zain Workspace (appointments, then series, then test calendars). */
+async function sweepTaggedRows(): Promise<{ appointments: string[]; series: string[]; calendars: string[] }> {
+  const del = async (table: string, col: string) => {
+    const { data } = await admin.from(table).select('id').eq('workspace_id', ZAIN_WS).like(col, `${TAG}%`);
+    const ids = (data ?? []).map((r: any) => r.id as string);
+    if (ids.length) await admin.from(table).delete().eq('workspace_id', ZAIN_WS).in('id', ids);
+    return ids;
+  };
+  const appointments = await del('appointments', 'title');
+  const series = await del('recurring_series', 'title');
+  const calendars = await del('booking_calendars', 'name');
+  return { appointments, series, calendars };
+}
+
 beforeAll(async () => {
+  if (!RUN) return;
   admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
   // Real session for the existing Zain Workspace admin: ADMIN mints the OTP, the user client redeems it.
   const { data: link, error } = await admin.auth.admin.generateLink({ type: 'magiclink', email: ZAIN_ADMIN_EMAIL });
@@ -78,23 +103,25 @@ beforeAll(async () => {
   const React = (await import('react')).default as any;
   if (typeof React.cache !== 'function') React.cache = (fn: any) => fn;
   A = await import('@/app/actions/calendar/appointments');
-  const { data: cals } = await admin.from('booking_calendars').select('id').eq('workspace_id', ZAIN_WS).limit(1);
+  // Leftovers from a previously killed run.
+  report.staleSweep = await sweepTaggedRows();
+  const { data: cals } = await admin.from('booking_calendars').select('id').eq('workspace_id', ZAIN_WS).not('name', 'like', `${TAG}%`).limit(1);
   calendarId = cals[0].id;
 });
 
 afterAll(async () => {
-  // Teardown: every appointment this run created (by id AND by title prefix as a safety net).
-  const { data: byPrefix } = await admin.from('appointments').select('id').eq('workspace_id', ZAIN_WS).like('title', `${PREFIX}%`);
-  for (const r of byPrefix ?? []) createdIds.add(r.id);
+  if (!RUN) return;
+  // Teardown always runs (pass or fail): ids this run tracked, plus everything carrying the tag.
   const ids = [...createdIds];
   if (ids.length) await admin.from('appointments').delete().eq('workspace_id', ZAIN_WS).in('id', ids);
-  const { count } = await admin.from('appointments').select('id', { count: 'exact', head: true }).like('title', `${PREFIX}%`);
-  report.cleanup = { deleted_appointment_ids: ids, remaining_with_prefix: count, e_mails_suppressed: mail.sent };
+  const swept = await sweepTaggedRows();
+  const { count } = await admin.from('appointments').select('id', { count: 'exact', head: true }).like('title', `${TAG}%`);
+  report.cleanup = { tracked_appointment_ids: ids, swept, remaining_tagged_appointments: count, e_mails_suppressed: mail.sent };
   // A passing vitest run swallows stdout, so persist the report where the caller can read it.
   if (process.env.BOOKING_REPORT_FILE) (await import('fs')).writeFileSync(process.env.BOOKING_REPORT_FILE, JSON.stringify({ report, timing }, null, 1));
 });
 
-describe('staff booking flow (real session, Zain Workspace)', () => {
+describe.skipIf(!RUN)('staff booking flow (real session, Zain Workspace)', () => {
   it('availability: slots + explicit timezone for a free day; empty (no availability) beyond the horizon', async () => {
     const day = await freeDay();
     expect(day.timezone).toBeTruthy();
@@ -190,4 +217,113 @@ describe('staff booking flow (real session, Zain Workspace)', () => {
     expect(hit.calendar?.name).toBeTruthy(); // join now present -> type filter + agenda calendar name work
     report.listAndCalendar = { id: r.data.id, inBookingList: true, inCalendarQuery: true, calendarName: hit.calendar.name };
   });
+
+  // ---------------------------------------------------------------------------------------------
+  // Staff mode: what staff CAN book now.
+  // ---------------------------------------------------------------------------------------------
+  it('staff mode: inside the minimum-notice window is allowed for staff, rejected by the public rules', async () => {
+    const start = new Date(Math.ceil((Date.now() + 25 * 60_000) / 300_000) * 300_000); // ~25-30 min from now
+    const slot = { start: start.toISOString(), end: new Date(start.getTime() + 30 * 60_000).toISOString() };
+    const publicRules = await book(slot, { clientOperationId: randomUUID() }); // no staffBooking -> validateSlot
+    expect(publicRules.success).toBe(false);
+    const staff = track(await book(slot, { clientOperationId: randomUUID(), staffBooking: true }));
+    expect(staff.success).toBe(true);
+    report.staffInsideNotice = { publicRules: publicRules.error, staffBookingId: staff.data.id, start: slot.start };
+  });
+
+  it('staff mode: beyond the 30-day horizon and outside working hours (03:00 UTC) is allowed', async () => {
+    const d = new Date(Date.now() + 60 * 86_400_000); d.setUTCHours(3, 0, 0, 0);
+    const slot = { start: d.toISOString(), end: new Date(d.getTime() + 45 * 60_000).toISOString() };
+    const r = track(await book(slot, { clientOperationId: randomUUID(), staffBooking: true }));
+    expect(r.success).toBe(true);
+    report.staffBeyondHorizon = { id: r.data.id, start: slot.start, daysAhead: 60 };
+  });
+
+  it('staff mode: custom off-grid time is allowed, but an overlap is still rejected by the database', async () => {
+    const day = await freeDay();
+    const base = new Date(day.slots[12].start);
+    const start = new Date(base.getTime() + 7 * 60_000);
+    const custom = { start: start.toISOString(), end: new Date(start.getTime() + 20 * 60_000).toISOString() };
+    const ok = track(await book(custom, { clientOperationId: randomUUID(), staffBooking: true }));
+    expect(ok.success).toBe(true);
+    const shifted = new Date(start.getTime() + 5 * 60_000);
+    const clash = await book({ start: shifted.toISOString(), end: new Date(shifted.getTime() + 20 * 60_000).toISOString() }, { clientOperationId: randomUUID(), staffBooking: true });
+    expect(clash.success).toBe(false);
+    expect(clash.error).toMatch(/overlaps an existing booking/);
+    const { data: rows } = await admin.from('appointments').select('id').eq('workspace_id', ZAIN_WS).eq('calendar_id', calendarId).eq('status', 'scheduled').like('title', `${PREFIX}%`).gte('start_time', custom.start).lt('start_time', custom.end);
+    expect(rows.length).toBe(1);
+    report.staffCustomAndOverlap = { okId: ok.data.id, overlapMessage: clash.error };
+  });
+
+  it('staff mode: still rejects the past, and end <= start', async () => {
+    const past = new Date(Date.now() - 2 * 3_600_000);
+    const p = await book({ start: past.toISOString(), end: new Date(past.getTime() + 1_800_000).toISOString() }, { clientOperationId: randomUUID(), staffBooking: true });
+    expect(p.success).toBe(false); expect(p.error).toMatch(/in the past/);
+    const f = new Date(Date.now() + 40 * 86_400_000);
+    const e = await book({ start: f.toISOString(), end: f.toISOString() }, { clientOperationId: randomUUID(), staffBooking: true });
+    expect(e.success).toBe(false); expect(e.error).toMatch(/end after it starts/);
+    report.staffSanity = { past: p.error, endBeforeStart: e.error };
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // /api/calendar/slots audit (the route is a thin wrapper over getStaffBookableSlots).
+  // ---------------------------------------------------------------------------------------------
+  it('slots audit: cross-workspace calendar id refused, no session refused, payload is availability-only', async () => {
+    const { data: foreign } = await admin.from('booking_calendars').select('id').eq('workspace_id', OTHER_WS_CONTACT_WS).limit(1);
+    const date = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
+    const cross = await A.getStaffBookableSlots(foreign[0].id, date);
+    expect(cross.success).toBe(false);
+    expect(cross.error).toMatch(/not found/i);
+    const t0 = new Date(Date.now() + 5 * 86_400_000);
+    const crossBook = await A.createAppointment({ calendarId: foreign[0].id, title: `${PREFIX} xws`, startTime: t0.toISOString(), endTime: new Date(t0.getTime() + 1_800_000).toISOString(), staffBooking: true });
+    expect(crossBook.success).toBe(false);
+    const saved = activeJar; activeJar = new Map();
+    const anon = await A.getStaffBookableSlots(calendarId, date);
+    activeJar = saved;
+    expect(anon.success).toBe(false);
+    expect(anon.error).toMatch(/unauthor/i);
+    const own = await A.getStaffBookableSlots(calendarId, (await freeDay()).date);
+    expect(Object.keys(own.data).sort()).toEqual(['slotDuration', 'slots', 'timezone']);
+    for (const s of own.data.slots) expect(Object.keys(s).sort()).toEqual(['end', 'start', 'timeLabel']);
+    expect(JSON.stringify(own.data)).not.toMatch(/bkflow|contact|email|title|appointmentId/i);
+    report.slotsAudit = { crossWorkspace: cross.error, crossWorkspaceBook: crossBook.error, noSession: anon.error, topLevelKeys: Object.keys(own.data), slotKeys: Object.keys(own.data.slots[0]) };
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // Recurring bookings: idempotent per series.
+  // ---------------------------------------------------------------------------------------------
+  it('recurring: replay and concurrent double-submit with one operation id create exactly one series', async () => {
+    const R = await import('@/app/actions/calendar/recurringMeetings');
+    const mk = (daysAhead: number, op: string) => {
+      const d = new Date(Date.now() + daysAhead * 86_400_000); d.setUTCHours(10, 0, 0, 0);
+      return R.createRecurringSeries({
+        calendarId, title: `${PREFIX} series`, startTime: d.toISOString(), endTime: new Date(d.getTime() + 1_800_000).toISOString(),
+        meetingMode: 'internal_meet', clientOperationId: op,
+        recurrence: { frequency: 'weekly', interval: 1, count: 3, until: null },
+      } as any);
+    };
+    const seriesFor = async (op: string) => (await admin.from('recurring_series').select('id, occurrence_count').eq('workspace_id', ZAIN_WS).eq('client_operation_id', op)).data as any[];
+    const occCount = async (sid: string) => (await admin.from('appointments').select('id', { count: 'exact', head: true }).eq('series_id', sid)).count as number;
+
+    const op1 = randomUUID();
+    const first: any = await mk(70, op1);
+    expect(first.success).toBe(true);
+    const replay: any = await mk(70, op1);
+    expect(replay.success).toBe(true);
+    expect(replay.data.seriesId).toBe(first.data.seriesId);
+    expect((await seriesFor(op1)).length).toBe(1);
+    expect(await occCount(first.data.seriesId)).toBe(3);
+
+    const op2 = randomUUID();
+    const [a, b]: any[] = await Promise.all([mk(100, op2), mk(100, op2)]);
+    expect(a.success && b.success).toBe(true);
+    expect(a.data.seriesId).toBe(b.data.seriesId);
+    expect((await seriesFor(op2)).length).toBe(1);
+    expect(await occCount(a.data.seriesId)).toBe(3);
+
+    const bad: any = await mk(130, 'not-a-uuid');
+    expect(bad.success).toBe(false);
+    report.recurring = { replaySameSeries: replay.data.seriesId === first.data.seriesId, occurrences: 3, concurrentSameSeries: a.data.seriesId === b.data.seriesId, seriesRowsPerOperation: 1, badOperationId: bad.error };
+  });
+
 });
