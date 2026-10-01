@@ -73,7 +73,7 @@ const ContactSelector: React.FC<ContactSelectorProps> = ({
     setIsOpen(true);
   };
 
-  const useExisting = (existing: Contact) => {
+  const selectExisting = (existing: Contact) => {
     setLocalContacts((prev) => (prev.some((c) => c.id === existing.id) ? prev : [existing, ...prev]));
     onContactAvailable?.(existing);
     onChange(existing.id);
@@ -260,7 +260,7 @@ const ContactSelector: React.FC<ContactSelectorProps> = ({
                     {formError.existing.first_name} {formError.existing.last_name}
                     {formError.existing.email ? ` (${formError.existing.email})` : ''}
                   </p>
-                  <DashButton type="button" variant="primary" size="sm" onClick={() => useExisting(formError.existing)}>
+                  <DashButton type="button" variant="primary" size="sm" onClick={() => selectExisting(formError.existing)}>
                     Use this client
                   </DashButton>
                 </div>
