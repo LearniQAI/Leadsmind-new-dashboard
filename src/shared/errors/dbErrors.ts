@@ -10,7 +10,7 @@
 
 export interface FriendlyDbError {
   /** Stable machine code for callers that want to branch (e.g. offer "select the existing one"). */
-  code: 'DUPLICATE' | 'INVALID_FORMAT' | 'REFERENCE_MISSING' | 'REQUIRED_MISSING' | 'INVALID_VALUE';
+  code: 'DUPLICATE' | 'DUPLICATE_EMAIL' | 'INVALID_FORMAT' | 'REFERENCE_MISSING' | 'REQUIRED_MISSING' | 'INVALID_VALUE';
   message: string;
   status: number;
   sqlState: string;
@@ -22,10 +22,17 @@ export function sqlStateOf(err: unknown): string | undefined {
   return typeof code === 'string' && /^[0-9A-Z]{5}$/.test(code) ? code : undefined;
 }
 
+// The three unique keys on contacts that mean "this email is already a client here": the exact-case key and its
+// old twin, and the case-insensitive partial index. Matched by name only to pick the message; the name is never shown.
+const CONTACT_EMAIL_KEYS = /contacts_workspace_id_email_key|unique_workspace_contact|contacts_workspace_lower_email_key/;
+
 export function friendlyDbError(err: unknown): FriendlyDbError | null {
   const sqlState = sqlStateOf(err);
   switch (sqlState) {
     case '23505': // unique_violation
+      if (CONTACT_EMAIL_KEYS.test(`${(err as any)?.message ?? ''} ${(err as any)?.details ?? ''}`)) {
+        return { code: 'DUPLICATE_EMAIL', sqlState, status: 409, message: 'A client with this email already exists.' };
+      }
       return { code: 'DUPLICATE', sqlState, status: 409, message: 'This already exists. Check for a duplicate and try again.' };
     case '22P02': // invalid_text_representation (e.g. '' or a non-uuid into a uuid column)
       return { code: 'INVALID_FORMAT', sqlState, status: 422, message: 'Some of the information entered is not in a valid format. Please check it and try again.' };
