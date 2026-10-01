@@ -106,6 +106,12 @@ export class ContactService {
       if (email) {
         const existing = await this.repo.findByEmail(workspaceId, email);
         if (existing) {
+          // The "duplicate" may be THIS very submit's twin that just won the race (same operation id): that's a replay,
+          // not a conflict.
+          if (operationId) {
+            const prior = await this.repo.findByOperationId(workspaceId, operationId);
+            if (prior) { replayed = true; return prior; }
+          }
           throw new AppError("DUPLICATE_EMAIL", "A client with this email already exists.", 409, { existing });
         }
       }

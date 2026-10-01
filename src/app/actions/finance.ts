@@ -446,6 +446,11 @@ export async function deleteInvoice(id: string) {
 }
 
 export async function updateInvoiceStatus(id: string, status: string) {
+  // 'sent' is never a plain flag: it must mean an invoice email actually went out. Route it through the one gate that
+  // renders the PDF, sends the email and ONLY THEN flips the status. If PDF generation or the provider fails the invoice
+  // stays as it was and the caller gets the error.
+  if (status === 'sent') return sendInvoiceNow(id);
+
   const { workspaceId } = await requireWorkspaceAccess();
   const supabase = await createServerClient();
 

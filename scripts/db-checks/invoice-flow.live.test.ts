@@ -33,6 +33,17 @@ vi.mock('next/headers', () => ({
 }));
 vi.mock('next/cache', () => ({ revalidatePath: () => {}, revalidateTag: () => {} }));
 
+// Failure injection for the send-gate tests (default: real PDF, real provider).
+const inject = vi.hoisted(() => ({ pdf: 'real' as 'real' | 'fail', mail: 'real' as 'real' | 'fail', mailAttempts: 0 }));
+vi.mock('@/lib/pdf/htmlToPdf', async (orig) => {
+  const real = await orig<any>();
+  return { ...real, htmlToPdfBuffer: (...a: any[]) => (inject.pdf === 'fail' ? Promise.reject(new Error('injected: chromium failed to launch')) : real.htmlToPdfBuffer(...a)) };
+});
+vi.mock('@/lib/email', async (orig) => {
+  const real = await orig<any>();
+  return { ...real, sendEmail: (...a: any[]) => { inject.mailAttempts++; return inject.mail === 'fail' ? Promise.reject(new Error('injected: provider down')) : real.sendEmail(...a); } };
+});
+
 let admin: any;
 let C: any; // contacts actions
 let F: any; // finance actions
@@ -294,6 +305,43 @@ describe.skipIf(!RUN)('invoice flow (real session, Zain Workspace)', () => {
       expect(after).toBe(before);
     }
     report.update = { total: d.total_amount, amountPaidKept: d.amount_paid, amountDue: d.amount_due, ghostUpdate: ghost.error };
+  });
+
+  it('send is a gate: PDF failure and provider failure leave the invoice a DRAFT with a visible error; "mark as sent" cannot bypass it; Retry then works', async () => {
+    const inv = track(await F.saveInvoice(invoicePayload(clientA, { clientOperationId: randomUUID() }), { skipAutoNotify: true }));
+    const id = inv.data.id;
+    try {
+      inject.pdf = 'fail'; inject.mailAttempts = 0;
+      const pdfFail = await F.sendInvoiceNow(id);
+      expect(pdfFail.success).toBe(false);
+      expect(pdfFail.error).toBe('Failed to send invoice. Please try again.'); // generic: no chromium/path detail
+      expect((await row('invoices', id)).status).toBe('draft');
+      expect(inject.mailAttempts).toBe(0); // no email without a PDF
+
+      const viaStatus = await F.updateInvoiceStatus(id, 'sent'); // the preview's "Send invoice" menu item
+      expect(viaStatus.success).toBe(false);
+      expect((await row('invoices', id)).status).toBe('draft');
+      expect(inject.mailAttempts).toBe(0);
+
+      inject.pdf = 'real'; inject.mail = 'fail';
+      const mailFail = await F.sendInvoiceNow(id);
+      expect(mailFail.success).toBe(false);
+      expect(inject.mailAttempts).toBe(1); // attempted, failed
+      expect((await row('invoices', id)).status).toBe('draft');
+
+      inject.mail = 'real';
+      const retry = await F.sendInvoiceNow(id); // the user's Retry
+      expect(retry.success).toBe(true);
+      expect((await row('invoices', id)).status).toBe('sent');
+
+      const inv2 = track(await F.saveInvoice(invoicePayload(clientA, { clientOperationId: randomUUID() }), { skipAutoNotify: true }));
+      const viaMenu = await F.updateInvoiceStatus(inv2.data.id, 'sent');
+      expect(viaMenu.success).toBe(true);
+      expect((await row('invoices', inv2.data.id)).status).toBe('sent');
+      report.sendGate = { pdfFailure: pdfFail.error, statusAfterPdfFailure: 'draft', emailsAttemptedAfterPdfFailure: 0, markSentBypassBlocked: viaStatus.error, providerFailureStatus: 'draft', retrySucceeded: retry.success, menuSendSucceeded: viaMenu.success };
+    } finally {
+      inject.pdf = 'real'; inject.mail = 'real';
+    }
   });
 
   it('send: failure (PDF/provider) leaves the invoice a DRAFT and returns a message; no-email client is refused before anything is sent', async () => {

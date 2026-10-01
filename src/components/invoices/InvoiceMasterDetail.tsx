@@ -14,7 +14,7 @@ import Link from 'next/link';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { deleteInvoice, updateInvoiceStatus, writeOffInvoice, markInvoicePaidManually } from '@/app/actions/finance';
+import { deleteInvoice, updateInvoiceStatus, sendInvoiceNow, writeOffInvoice, markInvoicePaidManually } from '@/app/actions/finance';
 import { refundInvoice } from '@/app/actions/refunds';
 import WriteOffDialog from './WriteOffDialog';
 import MarkPaidManuallyDialog from './MarkPaidManuallyDialog';
@@ -155,11 +155,31 @@ export function InvoiceMasterDetail({ invoices: initialInvoices, initialSelected
       return 0;
     });
 
+  // Marking an invoice 'sent' sends it: the PDF is built and emailed first, and the status only changes if that worked.
+  // A failure leaves the invoice as it was and shows the reason with a Retry — never a silent "sent".
+  const handleSend = async (invoice: any) => {
+    const loadingId = toast.loading('Sending invoice...');
+    const fail = (message: string) => {
+      toast.dismiss(loadingId);
+      toast.error(message, { duration: 15000, action: { label: 'Retry', onClick: () => handleSend(invoice) } });
+    };
+    try {
+      const res: any = await sendInvoiceNow(invoice.id);
+      if (!res.success) return fail(res.error || 'The invoice could not be sent.');
+      toast.dismiss(loadingId);
+      setInvoices(prev => prev.map(i => i.id === invoice.id ? { ...i, status: 'sent' } : i));
+      toast.success('Invoice sent');
+    } catch {
+      fail('Network problem — the invoice was not sent. Check your connection and retry.');
+    }
+  };
+
   const handleStatusChange = async (invoice: any, status: string) => {
+    if (status === 'sent') return handleSend(invoice);
     toast.promise(updateInvoiceStatus(invoice.id, status), {
       loading: `Marking as ${status}...`,
       success: (res) => {
-        if (!res.success) throw new Error(res.error || 'Update failed');
+        if (!res.success) throw new Error((res as any).error || 'Update failed');
         setInvoices(prev => prev.map(i => i.id === invoice.id ? { ...i, status } : i));
         return `Invoice marked as ${status}`;
       },
@@ -327,7 +347,7 @@ export function InvoiceMasterDetail({ invoices: initialInvoices, initialSelected
                         onClick={() => s === 'paid' ? setMarkPaidOpen(true) : handleStatusChange(selectedInvoice, s)}
                         className="flex items-center gap-2 cursor-pointer !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface rounded-lg mx-1 px-3 py-2 text-xs capitalize"
                       >
-                        Mark as {s}
+                        {s === 'sent' ? 'Send invoice' : `Mark as ${s}`}
                       </DropdownMenuItem>
                     ))}
                     <DropdownMenuSeparator className="my-1 bg-dash-border" />
