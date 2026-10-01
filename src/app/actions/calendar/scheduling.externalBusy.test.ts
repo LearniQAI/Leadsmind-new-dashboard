@@ -73,6 +73,8 @@ vi.mock('@/lib/supabase/server', () => ({
 
 import { getAvailableSlots } from './scheduling';
 
+const CAL_ID = '6b62c09a-4b43-4027-9183-a849b2423dfb'; // getAvailableSlots now rejects non-UUID ids before any query
+
 function futureWeekdayISODate(): string {
   const d = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
   while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d.setUTCDate(d.getUTCDate() + 1);
@@ -87,7 +89,7 @@ describe('getAvailableSlots — external calendar busy integration (Task 62)', (
       { start: `${date}T10:00:00.000Z`, end: `${date}T11:00:00.000Z` },
     ]);
 
-    const slots = await getAvailableSlots('cal-1', date);
+    const slots = await getAvailableSlots(CAL_ID, date);
     const starts = slots.map((s: any) => s.start);
 
     // resolved the host to the workspace owner and asked for that host's busy times
@@ -103,7 +105,7 @@ describe('getAvailableSlots — external calendar busy integration (Task 62)', (
     getExternalBusySlots.mockReset();
     getExternalBusySlots.mockResolvedValue([]);
 
-    const slots = await getAvailableSlots('cal-1', date);
+    const slots = await getAvailableSlots(CAL_ID, date);
     const starts = slots.map((s: any) => s.start);
     expect(starts).toContain(`${date}T10:00:00.000Z`);
   });
@@ -118,7 +120,7 @@ describe('getAvailableSlots — external calendar busy integration (Task 62)', (
     let thrown: unknown = null;
     let slots: any[] = [];
     try {
-      slots = await getAvailableSlots('cal-1', date);
+      slots = await getAvailableSlots(CAL_ID, date);
     } catch (e) {
       thrown = e;
     }

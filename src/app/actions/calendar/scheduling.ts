@@ -9,6 +9,7 @@ import { zonedTimeToUtc, isoDateDayOfWeek, formatInTimeZone } from '@/lib/calend
 import { getExternalBusySlots } from '@/lib/calendar/calendarSync';
 import { isGroupSessionType } from '@/lib/calendar/calendarTypes';
 import { logger } from '@/shared/logger';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 /**
  * Resolves the host user whose connected external calendar (Google/Outlook)
@@ -325,7 +326,58 @@ export async function updateRoundRobinStats(_calendarId: string, _userId: string
  * Computes available slots for a given date.
  * Integrates: notice periods, buffer time, date overrides, SA public holidays, load shedding schedules, and slot leases.
  */
+const SLOTS_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** Furthest-ahead date availability is computed for. Booking horizons in the data top out at 30 days. */
+const MAX_SLOT_LOOKAHEAD_DAYS = 62;
+/** Per-IP budget for availability lookups (per instance — see lib/rateLimit.ts). */
+const SLOTS_RATE_LIMIT = 60;
+const SLOTS_RATE_WINDOW_MS = 60_000;
+
+class SlotsRateLimitedError extends Error {
+  constructor(public readonly retryAfterMs: number) {
+    super('Too many availability requests. Please wait a moment and try again.');
+    this.name = 'SlotsRateLimitedError';
+  }
+}
+
+/** A real calendar date 'YYYY-MM-DD' from yesterday to today + 62 days (UTC); anything else is rejected. */
+function isAllowedSlotDate(date: unknown): date is string {
+  if (typeof date !== 'string' || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(date)) return false;
+  const [y, m, d] = date.split('-').map(Number);
+  const t = Date.UTC(y, m - 1, d);
+  const roundTrip = new Date(t);
+  if (roundTrip.getUTCFullYear() !== y || roundTrip.getUTCMonth() !== m - 1 || roundTrip.getUTCDate() !== d) return false; // e.g. 2026-02-31
+  const today = new Date();
+  const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  return t >= todayUtc - 86_400_000 && t <= todayUtc + MAX_SLOT_LOOKAHEAD_DAYS * 86_400_000;
+}
+
+/** Caller IP from the request headers, or null outside a request (crons, scripts) — those are not rate limited. */
+async function callerIp(): Promise<string | null> {
+  try {
+    const { headers } = await import('next/headers');
+    const h = headers();
+    return h.get('x-forwarded-for')?.split(',')[0]?.trim() || h.get('x-real-ip') || 'unknown';
+  } catch {
+    return null;
+  }
+}
+
 export async function getAvailableSlots(calendarId: string, date: string) {
+  // Unauthenticated callers reach this (public booking page, portal), and each call costs ~8 DB queries plus an
+  // external calendar lookup, so reject garbage before any of that. Malformed ids/dates and dates outside
+  // [yesterday, today + 62 days] get the same empty answer as a closed day: no error text to probe with.
+  if (typeof calendarId !== 'string' || !SLOTS_UUID_RE.test(calendarId) || !isAllowedSlotDate(date)) return [];
+
+  const ip = await callerIp();
+  if (ip) {
+    const limit = checkRateLimit(`slots:${ip}`, SLOTS_RATE_LIMIT, SLOTS_RATE_WINDOW_MS);
+    if (!limit.allowed) {
+      logger.warn({ ip, retryAfterMs: limit.retryAfterMs }, 'calendar.available_slots.rate_limited');
+      throw new SlotsRateLimitedError(limit.retryAfterMs);
+    }
+  }
+
   const supabase = createAdminClient();
   
   // 1. Fetch Calendar details
