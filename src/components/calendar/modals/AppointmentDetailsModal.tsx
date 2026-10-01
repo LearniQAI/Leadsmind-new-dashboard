@@ -22,7 +22,7 @@ import {
   Phone,
   Building2
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { apptZone, formatDateLong, formatRange12, tzLabel } from '@/lib/calendar/displayTime';
 import { getCalendarTypeLabel } from '@/lib/calendar/calendarTypes';
 
 interface AppointmentDetailsModalProps {
@@ -44,8 +44,8 @@ export default function AppointmentDetailsModal({
 }: AppointmentDetailsModalProps) {
   if (!appointment) return null;
 
-  const startTime = new Date(appointment.start_time);
-  const endTime = new Date(appointment.end_time);
+  // Shown in the calendar's timezone (never the browser's), with the zone named.
+  const zone = apptZone(appointment);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -73,10 +73,13 @@ export default function AppointmentDetailsModal({
               <CalendarIcon size={20} />
             </div>
             <div>
-              <p className="text-[14px] font-bold !text-dash-text">{format(startTime, 'EEEE, MMMM do, yyyy')}</p>
+              <p className="text-[14px] font-bold !text-dash-text">{formatDateLong(appointment.start_time, zone.timeZone)}</p>
               <p className="text-[12px] font-medium !text-dash-textMuted flex items-center gap-1.5 mt-0.5">
                 <Clock size={14} className="text-dash-accent" />
-                {format(startTime, 'h:mm a')} - {format(endTime, 'h:mm a')}
+                {formatRange12(appointment.start_time, appointment.end_time, zone.timeZone)}
+              </p>
+              <p className="text-[11px] font-bold !text-dash-textMuted mt-0.5">
+                {tzLabel(zone.timeZone, appointment.start_time)}{zone.isBrowserFallback ? ' · your browser timezone (no calendar timezone on this meeting)' : ''}
               </p>
             </div>
           </div>

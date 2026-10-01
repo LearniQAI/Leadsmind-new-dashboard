@@ -8,6 +8,7 @@ import { CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { updateAppointmentStatus } from '@/app/actions/calendar';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { apptZone, formatDateShort, formatTime12, tzShort } from '@/lib/calendar/displayTime';
 
 interface Appointment {
  id: string;
@@ -72,7 +73,7 @@ export function AppointmentsList({ initialAppointments }: AppointmentsListProps)
        <TableCell className="py-6">
          <div className="flex items-center gap-2 text-xs font-bold !text-dash-textMuted">
           <Clock className="h-3.5 w-3.5 text-dash-accent" />
-          {new Date(apt.start_time).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+          {formatDateShort(apt.start_time, apptZone(apt).timeZone)}, {formatTime12(apt.start_time, apptZone(apt).timeZone)} {tzShort(apptZone(apt).timeZone, apt.start_time)}
          </div>
        </TableCell>
        <TableCell className="py-6">

@@ -14,6 +14,7 @@ import {
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { apptZone, dayKeyInZone, wallClock, formatTime12, formatDateShort, tzShort } from '@/lib/calendar/displayTime';
 
 interface CalendarWeekViewProps {
   appointments: any[];
@@ -70,7 +71,8 @@ export default function CalendarWeekView({ appointments }: CalendarWeekViewProps
         <div className="flex-1 grid grid-cols-7 min-w-[700px]">
           {weekDays.map((day) => {
             const isToday = isSameDay(day, new Date());
-            const dayAppointments = appointments.filter(appt => isSameDay(new Date(appt.start_time), day));
+            const dayKey = format(day, 'yyyy-MM-dd');
+            const dayAppointments = appointments.filter(appt => dayKeyInZone(appt.start_time, apptZone(appt).timeZone) === dayKey);
 
             return (
               <div key={day.toString()} className="relative border-r border-dash-border last:border-r-0">
@@ -98,7 +100,9 @@ export default function CalendarWeekView({ appointments }: CalendarWeekViewProps
                 {/* Appointments Overlay */}
                 {dayAppointments.map(appt => {
                    const start = new Date(appt.start_time);
-                   const top = (start.getHours() * 60 + start.getMinutes()); // px from top
+                   const zone = apptZone(appt).timeZone;
+                   const wc = wallClock(start, zone);
+                   const top = wc.hour * 60 + wc.minute; // px from top, on the calendar's own wall clock
                    // Duration logic would go here for height
                    return (
                      <div
@@ -115,7 +119,7 @@ export default function CalendarWeekView({ appointments }: CalendarWeekViewProps
                      >
                        <div className="flex items-center gap-1 mb-1 opacity-70">
                          <Clock size={10} />
-                         {format(start, 'h:mm a')}
+                         {formatTime12(start, zone)} <span className="opacity-70">{tzShort(zone, start)}</span>
                        </div>
                        <div className="truncate">{appt.title}</div>
                      </div>
