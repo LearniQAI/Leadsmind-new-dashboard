@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Users, ChevronDown, UserPlus, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Users, ChevronDown, UserPlus, Loader2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createContact } from '@/app/actions/contacts';
 import { toast } from 'sonner';
@@ -15,23 +15,40 @@ interface Contact {
   id: string;
   first_name: string;
   last_name: string;
-  email: string;
+  email: string | null;
 }
 
 interface ContactSelectorProps {
   contacts: Contact[];
   selectedId?: string;
   onChange: (id: string) => void;
+  /** Called with the full record when a client is created here (or an existing one is picked from the
+   * duplicate prompt), so the parent can use its email without waiting for a page refresh. */
+  onContactAvailable?: (contact: Contact) => void;
 }
+
+const CREATE_TIMEOUT_MS = 30_000;
+
+type FormError =
+  | { kind: 'duplicate'; existing: Contact }
+  | { kind: 'failure'; message: string }
+  | null;
 
 const ContactSelector: React.FC<ContactSelectorProps> = ({
   contacts,
   selectedId,
   onChange,
+  onContactAvailable,
 }) => {
   const [localContacts, setLocalContacts] = useState<Contact[]>(contacts);
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false); // ignores a second submit in the same tick, before React re-renders
+  const [formError, setFormError] = useState<FormError>(null);
+
+  // One operation id per modal open. Reused verbatim on every retry/double-submit of the same form so the server
+  // returns the client it already created; replaced after a success and on each reopen.
+  const operationIdRef = useRef<string>(crypto.randomUUID());
 
   // Form Fields State
   const [firstName, setFirstName] = useState('');
@@ -39,56 +56,97 @@ const ContactSelector: React.FC<ContactSelectorProps> = ({
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
 
-  // Keep local contacts list in sync with parents
+  // Keep the list in sync with the parent WITHOUT dropping a client created here that the parent's (server-fetched)
+  // list doesn't contain yet.
   useEffect(() => {
-    setLocalContacts(contacts);
+    setLocalContacts((prev) => {
+      const known = new Set(contacts.map((c) => c.id));
+      return [...prev.filter((c) => !known.has(c.id)), ...contacts];
+    });
   }, [contacts]);
 
   const selectedContact = localContacts.find(c => c.id === selectedId);
 
-  const handleCreateContact = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const openModal = () => {
+    operationIdRef.current = crypto.randomUUID();
+    setFormError(null);
+    setIsOpen(true);
+  };
+
+  const useExisting = (existing: Contact) => {
+    setLocalContacts((prev) => (prev.some((c) => c.id === existing.id) ? prev : [existing, ...prev]));
+    onContactAvailable?.(existing);
+    onChange(existing.id);
+    toast.success(`Selected existing client ${existing.first_name} ${existing.last_name}`.trim());
+    resetAndClose();
+  };
+
+  const resetAndClose = () => {
+    setFirstName('');
+    setLastName('');
+    setEmail('');
+    setPhone('');
+    setFormError(null);
+    setIsOpen(false);
+  };
+
+  const handleCreateContact = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (submittingRef.current) return;
     if (!firstName.trim() || !lastName.trim()) {
-      toast.error('First name and last name are required');
+      setFormError({ kind: 'failure', message: 'First name and last name are required.' });
       return;
     }
 
+    submittingRef.current = true;
     setIsSubmitting(true);
+    setFormError(null);
     try {
-      const res = await createContact({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        email: email.trim() || undefined,
-        phone: phone.trim() || undefined,
-        source: 'Invoice/Quote Creator',
-      });
+      const res = await Promise.race([
+        createContact({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: email.trim() || undefined,
+          phone: phone.trim() || undefined,
+          source: 'Invoice/Quote Creator',
+          clientOperationId: operationIdRef.current,
+        }),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), CREATE_TIMEOUT_MS)),
+      ]);
 
-      if (res.success && res.data) {
+      if (res.success) {
         const newContact: Contact = {
           id: res.data.id,
           first_name: res.data.first_name,
           last_name: res.data.last_name,
-          email: res.data.email || '',
+          email: res.data.email || null,
         };
 
         // Append to local state list & select instantly
-        setLocalContacts(prev => [newContact, ...prev]);
+        setLocalContacts(prev => [newContact, ...prev.filter((c) => c.id !== newContact.id)]);
+        onContactAvailable?.(newContact);
         onChange(newContact.id);
-
-        toast.success(`Client ${newContact.first_name} added successfully!`);
-
-        // Reset form & close
-        setFirstName('');
-        setLastName('');
-        setEmail('');
-        setPhone('');
-        setIsOpen(false);
+        toast.success(`Client ${newContact.first_name} added.`);
+        operationIdRef.current = crypto.randomUUID(); // consumed
+        resetAndClose();
       } else {
-        toast.error(res.error || 'Failed to create client');
+        const failure = res as { error?: string; code?: string; existing?: Contact };
+        if (failure.code === 'DUPLICATE_EMAIL' && failure.existing) {
+          // Not a failure to retry: offer the client that already has this email.
+          setFormError({ kind: 'duplicate', existing: { ...failure.existing, email: failure.existing.email ?? email.trim() } });
+        } else {
+          setFormError({ kind: 'failure', message: failure.error || 'Could not create the client. Please try again.' });
+        }
       }
     } catch (err: any) {
-      toast.error('An unexpected error occurred: ' + err.message);
+      setFormError({
+        kind: 'failure',
+        message: err?.message === 'timeout'
+          ? 'This is taking longer than expected. Your details are kept — press Create client to retry; it will not create a duplicate.'
+          : 'Network problem — your details are kept. Check your connection and press Create client to retry.',
+      });
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -99,7 +157,7 @@ const ContactSelector: React.FC<ContactSelectorProps> = ({
         <label className="text-[13px] font-semibold !text-dash-text">Bill to client</label>
         <button
           type="button"
-          onClick={() => setIsOpen(true)}
+          onClick={openModal}
           className="text-[11px] font-bold text-dash-accent hover:text-dash-accent/80 flex items-center gap-1 transition-colors motion-reduce:transition-none"
         >
           <UserPlus size={12} /> New client
@@ -131,14 +189,17 @@ const ContactSelector: React.FC<ContactSelectorProps> = ({
       </div>
 
       {selectedContact && (
-        <div className="mt-2 p-3 rounded-lg bg-dash-accent/5 border border-dash-accent/10 animate-in fade-in slide-in-from-top-1 duration-300 motion-reduce:animate-none">
+        <div className="mt-2 p-3 rounded-lg bg-dash-accent/5 border border-dash-accent/10 animate-in fade-in slide-in-from-top-1 duration-300 motion-reduce:animate-none" data-testid="active-client">
           <p className="text-[10px] font-bold text-dash-accent">Active client</p>
           <p className="text-xs font-bold !text-dash-text mt-0.5">{selectedContact.first_name} {selectedContact.last_name}</p>
+          {!selectedContact.email && (
+            <p className="text-[11px] !text-amber mt-1">No email address — you can save this invoice, but it can't be emailed.</p>
+          )}
         </div>
       )}
 
       {/* Create Client Dialog */}
-      <DashModal open={isOpen} onOpenChange={setIsOpen}>
+      <DashModal open={isOpen} onOpenChange={(o) => { if (!o && submittingRef.current) return; setIsOpen(o); }}>
         <DashModalContent className="max-w-md">
           <form onSubmit={handleCreateContact}>
             <DashModalHeader>
@@ -177,7 +238,7 @@ const ContactSelector: React.FC<ContactSelectorProps> = ({
                   type="email"
                   placeholder="e.g. client@organization.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => { setEmail(e.target.value); if (formError?.kind === 'duplicate') setFormError(null); }}
                   className="h-10"
                 />
               </DashFormField>
@@ -191,10 +252,29 @@ const ContactSelector: React.FC<ContactSelectorProps> = ({
                   className="h-10"
                 />
               </DashFormField>
+
+              {formError?.kind === 'duplicate' && (
+                <div role="alert" className="rounded-lg border border-amber/40 bg-amber/10 p-3 text-[12px] !text-dash-text space-y-2" data-testid="duplicate-client">
+                  <p className="font-bold flex items-center gap-1.5"><AlertTriangle size={14} className="text-amber" /> A client with this email already exists.</p>
+                  <p className="!text-dash-textMuted">
+                    {formError.existing.first_name} {formError.existing.last_name}
+                    {formError.existing.email ? ` (${formError.existing.email})` : ''}
+                  </p>
+                  <DashButton type="button" variant="primary" size="sm" onClick={() => useExisting(formError.existing)}>
+                    Use this client
+                  </DashButton>
+                </div>
+              )}
+
+              {formError?.kind === 'failure' && (
+                <div role="alert" className="rounded-lg border border-red/30 bg-red/5 p-3 text-[12px] !text-red flex items-start gap-2" data-testid="create-client-error">
+                  <AlertTriangle size={14} className="mt-0.5 shrink-0" /> <span>{formError.message}</span>
+                </div>
+              )}
             </div>
 
             <DashModalFooter>
-              <DashButton type="button" variant="secondary" className="flex-1" onClick={() => setIsOpen(false)}>
+              <DashButton type="button" variant="secondary" className="flex-1" onClick={() => setIsOpen(false)} disabled={isSubmitting}>
                 Cancel
               </DashButton>
               <DashButton type="submit" variant="primary" className="flex-1" disabled={isSubmitting}>
@@ -203,6 +283,8 @@ const ContactSelector: React.FC<ContactSelectorProps> = ({
                     <Loader2 size={14} className="animate-spin" />
                     Saving...
                   </>
+                ) : formError?.kind === 'failure' ? (
+                  'Retry'
                 ) : (
                   'Create client'
                 )}

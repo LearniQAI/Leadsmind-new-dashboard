@@ -26,6 +26,8 @@ import { DOCUMENT_MUTED_TEXT } from '@/lib/design/documentTemplateTokens';
 
 interface InvoiceMasterDetailProps {
   invoices: any[];
+  /** Open with this invoice selected (e.g. right after saving one) instead of the first in the list. */
+  initialSelectedId?: string | null;
 }
 
 const INVOICE_STATUSES = ['draft', 'sent', 'paid', 'void', 'written_off'];
@@ -58,9 +60,11 @@ function StatusBadge({ status }: { status: string }) {
   return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-amber-50 border border-amber-200 text-[11px] font-bold text-amber-600"><Clock size={10} /> {status || 'Draft'}</span>;
 }
 
-export function InvoiceMasterDetail({ invoices: initialInvoices }: InvoiceMasterDetailProps) {
+export function InvoiceMasterDetail({ invoices: initialInvoices, initialSelectedId }: InvoiceMasterDetailProps) {
   const [invoices, setInvoices] = useState<any[]>(initialInvoices);
-  const [selectedId, setSelectedId] = useState<string | null>(initialInvoices[0]?.id || null);
+  const [selectedId, setSelectedId] = useState<string | null>(
+    (initialSelectedId && initialInvoices.some((i) => i.id === initialSelectedId) ? initialSelectedId : null) || initialInvoices[0]?.id || null
+  );
   const [search, setSearch] = useState('');
 
   const [deleteOpen, setDeleteOpen] = useState(false);

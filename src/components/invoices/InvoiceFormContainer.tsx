@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import LineItemBuilder from './LineItemBuilder';
 import TotalsSummaryPanel from './TotalsSummaryPanel';
 import CustomFieldsRenderer, { CustomFieldDefinition } from './CustomFieldsRenderer';
@@ -9,7 +9,7 @@ import ContactSelector from './ContactSelector';
 import { DashFormField, DashInput, DashTextarea } from '@/components/dashboard-ui/FormField';
 import { DashButton } from '@/components/dashboard-ui/Button';
 import { LineItem, calculateInvoiceTotals } from '@/lib/invoicing/calculations';
-import { Loader2, Send } from 'lucide-react';
+import { Loader2, Send, AlertTriangle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface InvoiceFormContainerProps {
@@ -21,6 +21,10 @@ interface InvoiceFormContainerProps {
   /** Workspace's invoice_settings.vat_rate when vat_enabled, else 0 — the starting tax rate
    * for newly-added line items (still editable per line). */
   defaultTaxRate?: number;
+  /** A failed save/send, shown inline above the action bar. The form state is never cleared on failure. */
+  saveError?: { message: string; retryLabel: string } | null;
+  onRetry?: () => void;
+  onDismissError?: () => void;
 }
 
 const InvoiceFormContainer: React.FC<InvoiceFormContainerProps> = ({
@@ -30,8 +34,19 @@ const InvoiceFormContainer: React.FC<InvoiceFormContainerProps> = ({
   onSave,
   isSaving = false,
   defaultTaxRate = 0,
+  saveError = null,
+  onRetry,
+  onDismissError,
 }) => {
   const [contactId, setContactId] = useState(initialData?.contact_id || '');
+  // Clients created (or picked from the duplicate prompt) inside the selector: the server-fetched `contacts` list
+  // doesn't have them until the page reloads, but their email is needed right now to decide if "Save & Send" can work.
+  const [createdContacts, setCreatedContacts] = useState<any[]>([]);
+  const allContacts = useMemo(() => {
+    const known = new Set(contacts.map((c) => c.id));
+    return [...createdContacts.filter((c) => !known.has(c.id)), ...contacts];
+  }, [contacts, createdContacts]);
+  const [localError, setLocalError] = useState<string | null>(null);
   const [invoiceNumber, setInvoiceNumber] = useState(initialData?.invoice_number || '');
   const [issueDate, setIssueDate] = useState(
     initialData?.issue_date || new Date().toISOString().split('T')[0]
@@ -55,13 +70,21 @@ const InvoiceFormContainer: React.FC<InvoiceFormContainerProps> = ({
   const [currency, setCurrency] = useState(initialData?.currency || 'ZAR');
 
   const handleSave = (status: 'draft' | 'sent') => {
+    setLocalError(null);
     if (!contactId) {
-      toast.error('Please select a contact before saving the invoice.');
+      setLocalError('Please select a client before saving the invoice.');
       return;
     }
     if (items.length === 0) {
-      toast.error('Add at least one line item before saving the invoice.');
+      setLocalError('Add at least one line item before saving the invoice.');
       return;
+    }
+    if (status === 'sent') {
+      const chosen = allContacts.find((c) => c.id === contactId);
+      if (chosen && !chosen.email) {
+        setLocalError("This client has no email address, so the invoice can't be emailed. Add an email to the client, or choose Save as draft.");
+        return;
+      }
     }
 
     const totals = calculateInvoiceTotals(items, shippingCharges, adjustment);
@@ -100,9 +123,10 @@ const InvoiceFormContainer: React.FC<InvoiceFormContainerProps> = ({
           </div>
 
           <ContactSelector
-            contacts={contacts}
+            contacts={allContacts}
             selectedId={contactId}
-            onChange={setContactId}
+            onChange={(id) => { setContactId(id); setLocalError(null); }}
+            onContactAvailable={(c) => setCreatedContacts((prev) => [c, ...prev.filter((p) => p.id !== c.id)])}
           />
 
           <CustomFieldsRenderer
@@ -197,6 +221,20 @@ const InvoiceFormContainer: React.FC<InvoiceFormContainerProps> = ({
           onAdjustmentChange={setAdjustment}
         />
       </div>
+
+      {(saveError || localError) && (
+        <div role="alert" data-testid="invoice-inline-error" className="rounded-xl border border-red/30 bg-red/5 p-4 text-[13px] !text-red flex flex-wrap items-start justify-between gap-3">
+          <span className="flex items-start gap-2 min-w-0"><AlertTriangle size={16} className="mt-0.5 shrink-0" /> <span>{saveError?.message ?? localError}</span></span>
+          <span className="flex items-center gap-2 shrink-0">
+            {saveError && onRetry && (
+              <DashButton variant="secondary" size="sm" onClick={onRetry} disabled={isSaving}>
+                <RefreshCw size={14} /> {saveError.retryLabel}
+              </DashButton>
+            )}
+            <button type="button" className="text-[12px] font-bold underline" onClick={() => { setLocalError(null); onDismissError?.(); }}>Dismiss</button>
+          </span>
+        </div>
+      )}
 
       {/* Action Bar */}
       <div className="sticky bottom-8 left-0 right-0 flex justify-end gap-3 p-4 bg-white border border-dash-border rounded-xl shadow-lg backdrop-blur-md">

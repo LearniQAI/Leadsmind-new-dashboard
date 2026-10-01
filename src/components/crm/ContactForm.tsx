@@ -86,7 +86,7 @@ export function ContactForm({ initialData, members, availableTags = [] }: Contac
       router.push(initialData ? `/contacts/${initialData.id}` : '/contacts');
       router.refresh();
     } else {
-      toast.error(res.error || 'Failed to process contact');
+      toast.error((res as { error?: string }).error || 'Failed to process contact');
     }
     setIsSubmitting(false);
   };

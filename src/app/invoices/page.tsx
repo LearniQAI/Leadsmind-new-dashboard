@@ -12,7 +12,8 @@ import { DashButton } from "@/components/dashboard-ui/Button";
 
 export const dynamic = 'force-dynamic';
 
-export default async function InvoicesPage() {
+export default async function InvoicesPage({ searchParams }: { searchParams?: Promise<{ selected?: string }> }) {
+ const selected = (await searchParams)?.selected ?? null;
  const user = await requireAuth();
  const workspaceId = await getCurrentWorkspaceId();
  if (!workspaceId) redirect('/auth/signin-basic');
@@ -50,7 +51,7 @@ export default async function InvoicesPage() {
           />
 
           <div className="flex-1 bg-white">
-            <InvoiceMasterDetail invoices={invoices} />
+            <InvoiceMasterDetail invoices={invoices} initialSelectedId={selected} />
           </div>
         </div>
       </Wrapper>

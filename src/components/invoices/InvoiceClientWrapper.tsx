@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { CalendarClock, Wallet } from 'lucide-react';
@@ -8,6 +8,18 @@ import InvoiceFormContainer from './InvoiceFormContainer';
 import { saveInvoice, updateInvoice, sendInvoiceNow } from '@/app/actions/finance';
 import { applyRetainerToInvoice } from '@/app/actions/retainers';
 import SchedulingModal, { SchedulingConfig } from './SchedulingModal';
+
+const SAVE_TIMEOUT_MS = 45_000;
+// Sending renders a PDF (headless Chromium) and calls the email provider, so it gets longer.
+const SEND_TIMEOUT_MS = 60_000;
+
+/** Hard client-side cap so a hung request becomes a visible, retryable error instead of a spinner that never ends. */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timeout')), ms);
+    promise.then((v) => { clearTimeout(timer); resolve(v); }, (e) => { clearTimeout(timer); reject(e); });
+  });
+}
 
 interface InvoiceClientWrapperProps {
   workspaceId: string;
@@ -51,50 +63,87 @@ const InvoiceClientWrapper: React.FC<InvoiceClientWrapperProps> = ({
     }
   };
 
+  // One operation id for this form. Re-sent on every Retry/double-click of the same Save so a retry after a lost
+  // response returns the invoice that was already created instead of creating a second one.
+  const operationIdRef = useRef<string>(crypto.randomUUID());
+  // Once the invoice row exists (even if the email step then failed), later attempts update THAT invoice.
+  const savedInvoiceIdRef = useRef<string | null>(null);
+  const lastDataRef = useRef<any>(null);
+  const savingRef = useRef(false); // blocks a second submit in the same tick
+  const [saveError, setSaveError] = useState<{ message: string; retryLabel: string } | null>(null);
+
   const handleSave = async (data: any) => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    lastDataRef.current = data;
     setIsSaving(true);
+    setSaveError(null);
+    // The form (InvoiceFormContainer) owns every field and is never unmounted or reset here, so whatever the user typed
+    // survives any failure below; the inline banner offers Retry.
     try {
-      // InvoiceFormContainer's "Finalise document" button submits status:'sent'
-      // to signal "save and send now" — that must NOT be written to the DB
-      // directly (an invoice shouldn't read as 'sent' if the email never
-      // actually goes out). Strip status here and let sendInvoiceNow() below
-      // flip it to 'sent' only once the email genuinely succeeds.
+      // InvoiceFormContainer's "Save & Send" button submits status:'sent' to signal "save and send now" — that must NOT
+      // be written to the DB directly (an invoice shouldn't read as 'sent' if the email never actually goes out). Strip
+      // status here and let sendInvoiceNow() flip it to 'sent' only once the email genuinely succeeds.
       const wantsSendNow = data.status === 'sent';
       const { status, ...rest } = data;
       const payload = {
         ...rest,
         ...(wantsSendNow ? {} : { status }),
         workspace_id: workspaceId,
+        clientOperationId: operationIdRef.current,
       };
 
-      const res = initialData?.id
-        ? await updateInvoice(initialData.id, payload)
-        // skipAutoNotify: wantsSendNow — when the user asked to send now,
-        // saveInvoice()'s own draft-status auto-notify must be suppressed so
-        // sendInvoiceNow() below is the only email that goes out.
-        : await saveInvoice(payload, { skipAutoNotify: wantsSendNow });
+      let invoiceId: string | null = initialData?.id || savedInvoiceIdRef.current;
+      let res: any = invoiceId
+        ? await withTimeout(updateInvoice(invoiceId, payload), SAVE_TIMEOUT_MS)
+        // skipAutoNotify: wantsSendNow — the draft auto-notify must be suppressed so sendInvoiceNow() below is the
+        // only email that goes out.
+        : await withTimeout(saveInvoice(payload, { skipAutoNotify: wantsSendNow }), SAVE_TIMEOUT_MS);
 
-      if (res.success) {
-        if (wantsSendNow) {
-          const invoiceId = initialData?.id || (res as any).data?.id;
-          const sendResult = invoiceId ? await sendInvoiceNow(invoiceId) : { success: false, error: 'Invoice id missing' };
-          if (sendResult.success) {
-            toast.success('Invoice sent');
-          } else {
-            toast.success(initialData?.id ? 'Invoice updated' : 'Invoice saved');
-            toast.error(sendResult.error || 'Saved, but the email failed to send');
-          }
-        } else {
-          toast.success(initialData?.id ? 'Invoice updated successfully' : 'Invoice saved as draft — notification email sent');
-        }
-        router.push('/invoices');
-        router.refresh();
-      } else {
-        toast.error(res.error || 'Failed to save invoice');
+      // A replay means an earlier attempt already created the row: apply what is in the form NOW to that invoice.
+      if (res.success && res.replayed && res.data?.id) {
+        res = await withTimeout(updateInvoice(res.data.id, payload), SAVE_TIMEOUT_MS);
       }
-    } catch (error) {
-      toast.error('An unexpected error occurred');
+
+      if (!res.success) {
+        setSaveError({ message: res.error || 'The invoice could not be saved. Your entries are still here — try again.', retryLabel: 'Retry save' });
+        return;
+      }
+      invoiceId = invoiceId || res.data?.id || null;
+      savedInvoiceIdRef.current = invoiceId;
+
+      if (wantsSendNow) {
+        const sendResult: any = invoiceId
+          ? await withTimeout(sendInvoiceNow(invoiceId), SEND_TIMEOUT_MS)
+          : { success: false, error: 'Invoice id missing' };
+        if (!sendResult.success) {
+          setSaveError({
+            message: `The invoice was saved as a draft, but it could not be sent: ${
+              sendResult.error === 'Contact has no email address'
+                ? 'this client has no email address. Add one to the client, then retry.'
+                : sendResult.error || 'unknown error'
+            }`,
+            retryLabel: 'Retry sending',
+          });
+          return;
+        }
+        toast.success('Invoice sent');
+      } else {
+        toast.success(initialData?.id ? 'Invoice updated successfully' : 'Invoice saved');
+      }
+      operationIdRef.current = crypto.randomUUID(); // consumed
+      // Land on the saved invoice's preview (where it can be reviewed and sent).
+      router.push(invoiceId ? `/invoices?selected=${invoiceId}` : '/invoices');
+      router.refresh();
+    } catch (error: any) {
+      setSaveError({
+        message: error?.message === 'timeout'
+          ? 'This is taking longer than expected. Your entries are kept. Press Retry — it will not create a duplicate invoice.'
+          : 'Network problem — your entries are kept. Check your connection and press Retry.',
+        retryLabel: 'Retry',
+      });
     } finally {
+      savingRef.current = false;
       setIsSaving(false);
     }
   };
@@ -129,6 +178,9 @@ const InvoiceClientWrapper: React.FC<InvoiceClientWrapperProps> = ({
         onSave={handleSave}
         isSaving={isSaving}
         defaultTaxRate={defaultTaxRate}
+        saveError={saveError}
+        onRetry={() => lastDataRef.current && handleSave(lastDataRef.current)}
+        onDismissError={() => setSaveError(null)}
       />
 
       <div className="fixed bottom-12 left-12 z-[100] no-print">
