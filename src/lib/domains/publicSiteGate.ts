@@ -44,3 +44,21 @@ export async function isPublicSiteServable(
     .maybeSingle()
   return !!funnel?.is_published
 }
+
+/**
+ * Edge-side mirror of the published-only rule in app/actions/publicBlog.ts getPublicBlogPost, so an
+ * anonymous request for a draft or unknown /blog/{slug} gets a real 404 status. On a tenant domain
+ * the post must belong to that workspace; on the platform host the slug is looked up globally among
+ * published posts (the same fallback the page uses). The page still enforces what is rendered.
+ */
+export async function isPublishedBlogPost(slug: string, workspaceId: string | null): Promise<boolean> {
+  let query = createAdminClient()
+    .from('blog_posts')
+    .select('id')
+    .eq('slug', slug)
+    .eq('status', 'published')
+    .limit(1)
+  if (workspaceId) query = query.eq('workspace_id', workspaceId)
+  const { data } = await query
+  return !!data && data.length > 0
+}

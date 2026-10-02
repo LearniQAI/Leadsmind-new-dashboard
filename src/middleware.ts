@@ -4,7 +4,7 @@ import { resolveHost, resolveWebsiteHost, isTrackingDomain } from '@/lib/domains
 import { createAdminClient } from '@/lib/supabase/server'
 import { PLATFORM_HOSTS } from '@/lib/domains/platformHosts'
 import { isCustomDomainPassthrough } from '@/lib/domains/customDomainRoutes'
-import { isPublicSiteServable } from '@/lib/domains/publicSiteGate'
+import { isPublicSiteServable, isPublishedBlogPost } from '@/lib/domains/publicSiteGate'
 
 // Website-builder custom domains rewrite every path to the site's own /p/... route; only these
 // stay reachable so forms/assets keep working. (Course/blog/portal domains use the explicit
@@ -25,6 +25,20 @@ function customDomainNotFound() {
     status: 404,
     headers: { 'content-type': 'text/html; charset=utf-8', 'x-robots-tag': 'noindex' },
   })
+}
+
+// Static children of /blog that are real (staff) routes, not post slugs. Same list as the isPublicPage
+// gate in lib/supabase/middleware.ts.
+const BLOG_RESERVED_SEGMENTS = new Set(['analytics', 'manage', 'editor', 'new', 'comments'])
+
+// Anonymous request for /blog/{slug} that is not a published post (draft or unknown): real 404 status.
+// (notFound() inside the page answers 200 once the layout has streamed.) Requests carrying a Supabase
+// auth cookie are left to the page, which allows a member's ?preview=1 draft and 404s everyone else.
+async function blogPostGate(request: NextRequest, segments: string[], workspaceId: string | null) {
+  if (segments.length !== 2 || segments[0] !== 'blog' || BLOG_RESERVED_SEGMENTS.has(segments[1])) return null
+  const hasSession = request.cookies.getAll().some(c => c.name.startsWith('sb-') && c.name.includes('-auth-token'))
+  if (hasSession) return null
+  return (await isPublishedBlogPost(segments[1], workspaceId)) ? null : customDomainNotFound()
 }
 
 export async function middleware(request: NextRequest) {
@@ -108,6 +122,8 @@ export async function middleware(request: NextRequest) {
 
   // Platform hosts behave exactly as before.
   if (PLATFORM_HOSTS.has(host)) {
+    const blogGate = await blogPostGate(request, segments, null)
+    if (blogGate) return blogGate
     return await updateSession(request)
   }
 
@@ -170,6 +186,9 @@ export async function middleware(request: NextRequest) {
 
       return customDomainNotFound()
     }
+
+    const blogGate = await blogPostGate(request, segments, resolved.workspaceId)
+    if (blogGate) return blogGate
 
     const res = await updateSession(request)
     res.headers.set('x-workspace-id', resolved.workspaceId)
