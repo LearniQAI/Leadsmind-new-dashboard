@@ -19,27 +19,6 @@ interface MessageInputProps {
   isWhatsAppWindowClosed?: boolean;
 }
 
-const APPROVED_WHATSAPP_TEMPLATES = [
-  {
-    name: 'welcome_message',
-    category: 'UTILITY',
-    text: 'Hello {{1}}, welcome to LeadsMind! How can we help you today?',
-    variables: ['Customer Name']
-  },
-  {
-    name: 'appointment_reminder',
-    category: 'UTILITY',
-    text: 'Hi {{1}}, this is a reminder for your appointment on {{2}} at {{3}}.',
-    variables: ['Customer Name', 'Date', 'Time']
-  },
-  {
-    name: 'payment_request',
-    category: 'UTILITY',
-    text: 'Hi {{1}}, your invoice of {{2}} is ready for payment. Link: {{3}}',
-    variables: ['Customer Name', 'Amount', 'Invoice Link']
-  }
-];
-
 const QUICK_EMOJI = ['😀', '😂', '😍', '👍', '🙏', '🎉', '❤️', '😢', '😮', '🔥', '👏', '✅', '💯', '🙌', '😅', '🤔', '👋', '😎', '🥳', '😴', '💪', '👀', '🚀', '✨'];
 
 export function MessageInput({
@@ -62,10 +41,6 @@ export function MessageInput({
   // Quick reply creation inputs
   const [newShortcut, setNewShortcut] = useState('');
   const [newMessage, setNewMessage] = useState('');
-
-  // WhatsApp template selector state
-  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
-  const [templateVars, setTemplateVars] = useState<Record<number, string>>({});
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -324,23 +299,9 @@ export function MessageInput({
   }, []);
 
   const handleSend = () => {
-    // If WhatsApp window is closed and selected platform is WhatsApp, enforce template selection
+    // WhatsApp 24h window closed: free text cannot be sent and template replies are not available yet.
     if (selectedPlatform === 'whatsapp' && isWhatsAppWindowClosed && !isNote) {
-      if (!selectedTemplate) {
-        toast.error('WhatsApp 24-hour compliance window is closed. Please select an approved template.');
-        return;
-      }
-      if (!guardedFire()) return;
-      // Construct message text from variables
-      let finalMsg = selectedTemplate.text;
-      selectedTemplate.variables.forEach((_: any, index: number) => {
-        const val = templateVars[index + 1] || `[${selectedTemplate.variables[index]}]`;
-        finalMsg = finalMsg.replace(`{{${index + 1}}}`, val);
-      });
-      onSend(finalMsg, false, undefined, undefined, getComposeUuid());
-      composeUuidRef.current = null;
-      setSelectedTemplate(null);
-      setTemplateVars({});
+      toast.error('Outside the 24-hour window. Template replies are coming soon.');
       return;
     }
 
@@ -395,17 +356,6 @@ export function MessageInput({
     qr.message.toLowerCase().includes(quickReplySearch.toLowerCase())
   );
 
-  // Render variables preview if template selected
-  const getTemplatePreview = () => {
-    if (!selectedTemplate) return '';
-    let preview = selectedTemplate.text;
-    selectedTemplate.variables.forEach((_: any, index: number) => {
-      const val = templateVars[index + 1] || `[${selectedTemplate.variables[index]}]`;
-      preview = preview.replace(`{{${index + 1}}}`, val);
-    });
-    return preview;
-  };
-
   const insertEmoji = (emoji: string) => {
     setText((prev) => prev + emoji);
     setShowEmojiPicker(false);
@@ -413,75 +363,23 @@ export function MessageInput({
   };
 
   const isWhatsAppBlocked = selectedPlatform === 'whatsapp' && isWhatsAppWindowClosed && !isNote;
-  const canSend = (text.trim().length > 0 || !!selectedTemplate) && !disabled;
+  const canSend = text.trim().length > 0 && !disabled && !isWhatsAppBlocked;
 
   return (
     <div className={cn(
       "px-4 py-3 border-t transition-colors motion-reduce:transition-none",
       isNote ? "bg-[#FFFBEA] border-[#F5E9B8]" : "bg-white border-[#EFEFEF]"
     )}>
-      {/* 24-Hour window warning overlay */}
-      {isWhatsAppBlocked && !selectedTemplate && (
-        <div className="mb-3 bg-[#FFF4E5] border border-[#FDE4BB] rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-[#B45309] font-semibold text-[12px]">
-              <History className="w-3.5 h-3.5" />
-              WhatsApp 24-hour window closed
-            </div>
-            <p className="text-[12.5px] text-[#8E8E8E] mt-1">
-              You can only send approved Meta templates to initiate a conversation with this contact.
-            </p>
+      {/* 24-Hour window closed: free text cannot be sent. Template replies are not available yet. */}
+      {isWhatsAppBlocked && (
+        <div className="mb-3 bg-[#FFF4E5] border border-[#FDE4BB] rounded-2xl p-4">
+          <div className="flex items-center gap-2 text-[#B45309] font-semibold text-[12px]">
+            <History className="w-3.5 h-3.5" />
+            WhatsApp 24-hour window closed
           </div>
-          <div className="flex flex-wrap gap-2">
-            {APPROVED_WHATSAPP_TEMPLATES.map((tmpl) => (
-              <Button
-                key={tmpl.name}
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedTemplate(tmpl)}
-                className="h-8 px-3 text-[11px] bg-white hover:bg-[#FDE4BB]/40 text-[#B45309] font-semibold border border-[#FDE4BB]"
-              >
-                Use {tmpl.name.replace('_', ' ')}
-              </Button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* WhatsApp Template variable config panel */}
-      {selectedTemplate && isWhatsAppBlocked && (
-        <div className="mb-3 bg-[#FAFAFA] border border-[#EFEFEF] rounded-2xl p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-[#B45309]">
-              Configure WhatsApp template: {selectedTemplate.name.replace('_', ' ')}
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedTemplate(null)}
-              className="text-[#8E8E8E] hover:text-black"
-            >
-              Cancel
-            </Button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {selectedTemplate.variables.map((vname: string, idx: number) => (
-              <div key={idx} className="space-y-1">
-                <label className="text-[10px] font-semibold text-[#8E8E8E]">{vname}</label>
-                <input
-                  type="text"
-                  placeholder={`Enter ${vname}`}
-                  value={templateVars[idx + 1] || ''}
-                  onChange={(e) => setTemplateVars(prev => ({ ...prev, [idx + 1]: e.target.value }))}
-                  className="w-full bg-white border border-[#EFEFEF] rounded-full px-3.5 py-1.5 text-[12.5px] text-black focus:outline-none focus:ring-1 focus:ring-black/10"
-                />
-              </div>
-            ))}
-          </div>
-          <div className="bg-white rounded-xl p-3 border border-[#EFEFEF] text-[12.5px] text-[#8E8E8E] leading-relaxed">
-            <span className="block text-[9px] font-semibold text-[#8E8E8E] mb-1">Preview message</span>
-            {getTemplatePreview()}
-          </div>
+          <p className="text-[12.5px] text-[#8E8E8E] mt-1">
+            Outside the 24-hour window. Template replies are coming soon.
+          </p>
         </div>
       )}
 
@@ -761,7 +659,7 @@ export function MessageInput({
               value={text}
               onChange={(e) => setText(e.target.value)}
               disabled={isWhatsAppBlocked}
-              placeholder={isWhatsAppBlocked ? "Free-form typing disabled. Choose a Template above." : (isNote ? "Add an internal note..." : (placeholder || "Message..."))}
+              placeholder={isWhatsAppBlocked ? "Outside the 24-hour window. Template replies are coming soon." : (isNote ? "Add an internal note..." : (placeholder || "Message..."))}
               className={cn(
                 "flex-1 bg-transparent border-none text-black text-[14.5px] placeholder:text-[#8E8E8E] resize-none max-h-32 min-h-[22px] py-1.5 focus:outline-none focus:ring-0",
                 isWhatsAppBlocked && "cursor-not-allowed"

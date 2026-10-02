@@ -450,17 +450,22 @@ function RepliesView({ rules, setRules }: { rules: RuleRow[]; setRules: React.Di
       ) : (
         <div className="space-y-3">
           {rules.map((r) => (
-            <DashCard key={r.id} className={cn('p-5', !r.active && 'opacity-60')}>
+            <DashCard key={r.id} className={cn('p-5', (!r.active || r.match_type === 'regex') && 'opacity-60')}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-bold !text-dash-text">{r.name}</p>
-                    <DashStatusPill variant={r.active ? 'success' : 'neutral'}>{r.active ? 'Active' : 'Inactive'}</DashStatusPill>
+                    <DashStatusPill variant={r.active && r.match_type !== 'regex' ? 'success' : 'neutral'}>{r.match_type === 'regex' ? 'Disabled' : r.active ? 'Active' : 'Inactive'}</DashStatusPill>
                     <DashStatusPill variant="info">{r.match_type}</DashStatusPill>
                   </div>
                   <p className="text-[12px] !text-dash-textMuted mt-1">
                     When message {r.match_type === 'exact' ? 'equals' : r.match_type === 'contains' ? 'contains' : 'matches regex'} <code className="bg-dash-surface px-1.5 py-0.5 rounded font-mono">{r.match_value}</code>
                   </p>
+                  {r.match_type === 'regex' && (
+                    <p className="text-[12px] text-amber font-semibold mt-1">
+                      Regex rules are no longer supported and never send a reply. Delete this rule and recreate it with "Contains" or "Exact match".
+                    </p>
+                  )}
                   <p className="text-[12px] !text-dash-textMuted mt-0.5 line-clamp-1">
                     Reply: {r.reply_type === 'template' ? `[Template: ${r.reply_template_name}]` : r.reply_text}
                   </p>
@@ -468,8 +473,8 @@ function RepliesView({ rules, setRules }: { rules: RuleRow[]; setRules: React.Di
                 <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={() => handleToggle(r)}
-                    disabled={busyId === r.id}
-                    title={r.active ? 'Deactivate' : 'Activate'}
+                    disabled={busyId === r.id || r.match_type === 'regex'}
+                    title={r.match_type === 'regex' ? 'Regex rules are no longer supported' : r.active ? 'Deactivate' : 'Activate'}
                     className="h-8 w-8 rounded-lg flex items-center justify-center !text-dash-textMuted hover:!text-dash-text hover:bg-dash-surface"
                   >
                     <Power size={15} />
@@ -481,9 +486,11 @@ function RepliesView({ rules, setRules }: { rules: RuleRow[]; setRules: React.Di
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="bg-white border border-dash-border shadow-lg rounded-xl p-2 min-w-[140px]">
-                      <DropdownMenuItem className="cursor-pointer flex items-center gap-2 hover:bg-dash-surface rounded-lg p-2 font-bold" onClick={() => openEdit(r)}>
-                        Edit
-                      </DropdownMenuItem>
+                      {r.match_type !== 'regex' && (
+                        <DropdownMenuItem className="cursor-pointer flex items-center gap-2 hover:bg-dash-surface rounded-lg p-2 font-bold" onClick={() => openEdit(r)}>
+                          Edit
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem className="cursor-pointer flex items-center gap-2 hover:bg-red/10 rounded-lg p-2 font-bold text-red" onClick={() => setDeleteTarget(r)}>
                         <Trash2 size={14} /> Delete
                       </DropdownMenuItem>
@@ -511,11 +518,10 @@ function RepliesView({ rules, setRules }: { rules: RuleRow[]; setRules: React.Di
                 <SelectContent className="bg-white border border-dash-border rounded-xl shadow-xl">
                   <SelectItem value="contains" className="text-sm">Contains</SelectItem>
                   <SelectItem value="exact" className="text-sm">Exact match</SelectItem>
-                  <SelectItem value="regex" className="text-sm">Regex</SelectItem>
                 </SelectContent>
               </Select>
             </DashFormField>
-            <DashFormField label="Match value" hint={form.matchType === 'regex' ? 'Case-insensitive regex, e.g. ^(hi|hello)$' : 'Case-insensitive'}>
+            <DashFormField label="Match value" hint="Case-insensitive">
               <DashInput value={form.matchValue} onChange={(e) => setForm((f) => ({ ...f, matchValue: e.target.value }))} placeholder="pricing" />
             </DashFormField>
             <DashFormField label="Reply type">

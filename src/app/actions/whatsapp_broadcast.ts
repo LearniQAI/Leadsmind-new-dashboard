@@ -25,6 +25,8 @@ import { resolveContactIdsWithAllTags } from '@/lib/tagAudience';
 import { userSafeMessage } from '@/shared/errors/userSafe';
 import { readWhatsAppCredentials } from '@/lib/meta/whatsappCredentials';
 import { ValidationError } from '@/shared/errors/AppError';
+import { resolveScheduledFor } from '@/lib/whatsapp/schedule';
+import { isMetaMockMode, isMockValue, MOCK_CREDENTIALS_REJECTED } from '@/lib/meta/mockMode';
 
 // PostgREST puts `.in('id', [...])` in the URL; a URL over ~12-16k characters is rejected. Chunk id lists.
 const ID_CHUNK = 100;
@@ -87,7 +89,14 @@ export async function listApprovedWhatsAppTemplates() {
     const { wabaId } = readWhatsAppCredentials(conn.credentials);
     const encryptedToken = conn.credentials.system_user_access_token_encrypted || conn.credentials.access_token_encrypted || '';
 
-    if (wabaId.startsWith('mock_') || !encryptedToken) {
+    if (isMockValue(wabaId) || !encryptedToken) {
+      // Sample templates only in explicit mock mode (never production); otherwise say what is wrong.
+      if (!isMetaMockMode()) {
+        return {
+          success: false as const,
+          error: isMockValue(wabaId) ? MOCK_CREDENTIALS_REJECTED : 'WhatsApp is not fully connected. Reconnect it in Settings > Integrations.',
+        };
+      }
       return {
         success: true as const,
         data: [
@@ -224,7 +233,9 @@ export async function createWhatsAppBroadcastCampaign(payload: CreateWhatsAppBro
       return { success: false as const, error: 'No eligible recipients matched this audience (check opt-outs and missing phone numbers)' };
     }
 
-    const scheduledFor = payload.scheduledAt ? new Date(payload.scheduledAt).toISOString() : new Date().toISOString();
+    const schedule = resolveScheduledFor(payload.scheduledAt);
+    if (schedule.ok === false) return { success: false as const, error: schedule.error };
+    const scheduledFor = (schedule as { ok: true; iso: string }).iso;
 
     const { data: campaign, error: insertErr } = await supabase
       .from('whatsapp_broadcast_campaigns')
@@ -328,17 +339,21 @@ export async function deleteWhatsAppBroadcastCampaign(id: string) {
       .select('status')
       .eq('id', id)
       .eq('workspace_id', workspaceId)
-      .single();
-    if (campaign && campaign.status === 'sending') {
+      .maybeSingle();
+    // Unknown id, or another workspace's campaign (hidden by RLS): never report success for a delete that did nothing.
+    if (!campaign) return { success: false as const, error: 'Campaign not found' };
+    if (campaign.status === 'sending') {
       return { success: false as const, error: 'Cannot delete a campaign that is currently sending' };
     }
 
-    const { error } = await supabase
+    const { data: deleted, error } = await supabase
       .from('whatsapp_broadcast_campaigns')
       .delete()
       .eq('id', id)
-      .eq('workspace_id', workspaceId);
+      .eq('workspace_id', workspaceId)
+      .select('id');
     if (error) throw error;
+    if (!deleted || deleted.length === 0) return { success: false as const, error: 'Campaign not found' };
 
     revalidatePath('/whatsapp-broadcasts');
     return { success: true as const };

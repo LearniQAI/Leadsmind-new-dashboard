@@ -82,7 +82,7 @@ export async function sendSMS({ to: rawTo, message, mediaUrl, config, workspaceI
  // SMS/WhatsApp-touching features locally with no real Twilio account at
  // all. This never happens implicitly.
  if (accountSid === 'AC_123') {
-  logger.info({ to, message, mediaUrl }, 'sms.dev_mock_mode');
+  logger.info({ hasMedia: !!mediaUrl }, 'sms.dev_mock_mode'); // no recipient or body: PII
   return { sid: 'mock_sms_id_' + Date.now() };
  }
 

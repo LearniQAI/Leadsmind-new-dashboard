@@ -310,40 +310,13 @@ export async function update_community_privilege(workspaceId: string, contactId:
 }
 
 /**
- * Structural integration: Twilio WhatsApp Template notification
+ * "Send WhatsApp template" is not implemented. It used to send the literal text
+ * "Template: <name> [Lang: en] Components: [...]" to the customer as an ordinary Twilio message (no template was ever
+ * sent). It is hidden from the step picker and now fails loudly instead of messaging anyone. Real template sends
+ * exist only on the Meta Cloud API path (MetaAdapter.sendWhatsAppTemplate), which workflows do not use yet.
  */
-export async function send_whatsapp_template(workspaceId: string, contactId: string, config: any) {
-  const { templateName, languageCode = "en", components = [] } = config;
-  const supabase = createAdminClient();
-
-  const { data: contact } = await supabase
-    .from("contacts")
-    .select("phone")
-    .eq("id", contactId)
-    .single();
-
-  if (!contact?.phone) throw new Error("Contact has no phone number");
-
-  const { data: workspace } = await supabase
-    .from("workspaces")
-    .select("twilio_sid, twilio_token, twilio_sid_encrypted, twilio_token_encrypted, twilio_number")
-    .eq("id", workspaceId)
-    .single();
-
-  const cleanPhone = contact.phone.startsWith("+") ? contact.phone : `+${contact.phone}`;
-  
-  // Custom Twilio WhatsApp template message payloads require sending the template binding string
-  // Format is usually custom but here we pack it and pass to twilio API or mock handler
-  const templateBody = `Template: ${templateName} [Lang: ${languageCode}] Components: ${JSON.stringify(components)}`;
-  const creds = resolveWorkspaceTwilioCredentials(workspace);
-
-  await sendSMS({
-    workspaceId: workspaceId,
-    to: `whatsapp:${cleanPhone}`,
-    message: templateBody,
-    config: {
-      ...creds,
-      fromNumber: `whatsapp:${workspace?.twilio_number || process.env.TWILIO_PHONE_NUMBER}`,
-    }
-  });
+export async function send_whatsapp_template(_workspaceId: string, _contactId: string, _config: any): Promise<never> {
+  throw new Error(
+    'The "Send WhatsApp template" step is not available yet and nothing was sent. Replace it with "Send WhatsApp message" or remove it from this workflow.',
+  );
 }

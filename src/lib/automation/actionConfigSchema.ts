@@ -20,6 +20,8 @@ export interface ActionDef {
   value: string;
   label: string;
   fields: ActionField[];
+  /** Not offered in the step picker (kept so an existing step still renders its form). */
+  hidden?: boolean;
 }
 
 export const STEP_TYPES: ActionDef[] = [
@@ -93,7 +95,8 @@ export const STEP_TYPES: ActionDef[] = [
   { value: 'send_whatsapp', label: 'Send WhatsApp message', fields: [
     { key: 'body', label: 'Message', type: 'textarea', required: true, hint: 'Supports {{contact.field}} tokens, e.g. {{contact.first_name}}.' },
   ]},
-  { value: 'send_whatsapp_template', label: 'Send WhatsApp template', fields: [
+  // Hidden: not implemented (it used to send literal debug text). The executor fails loudly if a step still uses it.
+  { value: 'send_whatsapp_template', label: 'Send WhatsApp template', hidden: true, fields: [
     { key: 'templateName', label: 'Template name', type: 'text', required: true },
     { key: 'languageCode', label: 'Language code', type: 'text', placeholder: 'en' },
     { key: 'components', label: 'Template components (advanced JSON, optional)', type: 'textarea' },

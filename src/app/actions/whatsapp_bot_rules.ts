@@ -11,6 +11,10 @@ import { createServerClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { requireWorkspaceAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
+import { userSafeMessage } from '@/shared/errors/userSafe';
+import { validateBotRule, REGEX_RULES_UNSUPPORTED } from '@/lib/whatsapp/botRuleValidation';
+
+const RULE_NOT_FOUND = 'Rule not found';
 
 export interface WhatsAppBotRulePayload {
   name: string;
@@ -26,22 +30,7 @@ export interface WhatsAppBotRulePayload {
 }
 
 function validateRulePayload(payload: WhatsAppBotRulePayload) {
-  if (!payload.name?.trim()) throw new Error('Rule name is required');
-  if (!payload.matchValue?.trim()) throw new Error('Match value is required');
-  if (payload.matchType === 'regex') {
-    try {
-      // eslint-disable-next-line no-new
-      new RegExp(payload.matchValue);
-    } catch {
-      throw new Error('Invalid regex pattern');
-    }
-  }
-  if (payload.replyType === 'text' && !payload.replyText?.trim()) {
-    throw new Error('Reply text is required for a text reply');
-  }
-  if (payload.replyType === 'template' && !payload.replyTemplateName?.trim()) {
-    throw new Error('Select an approved template for a template reply');
-  }
+  validateBotRule(payload);
 }
 
 export async function listWhatsAppBotRules() {
@@ -94,7 +83,7 @@ export async function createWhatsAppBotRule(payload: WhatsAppBotRulePayload) {
     return { success: true as const, data };
   } catch (error: any) {
     logger.error({ err: error }, 'create.whatsapp_bot_rule.failed');
-    return { success: false as const, error: error.message || 'Failed to create rule' };
+    return { success: false as const, error: userSafeMessage(error, 'Failed to create rule') };
   }
 }
 
@@ -121,14 +110,16 @@ export async function updateWhatsAppBotRule(id: string, payload: WhatsAppBotRule
       .eq('id', id)
       .eq('workspace_id', workspaceId)
       .select()
-      .single();
+      .maybeSingle();
     if (error) throw error;
+    // No row matched: it does not exist, or it belongs to another workspace (RLS + the workspace filter hide it).
+    if (!data) return { success: false as const, error: RULE_NOT_FOUND };
 
     revalidatePath('/whatsapp-broadcasts');
     return { success: true as const, data };
   } catch (error: any) {
     logger.error({ err: error }, 'update.whatsapp_bot_rule.failed');
-    return { success: false as const, error: error.message || 'Failed to update rule' };
+    return { success: false as const, error: userSafeMessage(error, 'Failed to update rule') };
   }
 }
 
@@ -136,12 +127,24 @@ export async function toggleWhatsAppBotRule(id: string, active: boolean) {
   try {
     const { workspaceId } = await requireWorkspaceAccess();
     const supabase = await createServerClient();
-    const { error } = await supabase
+    const { data: existing, error: findErr } = await supabase
+      .from('whatsapp_bot_rules')
+      .select('id, match_type')
+      .eq('id', id)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+    if (findErr) throw findErr;
+    if (!existing) return { success: false as const, error: RULE_NOT_FOUND };
+    if (active && existing.match_type === 'regex') return { success: false as const, error: REGEX_RULES_UNSUPPORTED };
+
+    const { data: updated, error } = await supabase
       .from('whatsapp_bot_rules')
       .update({ active })
       .eq('id', id)
-      .eq('workspace_id', workspaceId);
+      .eq('workspace_id', workspaceId)
+      .select('id');
     if (error) throw error;
+    if (!updated || updated.length === 0) return { success: false as const, error: RULE_NOT_FOUND };
 
     revalidatePath('/whatsapp-broadcasts');
     return { success: true as const };
@@ -155,12 +158,14 @@ export async function deleteWhatsAppBotRule(id: string) {
   try {
     const { workspaceId } = await requireWorkspaceAccess();
     const supabase = await createServerClient();
-    const { error } = await supabase
+    const { data: deleted, error } = await supabase
       .from('whatsapp_bot_rules')
       .delete()
       .eq('id', id)
-      .eq('workspace_id', workspaceId);
+      .eq('workspace_id', workspaceId)
+      .select('id');
     if (error) throw error;
+    if (!deleted || deleted.length === 0) return { success: false as const, error: RULE_NOT_FOUND };
 
     revalidatePath('/whatsapp-broadcasts');
     return { success: true as const };

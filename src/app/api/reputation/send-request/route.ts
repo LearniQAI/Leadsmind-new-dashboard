@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
         : (!!contactPhone && validPhones.has(contactPhone))
 
       if (!isRealContact) {
-        logger.warn({ contactName, contactEmail, contactPhone, channel }, 'reputation.send-request.contact.not_found_in_workspace');
+        logger.warn({ channel }, 'reputation.send-request.contact.not_found_in_workspace');
         failed++
         continue
       }
@@ -154,12 +154,8 @@ export async function POST(req: NextRequest) {
               throw new Error(waRes.error || 'WhatsApp sending failed')
             }
           } else {
-            // Mock dispatch fallback
-            const adapter = new MetaAdapter({ phone_number_id: 'mock_number_id', access_token_encrypted: '' })
-            await adapter.sendWhatsApp(
-              contactPhone,
-              replacedBody
-            )
+            // No WhatsApp connection: fail this recipient. This used to "send" through a mock adapter and count as success.
+            throw new Error('WhatsApp is not connected for this workspace')
           }
         } else if (channel === 'sms') {
           if (!contactPhone) {
