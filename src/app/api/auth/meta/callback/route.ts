@@ -171,6 +171,7 @@ export async function GET(req: Request) {
     // the background so the user is redirected right away. The event carries ids only, never
     // tokens (the job re-reads them, encrypted, from the saved Facebook row). A failed send
     // must not fail the connect: Facebook is already saved.
+    let discoveryFailed = false
     try {
       await inngest.send({
         name: 'meta/discover',
@@ -183,7 +184,19 @@ export async function GET(req: Request) {
         },
       })
     } catch (err) {
-      logger.error(safeErrorInfo(err), 'meta_oauth.discovery_enqueue.failed')
+      discoveryFailed = true
+      logger.error({ ...safeErrorInfo(err), requestId, workspaceId }, 'meta_oauth.discovery_enqueue.failed')
+      // Persist the miss so the Instagram/WhatsApp cards can say so (reconnecting retries it).
+      // Merge into the credentials we just wrote — a flag only, no secrets.
+      try {
+        const { data: row } = await supabase.from('platform_connections').select('credentials')
+          .eq('workspace_id', workspaceId).eq('platform', 'facebook').maybeSingle()
+        await supabase.from('platform_connections')
+          .update({ credentials: { ...(row?.credentials as Record<string, unknown>), discovery_status: 'enqueue_failed' } })
+          .eq('workspace_id', workspaceId).eq('platform', 'facebook')
+      } catch (flagErr) {
+        logger.warn({ ...safeErrorInfo(flagErr), requestId }, 'meta_oauth.discovery_flag.failed')
+      }
     }
     timer.mark('discovery_enqueue')
 
@@ -191,9 +204,10 @@ export async function GET(req: Request) {
 
     finish()
     if (returnTo === 'social') {
-      return socialConnectionsRedirect(platform, { success: true }, '/social/connections')
+      return socialConnectionsRedirect(platform, { success: true, ...(discoveryFailed ? { warning: 'discovery_failed' as const } : {}) }, '/social/connections')
     }
     const redirectParams = new URLSearchParams({ meta_oauth: '1', platform, success: 'true' })
+    if (discoveryFailed) redirectParams.set('warning', 'discovery_failed')
     return NextResponse.redirect(`${REDIRECT_BASE}${INTEGRATIONS_REDIRECT_PATH}&${redirectParams.toString()}`)
   } catch (err) {
     status = 500

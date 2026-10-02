@@ -19,6 +19,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   invalid_state: 'This authorization link expired or was already used. Start the connection again.',
   no_page: 'No Facebook Page was found on that account. A Page is required to connect Facebook or Instagram.',
   save_failed: "We couldn't save the connection. Please try again.",
+  no_channel: 'No YouTube channel was found on that Google account. Create a channel first, then try again.',
   webhook_failed: "Connected, but Meta didn't confirm message delivery for this Page. Reconnect to fix it.",
   missing_parameters: 'The authorization response was incomplete. Please try again.',
 };
@@ -36,3 +37,5 @@ export function connectErrorMessage(platform: string, code: string | null): stri
 export function connectSuccessMessage(platform: string): string {
   return `${PLATFORM_LABELS[platform] ?? 'Account'} connected.`;
 }
+
+export const DISCOVERY_FAILED_MESSAGE = 'Instagram/WhatsApp not found yet — reconnect Facebook to retry.';

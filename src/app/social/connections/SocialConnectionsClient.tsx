@@ -14,6 +14,7 @@ import {
  PLATFORM_LABELS,
  connectErrorMessage,
  connectSuccessMessage,
+ DISCOVERY_FAILED_MESSAGE,
 } from '@/lib/oauth/socialMessages';
 
 interface SocialConnectionsClientProps {
@@ -111,10 +112,13 @@ export default function SocialConnectionsClient({ accounts }: SocialConnectionsC
   const platform = params.get('platform');
   const error = params.get('error');
   const success = params.get('success');
+  const warning = params.get('warning');
   if (!platform || (!error && !success)) return;
 
   const ok = !error;
-  setBanner({ platform, ok, message: ok ? connectSuccessMessage(platform) : connectErrorMessage(platform, error) });
+  setBanner({ platform, ok, message: ok
+   ? (warning === 'discovery_failed' ? `${connectSuccessMessage(platform)} ${DISCOVERY_FAILED_MESSAGE}` : connectSuccessMessage(platform))
+   : connectErrorMessage(platform, error) });
   try {
    const ch = new BroadcastChannel(CHANNEL);
    ch.postMessage({ platform, ok, error });
@@ -251,6 +255,8 @@ export default function SocialConnectionsClient({ accounts }: SocialConnectionsC
       conn?.credentials?.instagram_username;
      const isPending = pendingPlatform === p.id;
      const flow = flows[p.id];
+     const discoveryMissed = (p.id === 'instagram' || p.id === 'whatsapp') && !isConnected &&
+      accounts.find((a) => a.platform === 'facebook')?.credentials?.discovery_status === 'enqueue_failed';
      const authorizing = flow?.phase === 'authorizing';
      const failed = flow?.phase === 'failed' || flow?.phase === 'timeout';
 
@@ -273,6 +279,8 @@ export default function SocialConnectionsClient({ accounts }: SocialConnectionsC
           </p>
          ) : failed ? (
           <p className="text-[11px] font-semibold !text-red-500">{flow?.message}</p>
+         ) : discoveryMissed ? (
+          <p className="text-[11px] font-semibold !text-amber-600">{DISCOVERY_FAILED_MESSAGE}</p>
          ) : needsReconnect ? (
           <p className="text-[11px] font-semibold !text-amber-600">Needs reconnect{accountName ? ` — ${accountName}` : ''}</p>
          ) : isConnected ? (

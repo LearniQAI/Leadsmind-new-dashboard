@@ -13,6 +13,7 @@ const logged: unknown[] = [];
 const timingRows: unknown[] = [];
 const upserts: any[] = [];
 const sends: any[] = [];
+let sendFails = false;
 
 vi.mock('@/shared/logger', () => {
   const capture = (level: string) => (...args: unknown[]) => { logged.push({ level, args }); };
@@ -27,7 +28,7 @@ vi.mock('@/lib/oauth/stateNonce', () => ({
   },
 }));
 vi.mock('@/lib/meta/subscribeWebhook', () => ({ subscribePageToMetaWebhook: async () => ({ success: true }) }));
-vi.mock('@/lib/inngest', () => ({ inngest: { send: async (e: unknown) => { sends.push(e); } } }));
+vi.mock('@/lib/inngest', () => ({ inngest: { send: async (e: unknown) => { if (sendFails) throw new Error(`down token=${ACCESS_TOKEN}`); sends.push(e); } } }));
 
 const chain = () => ({
   from: (table: string) => ({
@@ -60,6 +61,8 @@ function stubFetch() {
     }
     if (url.includes('linkedin.com/oauth')) return json({ access_token: ACCESS_TOKEN, expires_in: 3600 });
     if (url.includes('api.linkedin.com')) return json({ sub: 'li-1', name: 'Test Person' });
+    if (url.includes('oauth2.googleapis.com')) return json({ access_token: ACCESS_TOKEN, refresh_token: 'rt', expires_in: 3600 });
+    if (url.includes('youtube/v3/channels')) return json({ items: [{ id: 'yt-1', snippet: { title: 'Chan' } }] });
     if (url.includes('tiktokapis.com/v2/oauth')) return json({ access_token: ACCESS_TOKEN, open_id: 'tt-open-id-1', expires_in: 3600 });
     if (url.includes('tiktokapis.com/v2/user/info')) return json({ data: { user: { display_name: 'Tester' } } });
     if (url.includes('oauth/access_token')) return json({ access_token: ACCESS_TOKEN });
@@ -95,12 +98,14 @@ beforeEach(() => {
   timingRows.length = 0;
   upserts.length = 0;
   sends.length = 0;
+  sendFails = false;
   mode = 'ok';
 });
 
 const ROUTES = {
   linkedin: () => import('./linkedin/route'),
   tiktok: () => import('./tiktok/route'),
+  youtube: () => import('./youtube/route'),
   meta: () => import('../meta/callback/route'),
 } as const;
 
@@ -120,7 +125,7 @@ function expectNoSecretsAnywhere(location: string) {
   for (const s of SECRETS) expect(haystack).not.toContain(s);
 }
 
-describe.each(['linkedin', 'tiktok', 'meta'] as const)('%s callback', (provider) => {
+describe.each(['linkedin', 'tiktok', 'youtube', 'meta'] as const)('%s callback', (provider) => {
   const platformParam = provider === 'meta' ? 'facebook' : provider;
 
   it('blackholed provider: bounded failure (timeout), never a hang', async () => {
@@ -174,5 +179,17 @@ describe('meta callback specifics', () => {
     expect(sends).toHaveLength(1);
     expect(sends[0].name).toBe('meta/discover');
     expect(JSON.stringify(sends[0])).not.toMatch(/token/i);
+  });
+});
+
+describe('meta discovery enqueue failure', () => {
+  it('still connects, logs with request id and no tokens, and flags the card + banner', async () => {
+    sendFails = true;
+    const { location } = await run('meta', { code: CODE, state: 'good-nonce' });
+    expect(location).toContain('success=1');
+    expect(location).toContain('warning=discovery_failed');
+    expectNoSecretsAnywhere(location);
+    const failedLog = logged.find((l: any) => l.args[1] === 'meta_oauth.discovery_enqueue.failed') as any;
+    expect(failedLog.args[0].requestId).toBeTruthy();
   });
 });

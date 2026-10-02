@@ -15,6 +15,7 @@ export type OAuthFailureCode =
   | 'no_page'
   | 'save_failed'
   | 'webhook_failed'
+  | 'no_channel'
   | 'missing_parameters';
 
 export class OAuthFlowError extends Error {
@@ -65,12 +66,13 @@ export function safeErrorInfo(err: unknown): { name: string; code: OAuthFailureC
 
 export function socialConnectionsRedirect(
   platform: string,
-  result: { success: true } | { error: OAuthFailureCode },
+  result: { success: true; warning?: 'discovery_failed' } | { error: OAuthFailureCode },
   path = '/social/connections'
 ) {
   const params = new URLSearchParams({ platform });
   if ('success' in result) {
     params.set('success', '1');
+    if (result.warning) params.set('warning', result.warning);
   } else {
     params.set('error', result.error);
   }
