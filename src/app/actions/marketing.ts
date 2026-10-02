@@ -1,5 +1,6 @@
 'use server';
 
+import { toStoredContent } from '@/lib/builder/normalizeContent';
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { requireWorkspaceAccess, requireFormAccess, requireModuleAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
@@ -84,7 +85,7 @@ export async function createFunnel(name: string, templateId?: string) {
     workspace_id: workspaceId,
     funnel_step_id: step.id,
     name: 'Opt-in Page',
-    content: initialContent,
+    content: toStoredContent(initialContent),
     status: 'draft'
    });
 
@@ -1719,7 +1720,7 @@ export async function duplicateFunnelAction(id: string) {
        workspace_id: workspaceId,
        funnel_step_id: newStep.id,
        name: p.name,
-       content: p.content,
+       content: toStoredContent(p.content),
        status: 'draft'
       });
      }

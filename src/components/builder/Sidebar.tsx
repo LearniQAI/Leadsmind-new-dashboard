@@ -1,5 +1,7 @@
 "use client";
 
+import { toStoredContent } from '@/lib/builder/normalizeContent';
+
 import React from 'react';
 import { useEditor } from '@craftjs/core';
 import { Button } from '@/components/ui/button';
@@ -282,7 +284,7 @@ export const Sidebar = ({
           workspace_id: websiteData.workspace_id,
           funnel_step_id: step.id,
           name: stepName,
-          content: initialContent,
+          content: toStoredContent(initialContent),
           status: 'draft'
         })
         .select()

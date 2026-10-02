@@ -6,19 +6,26 @@ import { RESOLVER } from '@/lib/builder/resolver';
 import { BuilderProvider } from './BuilderContext';
 import { PublishedNodeRender } from './NodeSpacingBox';
 import { themeFontCss } from '@/lib/builder/blockTypography';
+import { normalizeContent } from '@/lib/builder/normalizeContent';
+
+const BLANK_CANVAS = '{"ROOT":{"type":{"resolvedName":"Container"},"isCanvas":true,"props":{"className":"min-h-screen bg-white"},"nodes":[]}}';
 
 export default function PublishedPageRenderer({
  content,
  websiteData,
  pages,
  websiteId,
- funnelId
+ funnelId,
+ pageId
 }: {
- content: string;
+ /** pages.content as stored: a JSON object (canonical), a JSON string (legacy) or empty. */
+ content: unknown;
  websiteData?: any;
  pages?: any[];
  websiteId?: string;
  funnelId?: string;
+ /** pages.id, only used so an unreadable page can be traced in the logs. */
+ pageId?: string;
 }) {
  // Retrieve theme variables from config
  const websiteConfig = websiteData?.config || {};
@@ -107,17 +114,22 @@ export default function PublishedPageRenderer({
   return path;
  };
 
- // Defensive parsing for content JSON
- let validContent = content;
- try {
-  if (!validContent || validContent.trim() === '') {
-   validContent = '{"ROOT":{"type":{"resolvedName":"Container"},"isCanvas":true,"props":{"className":"min-h-screen bg-white"},"nodes":[]}}';
-  } else {
-   JSON.parse(validContent);
-  }
- } catch (err) {
-  validContent = '{"ROOT":{"type":{"resolvedName":"Container"},"isCanvas":true,"props":{"className":"min-h-screen bg-white"},"nodes":[]}}';
+ // pages.content arrives as an object (what the editor saves) or a JSON string (templates, older
+ // saves). normalizeContent() understands both and never throws. A page with no content renders the
+ // blank canvas as before; a page whose content cannot be read is logged (page id + reason, never
+ // the body) and shown as a neutral message instead of silently turning into a blank canvas.
+ const normalized = normalizeContent(content, { pageId, where: 'PublishedPageRenderer' });
+ if (normalized.status === 'invalid') {
+  return (
+   <div className="min-h-screen w-full bg-white text-slate-900 flex items-center justify-center p-6 text-center" role="alert">
+    <div>
+     <h1 className="text-xl font-semibold mb-2">This page couldn&apos;t be displayed</h1>
+     <p className="text-sm text-slate-500">Something went wrong while loading this page. Please try again later.</p>
+    </div>
+   </div>
+  );
  }
+ const validContent = normalized.status === 'ok' ? JSON.stringify(normalized.tree) : BLANK_CANVAS;
 
  return (
   <div className="w-full min-h-screen bg-[var(--theme-bg)] text-black selection:bg-primary selection:text-white antialiased overflow-x-hidden flex flex-col">

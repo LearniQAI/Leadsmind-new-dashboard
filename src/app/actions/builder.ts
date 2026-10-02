@@ -7,9 +7,15 @@ import { BUILDER_TEMPLATES } from '@/lib/builder/templates';
 import { logger } from '@/shared/logger';
 import { toClientError } from '@/shared/errors/AppError';
 import { requireWorkspaceRole } from '@/lib/api/workspaceAuth';
+import { toStoredContent } from '@/lib/builder/normalizeContent';
 
-function containsCodeBlock(content?: string) {
-  return !!content && /"(?:resolvedName|displayName)"\s*:\s*"CodeBlock"|"CodeBlock"/.test(content);
+// pages.content reaches this as an object (what the editor saves) or a JSON string. The check used
+// to run the regex on whatever it was given, so an object became "[object Object]" and the
+// admin-only CodeBlock guard silently passed. Always test the serialised form.
+function containsCodeBlock(content?: unknown) {
+  if (content === null || content === undefined || content === '') return false;
+  const text = typeof content === 'string' ? content : JSON.stringify(content);
+  return /"(?:resolvedName|displayName)"\s*:\s*"CodeBlock"|"CodeBlock"/.test(text);
 }
 
 /**
@@ -96,7 +102,7 @@ export async function createWebsite(name: string, subdomain: string, templateId?
         workspace_id: workspaceId,
         website_page_id: wsPage.id, // Linked here
         name: 'Home',
-        content,
+        content: toStoredContent(content),
         status: 'draft'
       })
       .select()
@@ -164,7 +170,7 @@ export async function duplicateWebsite(websiteId: string) {
             workspace_id: workspaceId,
             website_page_id: newWsPage.id,
             name: p.name,
-            content: p.content,
+            content: toStoredContent(p.content),
             status: 'draft'
           });
       }
@@ -232,7 +238,7 @@ export async function publishPage(pageId: string, content?: string) {
     };
 
     if (content) {
-      updateData.content = content;
+      updateData.content = toStoredContent(content);
     }
 
     const { error } = await supabase
@@ -255,7 +261,7 @@ export async function updatePageContent(pageId: string, content: string) {
     const { error } = await supabase
       .from('pages')
       .update({ 
-        content,
+        content: toStoredContent(content),
         updated_at: new Date().toISOString()
       })
       .eq('id', pageId)
@@ -304,7 +310,7 @@ export async function createPage(name: string, websiteId: string) {
         workspace_id: workspaceId,
         website_page_id: wsPage.id,
         name,
-        content: '{"ROOT":{"type":{"resolvedName":"Container"},"isCanvas":true,"props":{"className":"min-h-screen bg-white"},"nodes":[]}}',
+        content: toStoredContent('{"ROOT":{"type":{"resolvedName":"Container"},"isCanvas":true,"props":{"className":"min-h-screen bg-white"},"nodes":[]}}'),
         status: 'draft'
       })
       .select('id')
