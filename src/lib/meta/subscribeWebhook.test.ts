@@ -53,6 +53,7 @@ describe('subscribeWabaToMetaWebhook', () => {
 
   it('returns a failure instead of throwing on a network error', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('socket hang up'); }));
-    expect(await subscribeWabaToMetaWebhook('w', 'tok')).toEqual({ success: false, error: 'socket hang up' });
+    // providerFetch deliberately replaces the raw network error (it can echo the token-bearing URL).
+    expect(await subscribeWabaToMetaWebhook('w', 'tok')).toEqual({ success: false, error: 'Provider request failed' });
   });
 });

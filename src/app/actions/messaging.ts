@@ -17,12 +17,15 @@ import { isCloudApiHealthy } from '@/lib/messaging/cloudApiHealth';
 import { toClientError } from '@/shared/errors/AppError';
 import { subscribeWabaToMetaWebhook } from '@/lib/meta/subscribeWebhook';
 
-export async function getMetaAuthUrl(targetPlatform?: string) {
+export async function getMetaAuthUrl(targetPlatform?: string, returnTo?: 'social') {
 	// Mints a random opaque nonce bound server-side to the real authenticated user + their
 	// real (session-verified) workspace — the OAuth state param is never the workspace_id
 	// itself. requireWorkspaceAccess() (inside createOAuthStateNonce) throws if unauthenticated
 	// or not a real member, which is the correct behavior for a connect-flow initiator.
-	const { nonce, workspaceId } = await createOAuthStateNonce('meta', targetPlatform ? { platform: targetPlatform } : {});
+	const { nonce, workspaceId } = await createOAuthStateNonce('meta', {
+    ...(targetPlatform ? { platform: targetPlatform } : {}),
+    ...(returnTo ? { returnTo } : {}),
+  });
 	const appId = process.env.META_APP_ID;
 	const redirectBase = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 	const metaRedirectUri = `${redirectBase}/api/auth/meta/callback`;

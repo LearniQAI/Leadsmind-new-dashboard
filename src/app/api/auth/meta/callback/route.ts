@@ -2,12 +2,15 @@ import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { encrypt } from '@/lib/encryption'
 import { consumeOAuthStateNonce } from '@/lib/oauth/stateNonce'
+import { OAuthFlowError, providerFetch, readJson, safeErrorInfo, failureCodeOf, socialConnectionsRedirect, type OAuthFailureCode } from '@/lib/oauth/socialOAuth'
 import { logger } from '@/shared/logger'
-import { subscribePageToMetaWebhook, subscribeWabaToMetaWebhook } from '@/lib/meta/subscribeWebhook'
+import { subscribePageToMetaWebhook } from '@/lib/meta/subscribeWebhook'
+import { inngest } from '@/lib/inngest'
 import { newRequestId } from '@/shared/logger/requestId'
 import { createStepTimer, logRequestComplete } from '@/shared/logger/requestTiming'
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,7 +32,8 @@ export async function GET(req: Request) {
   const requestId = newRequestId()
   const timer = createStepTimer()
   let workspaceIdForLog: string | null = null
-  let status = 200
+  let status = 302
+  let failure: unknown
   const finish = () => logRequestComplete({
     requestId,
     route: '/api/auth/meta/callback',
@@ -38,6 +42,7 @@ export async function GET(req: Request) {
     durationMs: timer.totalMs(),
     steps: timer.steps(),
     workspaceId: workspaceIdForLog,
+    error: failure,
   })
 
   const { searchParams } = new URL(req.url)
@@ -45,42 +50,48 @@ export async function GET(req: Request) {
   const stateStr = searchParams.get('state') ?? ''
   const errorParam = searchParams.get('error')
 
-  // User denied access
+  let workspaceId = ''
+  let platform: 'facebook' | 'instagram' | 'whatsapp' = 'facebook'
+  let returnTo: 'social' | 'settings' = 'settings'
+
+  // Where to send the user: the Social connections page when the flow started there, otherwise
+  // the Settings integrations tab (which has its own meta_oauth query contract).
+  const fail = (error: OAuthFailureCode) => returnTo === 'social'
+    ? socialConnectionsRedirect(platform, { error }, '/social/connections')
+    : NextResponse.redirect(`${REDIRECT_BASE}${INTEGRATIONS_REDIRECT_PATH}&meta_oauth=1&error=${error}`)
+
+  // Resolve the state first (also on denial — Meta echoes `state` back) so we know where to return.
+  if (stateStr) {
+    try {
+      // state is a random opaque nonce minted at flow-initiation time, bound server-side to
+      // the real authenticated user + their real workspace (+ which sub-platform was
+      // requested, in `extra`) — never trust the raw state value as workspace_id/platform.
+      const { workspaceId: resolvedWorkspaceId, extra } = await consumeOAuthStateNonce(stateStr, 'meta')
+      workspaceId = resolvedWorkspaceId
+      workspaceIdForLog = workspaceId
+      platform = (extra.platform ?? 'facebook') as typeof platform
+      returnTo = extra.returnTo === 'social' ? 'social' : 'settings'
+      timer.mark('state_nonce_verify')
+    } catch (nonceErr) {
+      status = 400
+      failure = nonceErr
+      logger.error(safeErrorInfo(nonceErr), 'meta_oauth.state_nonce.invalid')
+      finish()
+      return fail('invalid_state')
+    }
+  }
+
+  // User cancelled or denied access
   if (errorParam) {
     status = 400
     finish()
-    return NextResponse.redirect(
-      `${REDIRECT_BASE}${INTEGRATIONS_REDIRECT_PATH}&meta_oauth=1&error=access_denied`
-    )
+    return fail('access_denied')
   }
 
   if (!code || !stateStr) {
     status = 400
     finish()
-    return NextResponse.redirect(
-      `${REDIRECT_BASE}${INTEGRATIONS_REDIRECT_PATH}&meta_oauth=1&error=missing_params`
-    )
-  }
-
-  let workspaceId = ''
-  let platform: 'facebook' | 'instagram' | 'whatsapp' = 'facebook'
-
-  try {
-    // state is a random opaque nonce minted at flow-initiation time, bound server-side to
-    // the real authenticated user + their real workspace (+ which sub-platform was
-    // requested, in `extra`) — never trust the raw state value as workspace_id/platform.
-    const { workspaceId: resolvedWorkspaceId, extra } = await consumeOAuthStateNonce(stateStr, 'meta')
-    workspaceId = resolvedWorkspaceId
-    workspaceIdForLog = workspaceId
-    platform = (extra.platform ?? 'facebook') as 'facebook' | 'instagram' | 'whatsapp'
-    timer.mark('state_nonce_verify')
-  } catch (nonceErr: any) {
-    status = 400
-    logger.error({ err: nonceErr }, 'meta_oauth.state_nonce.invalid')
-    finish()
-    return NextResponse.redirect(
-      `${REDIRECT_BASE}${INTEGRATIONS_REDIRECT_PATH}&meta_oauth=1&error=invalid_state`
-    )
+    return fail('missing_parameters')
   }
 
   try {
@@ -91,53 +102,54 @@ export async function GET(req: Request) {
     tokenUrl.searchParams.set('redirect_uri', `${REDIRECT_BASE}/api/auth/meta/callback`)
     tokenUrl.searchParams.set('code', code)
 
-    const tokenRes = await fetch(tokenUrl.toString())
-    const tokenData = await tokenRes.json()
-
-    if (!tokenRes.ok || tokenData.error) {
-      throw new Error(tokenData.error?.message ?? 'Failed to exchange code for token')
-    }
+    const tokenRes = await providerFetch(tokenUrl.toString())
+    const tokenData = await readJson(tokenRes)
+    if (!tokenRes.ok || tokenData.error || !tokenData.access_token) throw new OAuthFlowError('provider_error')
 
     const shortLivedToken = tokenData.access_token
 
-    // STEP 2: Exchange for long-lived token (60 days)
+    // STEP 2: Exchange for long-lived token (60 days). Falls back to the short-lived token if
+    // this call fails; it is still bounded by providerFetch's timeout.
     const longLivedUrl = new URL('https://graph.facebook.com/v18.0/oauth/access_token')
     longLivedUrl.searchParams.set('grant_type', 'fb_exchange_token')
     longLivedUrl.searchParams.set('client_id', process.env.META_APP_ID!)
     longLivedUrl.searchParams.set('client_secret', process.env.META_APP_SECRET!)
     longLivedUrl.searchParams.set('fb_exchange_token', shortLivedToken)
 
-    const longLivedRes = await fetch(longLivedUrl.toString())
-    const longLivedData = await longLivedRes.json()
-    const userToken = longLivedData.access_token ?? shortLivedToken
+    let userToken = shortLivedToken
+    try {
+      const longLivedRes = await providerFetch(longLivedUrl.toString())
+      const longLivedData = await readJson(longLivedRes)
+      userToken = longLivedData.access_token ?? shortLivedToken
+    } catch (err) {
+      logger.warn(safeErrorInfo(err), 'meta_oauth.long_lived_exchange.failed')
+    }
     timer.mark('token_exchange')
 
-    // STEP 1 - Always fetch pages with full fields:
-    const pagesRes = await fetch(
-      `https://graph.facebook.com/v18.0/me/accounts?fields=id,name,access_token,instagram_business_account,whatsapp_business_account&access_token=${userToken}`
+    // Pages — first page only (no picker).
+    const pagesRes = await providerFetch(
+      `https://graph.facebook.com/v18.0/me/accounts?fields=id,name,access_token,instagram_business_account,whatsapp_business_account&access_token=${encodeURIComponent(userToken)}`
     )
-    const pagesData = await pagesRes.json()
+    const pagesData = await readJson(pagesRes)
+    if (!pagesRes.ok || pagesData.error) throw new OAuthFlowError('provider_error')
     const page = pagesData.data?.[0]
+    timer.mark('pages_fetch')
 
-    if (!page) throw new Error('No Facebook Page found.')
+    if (!page) throw new OAuthFlowError('no_page')
 
-    logger.info({ pageId: page?.id, pageName: page?.name }, 'meta_oauth.page.found')
-    logger.info({ igAccount: page?.instagram_business_account }, 'meta_oauth.instagram_business_account.from_page')
-    logger.info({ wabaAccount: page?.whatsapp_business_account }, 'meta_oauth.whatsapp_business_account.from_page')
+    logger.info({ pageId: page.id, pageName: page.name }, 'meta_oauth.page.found')
 
-    // STEP 1.5 - Subscribe the Page to our webhook BEFORE recording it as 'connected'. A Page
-    // that fails this call cannot receive any Messenger/Instagram events, so it must not read
-    // as a healthy connection to the rest of the app (see meta/connections/route.ts, which
-    // treats status === 'connected' as "integration is live").
+    // Subscribe the Page to our webhook BEFORE recording it as 'connected'. A Page that fails
+    // this call cannot receive any Messenger/Instagram events, so it must not read as a healthy
+    // connection to the rest of the app (see meta/connections/route.ts, which treats
+    // status === 'connected' as "integration is live").
     const webhookSubscription = await subscribePageToMetaWebhook(page.id, page.access_token)
     if (!webhookSubscription.success) {
       logger.error({ pageId: page.id, err: webhookSubscription.error }, 'meta_oauth.facebook.webhook_subscription.failed')
-    } else {
-      logger.info({ pageId: page.id }, 'meta_oauth.facebook.webhook_subscription.succeeded')
     }
+    timer.mark('webhook_subscribe')
 
-    // STEP 2 - Always save Facebook:
-    await supabase.from('platform_connections').upsert({
+    const { error: saveError } = await supabase.from('platform_connections').upsert({
       workspace_id: workspaceId,
       platform: 'facebook',
       credentials: {
@@ -152,263 +164,42 @@ export async function GET(req: Request) {
       last_sync_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }, { onConflict: 'workspace_id,platform' })
-    timer.mark('facebook_page_lookup_and_save')
+    timer.mark('facebook_save')
+    if (saveError) throw new OAuthFlowError('save_failed')
 
-    logger.info({}, 'meta_oauth.facebook.saved')
-
-    // STEP 3 - Try to save Instagram (non-fatal if fails):
-    logger.info({ hasUserToken: !!userToken }, 'meta_oauth.instagram_whatsapp_discovery.attempting')
-    const igIdDirect = page?.instagram_business_account?.id
-    logger.info({ igIdDirect }, 'meta_oauth.instagram_discovery.starting')
-    let igId = igIdDirect
-    let igUsername = null
-
-    logger.info({ igId }, 'meta_oauth.instagram.attempt_1')
-
-    if (!igId) {
-      try {
-        const igRes = await fetch(
-          `https://graph.facebook.com/v18.0/${page.id}?fields=id,name,instagram_business_account&access_token=${page.access_token}`
-        )
-        const igData = await igRes.json()
-        igId = igData?.instagram_business_account?.id
-      } catch (err: any) { logger.error({ err: err.message }, 'meta_oauth.discovery.failed') }
-      logger.info({ igId }, 'meta_oauth.instagram.attempt_2')
-    }
-
-    if (!igId) {
-      try {
-        const bizRes = await fetch(
-          `https://graph.facebook.com/v18.0/me/businesses?access_token=${userToken}`
-        )
-        const bizData = await bizRes.json()
-        for (const biz of bizData.data || []) {
-          const igRes = await fetch(
-            `https://graph.facebook.com/v18.0/${biz.id}/instagram_accounts?fields=id,username&access_token=${userToken}`
-          )
-          const igData = await igRes.json()
-          logger.info({ bizId: biz.id, igData }, 'meta_oauth.instagram_accounts.for_business')
-          if (igData.data?.[0]) {
-            igId = igData.data[0].id
-            igUsername = igData.data[0].username
-            break
-          }
-        }
-      } catch (err: any) {
-        logger.error({ err: err.message }, 'meta_oauth.instagram.attempt_3_failed')
-      }
-    }
-    logger.info({ igId }, 'meta_oauth.instagram.attempt_3')
-
-    if (!igId) {
-      try {
-        // Attempt 4: fetch page with pages_read_engagement scope using userToken
-        const pageDetailRes = await fetch(
-          `https://graph.facebook.com/v18.0/${page.id}?fields=instagram_business_account{id,username}&access_token=${userToken}`
-        )
-        const pageDetail = await pageDetailRes.json()
-        logger.info({ pageDetail }, 'meta_oauth.instagram.page_detail_user_token')
-        igId = pageDetail?.instagram_business_account?.id
-        igUsername = pageDetail?.instagram_business_account?.username
-      } catch (err: any) {
-        logger.error({ err: err.message }, 'meta_oauth.instagram.attempt_4_failed')
-      }
-    }
-
-    if (!igId) {
-      try {
-        // Attempt 5: fetch page with pages_read_engagement scope using page.access_token as fallback
-        const pageDetailRes = await fetch(
-          `https://graph.facebook.com/v18.0/${page.id}?fields=instagram_business_account{id,username}&access_token=${page.access_token}`
-        )
-        const pageDetail = await pageDetailRes.json()
-        logger.info({ pageDetail }, 'meta_oauth.instagram.page_detail_page_token')
-        igId = pageDetail?.instagram_business_account?.id
-        igUsername = pageDetail?.instagram_business_account?.username
-      } catch (err: any) {
-        logger.error({ err: err.message }, 'meta_oauth.instagram.attempt_5_failed')
-      }
-    }
-    logger.info({ igId }, 'meta_oauth.instagram.attempt_4_5')
-
-    if (igId) {
-      if (!igUsername) {
-        try {
-          const igProfileRes = await fetch(
-            `https://graph.facebook.com/v18.0/${igId}?fields=username,name&access_token=${page.access_token}`
-          )
-          const igProfile = await igProfileRes.json()
-          igUsername = igProfile.username ?? null
-        } catch (err: any) { logger.error({ err: err.message }, 'meta_oauth.instagram.username_discovery_failed') }
-      }
-
-      // Instagram DMs for this account are delivered through the SAME Page-level
-      // subscribed_apps call made above (webhookSubscription) — there is no separate
-      // per-IG-account subscription for Page-linked Instagram professional accounts. So this
-      // row's health mirrors the Facebook row's subscription result, not a fresh check.
-      logger.info({ igId, igUsername }, 'meta_oauth.instagram.saving')
-      await supabase.from('platform_connections').upsert({
-        workspace_id: workspaceId,
-        platform: 'instagram',
-        credentials: {
-          user_access_token_encrypted: encrypt(userToken),
-          page_access_token_encrypted: encrypt(page.access_token),
-          page_id: page.id,
-          page_name: page.name,
-          instagram_id: igId,
-          instagram_username: igUsername,
-          health_status: webhookSubscription.success ? 'connected' : 'webhook_subscription_failed',
-          ...(webhookSubscription.success ? {} : { webhook_subscription_error: webhookSubscription.error }),
+    // Instagram + WhatsApp discovery is a handful-to-dozens of sequential Graph calls — done in
+    // the background so the user is redirected right away. The event carries ids only, never
+    // tokens (the job re-reads them, encrypted, from the saved Facebook row). A failed send
+    // must not fail the connect: Facebook is already saved.
+    try {
+      await inngest.send({
+        name: 'meta/discover',
+        data: {
+          workspaceId,
+          pageId: page.id,
+          igId: page.instagram_business_account?.id ?? null,
+          wabaId: page.whatsapp_business_account?.id ?? null,
+          wabaName: page.whatsapp_business_account?.name ?? null,
         },
-        status: webhookSubscription.success ? 'connected' : 'error',
-        last_sync_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'workspace_id,platform' })
-      logger.info({}, 'meta_oauth.instagram.saved')
+      })
+    } catch (err) {
+      logger.error(safeErrorInfo(err), 'meta_oauth.discovery_enqueue.failed')
     }
-    timer.mark('instagram_discovery_and_save')
+    timer.mark('discovery_enqueue')
 
-    // STEP 4 - Try to save WhatsApp (non-fatal if fails):
-    logger.info({}, 'meta_oauth.whatsapp_discovery.starting')
-    let wabaId = page?.whatsapp_business_account?.id
-    let wabaName = page?.whatsapp_business_account?.name
-    logger.info({ wabaId }, 'meta_oauth.whatsapp.from_page')
+    if (!webhookSubscription.success) throw new OAuthFlowError('webhook_failed')
 
-    if (!wabaId) {
-      try {
-        // Attempt: fetch WhatsApp directly from page using userToken
-        const waPageRes = await fetch(
-          `https://graph.facebook.com/v18.0/${page.id}?fields=whatsapp_business_account{id,name,phone_numbers{id,display_phone_number}}&access_token=${userToken}`
-        )
-        const waPageData = await waPageRes.json()
-        logger.info({ waPageData }, 'meta_oauth.whatsapp.page_direct_user_token')
-        wabaId = waPageData?.whatsapp_business_account?.id
-        wabaName = waPageData?.whatsapp_business_account?.name
-      } catch (err: any) {
-        logger.error({ err: err.message }, 'meta_oauth.whatsapp.page_direct_user_token_failed')
-      }
-    }
-
-    if (!wabaId) {
-      try {
-        // Attempt: fetch WhatsApp directly from page using page.access_token as fallback
-        const waPageRes = await fetch(
-          `https://graph.facebook.com/v18.0/${page.id}?fields=whatsapp_business_account{id,name,phone_numbers{id,display_phone_number}}&access_token=${page.access_token}`
-        )
-        const waPageData = await waPageRes.json()
-        logger.info({ waPageData }, 'meta_oauth.whatsapp.page_direct_page_token')
-        wabaId = waPageData?.whatsapp_business_account?.id
-        wabaName = waPageData?.whatsapp_business_account?.name
-      } catch (err: any) {
-        logger.error({ err: err.message }, 'meta_oauth.whatsapp.page_direct_page_token_failed')
-      }
-    }
-    logger.info({ wabaId }, 'meta_oauth.whatsapp.after_page_direct')
-
-    if (!wabaId) {
-      try {
-        const bizRes = await fetch(
-          `https://graph.facebook.com/v18.0/me/businesses?access_token=${userToken}`
-        )
-        const bizData = await bizRes.json()
-        const business = bizData.data?.[0]
-        if (business) {
-          const wabaRes = await fetch(
-            `https://graph.facebook.com/v18.0/${business.id}/owned_whatsapp_business_accounts?access_token=${userToken}`
-          )
-          const wabaData = await wabaRes.json()
-          wabaId = wabaData.data?.[0]?.id
-          wabaName = wabaData.data?.[0]?.name
-        }
-      } catch (err: any) { logger.error({ err: err.message }, 'meta_oauth.whatsapp.business_fallback_1_failed') }
-      logger.info({ wabaId }, 'meta_oauth.whatsapp.after_business_fallback_1')
-    }
-
-    if (!wabaId) {
-      try {
-        const bizRes = await fetch(
-          `https://graph.facebook.com/v18.0/me/businesses?access_token=${userToken}`
-        )
-        const bizData = await bizRes.json()
-        for (const biz of bizData.data || []) {
-          const wabaRes = await fetch(
-            `https://graph.facebook.com/v18.0/${biz.id}/owned_whatsapp_business_accounts?access_token=${userToken}`
-          )
-          const wabaData = await wabaRes.json()
-          logger.info({ bizId: biz.id, wabaData }, 'meta_oauth.whatsapp.waba_for_business')
-          if (wabaData.data?.[0]) {
-            wabaId = wabaData.data[0].id
-            wabaName = wabaData.data[0].name
-            break
-          }
-        }
-      } catch (err: any) {
-        logger.error({ err: err.message }, 'meta_oauth.whatsapp.business_fallback_2_failed')
-      }
-    }
-    logger.info({ wabaId }, 'meta_oauth.whatsapp.after_business_fallback_2')
-
-    let waWebhookSubscriptionFailed = false
-    if (wabaId) {
-      try {
-        const phoneRes = await fetch(
-          `https://graph.facebook.com/v18.0/${wabaId}/phone_numbers?access_token=${userToken}`
-        )
-        const phoneData = await phoneRes.json()
-        const phone = phoneData.data?.[0]
-
-        if (phone) {
-          // Without this per-WABA subscription Meta delivers no WhatsApp events for this account.
-          const wabaSubscription = await subscribeWabaToMetaWebhook(wabaId, userToken)
-          if (!wabaSubscription.success) {
-            logger.error({ wabaId, error: wabaSubscription.error }, 'meta_oauth.whatsapp.webhook_subscription_failed')
-            waWebhookSubscriptionFailed = true
-          }
-          logger.info({ wabaId, phoneId: phone?.id }, 'meta_oauth.whatsapp.saving')
-          await supabase.from('platform_connections').upsert({
-            workspace_id: workspaceId,
-            platform: 'whatsapp',
-            credentials: {
-              access_token_encrypted: encrypt(userToken),
-              waba_id: wabaId,
-              waba_name: wabaName ?? 'WhatsApp Business',
-              phone_number_id: phone.id,
-              phone_number: phone.display_phone_number,
-              health_status: wabaSubscription.success ? 'connected' : 'webhook_subscription_failed',
-              ...(wabaSubscription.success ? {} : { webhook_subscription_error: wabaSubscription.error }),
-            },
-            status: wabaSubscription.success ? 'connected' : 'error',
-            last_sync_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          }, { onConflict: 'workspace_id,platform' })
-          logger.info({}, 'meta_oauth.whatsapp.saved')
-        }
-      } catch (err: any) { logger.error({ err: err.message }, 'meta_oauth.whatsapp.phone_discovery_failed') }
-    }
-    timer.mark('whatsapp_discovery_and_save')
-
-    // STEP 5 - Redirect to success:
-    const redirectParams = new URLSearchParams({
-      meta_oauth: '1',
-      platform,
-      success: 'true',
-    })
-    if (!igId) redirectParams.set('needs_instagram', 'true')
-    if (!wabaId) redirectParams.set('needs_whatsapp', 'true')
-    if (!webhookSubscription.success) redirectParams.set('webhook_subscription_error', 'true')
-    if (waWebhookSubscriptionFailed) redirectParams.set('whatsapp_webhook_subscription_error', 'true')
-
-    return NextResponse.redirect(
-      `${REDIRECT_BASE}${INTEGRATIONS_REDIRECT_PATH}&${redirectParams.toString()}`
-    )
-
-  } catch (err: any) {
-    status = 500
-    logger.error({ err: err.message }, 'meta_oauth.callback.failed')
-    return NextResponse.redirect(
-      `${REDIRECT_BASE}${INTEGRATIONS_REDIRECT_PATH}&meta_oauth=1&error=${encodeURIComponent(err.message)}`
-    )
-  } finally {
     finish()
+    if (returnTo === 'social') {
+      return socialConnectionsRedirect(platform, { success: true }, '/social/connections')
+    }
+    const redirectParams = new URLSearchParams({ meta_oauth: '1', platform, success: 'true' })
+    return NextResponse.redirect(`${REDIRECT_BASE}${INTEGRATIONS_REDIRECT_PATH}&${redirectParams.toString()}`)
+  } catch (err) {
+    status = 500
+    failure = err
+    logger.error(safeErrorInfo(err), 'meta_oauth.callback.failed')
+    finish()
+    return fail(failureCodeOf(err))
   }
 }
