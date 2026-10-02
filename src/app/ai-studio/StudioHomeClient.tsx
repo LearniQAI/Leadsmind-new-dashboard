@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { DashCard, DashButton, DashEmptyState, DashStatusPill } from '@/components/dashboard-ui';
 import { cn } from '@/lib/utils';
+import { AI_RESEARCH_ENABLED } from '@/lib/featureFlags/aiResearch';
 
 interface StudioHomeClientProps {
   workspaceId: string;
@@ -78,7 +79,7 @@ export default function StudioHomeClient({
             AI Studio
           </h1>
           <p className="text-[13px] font-medium !text-dash-textMuted">
-            AI tools for content creation and customer research.
+            AI tools for content creation.
           </p>
         </div>
 
@@ -153,7 +154,8 @@ export default function StudioHomeClient({
             </div>
           </DashCard>
 
-          {/* Research Agent Portal Card */}
+          {/* Research Agent Portal Card — hidden with the AI research flag */}
+          {AI_RESEARCH_ENABLED && (
           <DashCard
             padding="default"
             onClick={() => router.push('/ai-studio/research')}
@@ -176,6 +178,7 @@ export default function StudioHomeClient({
               <ArrowRight size={14} className="transform group-hover:translate-x-1 transition-transform motion-reduce:group-hover:translate-x-0" />
             </div>
           </DashCard>
+          )}
 
         </div>
       </div>
@@ -194,7 +197,7 @@ export default function StudioHomeClient({
           <DashEmptyState
             icon={Sparkles}
             title="No generations yet"
-            description="AI content and research generations will appear here."
+            description="AI content generations will appear here."
           />
         ) : (
           <div className="overflow-x-auto">

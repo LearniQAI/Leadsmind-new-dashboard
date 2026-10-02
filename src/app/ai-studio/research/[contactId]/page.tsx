@@ -1,5 +1,6 @@
 import React from 'react';
 import { redirect } from 'next/navigation';
+import { AI_RESEARCH_ENABLED } from '@/lib/featureFlags/aiResearch';
 import { requireAuth, getCurrentWorkspaceId } from '@/lib/auth';
 import { createServerClient } from '@/lib/supabase/server';
 import Wrapper from '@/components/layouts/DefaultWrapper';
@@ -15,6 +16,7 @@ interface PageProps {
 export const dynamic = 'force-dynamic';
 
 export default async function ContactBriefPage({ params }: PageProps) {
+  if (!AI_RESEARCH_ENABLED) redirect('/ai-studio');
   const { contactId } = params;
 
   await requireAuth();

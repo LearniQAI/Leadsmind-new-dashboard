@@ -5,6 +5,7 @@ import { FaLinkedin as Linkedin } from 'react-icons/fa6';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { newClientRequestId } from '@/lib/http/requestId';
+import { researchFailureFromResponse } from '@/lib/ai/researchMessages';
 
 interface IntelligenceTabProps {
   contactId: string;
@@ -15,7 +16,7 @@ interface IntelligenceTabProps {
 export default function IntelligenceTab({
   contactId,
   workspaceId,
-  companyDomain = 'zafrologistics.co.za'
+  companyDomain
 }: IntelligenceTabProps) {
   const supabase = createClient();
   const [compiling, setCompiling] = useState(false);
@@ -31,6 +32,7 @@ export default function IntelligenceTab({
           .from('ai_research_reports')
           .select('*')
           .eq('contact_id', contactId)
+          .eq('report_json->>schema_version', '2')
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -64,19 +66,20 @@ export default function IntelligenceTab({
         headers: { 'Content-Type': 'application/json', 'x-request-id': newClientRequestId() },
         body: JSON.stringify({
           contactIds: [contactId],
-          workspaceId,
-          domain: companyDomain
+          domain: companyDomain || undefined
         })
       });
 
       const body = await response.json();
-      if (!response.ok) throw new Error(body.error || 'Research compile failed');
+      const failure = researchFailureFromResponse(body);
+      if (!response.ok || failure) throw new Error(failure || body.error || 'Research compile failed');
 
       // Refresh data
       const { data } = await supabase
         .from('ai_research_reports')
         .select('*')
         .eq('contact_id', contactId)
+        .eq('report_json->>schema_version', '2')
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -106,9 +109,9 @@ export default function IntelligenceTab({
 
   // Badge warmth color mappings (Sprint 5.4 rule)
   const getWarmthBadge = (s: number) => {
-    if (s >= 80) return { label: 'High Fit Target', bg: 'bg-[#10b981]/15 border-[#10b981]/25 text-[#34d399]' };
-    if (s >= 60) return { label: 'Warm Prospect', bg: 'bg-[#8b5cf6]/15 border-[#8b5cf6]/25 text-[#a78bfa]' };
-    if (s >= 40) return { label: 'Nurture Play', bg: 'bg-[#f59e0b]/15 border-[#f59e0b]/25 text-[#fbbf24]' };
+    if (s >= 80) return { label: 'High Fit Target', bg: 'bg-emerald-50 border-emerald-200 text-emerald-700' };
+    if (s >= 60) return { label: 'Warm Prospect', bg: 'bg-violet-50 border-violet-200 text-violet-700' };
+    if (s >= 40) return { label: 'Nurture Play', bg: 'bg-amber-50 border-amber-200 text-amber-700' };
     return { label: 'Low Priority', bg: 'bg-dash-surface border-dash-border !text-dash-textMuted' };
   };
 
@@ -148,10 +151,11 @@ export default function IntelligenceTab({
         </button>
       </div>
 
-      {score !== null && (
+      {report !== null && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* Suitability Score details (1/3) */}
+          {/* Suitability Score details (1/3) — only when a real score exists */}
+          {score !== null && (
           <div className="bg-white border border-dash-border rounded-2xl p-6 space-y-4">
             <h5 className="text-[11px] font-bold !text-dash-textMuted tracking-wider">Lead Suitability Metric</h5>
             
@@ -171,26 +175,28 @@ export default function IntelligenceTab({
               <div className="space-y-1.5 text-[11px] font-semibold !text-dash-textMuted">
                 <div className="flex justify-between items-center bg-dash-surface px-2 py-1.5 rounded border border-dash-border">
                   <span>Growth Trigger Event</span>
-                  <span className="text-[#34d399]">+{breakdown?.trigger || 0} pts</span>
+                  <span className="text-emerald-700">+{breakdown?.trigger || 0} pts</span>
                 </div>
                 <div className="flex justify-between items-center bg-dash-surface px-2 py-1.5 rounded border border-dash-border">
                   <span>Infrastructure Gap</span>
-                  <span className="text-[#34d399]">+{breakdown?.techGap || 0} pts</span>
+                  <span className="text-emerald-700">+{breakdown?.techGap || 0} pts</span>
                 </div>
                 <div className="flex justify-between items-center bg-dash-surface px-2 py-1.5 rounded border border-dash-border">
                   <span>Ideal Team Size Match</span>
-                  <span className="text-[#34d399]">+{breakdown?.size || 0} pts</span>
+                  <span className="text-emerald-700">+{breakdown?.size || 0} pts</span>
                 </div>
                 <div className="flex justify-between items-center bg-dash-surface px-2 py-1.5 rounded border border-dash-border">
                   <span>Engagement History</span>
-                  <span className="text-[#34d399]">+{breakdown?.engagement || 0} pts</span>
+                  <span className="text-emerald-700">+{breakdown?.engagement || 0} pts</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Enrichment Profile Data (2/3) */}
-          <div className="lg:col-span-2 bg-white border border-dash-border rounded-2xl p-6 space-y-6">
+          )}
+
+          {/* Enrichment Profile Data */}
+          <div className={`${score !== null ? 'lg:col-span-2' : 'lg:col-span-3'} bg-white border border-dash-border rounded-2xl p-6 space-y-6`}>
             
             {/* Enterprise Snapshot */}
             <div className="space-y-3">
@@ -202,25 +208,25 @@ export default function IntelligenceTab({
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-dash-surface p-4 rounded-xl border border-dash-border text-xs font-semibold">
                 <div>
                   <div className="text-[9px] !text-dash-textMuted">Company Name</div>
-                  <div className="!text-dash-text mt-0.5">{report?.company_snapshot?.legal_name || 'Zafro Logistics'}</div>
+                  <div className="!text-dash-text mt-0.5">{report?.company_snapshot?.legal_name || '—'}</div>
                 </div>
                 <div>
                   <div className="text-[9px] !text-dash-textMuted">Headquarters</div>
-                  <div className="!text-dash-text mt-0.5">{report?.company_snapshot?.headquarters || 'Johannesburg, GP'}</div>
+                  <div className="!text-dash-text mt-0.5">{report?.company_snapshot?.headquarters || '—'}</div>
                 </div>
                 <div>
                   <div className="text-[9px] !text-dash-textMuted">Headcount Est</div>
-                  <div className="!text-dash-text mt-0.5">{report?.company_snapshot?.headcount_estimation || '45 employees'}</div>
+                  <div className="!text-dash-text mt-0.5">{report?.company_snapshot?.headcount_estimation || '—'}</div>
                 </div>
                 <div>
                   <div className="text-[9px] !text-dash-textMuted">Established</div>
-                  <div className="!text-dash-text mt-0.5">{report?.company_snapshot?.established_year || '2018'}</div>
+                  <div className="!text-dash-text mt-0.5">{report?.company_snapshot?.established_year || '—'}</div>
                 </div>
               </div>
 
               <div className="text-xs !text-dash-textMuted leading-relaxed pt-2">
                 <strong className="!text-dash-text block mb-1">Operational Profile Matrix</strong>
-                {report?.plain_language_operational_profile || 'Provides logistics and route coordination across South Africa.'}
+                {report?.plain_language_operational_profile || 'No summary available.'}
               </div>
             </div>
 
@@ -231,7 +237,7 @@ export default function IntelligenceTab({
                 <div className="space-y-1.5 text-xs !text-dash-textMuted font-medium">
                   {report?.inferred_pain_points?.map((p: string, i: number) => (
                     <div key={i} className="flex gap-1.5 items-start">
-                      <AlertTriangle size={12} className="text-amber-500 shrink-0 mt-0.5" />
+                      <AlertTriangle size={12} className="text-amber-600 shrink-0 mt-0.5" />
                       <span>{p}</span>
                     </div>
                   )) || (
@@ -245,7 +251,7 @@ export default function IntelligenceTab({
                 <div className="space-y-1.5 text-xs !text-dash-textMuted font-medium">
                   {report?.suggested_conversation_openers?.map((o: string, i: number) => (
                     <div key={i} className="flex gap-1.5 items-start">
-                      <CheckCircle2 size={12} className="text-[#34d399] shrink-0 mt-0.5" />
+                      <CheckCircle2 size={12} className="text-emerald-700 shrink-0 mt-0.5" />
                       <span className="italic font-sans">"{o}"</span>
                     </div>
                   )) || (
@@ -260,7 +266,7 @@ export default function IntelligenceTab({
         </div>
       )}
 
-      {score === null && (
+      {report === null && (
         <div className="py-12 bg-white border border-dash-border rounded-2xl flex flex-col items-center justify-center text-center p-6 space-y-4">
           <Brain size={32} className="!text-dash-textMuted opacity-40 animate-pulse" />
           <div>

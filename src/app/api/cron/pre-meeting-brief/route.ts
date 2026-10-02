@@ -7,6 +7,7 @@ import { UnauthorizedError as LibUnauthorizedError, ForbiddenError as LibForbidd
 import { runCreditGuard, consumeAICredit } from '@/lib/ai/creditGuard';
 import { formatWhenForMessage } from '@/lib/calendar/displayTime';
 import { logger } from '@/shared/logger';
+import { AI_RESEARCH_ENABLED } from '@/lib/featureFlags/aiResearch';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +37,10 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   if (isCronAuthorized(req)) {
     return handleBriefingCron();
+  }
+
+  if (!AI_RESEARCH_ENABLED) {
+    return NextResponse.json({ error: 'AI research is not available.' }, { status: 404 });
   }
 
   try {
@@ -79,7 +84,10 @@ export async function POST(req: Request) {
 
 async function handleSingleContactBrief(contact: any, recipientEmail: string) {
   const contactName = [contact.first_name, contact.last_name].filter(Boolean).join(' ') || 'Prospect';
-  const domain = contact.metadata?.company_domain || contact.email?.split('@')[1] || 'zafrologistics.co.za';
+  const domain = contact.metadata?.company_domain || contact.email?.split('@')[1] || '';
+  if (!domain) {
+    return NextResponse.json({ error: 'This contact has no company domain to research.' }, { status: 400 });
+  }
   const domainPart = domain.split('.')[0];
   const companyName = domainPart.charAt(0).toUpperCase() + domainPart.slice(1);
 
@@ -100,23 +108,11 @@ async function handleSingleContactBrief(contact: any, recipientEmail: string) {
     contact.workspace_id
   );
 
-  const reportRecord = await db('ai_research_reports')
-    .where({ contact_id: contact.id })
-    .first();
-
-  const leadScore = reportRecord?.lead_score || 75;
-  const suitability = leadScore >= 80 ? 'HIGH FIT TARGET' : leadScore >= 60 ? 'WARM PROSPECT' : 'NURTURE PLAY';
 
   const html = `
     <div style="font-family: sans-serif; background: #04091a; color: #eef2ff; padding: 24px; border-radius: 12px; max-width: 600px; margin: 0 auto;">
       <h2 style="color: #3b82f6; border-bottom: 1px solid #1e293b; padding-bottom: 8px;">LeadsMind AI Pre-Meeting Briefing</h2>
       <p>Prospect intelligence briefing for <strong>${contactName}</strong> from <strong>${companyName}</strong>.</p>
-
-      <div style="background: #0b0b1e; border: 1px solid rgba(255,255,255,0.05); padding: 16px; border-radius: 8px; margin: 16px 0;">
-        <span style="font-size: 11px; text-transform: uppercase; color: #94a3b8; display: block;">Lead Suitability Metric</span>
-        <span style="font-size: 32px; font-weight: bold; color: #eef2ff;">${leadScore} <span style="font-size: 14px; color: #64748b;">/ 100</span></span>
-        <div style="margin-top: 8px; font-size: 12px; font-weight: bold; color: #10b981;">[${suitability}]</div>
-      </div>
 
       <h3 style="color: #60a5fa;">Prospect Intelligence Summary</h3>
       <p><strong>Operational Profile:</strong> ${report.plain_language_operational_profile || 'No details available.'}</p>
@@ -149,6 +145,11 @@ async function handleSingleContactBrief(contact: any, recipientEmail: string) {
 }
 
 async function handleBriefingCron() {
+  // The brief is entirely AI-research output, so the whole sweep is switched off with the
+  // research flag. brief_sent stays false, so enabling the flag later picks up upcoming meetings.
+  if (!AI_RESEARCH_ENABLED) {
+    return NextResponse.json({ success: true, skipped: 'ai_research_disabled', processedCount: 0 });
+  }
   try {
     const now = new Date();
     // A pre-meeting brief should land ~2h out, so the top of the window stays
@@ -220,7 +221,8 @@ async function handleBriefingCron() {
           }
         }
 
-        const domain = contact.metadata?.company_domain || contact.email?.split('@')[1] || 'zafrologistics.co.za';
+        const domain = contact.metadata?.company_domain || contact.email?.split('@')[1] || '';
+        if (!domain) continue;
         const domainPart = domain.split('.')[0];
         const companyName = domainPart.charAt(0).toUpperCase() + domainPart.slice(1);
 
@@ -234,13 +236,6 @@ async function handleBriefingCron() {
           appointment.workspace_id
         );
 
-        // Fetch lead score
-        const reportRecord = await db('ai_research_reports')
-          .where({ contact_id: contact.id })
-          .first();
-
-        const leadScore = reportRecord?.lead_score || 75;
-        const suitability = leadScore >= 80 ? 'HIGH FIT TARGET' : leadScore >= 60 ? 'WARM PROSPECT' : 'NURTURE PLAY';
 
         // The calendar's clock with the zone named, not the server's locale.
         const briefCal = appointment.calendar_id ? await db('booking_calendars').where({ id: appointment.calendar_id }).first() : null;
@@ -250,12 +245,6 @@ async function handleBriefingCron() {
           <div style="font-family: sans-serif; background: #04091a; color: #eef2ff; padding: 24px; border-radius: 12px; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #3b82f6; border-bottom: 1px solid #1e293b; padding-bottom: 8px;">LeadsMind AI Pre-Meeting Briefing</h2>
             <p>You have an upcoming appointment with <strong>${contactName}</strong> from <strong>${companyName}</strong> scheduled for ${formatWhenForMessage(appointment.start_time, null, briefTimeZone)}.</p>
-            
-            <div style="background: #0b0b1e; border: 1px solid rgba(255,255,255,0.05); padding: 16px; border-radius: 8px; margin: 16px 0;">
-              <span style="font-size: 11px; text-transform: uppercase; color: #94a3b8; display: block;">Lead Suitability Metric</span>
-              <span style="font-size: 32px; font-weight: bold; color: #eef2ff;">${leadScore} <span style="font-size: 14px; color: #64748b;">/ 100</span></span>
-              <div style="margin-top: 8px; font-size: 12px; font-weight: bold; color: #10b981;">[${suitability}]</div>
-            </div>
 
             <h3 style="color: #60a5fa;">Prospect Intelligence Summary</h3>
             <p><strong>Operational Profile:</strong> ${report.plain_language_operational_profile || 'No details available.'}</p>
