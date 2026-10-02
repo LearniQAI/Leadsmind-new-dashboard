@@ -23,7 +23,7 @@ export async function isTrackingDomain(host: string): Promise<boolean> {
   return !!data && data.length > 0
 }
 
-export interface ResolvedWebsite { workspaceSlug: string; subdomain: string }
+export interface ResolvedWebsite { workspaceSlug: string; subdomain: string; /** False when the domain is verified but its website is not published (serve a 404, never the platform app). */ published: boolean }
 
 /**
  * Website-builder custom domains (builder_published_domains). Only consulted after resolveHost()
@@ -47,9 +47,9 @@ export async function resolveWebsiteHost(host: string): Promise<ResolvedWebsite 
 
   const site: any = Array.isArray((data as any)?.websites) ? (data as any).websites[0] : (data as any)?.websites
   const ws: any = Array.isArray(site?.workspaces) ? site.workspaces[0] : site?.workspaces
-  if (!data || !data.verified || !site?.is_published || !site.subdomain || !ws?.slug) return null
+  if (!data || !data.verified || !site?.subdomain || !ws?.slug) return null
   if (site.workspace_id !== data.workspace_id) return null
-  return { workspaceSlug: ws.slug, subdomain: site.subdomain }
+  return { workspaceSlug: ws.slug, subdomain: site.subdomain, published: !!site.is_published }
 }
 
 /** Resolve an inbound Host header to a workspace. Returns null for the platform's own hosts. */
