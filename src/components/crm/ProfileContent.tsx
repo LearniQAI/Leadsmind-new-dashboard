@@ -9,6 +9,7 @@ import { NotesManager } from './NotesManager';
 import { TasksManager } from './TasksManager';
 import IntelligenceTab from './tabs/IntelligenceTab';
 import { ComplianceTab } from './ComplianceTab';
+import { AI_RESEARCH_ENABLED } from '@/lib/featureFlags/aiResearch';
 
 interface ProfileContentProps {
   contact: Contact;
@@ -20,11 +21,12 @@ interface ProfileContentProps {
 export function ProfileContent({ contact, activities, notes, tasks }: ProfileContentProps) {
   const [activeTab, setActiveTab] = useState<'timeline' | 'notes' | 'tasks' | 'intelligence' | 'compliance'>('timeline');
 
+  // The AI Insights tab is the research agent's only entry point — hidden with the research flag.
   const tabs: { id: string; label: string; icon: LucideIcon }[] = [
     { id: 'timeline', label: 'Timeline', icon: History },
     { id: 'notes', label: 'Notes', icon: StickyNote },
     { id: 'tasks', label: 'Tasks', icon: ListChecks },
-    { id: 'intelligence', label: 'AI Insights', icon: Sparkles },
+    ...(AI_RESEARCH_ENABLED ? [{ id: 'intelligence', label: 'AI Insights', icon: Sparkles }] : []),
     { id: 'compliance', label: 'Compliance', icon: ShieldCheck },
   ];
 
@@ -66,11 +68,11 @@ export function ProfileContent({ contact, activities, notes, tasks }: ProfileCon
           <TasksManager contactId={contact.id} tasks={tasks} />
         )}
 
-        {activeTab === 'intelligence' && (
+        {AI_RESEARCH_ENABLED && activeTab === 'intelligence' && (
           <IntelligenceTab 
             contactId={contact.id} 
             workspaceId={contact.workspace_id} 
-            companyDomain={(contact as any).metadata?.company_domain || 'zafrologistics.co.za'}
+            companyDomain={(contact as any).metadata?.company_domain || undefined}
           />
         )}
 

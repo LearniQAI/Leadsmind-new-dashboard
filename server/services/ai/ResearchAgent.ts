@@ -1,384 +1,205 @@
 import OpenAI from 'openai';
-import { db } from '../../database/datasource';
-import { ScoringEngine } from './ScoringEngine';
+import { db, supabase } from '../../database/datasource';
 import { logger, safeLog } from '@/shared/logger';
 import { createStepTimer } from '@/shared/logger/requestTiming';
+import { consumeAICredit, refundAICredit } from '@/lib/ai/creditGuard';
+import { CreditLimitExceededError } from '@/shared/errors/AppError';
 
-export const agentToolDefinitions = [
-  {
-    type: 'function',
-    function: {
-      name: 'execute_web_search',
-      description: 'Queries live search engine indexes to find relevant news, company registrations, or public background info.',
-      parameters: {
-        type: 'object',
-        properties: {
-          searchQuery: { type: 'string', description: 'The specific search query string to pass to the engine' }
-        },
-        required: ['searchQuery']
-      }
-    }
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'scrape_url_content',
-      description: 'Extracts clean, readable content text layers directly from a specified public URL.',
-      parameters: {
-        type: 'object',
-        properties: {
-          targetUrl: { type: 'string', description: 'The absolute URL destination to scrape' }
-        },
-        required: ['targetUrl']
-      }
-    }
+// Bumped when the stored report shape/semantics change. Cache reads only trust rows at this
+// version, so rows written by the earlier canned-data agent (no schema_version) can never be
+// served as research results.
+export const RESEARCH_REPORT_SCHEMA_VERSION = 2;
+
+const OPENAI_TIMEOUT_MS = 30_000;
+
+export type ResearchFailureCode =
+  | 'insufficient_credits'
+  | 'timeout'
+  | 'provider_error'
+  | 'empty_result'
+  | 'invalid_result'
+  | 'save_failed';
+
+// A real, typed failure. Callers report it as a failed item — nothing is saved and no
+// placeholder report is invented.
+export class ResearchFailedError extends Error {
+  userSafe = true;
+  constructor(public code: ResearchFailureCode) {
+    super(code);
+    this.name = 'ResearchFailedError';
   }
-];
+}
+
+function isTimeout(err: any): boolean {
+  return err?.name === 'APIConnectionTimeoutError' || err?.name === 'TimeoutError' || err?.name === 'AbortError';
+}
+
+// The model is given ONLY what the CRM already knows. There is no search or scrape source, so it
+// must not invent employers, events, news or numbers; unknown stays empty.
+const SYSTEM_PROMPT = [
+  'You help a salesperson prepare for a conversation with a contact.',
+  'Use ONLY the facts provided in the user message. You have no internet access.',
+  'Never invent employers, job titles, events, news, headcount, technology, or personal details.',
+  'If something is not stated in the provided facts, leave it empty ("" or []).',
+  'Do NOT include personal non-professional details (home address, personal phone, family).',
+  'Return a JSON object with exactly these keys:',
+  'professional_summary (string), likely_role (string), strategic_focus_areas (string[]),',
+  'inferred_pain_points (string[]), suggested_conversation_openers (string[]).',
+].join(' ');
+
+function hasContent(r: any): boolean {
+  if (!r || typeof r !== 'object') return false;
+  return ['professional_summary', 'likely_role'].some((k) => typeof r[k] === 'string' && r[k].trim()) ||
+    ['strategic_focus_areas', 'inferred_pain_points', 'suggested_conversation_openers'].some((k) => Array.isArray(r[k]) && r[k].length > 0);
+}
 
 export class ResearchAgent {
-  public static async runResearch(domain: string, workspaceId: string): Promise<any> {
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    
-    // Check local cache first (Sprint 6.5 caching rule - within active 30-day window)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
-    const cachedReport = await db('ai_research_reports')
-      .where({ company_domain: domain })
-      .first();
-
-    if (cachedReport && new Date(cachedReport.created_at) > thirtyDaysAgo) {
-      console.log(`[Research Agent] Cache HIT for domain ${domain}`);
-      return cachedReport.report_json;
-    }
-
-    console.log(`[Research Agent] Running fresh research loop for domain ${domain}`);
-
-    // Tool executions (mocked with rich, resilient local search results matching SA context)
-    const runToolCall = async (name: string, args: any) => {
-      if (name === 'execute_web_search') {
-        const query = args.searchQuery.toLowerCase();
-        if (query.includes('news') || query.includes('announcement')) {
-          return JSON.stringify([
-            { title: "Zafro adds 15 custom electric delivery vehicles to fleet", url: `https://example-news.co.za/zafro-fleet` },
-            { title: "Zafro Logistics launches ROSEBANK distribution center", url: `https://example-news.co.za/zafro-rosebank` }
-          ]);
-        }
-        return JSON.stringify([
-          { title: "Zafro Logistics Pty Ltd - Core Company Summary", url: `https://${domain}/about` },
-          { title: "Managing Director Thabo Mokoena Speaks on Green Supply Chain", url: `https://${domain}/team` }
-        ]);
-      } else if (name === 'scrape_url_content') {
-        const url = args.targetUrl;
-        // Proxy Resiliency Rule: handle blocks with metadata fallback
-        if (url.includes('blocked') || url.includes('security-check')) {
-          return JSON.stringify({
-            status: "blocked_by_security",
-            title: "Security Gateway - Zafro Logistics",
-            meta_description: "Zafro Logistics Pty Ltd provides premier cold-chain transport solutions. Rosebank headquarters.",
-            fallback_applied: true
-          });
-        }
-        return `Zafro Logistics Pty Ltd is a Johannesburg, South Africa based transport firm established in 2018. Thabo Mokoena serves as Managing Director. Core stack includes WordPress, Mailchimp, and Google Workspace. They are actively hiring a Senior Route Optimization Manager.`;
-      }
-      return 'No data found';
-    };
-
-    try {
-      // Prompt LLM with tools
-      const messages: any[] = [
-        {
-          role: 'system',
-          content: 'You are an autonomous research agent. Gather information about the target domain and output a rich company summary as a structured JSON object. Use the tools provided.'
-        },
-        {
-          role: 'user',
-          content: `Perform full business research on domain: ${domain}`
-        }
-      ];
-
-      const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        messages,
-        tools: agentToolDefinitions as any,
-        tool_choice: 'auto'
-      });
-
-      const responseMessage = response.choices[0].message;
-
-      // Handle tool calls
-      if (responseMessage.tool_calls) {
-        messages.push(responseMessage);
-        for (const toolCall of responseMessage.tool_calls) {
-          const toolResult = await runToolCall(toolCall.function.name, JSON.parse(toolCall.function.arguments));
-          messages.push({
-            tool_call_id: toolCall.id,
-            role: 'tool',
-            name: toolCall.function.name,
-            content: toolResult
-          });
-        }
-
-        // Second completion to get the final JSON
-        const finalResponse = await openai.chat.completions.create({
-          model: 'gpt-4o',
-          messages,
-          response_format: { type: 'json_object' }
-        });
-
-        const rawJsonString = finalResponse.choices[0].message.content || '{}';
-        const parsedReport = JSON.parse(rawJsonString);
-
-        // Evaluate scoring signals for company
-        const headcountStr = parsedReport.company_snapshot?.headcount_estimation || '60';
-        const headcountVal = parseInt(headcountStr.replace(/\D/g, ''), 10) || 60;
-        
-        const hasLegacy = parsedReport.detected_technology_stack?.some((t: string) => 
-          ['wordpress', 'mailchimp', 'sheets', 'excel'].includes(t.toLowerCase())
-        ) ?? true;
-
-        const scoringSignals = {
-          headcount: headcountVal,
-          industryMatch: true,
-          hasLegacyTech: hasLegacy,
-          recentTriggerEvent: (parsedReport.active_hiring_signals?.length > 0 || parsedReport.recent_news_events?.length > 0),
-          painPointMatch: (parsedReport.inferred_pain_points?.length > 0),
-          engagementScore: 5
-        };
-        const { finalScore, breakdown } = ScoringEngine.evaluate(scoringSignals);
-
-        // Save to cache database
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 30); // 30-day expiration
-
-        await db('ai_research_reports').insert({
-          workspace_id: workspaceId,
-          company_domain: domain,
-          company_name: parsedReport.company_snapshot?.legal_name || domain,
-          research_type: 'company_full',
-          report_json: parsedReport,
-          lead_score: finalScore,
-          lead_score_breakdown: breakdown,
-          sources_used: [`https://${domain}/about`, `https://${domain}/news`],
-          expires_at: expiresAt.toISOString()
-        });
-
-        return parsedReport;
-      }
-
-      // If no tools called, return a schema-conforming default
-      const fallbackReport = {
-        company_snapshot: {
-          legal_name: domain,
-          headquarters: "Johannesburg, South Africa",
-          headcount_estimation: "10-50 employees",
-          established_year: "2020"
-        },
-        plain_language_operational_profile: "Business info enrichment pending.",
-        key_decision_makers: [],
-        recent_news_events: [],
-        detected_technology_stack: [],
-        active_hiring_signals: [],
-        inferred_pain_points: [],
-        suggested_conversation_openers: ["Ask how they are handling operations."]
-      };
-      return fallbackReport;
-
-    } catch (err: any) {
-      console.error('[Research Agent] Error:', err);
-      // Hard fallback to schema to protect layout (Sprint 4.5 Schema Enforcement Rule)
-      return {
-        company_snapshot: {
-          legal_name: domain,
-          headquarters: "South Africa",
-          headcount_estimation: "Unknown",
-          established_year: "Unknown"
-        },
-        plain_language_operational_profile: "Automated analysis offline. Metadata fallback details applied.",
-        key_decision_makers: [],
-        recent_news_events: [],
-        detected_technology_stack: [],
-        active_hiring_signals: [],
-        inferred_pain_points: ["Operational disconnects due to unintegrated data layers."],
-        suggested_conversation_openers: ["Reach out to discuss workflow automations."]
-      };
-    }
-  }
-
+  /**
+   * Builds a brief from the contact's CRM facts. Throws ResearchFailedError on any failure and
+   * saves nothing in that case. With `chargeCredit`, one AI credit is deducted atomically before
+   * the model call and refunded if the run fails (cache hits are free).
+   */
   public static async enrichContact(
     contactId: string,
     contactName: string,
     companyName: string,
     domain: string,
     workspaceId: string,
-    requestId?: string
+    requestId?: string,
+    opts: { chargeCredit?: boolean } = {}
   ): Promise<any> {
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const timer = createStepTimer();
-
-    // One contact's step timing within a batch request — logged here (not into request_timings,
-    // which holds the batch route's own single top-level row) so the OpenAI-call breakdown for
-    // this specific contact is visible without a DB write per contact.
-    const logStep = (outcome: 'cache_hit' | 'completed' | 'error') => safeLog(() =>
+    const logStep = (outcome: 'cache_hit' | 'completed' | 'error', code?: ResearchFailureCode) => safeLog(() =>
       logger.info(
-        { requestId, workspaceId, contactId, outcome, durationMs: Math.round(timer.totalMs()), steps: timer.steps() },
+        { requestId, workspaceId, contactId, outcome, code, durationMs: Math.round(timer.totalMs()), steps: timer.steps() },
         'ai_research.enrich_contact'
       )
     );
 
-    // Check cache first
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const cachedReport = await db('ai_research_reports')
-      .where({ contact_id: contactId })
-      .first();
+    // Cache: this workspace + contact + domain, unexpired, and written by the current agent.
+    const { data: cachedReport } = await supabase
+      .from('ai_research_reports')
+      .select('report_json')
+      .eq('workspace_id', workspaceId)
+      .eq('contact_id', contactId)
+      .eq('company_domain', domain)
+      .eq('research_type', 'contact_enrichment')
+      .eq('report_json->>schema_version', String(RESEARCH_REPORT_SCHEMA_VERSION))
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
     timer.mark('cache_lookup');
 
-    if (cachedReport && new Date(cachedReport.created_at) > thirtyDaysAgo) {
-      console.log(`[Research Agent] Cache HIT for contact ${contactId}`);
+    if (cachedReport) {
       logStep('cache_hit');
       return cachedReport.report_json;
     }
 
-    console.log(`[Research Agent] Running contact enrichment for ${contactName} at ${companyName}`);
-
-    const runContactToolCall = async (name: string, args: any) => {
-      if (name === 'execute_web_search') {
-        return JSON.stringify([
-          { title: `${contactName} - Chief Information Officer - LinkedIn`, url: `https://linkedin.com/in/${contactName.toLowerCase().replace(' ', '-')}` },
-          { title: `${contactName} speaking at Southern Africa Tech Summit 2025`, url: `https://techsummit.co.za/speakers` }
-        ]);
-      } else if (name === 'scrape_url_content') {
-        return `${contactName} is the CIO of ${companyName}. She has 12 years of experience in enterprise systems. She recently spoke at the Southern Africa Tech Summit about field service optimization. Personal cell is +27-82-555-0199, home address 124 Juta St, Braamfontein. Enjoys spending time with her two kids. Primary focus is integrating route analytics.`;
-      }
-      return 'No data found';
-    };
-
+    let charged = false;
     try {
-      const messages: any[] = [
-        {
-          role: 'system',
-          content: 'You are an intelligence agent. Research the individual contact, gather professional history, speaking profiles, accolades, and strategic focus. Do NOT return personal non-professional details (home address, personal cell, private family identities). Output the final result as a structured JSON object.'
-        },
-        {
-          role: 'user',
-          content: `Research contact: ${contactName}, Company: ${companyName}, Domain: ${domain}`
+      if (opts.chargeCredit) {
+        try {
+          await consumeAICredit(workspaceId);
+          charged = true;
+        } catch (err) {
+          if (err instanceof CreditLimitExceededError) throw new ResearchFailedError('insufficient_credits');
+          throw new ResearchFailedError('provider_error');
         }
-      ];
-
-      const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        messages,
-        tools: agentToolDefinitions as any,
-        tool_choice: 'auto'
-      });
-      timer.mark('openai_call_draft');
-
-      const responseMessage = response.choices[0].message;
-      let rawContent = '';
-
-      if (responseMessage.tool_calls) {
-        messages.push(responseMessage);
-        for (const toolCall of responseMessage.tool_calls) {
-          const toolResult = await runContactToolCall(toolCall.function.name, JSON.parse(toolCall.function.arguments));
-          messages.push({
-            tool_call_id: toolCall.id,
-            role: 'tool',
-            name: toolCall.function.name,
-            content: toolResult
-          });
-        }
-
-        const finalResponse = await openai.chat.completions.create({
-          model: 'gpt-4o',
-          messages,
-          response_format: { type: 'json_object' }
-        });
-        timer.mark('openai_call_final');
-
-        rawContent = finalResponse.choices[0].message.content || '{}';
-      } else {
-        rawContent = JSON.stringify({
-          professional_history: `${contactName} serves as CIO at ${companyName}.`,
-          speaking_profiles: ["Southern Africa Tech Summit 2025"],
-          accolades: ["CIO of the Year Nominee 2025"],
-          strategic_focus_areas: ["Field service optimization", "Route planning tools integrations"]
-        });
+        timer.mark('credit_deduct');
       }
 
-      // Privacy protection filters (regex to strip out phone lines, home addresses, private emails)
-      let cleanContentStr = rawContent;
-      
+      if (!process.env.OPENAI_API_KEY) throw new ResearchFailedError('provider_error');
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: OPENAI_TIMEOUT_MS, maxRetries: 1 });
+
+      const companyRecord = await db('crm_companies').where({ domain, workspace_id: workspaceId }).first();
+      timer.mark('company_lookup');
+
+      const facts = {
+        contact_name: contactName,
+        company_name: companyName,
+        company_domain: domain,
+        company_industry: companyRecord?.industry ?? null,
+        company_employees: companyRecord?.employees ?? null,
+      };
+
+      let completion;
+      try {
+        completion = await openai.chat.completions.create({
+          model: 'gpt-4o',
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: `Known facts (JSON): ${JSON.stringify(facts)}` },
+          ],
+          response_format: { type: 'json_object' },
+        });
+      } catch (err) {
+        throw new ResearchFailedError(isTimeout(err) ? 'timeout' : 'provider_error');
+      }
+      timer.mark('openai_call');
+
+      const rawContent = completion.choices[0]?.message?.content;
+      if (!rawContent) throw new ResearchFailedError('empty_result');
+
+      // Privacy protection filters (strip phone numbers, home addresses, private emails, family).
       const phoneRegex = /(\+?[0-9]{1,4}[-.\s]??)?[0-9]{2,3}[-.\s]??[0-9]{3,4}[-.\s]??[0-9]{4}/g;
       const privateEmailRegex = /[a-zA-Z0-9._%+-]+@(gmail|yahoo|outlook|hotmail|icloud|live)\.com/gi;
       const addressRegex = /\d+\s+[A-Za-z0-9\s]{3,}\s*(Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Boulevard|Blvd|Lane|Ln|Way)/gi;
       const familyRegex = /(lives\s+with\s+(his|her)\s+(\w+\s+)?(wife|husband|kids|children|son|daughter)|spending\s+time\s+with\s+(his|her)\s+(\w+\s+)?(wife|husband|kids|children|son|daughter)|married\s+to\s+[A-Za-z\s]+|enjoys\s+[\w\s]+(kids|children|son|daughter|wife|husband|family))/gi;
+      const clean = rawContent
+        .replace(phoneRegex, '[REDACTED PHONE]')
+        .replace(privateEmailRegex, '[REDACTED EMAIL]')
+        .replace(addressRegex, '[REDACTED ADDRESS]')
+        .replace(familyRegex, '[REDACTED FAMILY]');
 
-      cleanContentStr = cleanContentStr.replace(phoneRegex, '[REDACTED PHONE]');
-      cleanContentStr = cleanContentStr.replace(privateEmailRegex, '[REDACTED EMAIL]');
-      cleanContentStr = cleanContentStr.replace(addressRegex, '[REDACTED ADDRESS]');
-      cleanContentStr = cleanContentStr.replace(familyRegex, '[REDACTED FAMILY]');
+      let parsed: any;
+      try {
+        parsed = JSON.parse(clean);
+      } catch {
+        throw new ResearchFailedError('invalid_result');
+      }
+      if (!hasContent(parsed)) throw new ResearchFailedError('empty_result');
 
-      const parsedIndividualReport = JSON.parse(cleanContentStr);
+      const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x) => typeof x === 'string' && x.trim()) : []);
+      const role = typeof parsed.likely_role === 'string' ? parsed.likely_role.trim() : '';
 
-      const companyRecord = await db('crm_companies').where({ domain }).first();
-      const headcountNum = companyRecord ? parseInt(companyRecord.employees || '0', 10) : 60;
-      const industryText = companyRecord?.industry || '';
-
-      const voiceRecord = await db('workspace_brand_voice').where({ workspace_id: workspaceId }).first();
-      timer.mark('company_and_brand_voice_lookup');
-      const targetIndustry = voiceRecord?.industry || '';
-      const industryMatch = industryText.toLowerCase().includes(targetIndustry.toLowerCase()) || targetIndustry.toLowerCase().includes(industryText.toLowerCase()) || true;
-
-      const scoringSignals = {
-        headcount: headcountNum,
-        industryMatch,
-        hasLegacyTech: true,
-        recentTriggerEvent: true,
-        painPointMatch: true,
-        engagementScore: 5
+      const reportJson = {
+        schema_version: RESEARCH_REPORT_SCHEMA_VERSION,
+        generated_from: 'crm_data_only',
+        company_snapshot: { legal_name: companyName, domain },
+        plain_language_operational_profile: typeof parsed.professional_summary === 'string' ? parsed.professional_summary : '',
+        key_decision_makers: role ? [{ name: contactName, role }] : [],
+        inferred_pain_points: strings(parsed.inferred_pain_points),
+        suggested_conversation_openers: strings(parsed.suggested_conversation_openers),
+        individual_profile: {
+          professional_summary: typeof parsed.professional_summary === 'string' ? parsed.professional_summary : '',
+          strategic_focus_areas: strings(parsed.strategic_focus_areas),
+        },
       };
 
-      const { finalScore, breakdown } = ScoringEngine.evaluate(scoringSignals);
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 30);
 
-      const finalReportJson = {
-        company_snapshot: {
-          legal_name: companyName,
-          headquarters: "Johannesburg, South Africa",
-          headcount_estimation: `${headcountNum} employees`,
-          established_year: "2018"
-        },
-        plain_language_operational_profile: `Provides cold-chain logistics across GP. CIO ${contactName} is focusing on route automation.`,
-        key_decision_makers: [
-          { name: contactName, role: "CIO", linkedin_url: `https://linkedin.com/in/${contactName.toLowerCase().replace(' ', '-')}` }
-        ],
-        recent_news_events: [
-          { headline: "Zafro adds 15 custom electric delivery vehicles to fleet", source_url: "https://example-news.co.za/zafro-fleet" }
-        ],
-        detected_technology_stack: ["WordPress", "Mailchimp", "Google Workspace"],
-        active_hiring_signals: ["Senior Route Optimization Manager"],
-        inferred_pain_points: ["Likely experiencing data tracking issues between route planning and client billing processes."],
-        suggested_conversation_openers: [
-          `Congratulate ${contactName} on the Southern Africa Tech Summit speaking slot and ask how they coordinate route analytics with invoicing.`
-        ],
-        individual_profile: parsedIndividualReport
-      };
-
-      await db('ai_research_reports').insert({
+      // No lead score: there is no real signal source to score from, and a constant 100 told
+      // users every contact was a perfect fit.
+      const { error: insertError } = await db('ai_research_reports').insert({
         workspace_id: workspaceId,
         contact_id: contactId,
         company_domain: domain,
         company_name: companyName,
         research_type: 'contact_enrichment',
-        report_json: finalReportJson,
-        lead_score: finalScore,
-        lead_score_breakdown: breakdown,
-        sources_used: [`https://linkedin.com/in/${contactName.toLowerCase().replace(' ', '-')}`, `https://${domain}`],
-        expires_at: expiresAt.toISOString()
-      });
+        report_json: reportJson,
+        lead_score: null,
+        lead_score_breakdown: {},
+        sources_used: [],
+        tokens_used: completion.usage?.total_tokens ?? 0,
+        expires_at: expiresAt.toISOString(),
+      }).then(() => ({ error: null }), (e: unknown) => ({ error: e }));
       timer.mark('report_insert');
+      if (insertError) {
+        safeLog(() => logger.error({ requestId, workspaceId, contactId }, 'ai_research.report_insert.failed'));
+        throw new ResearchFailedError('save_failed');
+      }
 
       try {
         await db('crm_activities').insert({
@@ -386,35 +207,25 @@ export class ResearchAgent {
           entity_type: 'contact',
           entity_id: contactId,
           activity_type: 'note',
-          content: `[AI Profile Enrichment] Completed professional research for ${contactName}. Strategic Focus: ${parsedIndividualReport.strategic_focus_areas?.join(', ') || 'Systems integration'}. Score: ${finalScore}/100.`,
-          metadata: { lead_score: finalScore }
+          content: `[AI Research] Prepared a brief for ${contactName} from the contact's CRM details.`,
+          metadata: {},
         });
-      } catch (activityErr: any) {
-        console.error('Error logging CRM activity:', activityErr.message);
+      } catch {
+        safeLog(() => logger.warn({ requestId, workspaceId, contactId }, 'ai_research.activity_insert.failed'));
       }
-      timer.mark('activity_insert');
 
       logStep('completed');
-      return finalReportJson;
-    } catch (err: any) {
-      console.error('[Research Agent Contact Enrichment] Error:', err);
-      logStep('error');
-      return {
-        company_snapshot: {
-          legal_name: companyName,
-          headquarters: "South Africa",
-          headcount_estimation: "Unknown",
-          established_year: "Unknown"
-        },
-        plain_language_operational_profile: "Contact analysis offline.",
-        key_decision_makers: [{ name: contactName, role: "Contact" }],
-        recent_news_events: [],
-        detected_technology_stack: [],
-        active_hiring_signals: [],
-        inferred_pain_points: [],
-        suggested_conversation_openers: ["Reach out to discuss tools integration."]
-      };
+      return reportJson;
+    } catch (err) {
+      const failure = err instanceof ResearchFailedError ? err : new ResearchFailedError('provider_error');
+      let refunded = false;
+      if (charged) refunded = await refundAICredit(workspaceId);
+      safeLog(() => logger.error(
+        { requestId, workspaceId, contactId, code: failure.code, charged, refunded },
+        'ai_research.enrich_contact.failed'
+      ));
+      logStep('error', failure.code);
+      throw failure;
     }
   }
 }
-

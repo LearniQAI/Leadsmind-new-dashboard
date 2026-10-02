@@ -4,6 +4,7 @@ import { resolveHost, resolveWebsiteHost, isTrackingDomain } from '@/lib/domains
 import { createAdminClient } from '@/lib/supabase/server'
 import { PLATFORM_HOSTS } from '@/lib/domains/platformHosts'
 import { isCustomDomainPassthrough } from '@/lib/domains/customDomainRoutes'
+import { isPublicSiteServable, isPublishedBlogPost } from '@/lib/domains/publicSiteGate'
 
 // Website-builder custom domains rewrite every path to the site's own /p/... route; only these
 // stay reachable so forms/assets keep working. (Course/blog/portal domains use the explicit
@@ -24,6 +25,20 @@ function customDomainNotFound() {
     status: 404,
     headers: { 'content-type': 'text/html; charset=utf-8', 'x-robots-tag': 'noindex' },
   })
+}
+
+// Static children of /blog that are real (staff) routes, not post slugs. Same list as the isPublicPage
+// gate in lib/supabase/middleware.ts.
+const BLOG_RESERVED_SEGMENTS = new Set(['analytics', 'manage', 'editor', 'new', 'comments'])
+
+// Anonymous request for /blog/{slug} that is not a published post (draft or unknown): real 404 status.
+// (notFound() inside the page answers 200 once the layout has streamed.) Requests carrying a Supabase
+// auth cookie are left to the page, which allows a member's ?preview=1 draft and 404s everyone else.
+async function blogPostGate(request: NextRequest, segments: string[], workspaceId: string | null) {
+  if (segments.length !== 2 || segments[0] !== 'blog' || BLOG_RESERVED_SEGMENTS.has(segments[1])) return null
+  const hasSession = request.cookies.getAll().some(c => c.name.startsWith('sb-') && c.name.includes('-auth-token'))
+  if (hasSession) return null
+  return (await isPublishedBlogPost(segments[1], workspaceId)) ? null : customDomainNotFound()
 }
 
 export async function middleware(request: NextRequest) {
@@ -93,8 +108,22 @@ export async function middleware(request: NextRequest) {
     return NextResponse.rewrite(url)
   }
 
+  // Public website/funnel pages (/p/{workspace}/{site}[/{page}]): an ANONYMOUS request for anything
+  // not publicly live (draft, unpublished page, missing) gets a real 404 status here. Requests that
+  // carry a Supabase auth cookie are left to the page, which allows a workspace member's draft
+  // preview and 404s everyone else (see lib/builder/publicSite.ts).
+  if (segments[0] === 'p' && (segments.length === 3 || segments.length === 4)) {
+    const hasSession = request.cookies.getAll().some(c => c.name.startsWith('sb-') && c.name.includes('-auth-token'))
+    if (!hasSession) {
+      const pagePath = segments.length === 4 ? '/' + segments[3].toLowerCase() : '/'
+      if (!(await isPublicSiteServable(segments[1], segments[2], pagePath))) return customDomainNotFound()
+    }
+  }
+
   // Platform hosts behave exactly as before.
   if (PLATFORM_HOSTS.has(host)) {
+    const blogGate = await blogPostGate(request, segments, null)
+    if (blogGate) return blogGate
     return await updateSession(request)
   }
 
@@ -158,6 +187,9 @@ export async function middleware(request: NextRequest) {
       return customDomainNotFound()
     }
 
+    const blogGate = await blogPostGate(request, segments, resolved.workspaceId)
+    if (blogGate) return blogGate
+
     const res = await updateSession(request)
     res.headers.set('x-workspace-id', resolved.workspaceId)
     res.headers.set('x-tenant-host', resolved.hostname)
@@ -170,8 +202,19 @@ export async function middleware(request: NextRequest) {
   if (!RESERVED_ROOT_PATHS.has(segments[0] || '')) {
     const site = await resolveWebsiteHost(host)
     if (site) {
+      // Verified domain, unpublished site: a real 404 on the customer's own domain — never the
+      // platform app or a preview. (Member preview uses the platform /p/... URL.)
+      if (!site.published) return customDomainNotFound()
       const ownPrefix = `/p/${site.workspaceSlug}/${site.subdomain}`
       const url = request.nextUrl.clone()
+
+      // The page itself (not just the site) must be published: an unpublished sub-page is a real 404.
+      if (!path.startsWith('/p/') && path !== '/p') {
+        const pagePath = segments.length === 1 ? '/' + segments[0].toLowerCase() : '/'
+        if (segments.length <= 1 && !(await isPublicSiteServable(site.workspaceSlug, site.subdomain, pagePath))) {
+          return customDomainNotFound()
+        }
+      }
 
       // The renderer builds internal links as /p/{workspaceSlug}/{subdomain}/{page}. On the
       // site's own domain, strip that prefix (redirect to the clean URL) instead of

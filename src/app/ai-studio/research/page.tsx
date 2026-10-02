@@ -1,5 +1,6 @@
 import React from 'react';
 import { redirect } from 'next/navigation';
+import { AI_RESEARCH_ENABLED } from '@/lib/featureFlags/aiResearch';
 import { requireAuth, getCurrentWorkspaceId } from '@/lib/auth';
 import { createServerClient } from '@/lib/supabase/server';
 import Wrapper from '@/components/layouts/DefaultWrapper';
@@ -9,6 +10,7 @@ import ResearchPortalClient from './ResearchPortalClient';
 export const dynamic = 'force-dynamic';
 
 export default async function ResearchPortalPage() {
+  if (!AI_RESEARCH_ENABLED) redirect('/ai-studio');
   await requireAuth();
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) redirect('/auth/signin-basic');

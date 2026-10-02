@@ -63,8 +63,9 @@ export async function publishPageStatic(pageId: string) {
       }
     );
 
-    // 3. Save to database
-    const { error: updateError } = await supabase
+    // 3. Save to database. Every write is checked for an error AND an affected row: a filter that
+    // matches nothing (wrong workspace, deleted page) is a failed publish, never a silent no-op.
+    const { data: publishedRows, error: updateError } = await supabase
       .from('pages')
       .update({
         rendered_html: renderedHtml,
@@ -72,16 +73,40 @@ export async function publishPageStatic(pageId: string) {
         is_published: true,
         published_at: new Date().toISOString()
       })
-      .eq("id", pageId).eq("workspace_id", workspaceId);
+      .eq("id", pageId).eq("workspace_id", workspaceId)
+      .select('id');
 
     if (updateError) throw updateError;
+    if (!publishedRows || publishedRows.length === 0) {
+      throw new ValidationError('Could not publish this page: it was not found or you do not have access to it.');
+    }
 
-    // 4. Update parent website status if applicable
+    // 4. Update parent website status if applicable. If this fails, the page's previous publish
+    // state is restored so nothing is left half-published, and the user gets a clear error.
     if (website?.id) {
-      await supabase
+      const { data: siteRows, error: siteError } = await supabase
         .from('websites')
         .update({ is_published: true })
-        .eq("id", website.id).eq("workspace_id", workspaceId);
+        .eq("id", website.id).eq("workspace_id", workspaceId)
+        .select('id');
+
+      if (siteError || !siteRows || siteRows.length === 0) {
+        logger.error({ err: siteError, pageId, websiteId: website.id, workspaceId }, 'builder_deploy.website_publish.failed');
+        const { data: restored, error: rollbackError } = await supabase
+          .from('pages')
+          .update({
+            rendered_html: page.rendered_html ?? null,
+            status: page.status ?? 'draft',
+            is_published: !!page.is_published,
+            published_at: page.published_at ?? null
+          })
+          .eq("id", pageId).eq("workspace_id", workspaceId)
+          .select('id');
+        if (rollbackError || !restored || restored.length === 0) {
+          logger.error({ err: rollbackError, pageId, workspaceId }, 'builder_deploy.page_publish_rollback.failed');
+        }
+        throw new ValidationError('Publishing failed: the page was saved but the website could not be set live. Nothing was published, please try again.');
+      }
     }
 
     // 5. Try to upload to Supabase Storage bucket 'published-sites' (fallback gracefully if bucket is missing)

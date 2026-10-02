@@ -11,7 +11,7 @@ import NewsletterCapture from '@/components/blog/public/NewsletterCapture';
 import BlogTracker from '@/components/blog/public/BlogTracker';
 import BlogComments from '@/components/blog/public/BlogComments';
 import ExitIntentCapture from '@/components/blog/public/ExitIntentCapture';
-import { sanitizeRichTextHtml } from '@/lib/security/sanitizeHtml';
+import { sanitizeBlogHtml } from '@/lib/security/sanitizeBlogHtml';
 import { logger } from '@/shared/logger';
 import { resolveTenantSiteBrand } from '@/lib/blog/publicWorkspace';
 
@@ -63,25 +63,7 @@ export async function generateMetadata({ params, searchParams }: PageProps) {
   };
 }
 
-// TEMPORARY diagnostic wrapper — leadsmind.io/blog/[slug] has been returning a production-
-// only 500 with ZERO function-invocation logs (confirmed live against both real published
-// posts), which points at a cold-start/module-init crash rather than a per-request render
-// error — the leading suspect (see next.config.js) is isomorphic-dompurify/jsdom constructing
-// a JSDOM instance at import time, which a module-load crash would happen BEFORE this
-// try/catch (or any code in this file) ever runs, so it can't catch that case. This wrapper
-// exists as a safety net for the OTHER possibility: a real per-request throw somewhere in the
-// render body below that isn't otherwise caught. Remove once the real cause is confirmed
-// fixed and a normal request reliably returns 200.
-export default async function PublicBlogPostPage(props: PageProps) {
-  try {
-    return await renderPublicBlogPostPage(props);
-  } catch (err) {
-    logger.error({ err, slug: props.params?.slug }, '[blog-slug-crash-debug] uncaught error rendering /blog/[slug]');
-    throw err;
-  }
-}
-
-async function renderPublicBlogPostPage({ params, searchParams }: PageProps) {
+export default async function PublicBlogPostPage({ params, searchParams }: PageProps) {
   const isPreview = searchParams?.preview === '1';
   const { data: post, error } = await getPublicBlogPost(params.slug, isPreview);
   if (error || !post) return notFound();
@@ -114,7 +96,7 @@ async function renderPublicBlogPostPage({ params, searchParams }: PageProps) {
   const headings: { text: string; id: string; }[] = [];
   let bodyHtml = '';
   try {
-    bodyHtml = sanitizeRichTextHtml(post.body_html);
+    bodyHtml = sanitizeBlogHtml(post.body_html);
     let headingCounter = 0;
     bodyHtml = bodyHtml.replace(/<h2>(.*?)<\/h2>/gi, (m, titleText) => {
       const id = `heading-${headingCounter++}`;
@@ -126,7 +108,7 @@ async function renderPublicBlogPostPage({ params, searchParams }: PageProps) {
     try {
       // Fall back to sanitized content without heading anchors rather than
       // an empty article — only skip the transform step that failed.
-      bodyHtml = sanitizeRichTextHtml(post.body_html);
+      bodyHtml = sanitizeBlogHtml(post.body_html);
     } catch (sanitizeErr) {
       logger.error({ err: sanitizeErr, slug: post.slug }, 'public_blog.sanitize.failed');
       bodyHtml = '<p style="color:#94A3B8;font-style:italic;">Some content on this page could not be displayed.</p>';

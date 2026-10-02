@@ -1,29 +1,53 @@
 import { createAdminClient } from '@/lib/supabase/server';
-import { NextResponse } from 'next/server';
 import { consumeOAuthStateNonce } from '@/lib/oauth/stateNonce';
+import { OAuthFlowError, providerFetch, readJson, safeErrorInfo, failureCodeOf, socialConnectionsRedirect } from '@/lib/oauth/socialOAuth';
 import { logger } from '@/shared/logger';
 import { encrypt } from '@/lib/encryption';
+import { newRequestId } from '@/shared/logger/requestId';
+import { createStepTimer, logRequestComplete } from '@/shared/logger/requestTiming';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 export async function GET(req: Request) {
+  // Browser redirect from TikTok — code/state/query string are never logged.
+  const requestId = newRequestId();
+  const timer = createStepTimer();
+  let workspaceIdForLog: string | null = null;
+  let status = 302;
+  let failure: unknown;
+
   const { searchParams } = new URL(req.url);
   const code = searchParams.get('code');
   const state = searchParams.get('state');
+  const finish = () => logRequestComplete({
+    requestId, route: '/api/auth/callback/tiktok', method: 'GET', status,
+    durationMs: timer.totalMs(), steps: timer.steps(), workspaceId: workspaceIdForLog, error: failure,
+  });
 
+  // User cancelled or denied on TikTok's consent screen.
+  if (searchParams.get('error')) {
+    status = 400;
+    finish();
+    return socialConnectionsRedirect('tiktok', { error: 'access_denied' });
+  }
   if (!code || !state) {
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/social?error=missing_parameters`);
+    status = 400;
+    finish();
+    return socialConnectionsRedirect('tiktok', { error: 'missing_parameters' });
   }
 
   try {
     // state is a random opaque nonce minted at flow-initiation time, bound server-side to
     // the real authenticated user + their real workspace — never trust its raw value.
     const { workspaceId } = await consumeOAuthStateNonce(state, 'tiktok');
+    workspaceIdForLog = workspaceId;
+    timer.mark('state_nonce_verify');
 
     const supabase = createAdminClient();
 
     // 1. Exchange code for access token
-    const tokenResponse = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
+    const tokenResponse = await providerFetch('https://open.tiktokapis.com/v2/oauth/token/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
@@ -35,8 +59,9 @@ export async function GET(req: Request) {
       }),
     });
 
-    const tokenData = await tokenResponse.json();
-    if (!tokenResponse.ok) throw new Error(tokenData.error_description || 'Failed to exchange token');
+    const tokenData = await readJson(tokenResponse);
+    timer.mark('token_exchange');
+    if (!tokenResponse.ok || !tokenData.access_token || !tokenData.open_id) throw new OAuthFlowError('provider_error');
 
     const { access_token, expires_in, refresh_token, open_id: accountId } = tokenData;
 
@@ -45,21 +70,22 @@ export async function GET(req: Request) {
     // profile name instead of deriving a placeholder from the account id).
     let accountName = `TikTok User (${accountId.substring(0, 8)})`;
     try {
-      const profileResponse = await fetch(
+      const profileResponse = await providerFetch(
         'https://open.tiktokapis.com/v2/user/info/?fields=display_name',
         { headers: { Authorization: `Bearer ${access_token}` } }
       );
-      const profileData = await profileResponse.json();
+      const profileData = await readJson(profileResponse);
       if (profileData?.data?.user?.display_name) {
         accountName = profileData.data.user.display_name;
       } else {
         // e.g. user.info.basic not granted/approved for this app — falls back to the
         // placeholder above rather than failing the whole connection.
-        logger.warn({ profileError: profileData?.error }, 'auth.tiktok_callback.profile_fetch_unavailable');
+        logger.warn({ profileErrorCode: profileData?.error?.code }, 'auth.tiktok_callback.profile_fetch_unavailable');
       }
-    } catch (err: any) {
-      logger.warn({ err: err.message }, 'auth.tiktok_callback.profile_fetch_failed');
+    } catch (err) {
+      logger.warn(safeErrorInfo(err), 'auth.tiktok_callback.profile_fetch_failed');
     }
+    timer.mark('profile_fetch');
 
     // 3. Store in platform_connections — the table createSocialPost()/getConnectedPlatforms()
     // actually read from (matches the Meta/WhatsApp pattern in messaging.ts's
@@ -73,18 +99,23 @@ export async function GET(req: Request) {
         account_name: accountName,
         access_token_encrypted: encrypt(access_token),
         refresh_token_encrypted: refresh_token ? encrypt(refresh_token) : null,
-        token_expires_at: new Date(Date.now() + expires_in * 1000).toISOString(),
+        token_expires_at: new Date(Date.now() + (Number(expires_in) || 0) * 1000).toISOString(),
         health_status: 'connected'
       },
       status: 'connected',
       last_sync_at: new Date().toISOString()
     }, { onConflict: 'workspace_id,platform' });
+    timer.mark('connection_upsert');
 
-    if (error) throw error;
+    if (error) throw new OAuthFlowError('save_failed');
 
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/social?success=tiktok_connected`);
-  } catch (error: any) {
-    logger.error({ err: error }, 'auth.tiktok_callback.failed');
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/social?error=auth_failed`);
+    finish();
+    return socialConnectionsRedirect('tiktok', { success: true });
+  } catch (error) {
+    status = 500;
+    failure = error;
+    logger.error(safeErrorInfo(error), 'auth.tiktok_callback.failed');
+    finish();
+    return socialConnectionsRedirect('tiktok', { error: failureCodeOf(error) });
   }
 }

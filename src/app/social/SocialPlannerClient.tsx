@@ -23,6 +23,7 @@ import { useRouter } from 'next/navigation';
 import AISparkDrawer from '@/components/common/AISparkDrawer';
 import VideoScriptGenerator from './VideoScriptGenerator';
 import ImageGenerator from './ImageGenerator';
+import MediaPreview from './MediaPreview';
 import { cn } from '@/lib/utils';
 import { DashCard } from '@/components/dashboard-ui/Card';
 import { DashButton } from '@/components/dashboard-ui/Button';
@@ -77,7 +78,7 @@ export default function SocialPlannerClient({
  const handleConnect = async (platform: string) => {
   try {
     if (platform === 'facebook' || platform === 'instagram') {
-      const url = await getMetaAuthUrl(platform)
+      const url = await getMetaAuthUrl(platform, 'social')
       if (url) window.location.href = url
     } else if (platform === 'linkedin') {
       const url = await getLinkedInAuthUrl()
@@ -350,6 +351,8 @@ export default function SocialPlannerClient({
           </button>
          )}
         </div>
+
+        <MediaPreview url={mediaUrl} uploading={isUploadingMedia} />
 
         <input
          ref={fileInputRef}

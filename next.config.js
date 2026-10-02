@@ -93,10 +93,8 @@ const nextConfig = {
             '/api/finance/documents/[id]/unlock': [
                 './node_modules/pdfjs-dist/**/*',
             ],
-            '/blog/[slug]': [
-                './node_modules/jsdom/**/*',
-                './node_modules/isomorphic-dompurify/**/*',
-            ],
+            // '/blog/[slug]' no longer force-includes jsdom/isomorphic-dompurify: the blog post body is
+            // sanitized by the pure-JS lib/security/sanitizeBlogHtml.ts, so nothing DOM-based is traced for it.
             // src/lib/pdf/htmlToPdf.ts (htmlToPdfBuffer) is a SEPARATE chromium
             // consumer from the certificate/bookkeeping-export generators above —
             // it's the one shared by /api/pdf, the payslip download route, and

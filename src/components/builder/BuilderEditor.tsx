@@ -252,7 +252,7 @@ const BuilderEditorContent = ({
             if (result.success) {
                 toast.success('Page published live!');
             } else {
-                toast.error('Failed to publish');
+                toast.error(result.error || 'Failed to publish');
             }
         } catch (err: any) {
             logDataError('Publish', err);

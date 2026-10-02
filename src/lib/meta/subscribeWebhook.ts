@@ -29,6 +29,7 @@
 // Whoever revisits this: re-check that v25.0 is still within Meta's ~2-year support window and
 // bump again if not, using the same live POST+GET verification to confirm before/after.
 import { logger } from '@/shared/logger'
+import { providerFetch } from '@/lib/oauth/socialOAuth'
 
 const GRAPH_API_VERSION = 'v25.0'
 
@@ -42,7 +43,7 @@ export async function subscribePageToMetaWebhook(
     url.searchParams.set('subscribed_fields', 'messages,messaging_postbacks,message_deliveries,message_reads')
     url.searchParams.set('access_token', pageAccessToken)
 
-    const res = await fetch(url.toString(), { method: 'POST' })
+    const res = await providerFetch(url.toString(), { method: 'POST' })
     const data = await res.json()
 
     logger.info({ pageId, status: res.status, rawResponse: data }, 'meta.subscribe_webhook.post_response')
@@ -66,7 +67,7 @@ export async function subscribePageToMetaWebhook(
     const verifyUrl = new URL(`https://graph.facebook.com/${GRAPH_API_VERSION}/${pageId}/subscribed_apps`)
     verifyUrl.searchParams.set('access_token', pageAccessToken)
 
-    const verifyRes = await fetch(verifyUrl.toString())
+    const verifyRes = await providerFetch(verifyUrl.toString())
     const verifyData = await verifyRes.json()
 
     logger.info({ pageId, status: verifyRes.status, rawResponse: verifyData }, 'meta.subscribe_webhook.verify_get_response')
@@ -102,7 +103,7 @@ export async function subscribeWabaToMetaWebhook(
   accessToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const appRes = await fetch(`https://graph.facebook.com/${GRAPH_API_VERSION}/app?fields=id&access_token=${encodeURIComponent(accessToken)}`)
+    const appRes = await providerFetch(`https://graph.facebook.com/${GRAPH_API_VERSION}/app?fields=id&access_token=${encodeURIComponent(accessToken)}`)
     const appData = await appRes.json()
     const appId = appRes.ok ? String(appData?.id ?? '') : ''
     if (!appId) {
@@ -110,7 +111,7 @@ export async function subscribeWabaToMetaWebhook(
     }
 
     const url = `https://graph.facebook.com/${GRAPH_API_VERSION}/${wabaId}/subscribed_apps?access_token=${encodeURIComponent(accessToken)}`
-    const res = await fetch(url, { method: 'POST' })
+    const res = await providerFetch(url, { method: 'POST' })
     const data = await res.json()
     logger.info({ wabaId, status: res.status, rawResponse: data }, 'meta.subscribe_waba_webhook.post_response')
 
@@ -121,7 +122,7 @@ export async function subscribeWabaToMetaWebhook(
       }
     }
 
-    const verifyRes = await fetch(url)
+    const verifyRes = await providerFetch(url)
     const verifyData = await verifyRes.json()
     logger.info({ wabaId, status: verifyRes.status, rawResponse: verifyData }, 'meta.subscribe_waba_webhook.verify_get_response')
 

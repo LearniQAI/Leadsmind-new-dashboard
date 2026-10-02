@@ -29,6 +29,33 @@ export async function getSocialAccounts() {
   }
 }
 
+// Polled by the Connections page while a provider's authorization runs in another tab.
+// `lastSyncAt` changes on every successful (re)connect, so the caller compares it with a
+// baseline taken before the flow started — that also detects a RE-connect of a platform that
+// was already 'connected' (e.g. an expired LinkedIn token).
+export async function getSocialConnectionStatus(platform: string) {
+  try {
+    const supabase = await createServerClient()
+    const { workspaceId } = await requireWorkspaceAccess()
+    const { data, error } = await supabase
+      .from('platform_connections')
+      .select('status, last_sync_at, credentials')
+      .eq('workspace_id', workspaceId)
+      .eq('platform', platform)
+      .maybeSingle()
+    if (error) throw error
+    const creds = (data?.credentials ?? {}) as Record<string, any>
+    return {
+      connected: data?.status === 'connected',
+      lastSyncAt: (data?.last_sync_at as string | null) ?? null,
+      accountName: (creds.account_name ?? creds.page_name ?? creds.instagram_username ?? null) as string | null,
+    }
+  } catch (error: any) {
+    logger.error({ err: error }, 'social.connection_status.failed')
+    return { connected: false, lastSyncAt: null, accountName: null, error: 'Failed to check connection status.' }
+  }
+}
+
 export async function getSocialPosts() {
  try {
   const supabase = await createServerClient();

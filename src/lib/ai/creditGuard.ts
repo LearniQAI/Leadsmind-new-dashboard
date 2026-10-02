@@ -60,3 +60,21 @@ export async function consumeAICredit(workspaceId: string, amount: number = 1): 
     throw new CreditLimitExceededError();
   }
 }
+
+/**
+ * Gives credits back after a metered operation failed following consumeAICredit. Atomic
+ * (refund_ai_credit is a single UPDATE) and never throws: a failed refund is logged by the
+ * caller's own failure path, it must not mask the original error.
+ */
+export async function refundAICredit(workspaceId: string, amount: number = 1): Promise<boolean> {
+  try {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase.rpc('refund_ai_credit', {
+      p_workspace_id: workspaceId,
+      p_amount: amount,
+    });
+    return !error && data === true;
+  } catch {
+    return false;
+  }
+}
