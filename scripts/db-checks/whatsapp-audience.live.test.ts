@@ -95,17 +95,21 @@ const campaignCount = async (ws: string) => (await admin.from('whatsapp_broadcas
 async function dispatchAndAssert(campaignId: string, expectedSent: number) {
   await admin.from('whatsapp_dispatch_queue').update({ scheduled_for: new Date(Date.now() - 120_000).toISOString() }).eq('campaign_id', campaignId);
   let sent = 0;
-  for (let i = 0; i < 4 && sent < expectedSent; i++) sent += (await callWorker()).body.sent ?? 0;
-  expect(sent).toBe(expectedSent);
+  // The worker talks to the remote database over the network; retry a transient fetch failure (it returns 500 and leaves the rows pending).
+  let last: any = null;
+  for (let i = 0; i < 6 && sent < expectedSent; i++) { last = await callWorker(); sent += last.body.sent ?? 0; }
+  const qs = (await admin.from('whatsapp_dispatch_queue').select('status,error_log,retry_count').eq('campaign_id', campaignId)).data;
+  expect(sent, JSON.stringify({ last, qs })).toBe(expectedSent);
   const rows = (await admin.from('whatsapp_dispatch_queue').select('status,whatsapp_message_id').eq('campaign_id', campaignId)).data;
-  expect(rows.every((r: any) => r.status === 'sent' && String(r.whatsapp_message_id).startsWith('mock_wa_out_'))).toBe(true);
+  expect(rows.every((r: any) => r.status === 'sent' && String(r.whatsapp_message_id).startsWith('mock_wa_template_out_'))).toBe(true);
   const c = (await admin.from('whatsapp_broadcast_campaigns').select('status,total_sent').eq('id', campaignId).single()).data;
   expect(c.status).toBe('completed');
   expect(c.total_sent).toBe(expectedSent);
 }
 
 let tagVip = '', tagPromo = '', segA = '';
-const base = (name: string) => ({ name: `aud ${name} ${runId}`, messageBody: 'hello {{contact.first_name}}', consentAttested: true });
+// Contacts have no WhatsApp conversation (outside the 24h window), so the worker needs the template branch to send.
+const base = (name: string) => ({ name: `aud ${name} ${runId}`, messageBody: 'hello {{contact.first_name}}', templateName: 'order_confirmation', templateLanguage: 'en_US', templateBodyParams: ['{{contact.first_name}}', '1'], consentAttested: true });
 
 beforeAll(async () => {
   M = {
@@ -169,6 +173,8 @@ afterAll(async () => {
   for (const r of remaining) expect(r.count).toBe(0);
   expect(users).toBe(0);
 }, 240_000);
+
+vi.setConfig({ testTimeout: 400_000 });
 
 describe('(a) a workspace with 0 segments creates and dispatches a campaign for every audience type', () => {
   it('workspace A really has 0 segments', async () => {
