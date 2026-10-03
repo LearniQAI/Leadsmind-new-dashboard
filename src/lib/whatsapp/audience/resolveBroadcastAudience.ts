@@ -13,8 +13,9 @@ import { loadSegmentRuleGroup } from '@/lib/segments/resolveSegment';
 import { resolveContactIdsWithAllTags, resolveTagIds } from '@/lib/tagAudience';
 import { ValidationError } from '@/shared/errors/AppError';
 import type {
-  AudienceSource, AudienceSpec, ContactFieldFilter, ResolvedAudience, AudienceExclusions, MaskedSample,
+  AudienceSource, AudienceSpec, ContactFieldFilter, ResolvedAudience, AudienceExclusions, MaskedSample, BroadcastAudienceInput,
 } from './types';
+import { AUDIENCE_TYPES } from './types';
 
 // PostgREST puts `.in('id', [...])` in the URL; a URL over ~12-16k characters is rejected. Chunk id lists.
 const ID_CHUNK = 100;
@@ -245,4 +246,27 @@ export function topExclusionReason(ex: AudienceExclusions): string | null {
     if (ex[k] > 0 && (best === null || ex[k] > ex[best])) best = k;
   }
   return best ? `${ex[best]} ${labels[best]}` : null;
+}
+
+/** Validates a UI-submitted audience and maps it onto a resolver source. Throws ValidationError for bad input. */
+export function audienceFromInput(input: BroadcastAudienceInput | null | undefined): AudienceSource {
+  if (!input || typeof input !== 'object' || !(AUDIENCE_TYPES as readonly string[]).includes((input as any).type)) {
+    throw new ValidationError('Select an audience.');
+  }
+  switch (input.type) {
+    case 'all_contacts': return { type: 'all_contacts' };
+    case 'tags': {
+      const tags = (input.tags ?? []).map((t) => String(t ?? '').trim()).filter(Boolean);
+      if (tags.length === 0) throw new ValidationError('Choose at least one tag.');
+      return { type: 'tags', tags, mode: input.mode === 'any' ? 'any' : 'all' };
+    }
+    case 'contact_fields': {
+      if (!Array.isArray(input.filters) || input.filters.length === 0) throw new ValidationError('Add at least one contact filter.');
+      return { type: 'contact_fields', filters: input.filters };
+    }
+    case 'saved_segment': {
+      if (!input.segmentId || typeof input.segmentId !== 'string') throw new ValidationError('Choose a saved segment.');
+      return { type: 'saved_segment', segmentId: input.segmentId };
+    }
+  }
 }

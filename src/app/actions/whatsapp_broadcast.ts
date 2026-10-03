@@ -18,18 +18,16 @@ import { revalidatePath } from 'next/cache';
 import { requireWorkspaceAccess, requireModuleAccess } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 import { decrypt } from '@/lib/encryption';
-import { SegmentationCompiler, RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
-import { validateRuleGroup } from '@/lib/segments/ruleValidation';
-import { loadSegmentRuleGroup } from '@/lib/segments/resolveSegment';
-import { resolveContactIdsWithAllTags } from '@/lib/tagAudience';
+import type { RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
 import { userSafeMessage } from '@/shared/errors/userSafe';
 import { readWhatsAppCredentials } from '@/lib/meta/whatsappCredentials';
-import { ValidationError } from '@/shared/errors/AppError';
 import { resolveScheduledFor } from '@/lib/whatsapp/schedule';
 import { isMetaMockMode, isMockValue, MOCK_CREDENTIALS_REJECTED } from '@/lib/meta/mockMode';
+import {
+  resolveBroadcastAudience, audienceFromLegacy, audienceFromInput, topExclusionReason,
+} from '@/lib/whatsapp/audience/resolveBroadcastAudience';
+import { COMPLIANCE_TEXT_VERSION, type BroadcastAudienceInput } from '@/lib/whatsapp/audience/types';
 
-// PostgREST puts `.in('id', [...])` in the URL; a URL over ~12-16k characters is rejected. Chunk id lists.
-const ID_CHUNK = 100;
 const QUEUE_INSERT_CHUNK = 500;
 
 export interface CreateWhatsAppBroadcastPayload {
@@ -38,6 +36,10 @@ export interface CreateWhatsAppBroadcastPayload {
   templateName?: string | null;
   templateLanguage?: string | null;
   templateBodyParams?: string[] | null;
+  // New (B1a): one audience object. The legacy segmentId / ruleGroup / tags inputs below still work.
+  audience?: BroadcastAudienceInput;
+  /** Required true for every audience type: the sender confirms the contacts agreed to WhatsApp marketing. */
+  consentAttested?: boolean;
   segmentId?: string | null;
   ruleGroup?: RuleGroup | null;
   tags?: string[];
@@ -46,6 +48,7 @@ export interface CreateWhatsAppBroadcastPayload {
 
 export async function listWhatsAppBroadcastCampaigns() {
   try {
+    await requireModuleAccess('marketing');
     const { workspaceId } = await requireWorkspaceAccess();
     const supabase = await createServerClient();
 
@@ -72,6 +75,7 @@ export async function listWhatsAppBroadcastCampaigns() {
 // campaign UI stays usable in dev without live WABA credentials.
 export async function listApprovedWhatsAppTemplates() {
   try {
+    await requireModuleAccess('marketing');
     const { workspaceId } = await requireWorkspaceAccess();
     const supabase = await createServerClient();
 
@@ -128,82 +132,51 @@ export async function listApprovedWhatsAppTemplates() {
   }
 }
 
-// Mirrors bulk_sms.ts's resolveAudience() exactly, swapping the sms_opt_out
-// gate for opted_out.
-async function resolveAudience(
-  supabase: Awaited<ReturnType<typeof createServerClient>>,
-  workspaceId: string,
-  payload: Pick<CreateWhatsAppBroadcastPayload, 'segmentId' | 'ruleGroup' | 'tags'>
-): Promise<{ contactIds: string[]; excludedOptOut: number }> {
-  let ruleGroup: RuleGroup | null =
-    payload.ruleGroup && Array.isArray(payload.ruleGroup.rules) && payload.ruleGroup.rules.length > 0
-      ? payload.ruleGroup
-      : null;
+export const WHATSAPP_ATTESTATION_REQUIRED_MESSAGE =
+  'Confirm that these contacts agreed to receive WhatsApp marketing messages before creating a campaign.';
 
-  // Validate ad-hoc rules, and resolve a saved segment FAIL-CLOSED: a deleted/invalid segment must
-  // error clearly (and before any row is written), never be dropped and evaluated on tags alone.
-  if (ruleGroup) {
-    const problem = validateRuleGroup(ruleGroup);
-    if (problem) throw new ValidationError(problem); // authored for the user, so safe to show
+export type WhatsAppPreviewResult =
+  | {
+      success: true;
+      counts: { matched: number; eligible: number };
+      exclusions: { no_phone: number; invalid_number: number; opted_out: number; suppressed: number; duplicate_phone: number };
+      sample: { name: string; phone: string }[];
+    }
+  | { success: false; error: string };
+
+// Read-only dry run of the audience a campaign form describes. Returns counts, the exclusion breakdown and up to 5
+// masked samples (first name + last 3 digits). Never returns a raw phone number or a full name, and writes nothing.
+export async function previewWhatsAppBroadcastAudience(audience: BroadcastAudienceInput): Promise<WhatsAppPreviewResult> {
+  await requireModuleAccess('marketing');
+  try {
+    const { workspaceId } = await requireWorkspaceAccess();
+    const supabase = await createServerClient();
+    const resolved = await resolveBroadcastAudience(supabase, workspaceId, audienceFromInput(audience));
+    return { success: true, counts: resolved.counts, exclusions: resolved.exclusions, sample: resolved.sample };
+  } catch (error: any) {
+    logger.error({ err: error }, 'preview.whatsapp_broadcast_audience.failed');
+    return { success: false, error: userSafeMessage(error, 'Failed to preview this audience') };
   }
-  if (!ruleGroup && payload.segmentId) {
-    ruleGroup = await loadSegmentRuleGroup(supabase, workspaceId, payload.segmentId);
+}
+
+// id + name only, for the optional "Saved segment" audience. Read-only; called lazily by the UI so the page does not
+// compute live member counts for every segment just to render a dropdown.
+export async function listAudienceSegmentOptions() {
+  await requireModuleAccess('marketing');
+  try {
+    const { workspaceId } = await requireWorkspaceAccess();
+    const supabase = await createServerClient();
+    const { data, error } = await supabase
+      .from('segments')
+      .select('id, name')
+      .eq('workspace_id', workspaceId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return { success: true as const, data: (data ?? []) as { id: string; name: string }[] };
+  } catch (error: any) {
+    logger.error({ err: error }, 'list.whatsapp_audience_segment_options.failed');
+    return { success: false as const, error: 'Failed to load saved segments' };
   }
-
-  const tags = (payload.tags ?? []).filter(Boolean);
-
-  let ruleMatchedIds: Set<string> | null = null;
-  if (ruleGroup) {
-    const matches = await SegmentationCompiler.executeSegment(workspaceId, ruleGroup);
-    ruleMatchedIds = new Set(matches.map((c: any) => c.id));
-  }
-
-  // Tags are matched against tag_assignments (the source of truth), NOT the legacy contacts.tags array
-  // this used to read; a contact must carry ALL the listed tags (by name or id).
-  let tagMatchedIds: Set<string> | null = null;
-  if (tags.length > 0) {
-    tagMatchedIds = await resolveContactIdsWithAllTags(supabase, workspaceId, tags);
-  }
-
-  let matchedIds: Set<string>;
-  if (ruleMatchedIds && tagMatchedIds) {
-    matchedIds = new Set([...ruleMatchedIds].filter((id) => tagMatchedIds!.has(id)));
-  } else {
-    matchedIds = ruleMatchedIds || tagMatchedIds || new Set<string>();
-  }
-
-  if (matchedIds.size === 0) return { contactIds: [], excludedOptOut: 0 };
-
-  // Chunked: putting every id in one request URL fails outright above ~300-400 contacts.
-  const matchedList = Array.from(matchedIds);
-  const eligible: any[] = [];
-  for (let i = 0; i < matchedList.length; i += ID_CHUNK) {
-    const { data, error: eligErr } = await supabase
-      .from('contacts')
-      .select('id, phone, phone_e164, opted_out, sms_opt_out')
-      .in('id', matchedList.slice(i, i + ID_CHUNK));
-    if (eligErr) throw eligErr;
-    eligible.push(...(data ?? []));
-  }
-
-  // Opt-out is unified across SMS and WhatsApp and also lives durably in sms_suppression_list.
-  const suppressedPhones = new Set<string>();
-  const phones = [...new Set(eligible.map((c: any) => c.phone_e164).filter(Boolean))] as string[];
-  for (let i = 0; i < phones.length; i += ID_CHUNK) {
-    const { data: listed, error: listErr } = await supabase
-      .from('sms_suppression_list').select('phone_e164')
-      .eq('workspace_id', workspaceId).in('phone_e164', phones.slice(i, i + ID_CHUNK));
-    if (listErr) throw listErr;
-    for (const r of listed ?? []) suppressedPhones.add(r.phone_e164);
-  }
-
-  // A number that cannot be normalised to E.164 can never be messaged (or matched to a STOP): skip it.
-  const withPhone = eligible.filter((c: any) => !!c.phone && !!c.phone_e164);
-  const isOptedOut = (c: any) => c.opted_out || c.sms_opt_out || suppressedPhones.has(c.phone_e164);
-  const excludedOptOut = withPhone.filter(isOptedOut).length;
-  const contactIds = withPhone.filter((c: any) => !isOptedOut(c)).map((c: any) => c.id);
-
-  return { contactIds, excludedOptOut };
 }
 
 export async function createWhatsAppBroadcastCampaign(payload: CreateWhatsAppBroadcastPayload) {
@@ -214,8 +187,11 @@ export async function createWhatsAppBroadcastCampaign(payload: CreateWhatsAppBro
     if (!payload.messageBody?.trim() && !payload.templateName?.trim()) {
       return { success: false as const, error: 'Provide a free-text message, an approved template, or both' };
     }
-    if (!payload.segmentId && !payload.ruleGroup && !(payload.tags && payload.tags.length > 0)) {
-      return { success: false as const, error: 'Select an audience (segment, rule, or tags)' };
+
+    // New `audience` object, or the legacy segmentId / ruleGroup / tags inputs (same semantics as before B1a).
+    const spec = payload.audience ? audienceFromInput(payload.audience) : audienceFromLegacy(payload);
+    if (!spec) {
+      return { success: false as const, error: 'Select an audience (all contacts, tags, a contact filter or a saved segment)' };
     }
 
     const supabase = await createServerClient();
@@ -228,14 +204,39 @@ export async function createWhatsAppBroadcastCampaign(payload: CreateWhatsAppBro
       .maybeSingle();
     if (!conn) return { success: false as const, error: 'Connect a WhatsApp Business account first (Settings > Integrations)' };
 
-    const { contactIds, excludedOptOut } = await resolveAudience(supabase, workspaceId, payload);
+    // Read-only; a deleted/invalid saved segment or a lookup failure throws here, before any row is written.
+    const resolved = await resolveBroadcastAudience(supabase, workspaceId, spec);
+
+    // Every audience type needs the sender's consent attestation, enforced here and not only in the UI.
+    if (payload.consentAttested !== true) {
+      return { success: false as const, code: 'consent_attestation_required' as const, error: WHATSAPP_ATTESTATION_REQUIRED_MESSAGE };
+    }
+
+    const contactIds = resolved.contactIds;
+    const excludedOptOut = resolved.exclusions.opted_out + resolved.exclusions.suppressed;
     if (contactIds.length === 0) {
-      return { success: false as const, error: 'No eligible recipients matched this audience (check opt-outs and missing phone numbers)' };
+      const top = topExclusionReason(resolved.exclusions);
+      return {
+        success: false as const,
+        error: 'No eligible recipients matched this audience' + (top ? ` (most excluded: ${top})` : resolved.counts.matched === 0 ? ' (no contacts matched)' : ''),
+      };
     }
 
     const schedule = resolveScheduledFor(payload.scheduledAt);
     if (schedule.ok === false) return { success: false as const, error: schedule.error };
     const scheduledFor = (schedule as { ok: true; iso: string }).iso;
+
+    const now = new Date().toISOString();
+    const audienceType = payload.audience ? payload.audience.type : 'legacy';
+    const audienceDefinition = payload.audience
+      ? payload.audience
+      : { segmentId: payload.segmentId || null, ruleGroup: payload.ruleGroup || null, tags: payload.tags || null };
+    const savedSegmentId = payload.audience
+      ? (payload.audience.type === 'saved_segment' ? payload.audience.segmentId : null)
+      : (payload.segmentId || null);
+    const audienceTags = payload.audience
+      ? (payload.audience.type === 'tags' ? payload.audience.tags : null)
+      : (payload.tags || null);
 
     const { data: campaign, error: insertErr } = await supabase
       .from('whatsapp_broadcast_campaigns')
@@ -246,14 +247,18 @@ export async function createWhatsAppBroadcastCampaign(payload: CreateWhatsAppBro
         template_name: payload.templateName?.trim() || null,
         template_language: payload.templateName?.trim() ? (payload.templateLanguage?.trim() || 'en_US') : null,
         template_body_params: payload.templateName?.trim() && payload.templateBodyParams?.length ? payload.templateBodyParams : null,
-        segment_id: payload.segmentId || null,
-        rule_group: payload.ruleGroup || null,
-        tags: payload.tags || null,
+        segment_id: savedSegmentId,
+        rule_group: payload.audience ? null : (payload.ruleGroup || null),
+        tags: audienceTags,
         scheduled_at: scheduledFor,
         status: 'scheduled',
         total_recipients: contactIds.length,
         total_skipped_opt_out: excludedOptOut,
         created_by: userId,
+        audience_type: audienceType,
+        audience_definition: audienceDefinition,
+        audience_snapshot: { resolvedAt: now, counts: resolved.counts, exclusions: resolved.exclusions },
+        compliance_ack: { userId, ts: now, textVersion: COMPLIANCE_TEXT_VERSION },
       })
       .select()
       .single();
@@ -282,7 +287,7 @@ export async function createWhatsAppBroadcastCampaign(payload: CreateWhatsAppBro
     }
 
     revalidatePath('/whatsapp-broadcasts');
-    return { success: true as const, data: campaign, recipientCount: contactIds.length, excludedOptOut };
+    return { success: true as const, data: campaign, recipientCount: contactIds.length, excludedOptOut, exclusions: resolved.exclusions };
   } catch (error: any) {
     logger.error({ err: error }, 'create.whatsapp_broadcast_campaign.failed');
     // Only errors authored for the user reach the client; driver/DB/network errors are replaced by a generic message.
@@ -330,6 +335,7 @@ export async function cancelWhatsAppBroadcastCampaign(id: string) {
 }
 
 export async function deleteWhatsAppBroadcastCampaign(id: string) {
+  await requireModuleAccess('marketing');
   try {
     const { workspaceId } = await requireWorkspaceAccess();
     const supabase = await createServerClient();
