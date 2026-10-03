@@ -1,7 +1,7 @@
 'use server';
 
 import { headers } from 'next/headers';
-import { createServerClient } from '@/lib/supabase/server';
+import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { getCurrentWorkspaceId } from '@/lib/auth';
 import { logger } from '@/shared/logger';
 import { resolvePublicBlogWorkspaceId } from '@/lib/blog/publicWorkspace';
@@ -175,12 +175,20 @@ export async function getPublicCategories() {
  */
 export async function subscribeToNewsletter(email: string, workspaceId?: string, referralCode?: string) {
   try {
-    const supabase = await createServerClient();
+    // A public, unauthenticated write. It used to run on the anonymous-session client and depended on the contacts RLS policy
+    // "Public form submissions" (anyone may INSERT into a workspace that has pages). That policy is being removed, so the write
+    // uses the service-role client instead. The workspace is derived from the REQUEST HOST (never from the argument, which is
+    // only checked against it), and the same existence check the policy made is repeated here: the workspace must own a page.
+    const supabase = createAdminClient();
     const hostWorkspaceId = await resolvePublicBlogWorkspaceId();
     if (!hostWorkspaceId || (workspaceId && workspaceId !== hostWorkspaceId)) {
       return { error: 'Public blog workspace could not be resolved.' };
     }
     const wsId = hostWorkspaceId;
+
+    const { data: hasPage, error: pageErr } = await supabase.from('pages').select('id').eq('workspace_id', wsId).limit(1);
+    if (pageErr) throw pageErr;
+    if (!hasPage || hasPage.length === 0) return { error: 'Failed to capture subscriber' };
 
     const contactPayload: any = {
       workspace_id: wsId,

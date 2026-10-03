@@ -17,6 +17,8 @@ import { isCloudApiHealthy } from '@/lib/messaging/cloudApiHealth';
 import { toClientError } from '@/shared/errors/AppError';
 import { subscribeWabaToMetaWebhook } from '@/lib/meta/subscribeWebhook';
 import { checkWhatsAppSendAllowed } from '@/lib/messaging/whatsappSendGuard';
+import { toSafeConnection } from '@/lib/messaging/safeConnections';
+import { sealPageToken, openPageToken, WHATSAPP_PLACEHOLDER_TOKEN, PageTokenHandleError } from '@/lib/meta/tokenHandle';
 import { isMetaMockMode, isMockValue, MOCK_CREDENTIALS_REJECTED, META_NOT_CONFIGURED } from '@/lib/meta/mockMode';
 
 export async function getMetaAuthUrl(targetPlatform?: string, returnTo?: 'social') {
@@ -207,7 +209,9 @@ export async function getConnectedPlatforms() {
    .eq('workspace_id', workspaceId);
 
   if (error) throw error;
-  const rows = data || [];
+  // Project through the allow-list HERE, on the server: `credentials` holds encrypted tokens and this result is handed to
+  // client components. Nothing secret may leave this function.
+  const rows = (data || []).map((r: any) => toSafeConnection(r));
 
   const { data: ws } = await supabase.from('workspaces').select('twilio_number').eq('id', workspaceId).maybeSingle();
   return withSmsConnectionStatus(rows, ws?.twilio_number);
@@ -239,18 +243,34 @@ export async function disconnectPlatform(platform: string) {
 }
 
 
-async function resolveConversationIds(conversationId: string): Promise<string[]> {
+// Every Hub write that takes a conversation id resolves it HERE first, scoped by workspace_id. A conversation that is not in the
+// caller's workspace (another tenant's, deleted, malformed) resolves to [] and the caller must return CONVERSATION_NOT_FOUND
+// without writing. RLS is a backstop, not the check: sendMessage used to insert a message row into the caller's workspace that
+// pointed at another workspace's conversation.
+async function resolveConversationIds(conversationId: string, workspaceId: string): Promise<string[]> {
+  const supabase = await createServerClient();
   if (!conversationId.startsWith('contact:')) {
-    return [conversationId];
+    const { data } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('id', conversationId)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+    return data?.id ? [data.id] : [];
   }
   const contactId = conversationId.split(':')[1];
-  const supabase = await createServerClient();
   const { data } = await supabase
     .from('conversations')
     .select('id')
-    .eq('contact_id', contactId);
-  return data?.map(c => c.id) || [];
+    .eq('contact_id', contactId)
+    .eq('workspace_id', workspaceId);
+  return data?.map((c: any) => c.id) || [];
 }
+
+// Plain optional-field shape so existing callers can keep testing `res.error` on any branch.
+type HubActionResult = { success?: boolean; error?: string; code?: string; data?: any };
+
+const CONVERSATION_NOT_FOUND = { success: false as const, error: 'Conversation not found.', code: 'not_found' as const };
 
 export async function getConversations() {
  let workspaceId: string | null = null;
@@ -303,8 +323,7 @@ export async function sendMessage(
    *  for a failed-row retry (which keeps its original subject). */
   subject?: string,
 ) {
-  const ids = await resolveConversationIds(conversationId);
-  const targetConvId = ids[0] || conversationId;
+  let targetConvId = conversationId;
 
  try {
   // Previously trusted the active_workspace_id cookie with no membership check before
@@ -314,6 +333,11 @@ export async function sendMessage(
   const { workspaceId, userId } = await requireWorkspaceAccess();
 
   const supabase = await createServerClient();
+
+  // The conversation must exist IN THIS WORKSPACE before anything is read or written. Not found: typed error, zero writes.
+  const ids = await resolveConversationIds(conversationId, workspaceId);
+  if (ids.length === 0) return CONVERSATION_NOT_FOUND;
+  targetConvId = ids[0];
 
   // Server-side WhatsApp guards (the composer UI is not a control): never message an opted-out contact, never send
   // free text outside the 24h window. Every other channel passes straight through.
@@ -400,7 +424,7 @@ export async function sendMessage(
   }
   
   // Update conversation last_message_at
-  await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).in('id', ids);
+  await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).in('id', ids).eq('workspace_id', workspaceId);
 
   // If it's an email platform, send the actual email via Resend
   const { data: conv } = await supabase
@@ -679,12 +703,13 @@ export async function sendMessage(
  }
 }
 
-export async function sendInternalNote(conversationId: string, content: string, senderHandle = 'Agent') {
-  const ids = await resolveConversationIds(conversationId);
-  const targetConvId = ids[0] || conversationId;
+export async function sendInternalNote(conversationId: string, content: string, senderHandle = 'Agent'): Promise<HubActionResult> {
+  let targetConvId = conversationId;
  try {
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { error: 'No workspace active' };
+  const { workspaceId } = await requireWorkspaceAccess();
+  const ids = await resolveConversationIds(conversationId, workspaceId);
+  if (ids.length === 0) return CONVERSATION_NOT_FOUND;
+  targetConvId = ids[0];
 
   const supabase = await createServerClient();
   const { data: msgData, error } = await supabase
@@ -703,7 +728,7 @@ export async function sendInternalNote(conversationId: string, content: string, 
   if (error) throw error;
 
   // Update conversation last_message_at
-  await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).in('id', ids);
+  await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).in('id', ids).eq('workspace_id', workspaceId);
 
   return { success: true, data: msgData };
  } catch (error: any) {
@@ -712,58 +737,62 @@ export async function sendInternalNote(conversationId: string, content: string, 
  }
 }
 
-export async function updateConversationAssignment(conversationId: string, assignedTo: string | null) {
-  const ids = await resolveConversationIds(conversationId);
-  if (ids.length === 0) return { error: 'No conversations found' };
+// Shared by assignment / status / tags: resolve in the workspace, update scoped by workspace_id, and treat "0 rows
+// affected" as NOT FOUND instead of success (a foreign or deleted id used to report success while changing nothing).
+async function updateConversationFields(conversationId: string, patch: Record<string, unknown>, logTag: string): Promise<HubActionResult | null> {
  try {
+  const { workspaceId } = await requireWorkspaceAccess();
+  const ids = await resolveConversationIds(conversationId, workspaceId);
+  if (ids.length === 0) return CONVERSATION_NOT_FOUND;
+
   const supabase = await createServerClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
    .from('conversations')
-   .update({ assigned_to: assignedTo })
-   .in('id', ids);
+   .update(patch)
+   .in('id', ids)
+   .eq('workspace_id', workspaceId)
+   .select('id');
 
   if (error) throw error;
-  return { success: true };
+  if (!data || data.length === 0) return CONVERSATION_NOT_FOUND;
+  return { success: true as const };
  } catch (error: any) {
-  logger.error({ err: error, conversationId }, 'messaging.conversation_assignment.update.failed');
-  return { error: 'Failed to update assignment.' };
+  logger.error({ err: error, conversationId }, logTag);
+  return null;
  }
 }
 
-export async function updateConversationStatus(conversationId: string, status: string) {
-  const ids = await resolveConversationIds(conversationId);
-  if (ids.length === 0) return { error: 'No conversations found' };
- try {
-  const supabase = await createServerClient();
-  const { error } = await supabase
-   .from('conversations')
-   .update({ status })
-   .in('id', ids);
-
-  if (error) throw error;
-  return { success: true };
- } catch (error: any) {
-  logger.error({ err: error, conversationId, status }, 'messaging.conversation_status.update.failed');
-  return { error: 'Failed to update status.' };
+export async function updateConversationAssignment(conversationId: string, assignedTo: string | null): Promise<HubActionResult> {
+ // The assignee must be a member of the caller's workspace (an agent cannot be assigned from another tenant).
+ if (assignedTo) {
+  try {
+   const { workspaceId } = await requireWorkspaceAccess();
+   const supabase = await createServerClient();
+   const { data: member } = await supabase
+    .from('workspace_members')
+    .select('user_id')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', assignedTo)
+    .maybeSingle();
+   if (!member) return { success: false as const, error: 'Assignee not found in this workspace.', code: 'not_found' as const };
+  } catch (error: any) {
+   logger.error({ err: error, conversationId }, 'messaging.conversation_assignment.assignee_check.failed');
+   return { error: 'Failed to update assignment.' };
+  }
  }
+ const r = await updateConversationFields(conversationId, { assigned_to: assignedTo }, 'messaging.conversation_assignment.update.failed');
+ return r ?? { error: 'Failed to update assignment.' };
 }
 
-export async function updateConversationTags(conversationId: string, tags: string[]) {
-  const ids = await resolveConversationIds(conversationId);
-  if (ids.length === 0) return { error: 'No conversations found' };
- try {
-  const supabase = await createServerClient();
-  const { error } = await supabase
-   .from('conversations')
-   .update({ tags })
-   .in('id', ids);
+export async function updateConversationStatus(conversationId: string, status: string): Promise<HubActionResult> {
+ const r = await updateConversationFields(conversationId, { status }, 'messaging.conversation_status.update.failed');
+ return r ?? { error: 'Failed to update status.' };
+}
 
-  if (error) throw error;
-  return { success: true };
- } catch (error: any) {
-  logger.error({ err: error, conversationId }, 'messaging.conversation_tags.update.failed');
-  return { error: 'Failed to update tags.' };
- }
+export async function updateConversationTags(conversationId: string, tags: string[]): Promise<HubActionResult> {
+ if (!Array.isArray(tags) || tags.some((t) => typeof t !== 'string')) return { error: 'Failed to update tags.' };
+ const r = await updateConversationFields(conversationId, { tags }, 'messaging.conversation_tags.update.failed');
+ return r ?? { error: 'Failed to update tags.' };
 }
 
 export async function getQuickReplies() {
@@ -814,17 +843,19 @@ export async function createQuickReply(shortcut: string, message: string) {
  }
 }
 
-export async function deleteQuickReply(id: string) {
+export async function deleteQuickReply(id: string): Promise<HubActionResult> {
  let workspaceId: string | null = null;
  try {
   const supabase = await createServerClient();
   ({ workspaceId } = await requireWorkspaceAccess());
-  const { error } = await supabase
+  const { data: deleted, error } = await supabase
    .from('quick_replies')
    .delete()
-   .eq("id", id).eq("workspace_id", workspaceId);
+   .eq("id", id).eq("workspace_id", workspaceId)
+   .select('id');
 
   if (error) throw error;
+  if (!deleted || deleted.length === 0) return { success: false as const, error: 'Quick reply not found.', code: 'not_found' as const };
   return { success: true };
  } catch (error: any) {
   logger.error({ err: error, workspaceId, quickReplyId: id }, 'messaging.quick_reply.delete.failed');
@@ -832,21 +863,23 @@ export async function deleteQuickReply(id: string) {
  }
 }
 
-export async function updateContactConsent(contactId: string, optedIn: boolean, optedOut: boolean) {
+export async function updateContactConsent(contactId: string, optedIn: boolean, optedOut: boolean): Promise<HubActionResult> {
  let workspaceId: string | null = null;
  try {
   const supabase = await createServerClient();
-  workspaceId = await getCurrentWorkspaceId();
-  const { error } = await supabase
+  ({ workspaceId } = await requireWorkspaceAccess());
+  const { data: updated, error } = await supabase
    .from('contacts')
    .update({
      opted_in: optedIn,
      opted_out: optedOut,
      opt_out_date: optedOut ? new Date().toISOString() : null
    })
-   .eq("id", contactId).eq("workspace_id", workspaceId);
+   .eq("id", contactId).eq("workspace_id", workspaceId)
+   .select('id');
 
   if (error) throw error;
+  if (!updated || updated.length === 0) return { success: false as const, error: 'Contact not found.', code: 'not_found' as const };
   return { success: true };
  } catch (error: any) {
   logger.error({ err: error, workspaceId, contactId }, 'messaging.contact_consent.update.failed');
@@ -854,7 +887,8 @@ export async function updateContactConsent(contactId: string, optedIn: boolean, 
  }
 }
 
-export async function getMetaOauthToken() {
+// Server-side only (not exported): the decrypted Meta user token. The browser must never receive it.
+async function loadMetaOauthSession() {
   try {
     const workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return null;
@@ -891,8 +925,16 @@ export async function getMetaOauthToken() {
   }
 }
 
+// What the connect wizard needs to know: is there a linked Meta session. It used to return the decrypted token itself to
+// the browser, which only ever tested it for truthiness.
+export async function getMetaOauthToken(): Promise<{ linked: true; isMock: boolean; status: string } | null> {
+  const session = await loadMetaOauthSession();
+  if (!session || !session.token) return null;
+  return { linked: true, isMock: session.isMock, status: session.status };
+}
+
 export async function fetchMetaBusinesses() {
-  const oauth = await getMetaOauthToken();
+  const oauth = await loadMetaOauthSession();
   if (!oauth) throw new Error('Meta account not linked or session expired');
 
   if (oauth.isMock) {
@@ -920,22 +962,30 @@ export async function fetchMetaBusinesses() {
 }
 
 export async function fetchMetaPages(businessId: string) {
-  const oauth = await getMetaOauthToken();
+  const oauth = await loadMetaOauthSession();
   if (!oauth) throw new Error('Meta account not linked or session expired');
+  // Page access tokens never reach the browser: each page carries an opaque, short-lived handle in `access_token` (same field
+  // name, so the wizard is unchanged) that only the server can open, only for this user, workspace and page.
+  const { workspaceId, userId } = await requireWorkspaceAccess();
+  const seal = (p: { id: string; name: string; access_token: string }) => ({
+    id: p.id,
+    name: p.name,
+    access_token: sealPageToken(p.access_token, { workspaceId, userId, pageId: p.id }),
+  });
 
   if (oauth.isMock) {
     if (businessId === 'mock_biz_1') {
       return [
-        { id: 'mock_page_1', name: 'LeadsMind Main Page', access_token: 'mock_fb_page_token_1' },
-        { id: 'mock_page_2', name: 'LeadsMind Support Page', access_token: 'mock_fb_page_token_2' }
+        seal({ id: 'mock_page_1', name: 'LeadsMind Main Page', access_token: 'mock_fb_page_token_1' }),
+        seal({ id: 'mock_page_2', name: 'LeadsMind Support Page', access_token: 'mock_fb_page_token_2' })
       ];
     } else if (businessId === 'mock_biz_2') {
       return [
-        { id: 'mock_page_3', name: 'LeadsMind Retail Page', access_token: 'mock_fb_page_token_3' }
+        seal({ id: 'mock_page_3', name: 'LeadsMind Retail Page', access_token: 'mock_fb_page_token_3' })
       ];
     } else {
       return [
-        { id: 'mock_page_4', name: 'Personal Blog Page', access_token: 'mock_fb_page_token_4' }
+        seal({ id: 'mock_page_4', name: 'Personal Blog Page', access_token: 'mock_fb_page_token_4' })
       ];
     }
   }
@@ -947,20 +997,19 @@ export async function fetchMetaPages(businessId: string) {
       throw new Error(data.error?.message || 'Failed to fetch Facebook pages');
     }
     const list = data.data || [];
-    return list.map((p: any) => ({
-      id: p.id,
-      name: p.name,
-      access_token: p.access_token
-    }));
+    return list.map((p: any) => seal({ id: p.id, name: p.name, access_token: p.access_token }));
   } catch (err: any) {
     logger.error({ err, businessId }, 'messaging.meta_api.pages.fetch.failed');
     throw err;
   }
 }
 
-export async function fetchMetaInstagramAccounts(pageId: string, pageAccessToken: string) {
-  const oauth = await getMetaOauthToken();
+export async function fetchMetaInstagramAccounts(pageId: string, pageAccessTokenHandle: string) {
+  const oauth = await loadMetaOauthSession();
   if (!oauth) throw new Error('Meta account not linked or session expired');
+  const { workspaceId, userId } = await requireWorkspaceAccess();
+  // The browser only ever holds a handle (see fetchMetaPages). A raw token, or a handle for another page/user/workspace, is refused.
+  const pageAccessToken = openPageToken(pageAccessTokenHandle, { workspaceId, userId, pageId });
 
   if (oauth.isMock) {
     const mockAccounts: Record<string, { id: string, username: string }[]> = {
@@ -993,7 +1042,7 @@ export async function fetchMetaInstagramAccounts(pageId: string, pageAccessToken
 }
 
 export async function fetchMetaWhatsAppAccounts(businessId: string) {
-  const oauth = await getMetaOauthToken();
+  const oauth = await loadMetaOauthSession();
   if (!oauth) throw new Error('Meta account not linked or session expired');
 
   if (oauth.isMock) {
@@ -1023,7 +1072,7 @@ export async function fetchMetaWhatsAppAccounts(businessId: string) {
 }
 
 export async function fetchWhatsAppPhoneNumbers(wabaId: string) {
-  const oauth = await getMetaOauthToken();
+  const oauth = await loadMetaOauthSession();
   if (!oauth) throw new Error('Meta account not linked or session expired');
 
   if (oauth.isMock) {
@@ -1077,8 +1126,20 @@ export async function saveMetaConnections(data: {
     workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
 
-    const oauth = await getMetaOauthToken();
+    const oauth = await loadMetaOauthSession();
     if (!oauth) return { error: 'OAuth session not found. Please reconnect.' };
+
+    // The page token arrives as an opaque handle issued by fetchMetaPages (the browser never sees the real token). Only the
+    // WhatsApp-only path legitimately has no page token and sends the fixed placeholder.
+    if (!(targetPlatform === 'whatsapp' && data.pageAccessToken === WHATSAPP_PLACEHOLDER_TOKEN)) {
+      try {
+        const { userId } = await requireWorkspaceAccess();
+        data = { ...data, pageAccessToken: openPageToken(data.pageAccessToken, { workspaceId, userId, pageId: data.pageId }) };
+      } catch (err: any) {
+        if (err instanceof PageTokenHandleError) return { error: err.message };
+        throw err;
+      }
+    }
     if (!isMetaMockMode() && hasMockCredential(data)) return { error: MOCK_CREDENTIALS_REJECTED };
 
     const supabase = await createServerClient();

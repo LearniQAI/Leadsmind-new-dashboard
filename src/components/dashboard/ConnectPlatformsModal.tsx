@@ -126,7 +126,7 @@ export function ConnectPlatformsModal({ open, onOpenChange, targetPlatform = nul
 
       // Check if there is a pending OAuth session to trigger Wizard onboarding
       const oauthSession = await getMetaOauthToken();
-      if (oauthSession && oauthSession.token && targetPlatform && targetPlatform !== 'facebook') {
+      if (oauthSession && oauthSession.linked && targetPlatform && targetPlatform !== 'facebook') {
         setIsOauthWizard(true);
         setWizardStep(1);
         setWizardLoading(true);

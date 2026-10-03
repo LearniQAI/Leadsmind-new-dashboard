@@ -55,6 +55,24 @@ async function recordConnectionNotFound(errorType: string, externalId: string, r
   }
 }
 
+// Delivery / read receipts must only touch the workspace that OWNS the Meta account they came from. The workspace is
+// resolved from the account id in the event itself (WhatsApp phone_number_id, Facebook page id, Instagram account id)
+// through platform_connections, the same lookup the message handlers use. A receipt for an account we cannot place is
+// skipped, never applied by a bare external_id match. A lookup error throws, so Meta retries the delivery.
+async function resolveWorkspaceForMetaAccount(platform: 'whatsapp' | 'facebook' | 'instagram', accountId: unknown): Promise<string | null> {
+  if (typeof accountId !== 'string' || !accountId) return null;
+  const key = platform === 'whatsapp' ? 'phone_number_id' : platform === 'facebook' ? 'page_id' : 'instagram_id';
+  const { data, error } = await supabase
+    .from('platform_connections')
+    .select('workspace_id')
+    .eq('platform', platform)
+    .filter(`credentials->>${key}`, 'eq', accountId)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.workspace_id ?? null;
+}
+
 // GET Handler for Webhook Verification Challenge
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -108,18 +126,25 @@ export async function POST(req: Request) {
           // Handle delivery status update
           if (messagingEvent.delivery) {
             const mids = messagingEvent.delivery.mids || [];
-            for (const mid of mids) {
-              await supabase
-                .from('messages')
-                .update({ status: 'delivered' })
-                .eq('external_id', mid);
+            const receiptWs = await resolveWorkspaceForMetaAccount('facebook', entry.id);
+            if (!receiptWs) {
+              logger.warn({ accountId: entry.id }, 'webhook.meta.facebook.delivery_account_not_found');
+            } else {
+              for (const mid of mids) {
+                await supabase
+                  .from('messages')
+                  .update({ status: 'delivered' })
+                  .eq('external_id', mid)
+                  .eq('workspace_id', receiptWs);
+              }
+              logger.info({ mids }, 'webhook.meta.facebook.delivery_processed');
             }
-            logger.info({ mids }, 'webhook.meta.facebook.delivery_processed');
           }
 
           // Handle read status update
           if (messagingEvent.read) {
             const senderId = messagingEvent.sender.id;
+            const readWs = await resolveWorkspaceForMetaAccount('facebook', entry.id);
             // Update outbound messages in this conversation to 'read'. Advance from
             // both 'sent' and 'delivered' — a fast read receipt can beat the
             // message_deliveries webhook.
@@ -128,13 +153,15 @@ export async function POST(req: Request) {
               .select('id')
               .eq('platform', 'facebook')
               .eq('external_thread_id', senderId)
+              .eq('workspace_id', readWs ?? '00000000-0000-0000-0000-000000000000')
               .maybeSingle();
 
-            if (conv) {
+            if (conv && readWs) {
               await supabase
                 .from('messages')
                 .update({ status: 'read' })
                 .eq('conversation_id', conv.id)
+                .eq('workspace_id', readWs)
                 .eq('direction', 'outbound')
                 .in('status', statusesReadReceiptAdvancesFrom('facebook'));
               logger.info({ senderId }, 'webhook.meta.facebook.read_processed');
@@ -164,13 +191,19 @@ export async function POST(req: Request) {
           // outbound message legitimately moves sending -> sent -> read.
           if (messagingEvent.delivery) {
             const mids = messagingEvent.delivery.mids || [];
-            for (const mid of mids) {
-              await supabase
-                .from('messages')
-                .update({ status: 'delivered' })
-                .eq('external_id', mid);
+            const receiptWs = await resolveWorkspaceForMetaAccount('instagram', entry.id);
+            if (!receiptWs) {
+              logger.warn({ accountId: entry.id }, 'webhook.meta.instagram.delivery_account_not_found');
+            } else {
+              for (const mid of mids) {
+                await supabase
+                  .from('messages')
+                  .update({ status: 'delivered' })
+                  .eq('external_id', mid)
+                  .eq('workspace_id', receiptWs);
+              }
+              logger.info({ mids }, 'webhook.meta.instagram.delivery_processed');
             }
-            logger.info({ mids }, 'webhook.meta.instagram.delivery_processed');
           }
 
           // Handle read status update (messaging_seen). Previously required
@@ -178,18 +211,21 @@ export async function POST(req: Request) {
           // receipts silently no-op'd. Advance straight from 'sent'.
           if (messagingEvent.read) {
             const senderId = messagingEvent.sender.id;
+            const readWs = await resolveWorkspaceForMetaAccount('instagram', entry.id);
             const { data: conv } = await supabase
               .from('conversations')
               .select('id')
               .eq('platform', 'instagram')
               .eq('external_thread_id', senderId)
+              .eq('workspace_id', readWs ?? '00000000-0000-0000-0000-000000000000')
               .maybeSingle();
 
-            if (conv) {
+            if (conv && readWs) {
               const { error: readErr } = await supabase
                 .from('messages')
                 .update({ status: 'read' })
                 .eq('conversation_id', conv.id)
+                .eq('workspace_id', readWs)
                 .eq('direction', 'outbound')
                 .in('status', statusesReadReceiptAdvancesFrom('instagram'));
               if (readErr) {
@@ -215,8 +251,12 @@ export async function POST(req: Request) {
             const messages = val?.messages || [];
             const statuses = val?.statuses || [];
 
-            // Process status updates
-            for (const statusObj of statuses) {
+            // Process status updates, only inside the workspace that owns the receiving phone_number_id.
+            const statusWs = statuses.length > 0 ? await resolveWorkspaceForMetaAccount('whatsapp', metadata?.phone_number_id) : null;
+            if (statuses.length > 0 && !statusWs) {
+              logger.warn({ phoneNumberId: metadata?.phone_number_id }, 'webhook.meta.whatsapp.status_account_not_found');
+            }
+            for (const statusObj of statusWs ? statuses : []) {
               const msgStatus = statusObj.status; // 'sent', 'delivered', 'read', 'failed'
               const extId = statusObj.id;
               const errorObj = statusObj.errors?.[0];
@@ -229,7 +269,8 @@ export async function POST(req: Request) {
               const { error: updErr } = await supabase
                 .from('messages')
                 .update(updateData)
-                .eq('external_id', extId);
+                .eq('external_id', extId)
+                .eq('workspace_id', statusWs as string);
               
               if (updErr) {
                 logger.error({ err: updErr, msgStatus, extId }, 'webhook.meta.whatsapp.status_update.failed');
