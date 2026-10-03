@@ -1,4 +1,7 @@
--- PROPOSED, NOT APPLIED. Lives outside supabase/migrations on purpose so `supabase db push` can never pick it up.
+-- STATUS: APPLIED by the SEC batch as migrations 20261003000006 (unique key), 20261003000007 (composite FK, NOT VALID) and
+-- 20261003000008 (VALIDATE). Kept for reference only; do not run it again.
+--
+-- (original header) PROPOSED, NOT APPLIED. Lives outside supabase/migrations on purpose so `supabase db push` can never pick it up.
 -- H0a follow-up: make it structurally impossible for a messages row to point at a conversation in another workspace.
 --
 -- Live state when this was written (read-only counts, 2026-10-03):
