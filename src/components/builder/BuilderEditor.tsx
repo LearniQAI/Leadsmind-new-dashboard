@@ -32,6 +32,7 @@ import { Footer } from './user/Footer';
 import { BlogFeed } from './user/BlogFeed';
 import { BuilderProvider, useBuilder } from './BuilderContext';
 import { updatePageContent, updateWebsiteSettings } from '@/app/actions/builder';
+import { contentToJsonString } from '@/lib/builder/normalizeContent';
 import { publishPageStatic } from '@/app/actions/builderDeploy';
 import { createClient } from '@/lib/supabase/client';
 import { TemplateDirectoryModal } from './TemplateDirectoryModal';
@@ -478,7 +479,9 @@ const BuilderEditorContent = ({
             }
 
             // Task 4: Empty Canvas Fallback
-            const content = data?.content ? sanitizeCraftJson(data.content) : BLANK_CANVAS;
+            // data.content is an object (editor saves) or a legacy JSON string; normalise to the string the loader expects.
+            const loaded = contentToJsonString(data?.content, { pageId: pageId as string, where: 'BuilderEditor.load' });
+            const content = loaded ? sanitizeCraftJson(loaded) : BLANK_CANVAS;
             setInitialContent(content);
             lastLoadedPageId.current = pageId as string;
         }

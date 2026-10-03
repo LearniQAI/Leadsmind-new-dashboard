@@ -1,0 +1,366 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LeadsMind WhatsApp Anti-Spam Architecture PRD — Zain</title><style>:root{--ink:#17202a;--muted:#5f6b76;--line:#dfe5ea;--soft:#f5f7f9;--brand:#fe924d;--dark:#111827;--code:#0b1220;--red:#a12b2b}*{box-sizing:border-box}body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;color:var(--ink);line-height:1.65}main{max-width:1120px;margin:auto;padding:48px 58px}.cover{padding:70px 0 45px;border-bottom:2px solid var(--dark);margin-bottom:40px}.badge{display:inline-block;background:#fff0e6;color:#a94e16;padding:6px 13px;border-radius:999px;font-weight:800;font-size:12px}h1{font-size:43px;line-height:1.08;color:var(--dark);margin:18px 0}h2{font-size:28px;color:var(--dark);margin-top:52px;border-bottom:1px solid var(--line);padding-bottom:9px}h3{font-size:20px;margin-top:30px}p,li{font-size:15.5px}.meta{color:var(--muted)}.callout{background:var(--soft);border-left:5px solid var(--brand);padding:18px 21px;margin:22px 0;border-radius:0 8px 8px 0}.critical{background:#fff5f5;border-left-color:var(--red)}pre{background:var(--code);color:#e6edf3;padding:19px;border-radius:10px;overflow:auto;font-size:13px;line-height:1.55}code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}table{width:100%;border-collapse:collapse;margin:18px 0 28px}th,td{border:1px solid var(--line);padding:10px 12px;text-align:left;vertical-align:top;font-size:14px}th{background:var(--soft)}.toc{background:#fafafa;border:1px solid var(--line);padding:20px 24px;border-radius:10px}.toc a{color:#994916;text-decoration:none}footer{margin-top:60px;border-top:1px solid var(--line);padding-top:25px;color:var(--muted);font-size:13px}@media print{main{max-width:none;padding:28px 34px}h2{break-after:avoid}pre,table{break-inside:avoid}}@media(max-width:720px){main{padding:28px 20px}h1{font-size:32px}h2{font-size:23px}}</style></head><body><main>
+<section class="cover"><span class="badge">LEADSMIND ENGINEERING PRD</span><h1>WhatsApp Permission-Based Marketing &amp; Anti-Spam Architecture</h1><p class="meta"><strong>Prepared for:</strong> Zain — LeadsMind Developer</p><p class="meta"><strong>Version:</strong> 1.0 | <strong>Status:</strong> Developer Implementation Specification</p><p class="meta"><strong>Platform:</strong> LeadsMind CRM | <strong>Channel:</strong> WhatsApp Business Platform / Cloud API | <strong>Primary Market:</strong> South Africa</p><div class="callout critical"><strong>NON-NEGOTIABLE SYSTEM INVARIANT</strong><br><br>NO VERIFIED WHATSAPP MARKETING CONSENT = NO WHATSAPP MARKETING MESSAGE.<br><br>This must be enforced by the backend and never depend only on frontend controls.</div></section>
+<div class="toc"><strong>Developer Contents</strong><ol><li><a href="#purpose">Purpose &amp; Product Philosophy</a></li><li><a href="#rules">Non-Negotiable Anti-Spam Rules</a></li><li><a href="#architecture">System Architecture</a></li><li><a href="#form">WhatsApp Marketing Lead Form</a></li><li><a href="#consent">Consent &amp; Evidence Engine</a></li><li><a href="#eligibility">Marketing Eligibility &amp; Protected Tag</a></li><li><a href="#imports">CSV / CRM Import Restrictions</a></li><li><a href="#campaign">Campaign Protection</a></li><li><a href="#optout">Opt-Out &amp; Suppression</a></li><li><a href="#trust">Trust &amp; Safety / Customer Enforcement</a></li><li><a href="#website">Website Builder Integration</a></li><li><a href="#database">Database Architecture</a></li><li><a href="#api">API Architecture</a></li><li><a href="#security">Security &amp; Multi-Tenancy</a></li><li><a href="#meta">Meta / WhatsApp Alignment</a></li><li><a href="#mvp">MVP &amp; Acceptance Criteria</a></li></ol></div>
+<h2 id="purpose">1. Purpose &amp; Product Philosophy</h2><p>LeadsMind must not become a generic bulk WhatsApp-number uploader. WhatsApp marketing must be a permission-based marketing system.</p><p>A CRM contact and a WhatsApp marketing recipient are different states.</p><pre>CRM Contact
+    |
+    +-- WhatsApp Number
+    +-- Consent Record
+           |
+           +-- ACTIVE?
+           +-- Correct Business?
+           +-- Not Revoked?
+           +-- Not Suppressed?
+           v
+   WHATSAPP MARKETING ELIGIBLE</pre>
+<h2 id="rules">2. Non-Negotiable Anti-Spam Rules</h2><ol><li>No CSV upload followed by immediate WhatsApp broadcasting.</li><li>No purchased contact lists becoming marketing eligible.</li><li>No scraped/harvested numbers becoming marketing eligible.</li><li>No manually entered numbers becoming marketing eligible.</li><li>No normal CRM imports becoming marketing eligible.</li><li>No manual assignment of <code>WHATSAPP_MARKETING_ELIGIBLE</code>.</li><li>No “Send Anyway” bypass.</li><li>No removal of the mandatory consent filter.</li><li>No cross-business use of consent.</li><li>No ordinary-user override of opt-outs/suppression.</li><li>No public API that simply sets eligibility to true.</li><li>Every campaign must pass backend consent and suppression checks immediately before queueing.</li><li>Use the official WhatsApp Business Platform/API, not consumer WhatsApp automation.</li></ol>
+<h2 id="architecture">3. High-Level Anti-Spam Architecture</h2><pre>LEADSMIND
+   |
+   +---------------- CRM
+   |
+   +---------------- WEBSITE BUILDER
+                         |
+                WhatsApp Marketing Form
+                         |
+                  CONSENT ENGINE
+                         |
+             +-----------+-----------+
+             |                       |
+      Consent Record        Anti-Bot / Security
+             |
+             v
+     MARKETING ELIGIBILITY
+             |
+             v
+   PROTECTED SYSTEM STATUS
+             |
+             v
+       AUDIENCE BUILDER
+             |
+             v
+      CAMPAIGN VALIDATOR
+             |
+       +-----+-----+
+       |           |
+   CONSENT     SUPPRESSION
+     CHECK       CHECK
+       |           |
+       +-----+-----+
+             |
+             v
+      TEMPLATE VALIDATION
+             |
+             v
+            QUEUE
+             |
+             v
+        WHATSAPP API
+             |
+             v
+          CUSTOMER
+             |
+        REPLY / OPT-OUT
+             |
+             v
+       CONSENT ENGINE
+             |
+             v
+        SUPPRESSION</pre>
+<h2>4. Core Data-State Model</h2><table><tr><th>State</th><th>Meaning</th><th>Can Receive Marketing?</th></tr><tr><td>CRM Contact</td><td>Exists in LeadsMind.</td><td>No, not by itself.</td></tr><tr><td>WhatsApp Number</td><td>Phone number exists.</td><td>No, not by itself.</td></tr><tr><td>Consent Pending</td><td>Consent not completed.</td><td>No.</td></tr><tr><td>Marketing Eligible</td><td>Active valid consent for this business.</td><td>Yes, subject to all other checks.</td></tr><tr><td>Opted Out / Revoked</td><td>Consent withdrawn.</td><td>No.</td></tr><tr><td>Suppressed</td><td>Platform/business has blocked marketing.</td><td>No.</td></tr></table>
+<h2 id="form">5. WhatsApp Marketing Lead Capture Form</h2><p>Provide a dedicated <strong>WhatsApp Marketing Opt-In Form</strong> for collecting a person's number and explicit permission to receive WhatsApp marketing from a specific business.</p><pre>┌──────────────────────────────────────────┐
+│                  WhatsApp                │
+│                   ICON                   │
+│           STAY CONNECTED WITH US        │
+│                                          │
+│ First Name                               │
+│ [________________________________]       │
+│                                          │
+│ WhatsApp Number                          │
+│ [ 🇿🇦 +27 ________________________ ]      │
+│                                          │
+│ ☐ I agree to receive marketing and       │
+│   promotional messages from              │
+│   ABC Company via WhatsApp.              │
+│                                          │
+│ ☐ I agree to the WhatsApp Marketing      │
+│   Terms & Conditions.                    │
+│                                          │
+│ Privacy Policy                           │
+│                                          │
+│       [ SUBSCRIBE VIA WHATSAPP ]         │
+└──────────────────────────────────────────┘</pre><h3>Required Form Properties</h3><ul><li>WhatsApp icon</li><li>Business name</li><li>First name</li><li>Optional last name</li><li>WhatsApp number and country code</li><li>Marketing consent checkbox, unchecked by default</li><li>Terms checkbox</li><li>Privacy Policy link</li><li>Submit button</li><li>Success/redirect settings</li><li>Form ID and version</li></ul><p>Consent wording must identify the business and WhatsApp channel.</p>
+<h2 id="consent">6. Consent &amp; Evidence Engine</h2><p>Do not store consent only as <code>consent=true</code>. Create an auditable consent event.</p><pre>Consent ID: CNT-839284
+Tenant: ABC Consulting
+Contact: John Smith
+WhatsApp: +27XXXXXXXXX
+Consent Type: MARKETING_WHATSAPP
+Status: ACTIVE
+Source: LEADSMIND_WHATSAPP_FORM
+Form ID: WAMF-100238
+Form Version: 1.0
+Consent Text Version: 1.0
+Terms Version: 2.1
+Privacy Version: 4.0
+Source URL: https://example.co.za/whatsapp
+Consent Date/Time: 03 October 2026 10:42:18
+Timezone: Africa/Johannesburg</pre><h3>Evidence</h3><ul><li>Tenant/business ID</li><li>Contact ID and phone number</li><li>Consent type/status</li><li>Form ID/version</li><li>Consent text/version</li><li>Terms and Privacy versions</li><li>Source URL</li><li>Timestamp/timezone</li><li>Appropriate security/audit metadata</li></ul><p>Historical consent versions must never be overwritten.</p><p>Consent is business-specific and cannot be transferred from one tenant to another.</p>
+<h2 id="eligibility">7. Marketing Eligibility &amp; Protected System Tag</h2><pre>WHATSAPP_MARKETING_ELIGIBLE</pre><p>Recommended states:</p><pre>NOT_ELIGIBLE
+PENDING_VERIFICATION
+ELIGIBLE
+OPTED_OUT
+REVOKED
+BLOCKED</pre><p>Eligibility must be derived by the backend from a valid consent record and current suppression state.</p><p>Create a protected system tag/status called <code>WHATSAPP_MARKETING_ELIGIBLE</code>. Users cannot manually add it.</p><div class="callout">If a user attempts to add the protected status: <strong>“This is a protected system status. Contacts can only become eligible after completing an approved LeadsMind WhatsApp consent process.”</strong></div>
+<h2 id="imports">8. CSV / CRM Import Restrictions</h2><p>Normal CRM imports may remain available, but imported phone numbers must never automatically become WhatsApp marketing eligible.</p><table><tr><th>Source</th><th>Marketing Eligibility</th></tr><tr><td>CSV / Excel import</td><td>NO</td></tr><tr><td>Manual entry</td><td>NO</td></tr><tr><td>CRM import</td><td>NO</td></tr><tr><td>Purchased list</td><td>NO</td></tr><tr><td>Scraped/harvested list</td><td>NO</td></tr><tr><td>Third-party list</td><td>NO</td></tr><tr><td>Approved LeadsMind consent form</td><td>YES, after validation</td></tr></table><pre>WHATSAPP MARKETING PROTECTION
+
+Imported WhatsApp numbers will NOT become eligible
+for WhatsApp marketing.
+
+The contact must provide permission through an approved
+LeadsMind consent process.</pre><p>Do not implement an “upload CSV → OTP every number → mark all eligible” shortcut.</p>
+<h2 id="campaign">9. Campaign Protection</h2><p>Every WhatsApp marketing campaign must automatically include the locked filter:</p><pre>WHATSAPP_MARKETING_ELIGIBLE = TRUE</pre><p>Customers may add other filters, but cannot remove this requirement.</p><pre>WHATSAPP MARKETING ELIGIBLE
+🔒 REQUIRED SYSTEM FILTER
+
+Additional filters:
++ Johannesburg
++ SME
++ Accounting
++ Lead Status = Qualified</pre><h3>Pre-Send Validation</h3><pre>Campaign
+  ↓
+Generate Audience
+  ↓
+Validate Consent
+  ↓
+Validate Eligibility
+  ↓
+Validate Suppression
+  ↓
+Validate Opt-Out
+  ↓
+Validate Template
+  ↓
+Validate Message
+  ↓
+Queue Eligible Messages</pre><p>There must be no “Send Anyway”, “Include Ineligible Contacts”, “Ignore Opt-Out”, or “Override Suppression” mechanism.</p>
+<h2 id="optout">10. Opt-Out &amp; Suppression Architecture</h2><pre>ACTIVE CONSENT
+     ↓
+OPT-OUT / REVOCATION
+     ↓
+CONSENT = REVOKED
+     ↓
+ELIGIBILITY = FALSE
+     ↓
+SUPPRESSION
+     ↓
+NO FUTURE MARKETING</pre><p>Support configured opt-out phrases such as STOP, UNSUBSCRIBE and CANCEL, while allowing the detection logic to be expanded.</p><h3>Suppression Reasons</h3><pre>USER_OPTED_OUT
+USER_BLOCKED_BUSINESS
+USER_REPORTED_BUSINESS
+CONSENT_REVOKED
+ADMIN_BLOCK
+POLICY_BLOCK
+INVALID_NUMBER</pre><p>Historical consent should remain auditable after revocation; do not simply delete the original record.</p>
+<h2 id="trust">11. Trust &amp; Safety / Customer Enforcement</h2><p>Create a dedicated WhatsApp Trust &amp; Safety layer covering consent validation, suppression, campaign validation, abuse detection, rate limiting, tenant monitoring, policy enforcement and audit logging.</p><h3>Signals</h3><ul><li>High opt-out activity</li><li>High block/report activity</li><li>Repeated policy failures</li><li>Suspicious consent patterns</li><li>Attempts to bypass CSV restrictions</li><li>API manipulation attempts</li><li>Abnormally high form submissions</li><li>Repeated campaign violations</li></ul><h3>Internal states</h3><pre>NORMAL
+MONITORED
+RESTRICTED
+SUSPENDED
+TERMINATED</pre><p>Use these as internal trust-and-safety states, not as a public “Meta compliance score.”</p><div class="callout critical"><strong>Do not promise Meta immunity.</strong> LeadsMind can implement safeguards, but Meta/WhatsApp retains independent enforcement authority.</div>
+<h2 id="website">12. Website Builder Integration</h2><p>Add a native Website Builder component:</p><pre>Website Builder
+  ↓
+Add Section
+  ↓
+Forms
+  ↓
+WhatsApp Marketing Opt-In</pre><p>Configurable properties should include business name, headline, description, name fields, WhatsApp number, country selector, consent text, terms URL, privacy URL, button, success message, redirect and language.</p><p>The form should also be embeddable on external websites, but all consent events must be processed by the LeadsMind backend.</p><h3>Security</h3><ul><li>CAPTCHA/bot protection</li><li>Rate limiting</li><li>CSRF protection</li><li>Input validation</li><li>Phone normalization</li><li>Duplicate detection</li><li>Suspicious submission detection</li></ul><p>Recommended: allow businesses to verify domains authorised to host their consent form.</p>
+<h2>13. Form Submission Flow</h2><pre>User opens form
+ ↓
+Enters name + WhatsApp number
+ ↓
+Checks marketing consent
+ ↓
+Accepts Terms
+ ↓
+Submits
+ ↓
+Anti-Bot Validation
+ ↓
+Phone Validation
+ ↓
+Business/Form Validation
+ ↓
+Consent Validation
+ ↓
+Create/Find Contact
+ ↓
+Create Consent Record
+ ↓
+Create Eligibility Record
+ ↓
+Add Protected System Status
+ ↓
+Success</pre>
+<h2>14. Duplicate / Previous Opt-Out Handling</h2><p>If an active consent exists, show that the number is already subscribed. If the person previously opted out, preserve the historical opt-out and do not let an ordinary user simply switch the contact back to eligible.</p>
+<h2 id="database">15. Database Architecture</h2><h3>Recommended entities</h3><pre>whatsapp_accounts
+whatsapp_phone_numbers
+whatsapp_marketing_forms
+whatsapp_form_versions
+whatsapp_form_submissions
+whatsapp_consent_records
+whatsapp_consent_events
+whatsapp_marketing_eligibility
+whatsapp_suppression_list
+whatsapp_templates
+whatsapp_campaigns
+whatsapp_campaign_recipients
+whatsapp_messages
+whatsapp_webhook_events
+whatsapp_conversations
+whatsapp_policy_acceptances
+whatsapp_trust_events
+whatsapp_audit_logs</pre><h3>Consent</h3><pre>id
+tenant_id
+contact_id
+business_id
+phone_number
+consent_type
+status
+source_type
+source_id
+source_url
+form_version
+consent_text_version
+terms_version
+privacy_version
+consented_at
+revoked_at
+created_at
+updated_at</pre><h3>Eligibility</h3><pre>id
+tenant_id
+contact_id
+consent_record_id
+status
+eligibility_reason
+eligible_at
+revoked_at
+created_at
+updated_at</pre><h3>Suppression</h3><pre>id
+tenant_id
+contact_id
+phone_number
+reason
+source
+suppressed_at
+created_at
+updated_at</pre>
+<h2 id="api">16. API Architecture</h2><h3>Forbidden pattern</h3><pre>POST /contacts/:id/whatsapp-marketing/enable</pre><p>Do not build an endpoint that simply sets eligibility to true.</p><h3>Public form endpoint</h3><pre>POST /api/v1/public/whatsapp-forms/:form_id/submit</pre><pre>Validate Form
+ ↓
+Validate Business
+ ↓
+Validate Required Fields
+ ↓
+Validate Consent
+ ↓
+Validate Terms
+ ↓
+Validate Anti-Bot
+ ↓
+Validate Phone
+ ↓
+Create/Find Contact
+ ↓
+Create Consent Record
+ ↓
+Create Eligibility Record
+ ↓
+Return Success</pre><h3>Campaign send</h3><pre>POST /api/v1/whatsapp/campaigns/:id/send</pre><pre>Authenticate User
+ ↓
+Authorize Tenant
+ ↓
+Validate Campaign
+ ↓
+Validate Template
+ ↓
+Generate Audience
+ ↓
+Validate Consent
+ ↓
+Validate Eligibility
+ ↓
+Validate Suppression
+ ↓
+Validate Message
+ ↓
+Queue Eligible Messages</pre><h3>Webhook</h3><pre>POST /api/v1/webhooks/whatsapp</pre><p>Verify authenticity, identify tenant/account/number/message, store the event, prevent duplicate processing, update state and trigger opt-out/consent logic where applicable.</p>
+<h2 id="security">17. Security &amp; Multi-Tenancy</h2><p>Every WhatsApp resource must belong to a tenant. Tenant isolation must be enforced at the backend and data-access layers.</p><pre>Tenant A → Contacts / Consent / Campaigns / WhatsApp Account
+Tenant B → Contacts / Consent / Campaigns / WhatsApp Account
+
+NO CROSS-TENANT ACCESS</pre><ul><li>Encrypt sensitive credentials at rest.</li><li>Never expose tokens to frontend clients.</li><li>Use HTTPS.</li><li>Verify webhook authenticity.</li><li>Apply RBAC and tenant authorization.</li><li>Rate-limit public forms and APIs.</li><li>Prevent replay/duplicate webhook processing.</li><li>Log security-sensitive actions.</li></ul><p>No ordinary administrator button should exist for “Make Eligible.” Administrative intervention, if ever necessary, must use a controlled compliance workflow with an audit trail.</p>
+<h2>18. Customer WhatsApp Terms</h2><p>Before activating WhatsApp marketing, the business must accept dedicated LeadsMind WhatsApp Marketing Terms.</p><pre>☐ I agree to the LeadsMind WhatsApp Marketing Terms.
+
+☐ I confirm that I will only send WhatsApp marketing
+  messages to people who have provided appropriate
+  permission to receive WhatsApp communications.
+
+☐ I understand that LeadsMind prohibits spam,
+  purchased contact lists, scraped numbers and
+  unsolicited WhatsApp marketing.
+
+☐ I understand that LeadsMind may suspend or
+  terminate WhatsApp marketing access for violations.</pre><p>Store terms version, accepting user, timestamp and appropriate audit metadata. Final legal wording should be reviewed by qualified counsel.</p>
+<h2 id="meta">19. Meta / WhatsApp Alignment</h2><p>The product should be built around the official WhatsApp Business Platform requirements. Meta's WhatsApp Business policy states that businesses may contact people on WhatsApp where the person has provided their mobile number and permission to receive subsequent messages from the business; the opt-in should identify the business and indicate that the person wants to receive messages. Businesses must respect requests to stop or opt out.</p><p>Business-initiated conversations generally require approved message templates on the WhatsApp Business Platform. LeadsMind should therefore synchronise template status and prevent campaigns from using unavailable templates.</p><div class="callout"><strong>Official policy:</strong> <a href="https://business.whatsapp.com/policy/preview?lang=id_ID" target="_blank" rel="noopener">Meta / WhatsApp Business Messaging Policy</a></div><p>For South African customers, review the final consent and direct-marketing workflow against POPIA and applicable Information Regulator guidance before production.</p>
+<h2>20. Policy Monitoring</h2><p>Meta may change messaging requirements, template rules, pricing, quality requirements, enforcement, API requirements and account restrictions. Keep policy-dependent behaviour configurable and review the official requirements before production releases.</p>
+<h2>21. Kill Switches</h2><h3>Tenant</h3><pre>WhatsApp Marketing
+Status: ACTIVE
+
+[ DISABLE MARKETING ]</pre><p>Disabling marketing prevents new outbound campaigns and pauses scheduled marketing while preserving historical data.</p><h3>Global</h3><p>LeadsMind internal administrators need an emergency global control to stop new outbound WhatsApp marketing if a critical integration, security or policy issue occurs.</p>
+<h2>22. Trust &amp; Safety Workflow</h2><pre>Customer Activity
+      ↓
+Trust Signals
+      ↓
+Risk Detection
+      ↓
+NORMAL
+      ↓
+MONITORED
+      ↓
+RESTRICTED
+      ↓
+SUSPENDED
+      ↓
+COMPLIANCE REVIEW
+      ↓
+RESTORE / TERMINATE</pre>
+<h2>23. Recommended Product Screens</h2><table><tr><th>Screen</th><th>Purpose</th></tr><tr><td>WhatsApp Setup</td><td>Connect business WhatsApp account/number.</td></tr><tr><td>WhatsApp Marketing Forms</td><td>Create/manage permission forms.</td></tr><tr><td>Form Builder</td><td>Configure the opt-in form.</td></tr><tr><td>Consent Dashboard</td><td>View eligible, pending, revoked and suppressed contacts.</td></tr><tr><td>Consent Record</td><td>View evidence for a contact.</td></tr><tr><td>Suppression List</td><td>View contacts blocked from marketing.</td></tr><tr><td>Campaign Builder</td><td>Create and schedule campaigns.</td></tr><tr><td>Campaign Validation</td><td>Show eligible/excluded recipients.</td></tr><tr><td>Campaign Analytics</td><td>View delivery/engagement metrics.</td></tr><tr><td>Trust &amp; Safety</td><td>Internal abuse and restriction management.</td></tr></table>
+<h2>24. Engineering Invariants</h2><table><tr><th>ID</th><th>Invariant</th></tr><tr><td>ANTI-SPAM-001</td><td>No marketing message without valid active consent.</td></tr><tr><td>ANTI-SPAM-002</td><td>CSV/CRM imports cannot create marketing eligibility.</td></tr><tr><td>ANTI-SPAM-003</td><td>Ordinary users cannot manually assign eligibility.</td></tr><tr><td>ANTI-SPAM-004</td><td>Eligibility filter is mandatory in every marketing campaign.</td></tr><tr><td>ANTI-SPAM-005</td><td>Suppressed contacts cannot receive marketing.</td></tr><tr><td>ANTI-SPAM-006</td><td>Revoked consent removes eligibility.</td></tr><tr><td>ANTI-SPAM-007</td><td>Consent belongs to a specific tenant/business.</td></tr><tr><td>ANTI-SPAM-008</td><td>Consent cannot be shared between businesses.</td></tr><tr><td>ANTI-SPAM-009</td><td>Client-side values cannot override backend eligibility.</td></tr><tr><td>ANTI-SPAM-010</td><td>No bypass mechanism.</td></tr><tr><td>ANTI-SPAM-011</td><td>Consent events are auditable.</td></tr><tr><td>ANTI-SPAM-012</td><td>Campaign actions are auditable.</td></tr></table>
+<h2 id="mvp">25. MVP Scope for Zain</h2><h3>Must Have</h3><ul><li>WhatsApp Business account connection.</li><li>WhatsApp Marketing Opt-In Form.</li><li>WhatsApp icon and business identity.</li><li>Marketing consent and Terms checkboxes.</li><li>Privacy Policy link.</li><li>Form versioning and consent evidence.</li><li>Protected marketing eligibility status.</li><li>Protected system tag.</li><li>CSV-to-marketing block.</li><li>Manual eligibility block.</li><li>Suppression list.</li><li>Opt-out workflow.</li><li>Locked campaign eligibility filter.</li><li>Backend pre-send validation.</li><li>Tenant isolation.</li><li>RBAC.</li><li>Audit logs.</li><li>Anti-bot/rate limiting.</li><li>Template validation.</li></ul><h3>Phase 2</h3><ul><li>WhatsApp Inbox</li><li>Consent analytics</li><li>QR-code consent</li><li>Optional double opt-in</li><li>Domain verification</li><li>Advanced Trust &amp; Safety</li><li>Customer API</li><li>Advanced suppression</li></ul><h3>Phase 3</h3><ul><li>AI campaign assistant</li><li>AI content review</li><li>AI abuse detection</li><li>Omnichannel preference centre</li><li>Email/SMS/WhatsApp consent management</li><li>Customer journey builder</li></ul>
+<h2>26. Acceptance Criteria</h2><h3>Form</h3><ul><li>Business can create a WhatsApp Marketing Form.</li><li>WhatsApp icon is displayed.</li><li>Correct business identity is displayed.</li><li>Consent is unchecked by default.</li><li>Terms acceptance is required.</li><li>Privacy Policy is accessible.</li><li>Submission creates an auditable consent record.</li></ul><h3>Eligibility</h3><ul><li>Valid approved consent creates eligibility.</li><li>CSV imports do not create eligibility.</li><li>Manual entries do not create eligibility.</li><li>Normal CRM imports do not create eligibility.</li><li>Users cannot manually add the protected status.</li><li>Revoked consent removes eligibility.</li></ul><h3>Campaigns</h3><ul><li>Every campaign requires marketing eligibility.</li><li>The eligibility filter cannot be removed.</li><li>Ineligible and suppressed contacts are excluded.</li><li>Backend validation happens immediately before queueing.</li><li>No bypass mechanism exists.</li></ul><h3>Security</h3><ul><li>Tenant isolation is enforced.</li><li>API manipulation cannot create eligibility.</li><li>Users cannot override suppression.</li><li>Sensitive credentials are protected.</li><li>Consent and campaign actions are audited.</li><li>Suspended tenants cannot send marketing campaigns.</li></ul>
+<h2>27. Final Developer Directive</h2><div class="callout critical"><strong>Zain: Do not build WhatsApp Marketing as a normal broadcast feature with a consent checkbox added on top.</strong><br><br>Build the <strong>Consent Engine first</strong>, then make the Campaign Engine depend on it.</div><pre>CONSENT
+   ↓
+ELIGIBILITY
+   ↓
+SUPPRESSION
+   ↓
+AUDIENCE
+   ↓
+CAMPAIGN
+   ↓
+VALIDATION
+   ↓
+QUEUE
+   ↓
+WHATSAPP API</pre><div class="callout"><strong>Final product principle:</strong> LeadsMind should make it technically difficult for customers to spam people. Businesses should build their WhatsApp audience through their own websites, landing pages, LeadsMind forms and approved consent flows, with an auditable record of how every marketing recipient became eligible.</div><h2>28. Final System Rule</h2><pre>VALID CONSENT
+      +
+CORRECT BUSINESS
+      +
+ACTIVE CONSENT
+      +
+NOT REVOKED
+      +
+NOT SUPPRESSED
+      +
+VALID WHATSAPP ACCOUNT
+      +
+VALID TEMPLATE
+      +
+VALID MESSAGE
+      =
+PERMITTED MARKETING RECIPIENT</pre><p><strong>Anything outside this chain must be excluded from WhatsApp marketing.</strong></p>
+<footer><strong>LeadsMind CRM — WhatsApp Permission-Based Marketing &amp; Anti-Spam Architecture</strong><br>Prepared for Zain | Version 1.0<br>This is an engineering/product specification. Final legal terms and regulatory implementation should be reviewed by qualified counsel before production deployment.</footer>
+</main></body></html>

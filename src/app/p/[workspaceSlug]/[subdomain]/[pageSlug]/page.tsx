@@ -24,6 +24,7 @@ export default async function PublishedSubdomainChildPage({
             )}
             <PublishedPageRenderer
                 content={site.content}
+                pageId={site.pageId}
                 websiteData={site.websiteData}
                 pages={site.pages}
                 websiteId={site.websiteId}

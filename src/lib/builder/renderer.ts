@@ -1,4 +1,5 @@
 import { CraftContent, CraftNode } from '@/types/builder.types';
+import { normalizeContent } from './normalizeContent';
 import { formatPseudoClasses } from './utils';
 import { validColumnWidths, gridTemplateFor } from './columnWidths';
 import { columnCountFor } from './columnCount';
@@ -59,14 +60,10 @@ export function renderCraftToHtml(
     bodyFont?: string;
   }
 ): string {
-  // 1. Defensively parse the content if it's a string
-  let content: CraftContent;
-  try {
-    content = typeof contentJson === 'string' ? JSON.parse(contentJson) : contentJson;
-  } catch (e) {
-    console.error('Renderer Error: Failed to parse content JSON', e);
-    return '';
-  }
+  // 1. Normalise the stored content (object, JSON string or empty) — never throws.
+  const normalized = normalizeContent(contentJson, { pageId, where: 'renderCraftToHtml' });
+  if (normalized.status !== 'ok') return '';
+  const content = normalized.tree as CraftContent;
 
   const rootNode = content['ROOT'];
   if (!rootNode) {

@@ -1,5 +1,6 @@
 import { decrypt } from '@/lib/encryption';
 import { logger } from '@/shared/logger';
+import { isMetaMockMode, isMockValue, MOCK_CREDENTIALS_REJECTED } from '@/lib/meta/mockMode';
 
 /**
  * Result of a provider send. `error` stays a human-readable string for
@@ -33,6 +34,22 @@ function graphErrorResult(data: any, httpStatus: number, fallback: string): Meta
     fbtraceId: gerr.fbtrace_id || undefined,
     httpStatus,
   };
+}
+
+/**
+ * Decides what a send does with the connection's identity + token. A missing token is ALWAYS a failure (it used to be
+ * reported as a successful mock send). A `mock_` id is only honoured in explicit mock mode (META_MOCK_MODE=true, never
+ * in production); anywhere else it is rejected. Returns null when the real API should be called.
+ */
+function credentialGate(id: string, hasToken: boolean, mockPrefix: string, label: string): MetaSendResult | null {
+  if (!hasToken) {
+    return { success: false, error: `${label} is not fully connected (no access token). Reconnect it in Settings > Integrations.`, errorType: 'missing_token' };
+  }
+  if (isMockValue(id)) {
+    if (isMetaMockMode()) return { success: true, externalId: `${mockPrefix}${Date.now()}` };
+    return { success: false, error: MOCK_CREDENTIALS_REJECTED, errorType: 'mock_credentials_rejected' };
+  }
+  return null;
 }
 
 export class MetaAdapter {
@@ -84,10 +101,8 @@ export class MetaAdapter {
     const pageId = this.credentials?.page_id || '';
     const encryptedToken = this.credentials?.page_access_token_encrypted || '';
 
-    if (pageId.startsWith('mock_') || !encryptedToken) {
-      logger.info({}, 'meta_adapter.facebook.mock_dispatch_successful');
-      return { success: true, externalId: `mock_fb_out_${Date.now()}` };
-    }
+    const gate = credentialGate(pageId, !!encryptedToken, 'mock_fb_out_', 'Facebook');
+    if (gate) return gate;
 
     try {
       const pageAccessToken = decrypt(encryptedToken);
@@ -137,10 +152,8 @@ export class MetaAdapter {
     const instagramId = this.credentials?.instagram_id || '';
     const encryptedToken = this.credentials?.page_access_token_encrypted || '';
 
-    if (instagramId.startsWith('mock_') || !encryptedToken) {
-      logger.info({}, 'meta_adapter.instagram.mock_dispatch_successful');
-      return { success: true, externalId: `mock_ig_out_${Date.now()}` };
-    }
+    const gate = credentialGate(instagramId, !!encryptedToken, 'mock_ig_out_', 'Instagram');
+    if (gate) return gate;
 
     try {
       const pageAccessToken = decrypt(encryptedToken);
@@ -251,15 +264,13 @@ export class MetaAdapter {
     text: string,
     audioUrl?: string
   ): Promise<MetaSendResult> {
-    logger.info({ to }, 'meta_adapter.whatsapp.dispatching');
+    logger.info({}, 'meta_adapter.whatsapp.dispatching');
 
     const phoneNumberId = this.credentials?.phone_number_id || '';
     const encryptedToken = this.credentials?.access_token_encrypted || this.credentials?.system_user_access_token_encrypted || '';
 
-    if (phoneNumberId.startsWith('mock_') || !encryptedToken) {
-      logger.info({}, 'meta_adapter.whatsapp.mock_dispatch_successful');
-      return { success: true, externalId: `mock_wa_out_${Date.now()}` };
-    }
+    const gate = credentialGate(phoneNumberId, !!encryptedToken, 'mock_wa_out_', 'WhatsApp');
+    if (gate) return gate;
 
     try {
       const systemToken = decrypt(encryptedToken);
@@ -340,15 +351,13 @@ export class MetaAdapter {
     languageCode: string,
     bodyParams?: string[]
   ): Promise<MetaSendResult> {
-    logger.info({ to, templateName, languageCode }, 'meta_adapter.whatsapp_template.dispatching');
+    logger.info({ templateName, languageCode }, 'meta_adapter.whatsapp_template.dispatching');
 
     const phoneNumberId = this.credentials?.phone_number_id || '';
     const encryptedToken = this.credentials?.access_token_encrypted || this.credentials?.system_user_access_token_encrypted || '';
 
-    if (phoneNumberId.startsWith('mock_') || !encryptedToken) {
-      logger.info({}, 'meta_adapter.whatsapp_template.mock_dispatch_successful');
-      return { success: true, externalId: `mock_wa_template_out_${Date.now()}` };
-    }
+    const gate = credentialGate(phoneNumberId, !!encryptedToken, 'mock_wa_template_out_', 'WhatsApp');
+    if (gate) return gate;
 
     try {
       const systemToken = decrypt(encryptedToken);

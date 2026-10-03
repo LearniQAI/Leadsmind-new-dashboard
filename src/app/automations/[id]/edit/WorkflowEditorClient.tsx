@@ -254,7 +254,7 @@ export function WorkflowEditorClient({
               <Select value={step.type} onValueChange={(v) => updateStep(idx, { type: v, config: {}, branches: undefined, targets: undefined })}>
                 <SelectTrigger className="h-10 flex-1 border-dash-border rounded-xl text-[13px]"><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-white border border-dash-border rounded-xl shadow-xl max-h-80 p-1.5">
-                  {STEP_TYPES.map((a) => (
+                  {STEP_TYPES.filter((a) => !a.hidden || a.value === step.type).map((a) => (
                     <SelectItem
                       key={a.value}
                       value={a.value}

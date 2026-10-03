@@ -1,5 +1,7 @@
 "use client";
 
+import { toStoredContent } from '@/lib/builder/normalizeContent';
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -54,7 +56,7 @@ export const StepTemplateModal = ({
       const supabase = createClient();
       const { error } = await supabase
         .from('pages')
-        .update({ content: template.content })
+        .update({ content: toStoredContent(template.content) })
         .eq('id', stepPageId);
 
       if (error) throw error;

@@ -1,5 +1,6 @@
 'use server';
 
+import { toStoredContent } from '@/lib/builder/normalizeContent';
 import { randomBytes } from 'crypto';
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
 import { requireWorkspaceAccess, requireModuleAccess } from '@/lib/auth';
@@ -301,7 +302,7 @@ export async function createSubdirectoryPage(websiteId: string, name: string, pa
         workspace_id: workspaceId,
         website_page_id: wsPage.id,
         name,
-        content: initialContent,
+        content: toStoredContent(initialContent),
         status: 'draft'
       })
       .select()
@@ -424,7 +425,7 @@ export async function restorePageRevision(versionId: string) {
     const { error: updateError } = await supabase
       .from('pages')
       .update({
-        content: version.content,
+        content: toStoredContent(version.content),
         updated_at: new Date().toISOString()
       })
       .eq("id", version.page_id).eq("workspace_id", workspaceId);

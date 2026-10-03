@@ -1,3 +1,4 @@
+import { toStoredContent } from '@/lib/builder/normalizeContent';
 import { createClient } from '@/lib/supabase/server';
 import { notFound, redirect } from 'next/navigation';
 
@@ -68,7 +69,7 @@ export default async function WebsiteEditorRedirectPage({ params }: { params: { 
             workspace_id: website.workspace_id,
             website_page_id: newWsPage.id,
             name: 'Home',
-            content: initialContent,
+            content: toStoredContent(initialContent),
             status: 'draft'
         })
         .select()

@@ -1,3 +1,4 @@
+import { toStoredContent } from '@/lib/builder/normalizeContent';
 import { createClient } from '@/lib/supabase/server';
 import { notFound, redirect } from 'next/navigation';
 
@@ -69,7 +70,7 @@ export default async function FunnelEditorRedirectPage({ params }: { params: { i
    workspace_id: funnel.workspace_id,
    funnel_step_id: newStep.id,
    name: 'Opt-in Page',
-   content: initialContent,
+   content: toStoredContent(initialContent),
    status: 'draft'
   })
   .select()

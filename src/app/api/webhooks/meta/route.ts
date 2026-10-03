@@ -6,6 +6,11 @@ import { logger } from '@/shared/logger';
 import { MetaAdapter } from '@/lib/meta/MetaAdapter';
 import { statusesReadReceiptAdvancesFrom } from '@/lib/meta/deliveryStatus';
 import { normalizePhone } from '@/lib/phone';
+import { summarizeMetaPayload } from '@/lib/meta/payloadSummary';
+import { classifyWhatsAppKeyword } from '@/lib/optOutKeywords';
+import { recordSmsOptOut, clearSmsOptOut } from '@/lib/smsOptOut';
+import { cancelSmsExecutionsForContacts } from '@/lib/automation/cancelOptOutExecutions';
+import { isMetaMockMode } from '@/lib/meta/mockMode';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,7 +90,8 @@ export async function POST(req: Request) {
     }
 
     const payload = JSON.parse(rawBody);
-    logger.info({ payload }, 'webhook.meta.received');
+    // Redacted summary only: the payload holds phone numbers, profile names and message text.
+    logger.info(summarizeMetaPayload(payload), 'webhook.meta.received');
 
     const objectType = payload.object;
 
@@ -259,8 +265,29 @@ async function processInboundComplianceAndWindow(
 ) {
   const textNormalized = (messageText || '').trim().toLowerCase();
   
-  // 1. Check Compliance Opt-Out / Opt-In keywords
-  if (['stop', 'unsubscribe', 'remove'].includes(textNormalized)) {
+  // 1. Check Compliance Opt-Out / Opt-In keywords.
+  // WhatsApp keywords are applied by handleWhatsAppMessage (recordSmsOptOut: durable suppression row, workflow
+  // cancellation, no junk contact for an unknown number) BEFORE this runs; here WhatsApp only gets the timeline note.
+  const waKeyword = platform === 'whatsapp' ? classifyWhatsAppKeyword(messageText) : null;
+  if (platform === 'whatsapp') {
+    if (waKeyword) {
+      // NOTE: messages_direction_check currently allows only inbound/outbound, so this insert is rejected by the database
+      // (the same reason sendInternalNote cannot persist notes). It needs a migration, which is out of scope for the
+      // safety batch; the failure is logged instead of being silently swallowed.
+      const { error: noteErr } = await supabase.from('messages').insert({
+        workspace_id: workspaceId,
+        conversation_id: conversationId,
+        direction: 'note',
+        content: waKeyword === 'stop'
+          ? 'SYSTEM COMPLIANCE NOTE: Contact requested opt-out (STOP/UNSUBSCRIBE). Outbound marketing blocked.'
+          : 'SYSTEM COMPLIANCE NOTE: Contact opted in (START/UNSTOP). Outbound communication enabled.',
+        sender_handle: 'system',
+        status: 'sent',
+        sent_at: new Date().toISOString()
+      });
+      if (noteErr) logger.warn({ code: (noteErr as any).code, workspaceId }, 'webhook.meta.whatsapp.compliance_note.insert_failed');
+    }
+  } else if (['stop', 'unsubscribe', 'remove'].includes(textNormalized)) {
     // Update contact status
     await supabase
       .from('contacts')
@@ -283,7 +310,7 @@ async function processInboundComplianceAndWindow(
       status: 'sent',
       sent_at: new Date().toISOString()
     });
-  } else if (['start', 'subscribe'].includes(textNormalized)) {
+  } else if (platform !== 'whatsapp' && ['start', 'subscribe'].includes(textNormalized)) {
     // Update contact status
     await supabase
       .from('contacts')
@@ -706,6 +733,27 @@ async function handleInstagramDMMessage(messagingEvent: any) {
   );
 }
 
+// Applies a STOP/START keyword through the unified opt-out (the same functions the Twilio inbound webhook uses).
+// Returns how many existing contacts in this workspace carry the number. Throws on a database failure so Meta retries
+// the delivery (both operations are idempotent).
+async function applyWhatsAppKeyword(workspaceId: string, keyword: 'stop' | 'start', phone: string, messageId: string): Promise<number> {
+  if (keyword === 'stop') {
+    const { e164, contactIds } = await recordSmsOptOut(supabase, { workspaceId, phone, source: 'meta_whatsapp_inbound', messageSid: messageId });
+    let cancelled = 0;
+    try {
+      cancelled = await cancelSmsExecutionsForContacts(supabase as any, workspaceId, contactIds);
+    } catch (cancelErr) {
+      // The opt-out is already durable; the send-time gates are the backstop.
+      logger.error({ err: cancelErr, workspaceId }, 'webhook.meta.whatsapp.stop.cancel_executions.failed');
+    }
+    logger.info({ workspaceId, matched: contactIds.length, cancelled, normalized: !!e164 }, 'webhook.meta.whatsapp.stop.recorded');
+    return contactIds.length;
+  }
+  const { contactIds } = await clearSmsOptOut(supabase, { workspaceId, phone });
+  logger.info({ workspaceId, matched: contactIds.length }, 'webhook.meta.whatsapp.start.recorded');
+  return contactIds.length;
+}
+
 // Handler helper for WhatsApp Cloud API
 async function handleWhatsAppMessage(message: any, metadata: any, webhookContacts: any[] = []) {
   const fromNumber = message.from; // Sender Phone (e.g. "27721234567")
@@ -749,6 +797,15 @@ async function handleWhatsAppMessage(message: any, metadata: any, webhookContact
   // number at all — mirrors the Twilio inbound handler's exact fallback shape.
   const fromE164 = normalizePhone(fromNumber);
   const cleanPhone = fromE164 || (fromNumber.startsWith('+') ? fromNumber : `+${fromNumber}`);
+
+  // 3b. Opt-out / opt-in keywords, handled BEFORE any contact lookup or creation: a STOP must be recorded durably even
+  // from a number that is not a contact (so a later import cannot silently re-subscribe it) and must never create a
+  // junk contact. Exact keyword match only; free phrases such as "please stop messaging me" are not keywords.
+  const waKeyword = message.type === 'text' ? classifyWhatsAppKeyword(message.text?.body) : null;
+  if (waKeyword) {
+    const matched = await applyWhatsAppKeyword(workspaceId, waKeyword, cleanPhone, messageId);
+    if (matched === 0) return; // not a contact: nothing to thread, no contact/conversation is created
+  }
 
   // 4. Resolve or Create Contact using existing CRM matching logic by Phone
   let contactId = null;
@@ -857,8 +914,8 @@ async function handleWhatsAppMessage(message: any, metadata: any, webhookContact
         }
       }
       
-      // Sandbox/Mock Fallback Assets if url is unresolved
-      if (!msgMetadata.media_url) {
+      // Placeholder assets only in explicit mock mode (never production): a real customer's media must not be replaced by stock files.
+      if (!msgMetadata.media_url && isMetaMockMode()) {
         if (messageType === 'image') {
           msgMetadata.media_url = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500';
         } else if (messageType === 'video') {
@@ -942,13 +999,8 @@ async function maybeSendWhatsAppAutomatedReply(
   const matchedRule = rules.find((rule: any) => {
     if (rule.match_type === 'exact') return lower === (rule.match_value || '').trim().toLowerCase();
     if (rule.match_type === 'contains') return lower.includes((rule.match_value || '').trim().toLowerCase());
-    if (rule.match_type === 'regex') {
-      try {
-        return new RegExp(rule.match_value, 'i').test(normalized);
-      } catch {
-        return false;
-      }
-    }
+    // Regex rules are never evaluated: user-supplied patterns run on the native engine inside the shared webhook
+    // handler and a catastrophic-backtracking pattern stalls it for every workspace (ReDoS). Treated as non-matching.
     return false;
   });
 

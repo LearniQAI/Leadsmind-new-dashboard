@@ -206,10 +206,10 @@ describe('B9: tag targeting reads tag_assignments (SMS + WhatsApp)', () => {
 
   it('WhatsApp: same behaviour (real assignments, not the legacy array; AND semantics)', async () => {
     as(ws1);
-    const one = await M.wa.createWhatsAppBroadcastCampaign({ name: 'B9 wa', messageBody: 'hi', tags: [tagVip.name] });
+    const one = await M.wa.createWhatsAppBroadcastCampaign({ consentAttested: true, name: 'B9 wa', messageBody: 'hi', tags: [tagVip.name] });
     expect(one.success, JSON.stringify(one)).toBe(true);
     expect(ids(await waRows(one.data.id))).toEqual([A.id, C.id].sort());
-    const both = await M.wa.createWhatsAppBroadcastCampaign({ name: 'B9 wa and', messageBody: 'hi', tags: [tagVip.name, tagGold.name] });
+    const both = await M.wa.createWhatsAppBroadcastCampaign({ consentAttested: true, name: 'B9 wa and', messageBody: 'hi', tags: [tagVip.name, tagGold.name] });
     expect(ids(await waRows(both.data.id))).toEqual([C.id]);
     for (const r of [one, both]) await db.from('whatsapp_broadcast_campaigns').delete().eq('id', r.data.id);
   });
@@ -219,15 +219,15 @@ describe('B9: tag targeting reads tag_assignments (SMS + WhatsApp)', () => {
     await mkContacts(ws1, 700, { source: src, tag: 'wa700' });
     const seg = await mkSegment(ws1, src);
     as(ws1);
-    const big = await M.wa.createWhatsAppBroadcastCampaign({ name: 'wa 700', messageBody: 'hi', segmentId: seg.id });
+    const big = await M.wa.createWhatsAppBroadcastCampaign({ consentAttested: true, name: 'wa 700', messageBody: 'hi', segmentId: seg.id });
     expect(big.success, JSON.stringify(big)).toBe(true);
     expect(big.recipientCount).toBe(700);
     expect((await waRows(big.data.id)).length).toBe(700);
     await db.from('whatsapp_broadcast_campaigns').delete().eq('id', big.data.id); // keep the shared queue small
 
-    const raw = await M.wa.createWhatsAppBroadcastCampaign({ name: 'x', messageBody: 'hi', segmentId: 'not-a-uuid' });
+    const raw = await M.wa.createWhatsAppBroadcastCampaign({ consentAttested: true, name: 'x', messageBody: 'hi', segmentId: 'not-a-uuid' });
     expect(raw).toEqual({ success: false, error: 'Failed to create WhatsApp campaign' });
-    const gone = await M.wa.createWhatsAppBroadcastCampaign({ name: 'x', messageBody: 'hi', segmentId: randomUUID() });
+    const gone = await M.wa.createWhatsAppBroadcastCampaign({ consentAttested: true, name: 'x', messageBody: 'hi', segmentId: randomUUID() });
     expect(gone.error).toMatch(/no longer exists/); // authored for the user: still shown
   });
 });

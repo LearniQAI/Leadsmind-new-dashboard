@@ -25,6 +25,7 @@ export default async function PublishedSubdomainRootPage({
             )}
             <PublishedPageRenderer
                 content={site.content}
+                pageId={site.pageId}
                 websiteData={site.websiteData}
                 pages={site.pages}
                 websiteId={site.websiteId}

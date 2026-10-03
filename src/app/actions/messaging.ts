@@ -16,6 +16,8 @@ import { logger } from '@/shared/logger';
 import { isCloudApiHealthy } from '@/lib/messaging/cloudApiHealth';
 import { toClientError } from '@/shared/errors/AppError';
 import { subscribeWabaToMetaWebhook } from '@/lib/meta/subscribeWebhook';
+import { checkWhatsAppSendAllowed } from '@/lib/messaging/whatsappSendGuard';
+import { isMetaMockMode, isMockValue, MOCK_CREDENTIALS_REJECTED, META_NOT_CONFIGURED } from '@/lib/meta/mockMode';
 
 export async function getMetaAuthUrl(targetPlatform?: string, returnTo?: 'social') {
 	// Mints a random opaque nonce bound server-side to the real authenticated user + their
@@ -31,6 +33,8 @@ export async function getMetaAuthUrl(targetPlatform?: string, returnTo?: 'social
 	const metaRedirectUri = `${redirectBase}/api/auth/meta/callback`;
 
 	if (!appId || appId === 'placeholder' || !process.env.META_APP_ID) {
+		// Placeholder app id: only usable in explicit mock mode (never production). Otherwise connecting is unavailable.
+		if (!isMetaMockMode()) throw new Error(META_NOT_CONFIGURED);
 		return `${metaRedirectUri}?code=mock_code&state=${nonce}`;
 	}
 
@@ -56,7 +60,7 @@ const WA_WEBHOOK_WARNING = 'WhatsApp connected, but Meta rejected the webhook su
 // all — see subscribeWabaToMetaWebhook) and returns the health fields to store on the connection.
 // Mock ids/tokens (dev) skip the call, same convention as validateMetaPlatformCredentials.
 async function whatsappWebhookHealth(wabaId: string | null | undefined, token: string) {
-  if (wabaId?.startsWith('mock_') || token?.startsWith('mock_')) {
+  if ((isMockValue(wabaId) || isMockValue(token)) && isMetaMockMode()) {
     return { ok: true, status: 'connected', credentials: { health_status: 'connected' } };
   }
   const sub = wabaId
@@ -78,8 +82,8 @@ async function validateMetaPlatformCredentials(platform: string, data: any) {
     throw new Error('Required configuration fields are missing.');
   }
 
-  // If it's a mock token or mock ID, skip validation and return mock values
-  if (token.startsWith('mock_') || id.startsWith('mock_')) {
+  // A mock token/ID skips validation ONLY in explicit mock mode (never in production; callers reject it earlier).
+  if ((isMockValue(token) || isMockValue(id)) && isMetaMockMode()) {
     logger.info({ platform }, 'messaging.platform_validation.mock_skip');
     return {
       name: platform === 'facebook' ? (data.pageName || 'LeadsMind Page') :
@@ -121,10 +125,18 @@ async function validateMetaPlatformCredentials(platform: string, data: any) {
   }
 }
 
+// True when any credential field of a connect payload is a `mock_` test value.
+function hasMockCredential(data: any): boolean {
+  return [data?.pageId, data?.pageAccessToken, data?.userAccessToken, data?.instagramBusinessAccountId, data?.phoneNumberId, data?.whatsappBusinessAccountId, data?.systemUserAccessToken].some(isMockValue);
+}
+
 export async function connectPlatformManually(platform: string, data: any) {
   try {
     const workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
+
+    // A mock_ value would create a "connected" line that reports every send as successful while nothing is sent.
+    if (!isMetaMockMode() && hasMockCredential(data)) return { error: MOCK_CREDENTIALS_REJECTED };
 
     // 1. Validate credentials against Meta Graph API
     const validation = await validateMetaPlatformCredentials(platform, data);
@@ -302,6 +314,11 @@ export async function sendMessage(
   const { workspaceId, userId } = await requireWorkspaceAccess();
 
   const supabase = await createServerClient();
+
+  // Server-side WhatsApp guards (the composer UI is not a control): never message an opted-out contact, never send
+  // free text outside the 24h window. Every other channel passes straight through.
+  const blocked = await checkWhatsAppSendAllowed(supabase, workspaceId, targetConvId);
+  if (blocked) return blocked;
 
   // Idempotency (Message Delivery Reliability Part 1). The client stamps a UUID at
   // compose time and re-sends it on any retry / re-click. If we already have a row
@@ -855,11 +872,12 @@ export async function getMetaOauthToken() {
     }
 
     const creds = data.credentials as any;
-    if (!creds || (!creds.user_access_token_encrypted && !creds.is_mock)) {
+    if (!creds || (!creds.user_access_token_encrypted && !(creds.is_mock && isMetaMockMode()))) {
       return null;
     }
 
-    const isMock = !!creds.is_mock;
+    // A legacy is_mock row is only honoured in explicit mock mode (never production).
+    const isMock = !!creds.is_mock && isMetaMockMode();
     const token = creds.user_access_token_encrypted ? decrypt(creds.user_access_token_encrypted) : '';
 
     return {
@@ -1061,6 +1079,7 @@ export async function saveMetaConnections(data: {
 
     const oauth = await getMetaOauthToken();
     if (!oauth) return { error: 'OAuth session not found. Please reconnect.' };
+    if (!isMetaMockMode() && hasMockCredential(data)) return { error: MOCK_CREDENTIALS_REJECTED };
 
     const supabase = await createServerClient();
 

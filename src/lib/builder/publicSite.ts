@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createAdminClient, createServerClient } from '@/lib/supabase/server';
+import { normalizeContent } from '@/lib/builder/normalizeContent';
 
 // Public serving of website-builder sites and funnels (the /p/{workspaceSlug}/{subdomain}[/page]
 // routes; custom domains are middleware rewrites into the same routes, so this one gate covers both).
@@ -14,7 +15,9 @@ import { createAdminClient, createServerClient } from '@/lib/supabase/server';
 // never sets pages.is_published on its steps (live funnels have draft-flagged step pages).
 
 export interface PublicSitePage {
-  content: string;
+  /** pages.content as stored (object or legacy JSON string); PublishedPageRenderer normalises it. */
+  content: unknown;
+  pageId?: string;
   websiteData: any;
   pages: { id: string; name: string; slug: string }[];
   websiteId?: string;
@@ -40,7 +43,7 @@ async function isWorkspaceMember(workspaceId: string): Promise<boolean> {
   }
 }
 
-const firstPage = (rel: any): { content?: any; is_published?: boolean } | null =>
+const firstPage = (rel: any): { id?: string; content?: any; is_published?: boolean } | null =>
   (Array.isArray(rel) ? rel[0] : rel) ?? null;
 
 /**
@@ -68,7 +71,8 @@ export async function loadPublicSitePage(
     .eq('subdomain', subdomain)
     .maybeSingle();
 
-  let content: string | null = null;
+  let content: unknown = null;
+  let pageId: string | undefined;
   let pagePublished = true;
   let live = false;
   let websiteData: any = null;
@@ -83,7 +87,7 @@ export async function loadPublicSitePage(
 
     const { data: wsPages } = await supabase
       .from('website_pages')
-      .select('id, name, path_name, pages(content, is_published)')
+      .select('id, name, path_name, pages(id, content, is_published)')
       .eq('website_id', website.id);
 
     if (wsPages) {
@@ -96,7 +100,8 @@ export async function loadPublicSitePage(
       // The site root falls back to the first page when no '/' page exists.
       if (!match && targetPath === '/' && wsPages.length > 0) match = wsPages[0];
       const pg = firstPage(match?.pages);
-      content = (pg?.content as string) || null;
+      content = pg?.content ?? null;
+      pageId = pg?.id;
       pagePublished = !!pg?.is_published;
     }
   } else {
@@ -114,7 +119,7 @@ export async function loadPublicSitePage(
 
       const { data: steps } = await supabase
         .from('funnel_steps')
-        .select('id, name, path_name, pages(content)')
+        .select('id, name, path_name, pages(id, content)')
         .eq('funnel_id', funnel.id)
         .order('order', { ascending: true });
 
@@ -125,16 +130,19 @@ export async function loadPublicSitePage(
           slug: s.path_name.replace(/^\/+/, '') || 'step',
         }));
         const match = targetPath === '/' ? steps[0] : steps.find((s) => s.path_name === targetPath);
-        content = (firstPage(match?.pages)?.content as string) || null;
+        const stepPage = firstPage(match?.pages);
+        content = stepPage?.content ?? null;
+        pageId = stepPage?.id;
       }
     }
   }
 
-  // Nothing there at all: a real 404 for everyone.
-  if (!websiteData || !content) notFound();
+  // Nothing there at all (no site, or a page with no content): a real 404 for everyone. Content that
+  // exists but cannot be read is NOT a 404 — the renderer logs it and shows a neutral message.
+  if (!websiteData || normalizeContent(content, { log: false }).status === 'empty') notFound();
 
   const publiclyLive = live && pagePublished;
   if (!publiclyLive && !(await isWorkspaceMember(workspace.id))) notFound();
 
-  return { content, websiteData, pages, websiteId, funnelId, isDraftPreview: !publiclyLive };
+  return { content, pageId, websiteData, pages, websiteId, funnelId, isDraftPreview: !publiclyLive };
 }
