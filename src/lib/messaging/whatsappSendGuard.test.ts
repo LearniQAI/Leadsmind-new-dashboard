@@ -8,6 +8,7 @@ import {
   WHATSAPP_WINDOW_CLOSED_MESSAGE,
   WHATSAPP_OPTED_OUT_MESSAGE,
   WHATSAPP_INVALID_NUMBER_MESSAGE,
+  CONVERSATION_NOT_FOUND_MESSAGE,
 } from './whatsappSendGuard';
 
 const reason = getSmsOptOutReason as unknown as ReturnType<typeof vi.fn>;
@@ -40,7 +41,13 @@ describe('checkWhatsAppSendAllowed', () => {
     for (const platform of ['email', 'sms', 'facebook', 'instagram']) {
       expect(await checkWhatsAppSendAllowed(fakeDb(waConv({ platform })), 'ws', 'c1')).toBeNull();
     }
-    expect(await checkWhatsAppSendAllowed(fakeDb(null), 'ws', 'c1')).toBeNull();
+    expect(reason).not.toHaveBeenCalled();
+  });
+
+  it('BLOCKS when the conversation is not found in this workspace (never allow an unverifiable send)', async () => {
+    reason.mockClear();
+    const r = await checkWhatsAppSendAllowed(fakeDb(null), 'ws', 'foreign-or-unknown');
+    expect(r).toEqual({ error: CONVERSATION_NOT_FOUND_MESSAGE, code: 'conversation_not_found' });
     expect(reason).not.toHaveBeenCalled();
   });
 
