@@ -18,6 +18,7 @@ import { toClientError } from '@/shared/errors/AppError';
 import { subscribeWabaToMetaWebhook } from '@/lib/meta/subscribeWebhook';
 import { checkWhatsAppSendAllowed } from '@/lib/messaging/whatsappSendGuard';
 import { toSafeConnection } from '@/lib/messaging/safeConnections';
+import { sealPageToken, openPageToken, WHATSAPP_PLACEHOLDER_TOKEN, PageTokenHandleError } from '@/lib/meta/tokenHandle';
 import { isMetaMockMode, isMockValue, MOCK_CREDENTIALS_REJECTED, META_NOT_CONFIGURED } from '@/lib/meta/mockMode';
 
 export async function getMetaAuthUrl(targetPlatform?: string, returnTo?: 'social') {
@@ -963,20 +964,28 @@ export async function fetchMetaBusinesses() {
 export async function fetchMetaPages(businessId: string) {
   const oauth = await loadMetaOauthSession();
   if (!oauth) throw new Error('Meta account not linked or session expired');
+  // Page access tokens never reach the browser: each page carries an opaque, short-lived handle in `access_token` (same field
+  // name, so the wizard is unchanged) that only the server can open, only for this user, workspace and page.
+  const { workspaceId, userId } = await requireWorkspaceAccess();
+  const seal = (p: { id: string; name: string; access_token: string }) => ({
+    id: p.id,
+    name: p.name,
+    access_token: sealPageToken(p.access_token, { workspaceId, userId, pageId: p.id }),
+  });
 
   if (oauth.isMock) {
     if (businessId === 'mock_biz_1') {
       return [
-        { id: 'mock_page_1', name: 'LeadsMind Main Page', access_token: 'mock_fb_page_token_1' },
-        { id: 'mock_page_2', name: 'LeadsMind Support Page', access_token: 'mock_fb_page_token_2' }
+        seal({ id: 'mock_page_1', name: 'LeadsMind Main Page', access_token: 'mock_fb_page_token_1' }),
+        seal({ id: 'mock_page_2', name: 'LeadsMind Support Page', access_token: 'mock_fb_page_token_2' })
       ];
     } else if (businessId === 'mock_biz_2') {
       return [
-        { id: 'mock_page_3', name: 'LeadsMind Retail Page', access_token: 'mock_fb_page_token_3' }
+        seal({ id: 'mock_page_3', name: 'LeadsMind Retail Page', access_token: 'mock_fb_page_token_3' })
       ];
     } else {
       return [
-        { id: 'mock_page_4', name: 'Personal Blog Page', access_token: 'mock_fb_page_token_4' }
+        seal({ id: 'mock_page_4', name: 'Personal Blog Page', access_token: 'mock_fb_page_token_4' })
       ];
     }
   }
@@ -988,20 +997,19 @@ export async function fetchMetaPages(businessId: string) {
       throw new Error(data.error?.message || 'Failed to fetch Facebook pages');
     }
     const list = data.data || [];
-    return list.map((p: any) => ({
-      id: p.id,
-      name: p.name,
-      access_token: p.access_token
-    }));
+    return list.map((p: any) => seal({ id: p.id, name: p.name, access_token: p.access_token }));
   } catch (err: any) {
     logger.error({ err, businessId }, 'messaging.meta_api.pages.fetch.failed');
     throw err;
   }
 }
 
-export async function fetchMetaInstagramAccounts(pageId: string, pageAccessToken: string) {
+export async function fetchMetaInstagramAccounts(pageId: string, pageAccessTokenHandle: string) {
   const oauth = await loadMetaOauthSession();
   if (!oauth) throw new Error('Meta account not linked or session expired');
+  const { workspaceId, userId } = await requireWorkspaceAccess();
+  // The browser only ever holds a handle (see fetchMetaPages). A raw token, or a handle for another page/user/workspace, is refused.
+  const pageAccessToken = openPageToken(pageAccessTokenHandle, { workspaceId, userId, pageId });
 
   if (oauth.isMock) {
     const mockAccounts: Record<string, { id: string, username: string }[]> = {
@@ -1120,6 +1128,18 @@ export async function saveMetaConnections(data: {
 
     const oauth = await loadMetaOauthSession();
     if (!oauth) return { error: 'OAuth session not found. Please reconnect.' };
+
+    // The page token arrives as an opaque handle issued by fetchMetaPages (the browser never sees the real token). Only the
+    // WhatsApp-only path legitimately has no page token and sends the fixed placeholder.
+    if (!(targetPlatform === 'whatsapp' && data.pageAccessToken === WHATSAPP_PLACEHOLDER_TOKEN)) {
+      try {
+        const { userId } = await requireWorkspaceAccess();
+        data = { ...data, pageAccessToken: openPageToken(data.pageAccessToken, { workspaceId, userId, pageId: data.pageId }) };
+      } catch (err: any) {
+        if (err instanceof PageTokenHandleError) return { error: err.message };
+        throw err;
+      }
+    }
     if (!isMetaMockMode() && hasMockCredential(data)) return { error: MOCK_CREDENTIALS_REJECTED };
 
     const supabase = await createServerClient();
