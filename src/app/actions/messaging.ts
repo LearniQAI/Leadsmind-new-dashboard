@@ -242,18 +242,34 @@ export async function disconnectPlatform(platform: string) {
 }
 
 
-async function resolveConversationIds(conversationId: string): Promise<string[]> {
+// Every Hub write that takes a conversation id resolves it HERE first, scoped by workspace_id. A conversation that is not in the
+// caller's workspace (another tenant's, deleted, malformed) resolves to [] and the caller must return CONVERSATION_NOT_FOUND
+// without writing. RLS is a backstop, not the check: sendMessage used to insert a message row into the caller's workspace that
+// pointed at another workspace's conversation.
+async function resolveConversationIds(conversationId: string, workspaceId: string): Promise<string[]> {
+  const supabase = await createServerClient();
   if (!conversationId.startsWith('contact:')) {
-    return [conversationId];
+    const { data } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('id', conversationId)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+    return data?.id ? [data.id] : [];
   }
   const contactId = conversationId.split(':')[1];
-  const supabase = await createServerClient();
   const { data } = await supabase
     .from('conversations')
     .select('id')
-    .eq('contact_id', contactId);
-  return data?.map(c => c.id) || [];
+    .eq('contact_id', contactId)
+    .eq('workspace_id', workspaceId);
+  return data?.map((c: any) => c.id) || [];
 }
+
+// Plain optional-field shape so existing callers can keep testing `res.error` on any branch.
+type HubActionResult = { success?: boolean; error?: string; code?: string; data?: any };
+
+const CONVERSATION_NOT_FOUND = { success: false as const, error: 'Conversation not found.', code: 'not_found' as const };
 
 export async function getConversations() {
  let workspaceId: string | null = null;
@@ -306,8 +322,7 @@ export async function sendMessage(
    *  for a failed-row retry (which keeps its original subject). */
   subject?: string,
 ) {
-  const ids = await resolveConversationIds(conversationId);
-  const targetConvId = ids[0] || conversationId;
+  let targetConvId = conversationId;
 
  try {
   // Previously trusted the active_workspace_id cookie with no membership check before
@@ -317,6 +332,11 @@ export async function sendMessage(
   const { workspaceId, userId } = await requireWorkspaceAccess();
 
   const supabase = await createServerClient();
+
+  // The conversation must exist IN THIS WORKSPACE before anything is read or written. Not found: typed error, zero writes.
+  const ids = await resolveConversationIds(conversationId, workspaceId);
+  if (ids.length === 0) return CONVERSATION_NOT_FOUND;
+  targetConvId = ids[0];
 
   // Server-side WhatsApp guards (the composer UI is not a control): never message an opted-out contact, never send
   // free text outside the 24h window. Every other channel passes straight through.
@@ -403,7 +423,7 @@ export async function sendMessage(
   }
   
   // Update conversation last_message_at
-  await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).in('id', ids);
+  await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).in('id', ids).eq('workspace_id', workspaceId);
 
   // If it's an email platform, send the actual email via Resend
   const { data: conv } = await supabase
@@ -682,12 +702,13 @@ export async function sendMessage(
  }
 }
 
-export async function sendInternalNote(conversationId: string, content: string, senderHandle = 'Agent') {
-  const ids = await resolveConversationIds(conversationId);
-  const targetConvId = ids[0] || conversationId;
+export async function sendInternalNote(conversationId: string, content: string, senderHandle = 'Agent'): Promise<HubActionResult> {
+  let targetConvId = conversationId;
  try {
-  const workspaceId = await getCurrentWorkspaceId();
-  if (!workspaceId) return { error: 'No workspace active' };
+  const { workspaceId } = await requireWorkspaceAccess();
+  const ids = await resolveConversationIds(conversationId, workspaceId);
+  if (ids.length === 0) return CONVERSATION_NOT_FOUND;
+  targetConvId = ids[0];
 
   const supabase = await createServerClient();
   const { data: msgData, error } = await supabase
@@ -706,7 +727,7 @@ export async function sendInternalNote(conversationId: string, content: string, 
   if (error) throw error;
 
   // Update conversation last_message_at
-  await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).in('id', ids);
+  await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).in('id', ids).eq('workspace_id', workspaceId);
 
   return { success: true, data: msgData };
  } catch (error: any) {
@@ -715,58 +736,62 @@ export async function sendInternalNote(conversationId: string, content: string, 
  }
 }
 
-export async function updateConversationAssignment(conversationId: string, assignedTo: string | null) {
-  const ids = await resolveConversationIds(conversationId);
-  if (ids.length === 0) return { error: 'No conversations found' };
+// Shared by assignment / status / tags: resolve in the workspace, update scoped by workspace_id, and treat "0 rows
+// affected" as NOT FOUND instead of success (a foreign or deleted id used to report success while changing nothing).
+async function updateConversationFields(conversationId: string, patch: Record<string, unknown>, logTag: string): Promise<HubActionResult | null> {
  try {
+  const { workspaceId } = await requireWorkspaceAccess();
+  const ids = await resolveConversationIds(conversationId, workspaceId);
+  if (ids.length === 0) return CONVERSATION_NOT_FOUND;
+
   const supabase = await createServerClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
    .from('conversations')
-   .update({ assigned_to: assignedTo })
-   .in('id', ids);
+   .update(patch)
+   .in('id', ids)
+   .eq('workspace_id', workspaceId)
+   .select('id');
 
   if (error) throw error;
-  return { success: true };
+  if (!data || data.length === 0) return CONVERSATION_NOT_FOUND;
+  return { success: true as const };
  } catch (error: any) {
-  logger.error({ err: error, conversationId }, 'messaging.conversation_assignment.update.failed');
-  return { error: 'Failed to update assignment.' };
+  logger.error({ err: error, conversationId }, logTag);
+  return null;
  }
 }
 
-export async function updateConversationStatus(conversationId: string, status: string) {
-  const ids = await resolveConversationIds(conversationId);
-  if (ids.length === 0) return { error: 'No conversations found' };
- try {
-  const supabase = await createServerClient();
-  const { error } = await supabase
-   .from('conversations')
-   .update({ status })
-   .in('id', ids);
-
-  if (error) throw error;
-  return { success: true };
- } catch (error: any) {
-  logger.error({ err: error, conversationId, status }, 'messaging.conversation_status.update.failed');
-  return { error: 'Failed to update status.' };
+export async function updateConversationAssignment(conversationId: string, assignedTo: string | null): Promise<HubActionResult> {
+ // The assignee must be a member of the caller's workspace (an agent cannot be assigned from another tenant).
+ if (assignedTo) {
+  try {
+   const { workspaceId } = await requireWorkspaceAccess();
+   const supabase = await createServerClient();
+   const { data: member } = await supabase
+    .from('workspace_members')
+    .select('user_id')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', assignedTo)
+    .maybeSingle();
+   if (!member) return { success: false as const, error: 'Assignee not found in this workspace.', code: 'not_found' as const };
+  } catch (error: any) {
+   logger.error({ err: error, conversationId }, 'messaging.conversation_assignment.assignee_check.failed');
+   return { error: 'Failed to update assignment.' };
+  }
  }
+ const r = await updateConversationFields(conversationId, { assigned_to: assignedTo }, 'messaging.conversation_assignment.update.failed');
+ return r ?? { error: 'Failed to update assignment.' };
 }
 
-export async function updateConversationTags(conversationId: string, tags: string[]) {
-  const ids = await resolveConversationIds(conversationId);
-  if (ids.length === 0) return { error: 'No conversations found' };
- try {
-  const supabase = await createServerClient();
-  const { error } = await supabase
-   .from('conversations')
-   .update({ tags })
-   .in('id', ids);
+export async function updateConversationStatus(conversationId: string, status: string): Promise<HubActionResult> {
+ const r = await updateConversationFields(conversationId, { status }, 'messaging.conversation_status.update.failed');
+ return r ?? { error: 'Failed to update status.' };
+}
 
-  if (error) throw error;
-  return { success: true };
- } catch (error: any) {
-  logger.error({ err: error, conversationId }, 'messaging.conversation_tags.update.failed');
-  return { error: 'Failed to update tags.' };
- }
+export async function updateConversationTags(conversationId: string, tags: string[]): Promise<HubActionResult> {
+ if (!Array.isArray(tags) || tags.some((t) => typeof t !== 'string')) return { error: 'Failed to update tags.' };
+ const r = await updateConversationFields(conversationId, { tags }, 'messaging.conversation_tags.update.failed');
+ return r ?? { error: 'Failed to update tags.' };
 }
 
 export async function getQuickReplies() {
@@ -817,17 +842,19 @@ export async function createQuickReply(shortcut: string, message: string) {
  }
 }
 
-export async function deleteQuickReply(id: string) {
+export async function deleteQuickReply(id: string): Promise<HubActionResult> {
  let workspaceId: string | null = null;
  try {
   const supabase = await createServerClient();
   ({ workspaceId } = await requireWorkspaceAccess());
-  const { error } = await supabase
+  const { data: deleted, error } = await supabase
    .from('quick_replies')
    .delete()
-   .eq("id", id).eq("workspace_id", workspaceId);
+   .eq("id", id).eq("workspace_id", workspaceId)
+   .select('id');
 
   if (error) throw error;
+  if (!deleted || deleted.length === 0) return { success: false as const, error: 'Quick reply not found.', code: 'not_found' as const };
   return { success: true };
  } catch (error: any) {
   logger.error({ err: error, workspaceId, quickReplyId: id }, 'messaging.quick_reply.delete.failed');
@@ -835,21 +862,23 @@ export async function deleteQuickReply(id: string) {
  }
 }
 
-export async function updateContactConsent(contactId: string, optedIn: boolean, optedOut: boolean) {
+export async function updateContactConsent(contactId: string, optedIn: boolean, optedOut: boolean): Promise<HubActionResult> {
  let workspaceId: string | null = null;
  try {
   const supabase = await createServerClient();
-  workspaceId = await getCurrentWorkspaceId();
-  const { error } = await supabase
+  ({ workspaceId } = await requireWorkspaceAccess());
+  const { data: updated, error } = await supabase
    .from('contacts')
    .update({
      opted_in: optedIn,
      opted_out: optedOut,
      opt_out_date: optedOut ? new Date().toISOString() : null
    })
-   .eq("id", contactId).eq("workspace_id", workspaceId);
+   .eq("id", contactId).eq("workspace_id", workspaceId)
+   .select('id');
 
   if (error) throw error;
+  if (!updated || updated.length === 0) return { success: false as const, error: 'Contact not found.', code: 'not_found' as const };
   return { success: true };
  } catch (error: any) {
   logger.error({ err: error, workspaceId, contactId }, 'messaging.contact_consent.update.failed');
