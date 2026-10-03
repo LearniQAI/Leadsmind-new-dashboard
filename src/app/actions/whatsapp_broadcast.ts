@@ -26,7 +26,7 @@ import { isMetaMockMode, isMockValue, MOCK_CREDENTIALS_REJECTED } from '@/lib/me
 import {
   resolveBroadcastAudience, audienceFromLegacy, audienceFromInput, topExclusionReason,
 } from '@/lib/whatsapp/audience/resolveBroadcastAudience';
-import { COMPLIANCE_TEXT_VERSION, type BroadcastAudienceInput } from '@/lib/whatsapp/audience/types';
+import { COMPLIANCE_TEXT_VERSION, WHATSAPP_ATTESTATION_REQUIRED_MESSAGE, type BroadcastAudienceInput } from '@/lib/whatsapp/audience/types';
 import { countWindowStatus } from '@/lib/whatsapp/audience/windowCounts';
 
 const QUEUE_INSERT_CHUNK = 500;
@@ -132,9 +132,6 @@ export async function listApprovedWhatsAppTemplates() {
     return { success: false as const, error: userSafeMessage(error, 'Failed to fetch WhatsApp templates') };
   }
 }
-
-export const WHATSAPP_ATTESTATION_REQUIRED_MESSAGE =
-  'Confirm that these contacts agreed to receive WhatsApp marketing messages before creating a campaign.';
 
 export type WhatsAppPreviewResult =
   | {

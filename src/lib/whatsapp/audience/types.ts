@@ -58,3 +58,5 @@ export type BroadcastAudienceInput =
 export const COMPLIANCE_TEXT_VERSION = 'wa-attest-v1';
 export const COMPLIANCE_TEXT =
   'I confirm these contacts agreed to receive WhatsApp marketing messages from my business';
+export const WHATSAPP_ATTESTATION_REQUIRED_MESSAGE =
+  'Confirm that these contacts agreed to receive WhatsApp marketing messages before creating a campaign.';
