@@ -23,8 +23,8 @@ import {
   createWhatsAppBroadcastCampaign, cancelWhatsAppBroadcastCampaign, deleteWhatsAppBroadcastCampaign,
   listApprovedWhatsAppTemplates,
 } from '@/app/actions/whatsapp_broadcast';
-
-export interface SegmentRow { id: string; name: string; }
+import { COMPLIANCE_TEXT } from '@/lib/whatsapp/audience/types';
+import AudiencePicker, { EMPTY_AUDIENCE, buildAudienceInput, type AudienceFormState } from './AudiencePicker';
 
 export interface CampaignRow {
   id: string;
@@ -60,13 +60,14 @@ function countTemplateVars(bodyText: string): number {
   return new Set(matches).size;
 }
 
-export default function BroadcastsView({ campaigns, setCampaigns, segments }: {
-  campaigns: CampaignRow[]; setCampaigns: React.Dispatch<React.SetStateAction<CampaignRow[]>>; segments: SegmentRow[];
+export default function BroadcastsView({ campaigns, setCampaigns }: {
+  campaigns: CampaignRow[]; setCampaigns: React.Dispatch<React.SetStateAction<CampaignRow[]>>;
 }) {
   const [formOpen, setFormOpen] = useState(false);
   const [formName, setFormName] = useState('');
   const [formMessage, setFormMessage] = useState('');
-  const [formSegmentId, setFormSegmentId] = useState('');
+  const [audience, setAudience] = useState<AudienceFormState>(EMPTY_AUDIENCE);
+  const [attested, setAttested] = useState(false);
   const [formScheduledAt, setFormScheduledAt] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -83,7 +84,7 @@ export default function BroadcastsView({ campaigns, setCampaigns, segments }: {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const openCreate = () => {
-    setFormName(''); setFormMessage(''); setFormSegmentId(''); setFormScheduledAt('');
+    setFormName(''); setFormMessage(''); setAudience(EMPTY_AUDIENCE); setAttested(false); setFormScheduledAt('');
     setUseTemplate(false); setSelectedTemplate(null); setTemplateParams([]);
     setFormOpen(true);
   };
@@ -108,7 +109,9 @@ export default function BroadcastsView({ campaigns, setCampaigns, segments }: {
   const handleSave = async () => {
     if (!formName.trim()) { toast.error('Please enter a campaign name'); return; }
     if (!formMessage.trim() && !selectedTemplate) { toast.error('Add a free-text message, an approved template, or both'); return; }
-    if (!formSegmentId) { toast.error('Select an audience segment'); return; }
+    const built = buildAudienceInput(audience);
+    if (!built.ok) { toast.error((built as { error: string }).error); return; }
+    if (!attested) { toast.error('Confirm that these contacts agreed to receive WhatsApp marketing messages'); return; }
 
     setSaving(true);
     try {
@@ -118,7 +121,8 @@ export default function BroadcastsView({ campaigns, setCampaigns, segments }: {
         templateName: selectedTemplate?.name || null,
         templateLanguage: selectedTemplate?.language || null,
         templateBodyParams: templateParams.length ? templateParams : null,
-        segmentId: formSegmentId,
+        audience: built.audience,
+        consentAttested: attested,
         scheduledAt: formScheduledAt ? new Date(formScheduledAt).toISOString() : null,
       });
 
@@ -162,24 +166,18 @@ export default function BroadcastsView({ campaigns, setCampaigns, segments }: {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <DashButton onClick={openCreate} disabled={segments.length === 0}>
+        <DashButton onClick={openCreate}>
           <Plus size={14} /> New WhatsApp Campaign
         </DashButton>
       </div>
-
-      {segments.length === 0 && (
-        <DashCard className="p-4 text-[13px] !text-dash-textMuted">
-          You need at least one <a href="/segments" className="text-dash-accent font-bold underline">Segment</a> before you can target a WhatsApp broadcast.
-        </DashCard>
-      )}
 
       {campaigns.length === 0 ? (
         <DashEmptyState
           icon={MessageCircle}
           title="No WhatsApp campaigns yet"
-          description="Send a scheduled bulk WhatsApp message to a saved audience"
+          description="Send a scheduled bulk WhatsApp message to your contacts"
           actionLabel="New WhatsApp Campaign"
-          onAction={segments.length > 0 ? openCreate : undefined}
+          onAction={openCreate}
         />
       ) : (
         <div className="space-y-3">
@@ -235,16 +233,13 @@ export default function BroadcastsView({ campaigns, setCampaigns, segments }: {
             <DashFormField label="Campaign name">
               <DashInput value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="e.g. Spring Sale Blast" />
             </DashFormField>
-            <DashFormField label="Audience" hint="Target a saved Segment (create one under Marketing > Segments)">
-              <Select value={formSegmentId} onValueChange={setFormSegmentId}>
-                <SelectTrigger className="h-11 w-full border-dash-border rounded-xl text-sm">
-                  <SelectValue placeholder="Select a segment" />
-                </SelectTrigger>
-                <SelectContent className="bg-white border border-dash-border rounded-xl shadow-xl">
-                  {segments.map((s) => <SelectItem key={s.id} value={s.id} className="text-sm">{s.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </DashFormField>
+            <AudiencePicker value={audience} onChange={setAudience} />
+
+            <label className="flex items-start gap-2 text-[12px] font-bold !text-dash-text cursor-pointer">
+              <input type="checkbox" checked={attested} onChange={(e) => setAttested(e.target.checked)} className="rounded mt-0.5" />
+              <span>{COMPLIANCE_TEXT}</span>
+            </label>
+
             <DashFormField label="Free-text message" hint="Sent to contacts inside their 24h WhatsApp session window (i.e. who messaged you recently)">
               <DashTextarea value={formMessage} onChange={(e) => setFormMessage(e.target.value)} placeholder="Hi {{contact.first_name}}, ..." rows={3} />
             </DashFormField>

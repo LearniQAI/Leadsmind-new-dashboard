@@ -3,11 +3,11 @@
 import React, { useState } from 'react';
 import { Bot, Radio } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import BroadcastsView, { type CampaignRow, type SegmentRow } from './BroadcastsView';
+import BroadcastsView, { type CampaignRow } from './BroadcastsView';
 import RepliesView, { type RuleRow } from './RepliesView';
 
-export default function WhatsappBroadcastsClient({ initialCampaigns, initialRules, segments }: {
-  initialCampaigns: CampaignRow[]; initialRules: RuleRow[]; segments: SegmentRow[];
+export default function WhatsappBroadcastsClient({ initialCampaigns, initialRules }: {
+  initialCampaigns: CampaignRow[]; initialRules: RuleRow[];
 }) {
   const [view, setView] = useState<'broadcasts' | 'replies'>('broadcasts');
   const [campaigns, setCampaigns] = useState<CampaignRow[]>(initialCampaigns);
@@ -39,7 +39,7 @@ export default function WhatsappBroadcastsClient({ initialCampaigns, initialRule
       </div>
 
       {view === 'broadcasts' ? (
-        <BroadcastsView campaigns={campaigns} setCampaigns={setCampaigns} segments={segments} />
+        <BroadcastsView campaigns={campaigns} setCampaigns={setCampaigns} />
       ) : (
         <RepliesView rules={rules} setRules={setRules} />
       )}
