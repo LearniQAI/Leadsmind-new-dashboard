@@ -105,11 +105,12 @@ describe('sources', () => {
     expect(tz.contactIds).toEqual(['8']);
     const hp = await resolveBroadcastAudience(db, WS, { type: 'contact_fields', filters: [{ field: 'has_phone', value: true }] });
     expect(hp.counts.matched).toBe(7);
-    const nohp = await resolveBroadcastAudience(db, WS, { type: 'contact_fields', filters: [{ field: 'has_phone', value: false }] });
-    expect(nohp.exclusions.no_phone).toBe(1);
-    expect(nohp.contactIds).toEqual([]);
     const after = await resolveBroadcastAudience(db, WS, { type: 'contact_fields', filters: [{ field: 'created_after', value: '2026-01-08T00:00:00Z' }] });
     expect(after.counts.matched).toBe(tables.contacts.filter((x) => x.created_at >= '2026-01-08T00:00:00Z').length);
+  });
+
+  it('contact_fields rejects has_phone:false with a clear error instead of an always-empty result', async () => {
+    await expect(resolveBroadcastAudience(db, WS, { type: 'contact_fields', filters: [{ field: 'has_phone', value: false } as any] })).rejects.toThrow(/no phone number is not supported/);
   });
 
   it('contact_fields rejects unknown fields and blank values', async () => {
@@ -142,6 +143,40 @@ describe('sources', () => {
     tables.tag_assignments = [{ id: 'x', workspace_id: 'OTHER', entity_type: 'contact', entity_id: '99', tag_id: tables.tags[0].id }];
     const t = await resolveBroadcastAudience(db, WS, { type: 'tags', tags: ['vip'], mode: 'all' });
     expect(t.contactIds).toEqual([]);
+  });
+});
+
+describe('shared numbers: opt-out of ANY contact on the number excludes it', () => {
+  const N = '+27825551111';
+  it('oldest clean + newer opted-out -> excluded, counted as opted_out', async () => {
+    tables.contacts = [c('1', { phone_e164: N, created_at: '2026-01-01T00:00:00Z' }), c('2', { phone_e164: N, created_at: '2026-02-01T00:00:00Z', opted_out: true })];
+    const r = await resolveBroadcastAudience(db, WS, { type: 'all_contacts' });
+    expect(r.contactIds).toEqual([]);
+    expect(r.exclusions).toMatchObject({ opted_out: 2, duplicate_phone: 0 });
+  });
+  it('oldest opted-out + newer clean -> excluded', async () => {
+    tables.contacts = [c('1', { phone_e164: N, created_at: '2026-01-01T00:00:00Z', sms_opt_out: true }), c('2', { phone_e164: N, created_at: '2026-02-01T00:00:00Z' })];
+    const r = await resolveBroadcastAudience(db, WS, { type: 'all_contacts' });
+    expect(r.contactIds).toEqual([]);
+    expect(r.exclusions.opted_out).toBe(2);
+  });
+  it('both clean -> one recipient (the oldest), the other counted as duplicate', async () => {
+    tables.contacts = [c('1', { phone_e164: N, created_at: '2026-01-01T00:00:00Z' }), c('2', { phone_e164: N, created_at: '2026-02-01T00:00:00Z' })];
+    const r = await resolveBroadcastAudience(db, WS, { type: 'all_contacts' });
+    expect(r.contactIds).toEqual(['1']);
+    expect(r.exclusions).toMatchObject({ opted_out: 0, duplicate_phone: 1 });
+  });
+  it('an opted-out duplicate OUTSIDE the audience (a tag audience) still excludes the number', async () => {
+    tables.contacts = [c('1', { phone_e164: N }), c('2', { phone_e164: N, opted_out: true })];
+    tables.tag_assignments = [{ id: 'a', workspace_id: WS, entity_type: 'contact', entity_id: '1', tag_id: tables.tags[0].id }];
+    const r = await resolveBroadcastAudience(db, WS, { type: 'tags', tags: ['vip'], mode: 'all' });
+    expect(r.contactIds).toEqual([]);
+    expect(r.exclusions.opted_out).toBe(1);
+  });
+  it('a lookup failure fails closed', async () => {
+    tables.contacts = [c('1')];
+    failTable = 'contacts';
+    await expect(resolveBroadcastAudience(db, WS, { type: 'all_contacts' })).rejects.toBeTruthy();
   });
 });
 

@@ -52,7 +52,7 @@ function applyFilters(q: any, filters: ContactFieldFilter[]) {
   for (const f of filters) {
     switch (f.field) {
       case 'has_phone':
-        q = f.value ? q.not('phone', 'is', null).neq('phone', '') : q.or('phone.is.null,phone.eq.');
+        q = q.not('phone', 'is', null).neq('phone', '');
         break;
       case 'source': q = q.eq('source', f.value); break;
       case 'timezone': q = q.eq('timezone', f.value); break;
@@ -67,7 +67,9 @@ function validateFilters(filters: ContactFieldFilter[]) {
   if (!Array.isArray(filters)) throw new ValidationError('Contact filter is not valid.');
   for (const f of filters) {
     if (f.field === 'has_phone') {
-      if (typeof f.value !== 'boolean') throw new ValidationError('The "has a phone number" filter needs yes or no.');
+      if (f.value !== true) {
+        throw new ValidationError('Filtering for contacts with no phone number is not supported: they can never receive a WhatsApp message.');
+      }
     } else if (f.field === 'source' || f.field === 'timezone') {
       if (typeof f.value !== 'string' || !f.value.trim()) throw new ValidationError(`Enter a value for the ${f.field} filter.`);
     } else if (f.field === 'created_after' || f.field === 'created_before') {
@@ -204,6 +206,19 @@ export async function resolveBroadcastAudience(db: Db, workspaceId: string, spec
     for (const r of listed ?? []) suppressedPhones.add(r.phone_e164);
   }
 
+  // A number is opted out if ANY contact in the workspace sharing it is flagged opted out (opted_out or sms_opt_out),
+  // not just the ones in this audience: STOP is about the number, and an older clean duplicate must not be messaged
+  // because the contact that carries the flag happens to be newer.
+  const flaggedPhones = new Set<string>();
+  for (let i = 0; i < phones.length; i += ID_CHUNK) {
+    const { data: sharing, error } = await db.from('contacts').select('phone_e164, opted_out, sms_opt_out')
+      .eq('workspace_id', workspaceId)
+      .or('opted_out.eq.true,sms_opt_out.eq.true')
+      .in('phone_e164', phones.slice(i, i + ID_CHUNK));
+    if (error) throw error;
+    for (const r of sharing ?? []) if (r.opted_out || r.sms_opt_out) flaggedPhones.add(r.phone_e164);
+  }
+
   const ex: AudienceExclusions = { no_phone: 0, invalid_number: 0, opted_out: 0, suppressed: 0, duplicate_phone: 0 };
   const passing: any[] = [];
   for (const c of contacts) {
@@ -211,6 +226,7 @@ export async function resolveBroadcastAudience(db: Db, workspaceId: string, spec
     if (!c.phone_e164) { ex.invalid_number++; continue; } // can never be messaged or matched to a STOP
     if (c.opted_out || c.sms_opt_out) { ex.opted_out++; continue; }
     if (suppressedPhones.has(c.phone_e164)) { ex.suppressed++; continue; }
+    if (flaggedPhones.has(c.phone_e164)) { ex.opted_out++; continue; } // a contact sharing this number opted out
     passing.push(c);
   }
 

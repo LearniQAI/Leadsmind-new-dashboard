@@ -4,7 +4,8 @@ import type { RuleGroup } from '@/lib/intelligence/SegmentationCompiler';
 
 /** Filters over columns that exist on `contacts` (verified against the live schema). */
 export type ContactFieldFilter =
-  | { field: 'has_phone'; value: boolean }
+  // Only `true` is offered: contacts with no phone number can never receive a WhatsApp message.
+  | { field: 'has_phone'; value: true }
   | { field: 'source'; value: string }
   | { field: 'timezone'; value: string }
   | { field: 'created_after'; value: string }
