@@ -120,7 +120,7 @@ describe('a real approved template, selected and used in a broadcast', () => {
 
     // Exactly what the picker submits: the selected template's name + language, one value per variable.
     const params = Array.from({ length: varCount }, (_, i) => (i === 0 ? '{{contact.first_name}}' : `V${i + 1}`));
-    const created = await M.wa.createWhatsAppBroadcastCampaign({
+    const created = await M.wa.createWhatsAppBroadcastCampaign({ consentAttested: true,
       name: `watpl-${runId}`, messageBody: null, templateName: tpl.name, templateLanguage: tpl.language, templateBodyParams: params, segmentId: seg.id,
     });
     expect(created.success, JSON.stringify(created)).toBe(true);

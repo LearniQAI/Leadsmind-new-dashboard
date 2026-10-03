@@ -166,7 +166,7 @@ describe('item 1: mock_ credentials', () => {
     const c = await mkContact('p1', '+15550100021');
     as('a');
     vi.stubEnv('META_MOCK_MODE', 'true'); vi.stubEnv('NODE_ENV', 'test');
-    const camp: any = await M.createWhatsAppBroadcastCampaign({ name: `b1 prod ${runId}`, messageBody: 'x', templateName: 'order_confirmation', templateBodyParams: ['hi'], ruleGroup: rg('p1') });
+    const camp: any = await M.createWhatsAppBroadcastCampaign({ consentAttested: true, name: `b1 prod ${runId}`, messageBody: 'x', templateName: 'order_confirmation', templateBodyParams: ['hi'], ruleGroup: rg('p1') });
     expect(camp.success).toBe(true);
     // local clock vs database clock: make the row due now so the worker picks it up
     await admin.from('whatsapp_dispatch_queue').update({ scheduled_for: new Date(Date.now() - 120_000).toISOString() }).eq('campaign_id', camp.data.id);
@@ -234,7 +234,7 @@ describe('item 3: Meta STOP handling', () => {
     // the durable row means a contact imported LATER with that number is still excluded from a broadcast
     const later = await mkContact('later', num);
     as('a');
-    const camp: any = await M.createWhatsAppBroadcastCampaign({ name: `b1 later ${runId}`, messageBody: 'x', ruleGroup: rg('later') });
+    const camp: any = await M.createWhatsAppBroadcastCampaign({ consentAttested: true, name: `b1 later ${runId}`, messageBody: 'x', ruleGroup: rg('later') });
     expect(camp.success).toBe(false);
     expect(camp.error).toMatch(/No eligible recipients/);
     expect(later).toBeTruthy();
@@ -360,7 +360,7 @@ describe('item 6: foreign ids return not-found, never success, never raw databas
   it('setup: workspace A owns a campaign and a rule', async () => {
     as('a');
     await mkContact('c6', '+15550100071');
-    const camp: any = await M.createWhatsAppBroadcastCampaign({ name: `b1 own ${runId}`, messageBody: 'x', ruleGroup: rg('c6'), scheduledAt: new Date(Date.now() + 3600_000).toISOString() });
+    const camp: any = await M.createWhatsAppBroadcastCampaign({ consentAttested: true, name: `b1 own ${runId}`, messageBody: 'x', ruleGroup: rg('c6'), scheduledAt: new Date(Date.now() + 3600_000).toISOString() });
     expect(camp.success).toBe(true); campaignA = camp.data;
     const r: any = await M.createWhatsAppBotRule({ name: 'ownrule', matchType: 'exact', matchValue: 'menu', replyType: 'text', replyText: 'x' });
     expect(r.success).toBe(true); ruleA = r.data;
@@ -399,9 +399,9 @@ describe('item 9: schedule validation (real action)', () => {
   it('an invalid and a past date return specific messages and create nothing', async () => {
     as('a');
     const before = (await admin.from('whatsapp_broadcast_campaigns').select('id', { count: 'exact', head: true }).eq('workspace_id', wsA)).count;
-    const bad: any = await M.createWhatsAppBroadcastCampaign({ name: 'd', messageBody: 'x', ruleGroup: rg('c6'), scheduledAt: 'not-a-date' });
+    const bad: any = await M.createWhatsAppBroadcastCampaign({ consentAttested: true, name: 'd', messageBody: 'x', ruleGroup: rg('c6'), scheduledAt: 'not-a-date' });
     expect(bad.error).toMatch(/not valid/i);
-    const past: any = await M.createWhatsAppBroadcastCampaign({ name: 'd', messageBody: 'x', ruleGroup: rg('c6'), scheduledAt: new Date(Date.now() - 86400_000).toISOString() });
+    const past: any = await M.createWhatsAppBroadcastCampaign({ consentAttested: true, name: 'd', messageBody: 'x', ruleGroup: rg('c6'), scheduledAt: new Date(Date.now() - 86400_000).toISOString() });
     expect(past.error).toMatch(/in the past/i);
     expect(bad.error).not.toBe('Failed to create WhatsApp campaign');
     expect((await admin.from('whatsapp_broadcast_campaigns').select('id', { count: 'exact', head: true }).eq('workspace_id', wsA)).count).toBe(before);
