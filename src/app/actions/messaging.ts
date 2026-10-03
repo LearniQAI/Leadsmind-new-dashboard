@@ -17,6 +17,7 @@ import { isCloudApiHealthy } from '@/lib/messaging/cloudApiHealth';
 import { toClientError } from '@/shared/errors/AppError';
 import { subscribeWabaToMetaWebhook } from '@/lib/meta/subscribeWebhook';
 import { checkWhatsAppSendAllowed } from '@/lib/messaging/whatsappSendGuard';
+import { toSafeConnection } from '@/lib/messaging/safeConnections';
 import { isMetaMockMode, isMockValue, MOCK_CREDENTIALS_REJECTED, META_NOT_CONFIGURED } from '@/lib/meta/mockMode';
 
 export async function getMetaAuthUrl(targetPlatform?: string, returnTo?: 'social') {
@@ -207,7 +208,9 @@ export async function getConnectedPlatforms() {
    .eq('workspace_id', workspaceId);
 
   if (error) throw error;
-  const rows = data || [];
+  // Project through the allow-list HERE, on the server: `credentials` holds encrypted tokens and this result is handed to
+  // client components. Nothing secret may leave this function.
+  const rows = (data || []).map((r: any) => toSafeConnection(r));
 
   const { data: ws } = await supabase.from('workspaces').select('twilio_number').eq('id', workspaceId).maybeSingle();
   return withSmsConnectionStatus(rows, ws?.twilio_number);
@@ -854,7 +857,8 @@ export async function updateContactConsent(contactId: string, optedIn: boolean, 
  }
 }
 
-export async function getMetaOauthToken() {
+// Server-side only (not exported): the decrypted Meta user token. The browser must never receive it.
+async function loadMetaOauthSession() {
   try {
     const workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return null;
@@ -891,8 +895,16 @@ export async function getMetaOauthToken() {
   }
 }
 
+// What the connect wizard needs to know: is there a linked Meta session. It used to return the decrypted token itself to
+// the browser, which only ever tested it for truthiness.
+export async function getMetaOauthToken(): Promise<{ linked: true; isMock: boolean; status: string } | null> {
+  const session = await loadMetaOauthSession();
+  if (!session || !session.token) return null;
+  return { linked: true, isMock: session.isMock, status: session.status };
+}
+
 export async function fetchMetaBusinesses() {
-  const oauth = await getMetaOauthToken();
+  const oauth = await loadMetaOauthSession();
   if (!oauth) throw new Error('Meta account not linked or session expired');
 
   if (oauth.isMock) {
@@ -920,7 +932,7 @@ export async function fetchMetaBusinesses() {
 }
 
 export async function fetchMetaPages(businessId: string) {
-  const oauth = await getMetaOauthToken();
+  const oauth = await loadMetaOauthSession();
   if (!oauth) throw new Error('Meta account not linked or session expired');
 
   if (oauth.isMock) {
@@ -959,7 +971,7 @@ export async function fetchMetaPages(businessId: string) {
 }
 
 export async function fetchMetaInstagramAccounts(pageId: string, pageAccessToken: string) {
-  const oauth = await getMetaOauthToken();
+  const oauth = await loadMetaOauthSession();
   if (!oauth) throw new Error('Meta account not linked or session expired');
 
   if (oauth.isMock) {
@@ -993,7 +1005,7 @@ export async function fetchMetaInstagramAccounts(pageId: string, pageAccessToken
 }
 
 export async function fetchMetaWhatsAppAccounts(businessId: string) {
-  const oauth = await getMetaOauthToken();
+  const oauth = await loadMetaOauthSession();
   if (!oauth) throw new Error('Meta account not linked or session expired');
 
   if (oauth.isMock) {
@@ -1023,7 +1035,7 @@ export async function fetchMetaWhatsAppAccounts(businessId: string) {
 }
 
 export async function fetchWhatsAppPhoneNumbers(wabaId: string) {
-  const oauth = await getMetaOauthToken();
+  const oauth = await loadMetaOauthSession();
   if (!oauth) throw new Error('Meta account not linked or session expired');
 
   if (oauth.isMock) {
@@ -1077,7 +1089,7 @@ export async function saveMetaConnections(data: {
     workspaceId = await getCurrentWorkspaceId();
     if (!workspaceId) return { error: 'No workspace active' };
 
-    const oauth = await getMetaOauthToken();
+    const oauth = await loadMetaOauthSession();
     if (!oauth) return { error: 'OAuth session not found. Please reconnect.' };
     if (!isMetaMockMode() && hasMockCredential(data)) return { error: MOCK_CREDENTIALS_REJECTED };
 

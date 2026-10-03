@@ -5,6 +5,7 @@ import { requireWorkspaceAccess } from '@/lib/auth';
 import { createOAuthStateNonce } from '@/lib/oauth/stateNonce';
 import { logger } from '@/shared/logger';
 import { publishToPlatform } from '@/lib/social/publish';
+import { toSafeConnection } from '@/lib/messaging/safeConnections';
 
 // getMetaAuthUrl below is confirmed dead in this file — messaging.ts's getMetaAuthUrl is what's
 // actually wired up for Meta. getLinkedInAuthUrl/getTikTokAuthUrl now mint a real opaque nonce
@@ -22,7 +23,8 @@ export async function getSocialAccounts() {
       .in('platform', ['facebook', 'instagram', 'linkedin', 'tiktok', 'youtube'])
       .eq('status', 'connected')
     if (error) throw error
-    return { data: data || [] }
+    // `credentials` carries encrypted tokens; only allow-listed display/status keys may reach the browser.
+    return { data: (data || []).map((r: any) => toSafeConnection(r)) }
   } catch (error: any) {
     logger.error({ err: error }, 'social.accounts.fetch.failed')
     return { error: 'Failed to fetch social accounts.', data: [] }
