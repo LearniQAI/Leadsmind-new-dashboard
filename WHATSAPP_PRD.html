@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LeadsMind CRM — WhatsApp Broadcasting PRD</title>
+<style>
+:root{--ink:#17202a;--muted:#5f6b76;--line:#dfe5ea;--soft:#f5f7f9;--brand:#fe924d;--dark:#111827;--code:#0f172a}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;color:var(--ink);line-height:1.65;background:white}
+main{max-width:1100px;margin:0 auto;padding:48px 56px}
+.cover{padding:72px 0 48px;border-bottom:2px solid var(--ink);margin-bottom:42px}
+.badge{display:inline-block;background:#fff0e6;color:#a94e16;padding:6px 12px;border-radius:999px;font-weight:700;font-size:13px}
+h1{font-size:42px;line-height:1.1;margin:18px 0 12px;color:var(--dark)}
+h2{font-size:27px;margin-top:52px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+h3{font-size:20px;margin-top:30px}
+p,li{font-size:15.5px}
+.meta{color:var(--muted)}
+.callout{background:var(--soft);border-left:4px solid var(--brand);padding:18px 20px;margin:20px 0}
+pre{background:var(--code);color:#e5e7eb;padding:18px;border-radius:10px;overflow:auto;font-size:13px;line-height:1.55}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+table{width:100%;border-collapse:collapse;margin:18px 0 28px}
+th,td{border:1px solid var(--line);padding:10px 12px;text-align:left;vertical-align:top;font-size:14px}
+th{background:var(--soft)}
+.toc{background:#fafafa;border:1px solid var(--line);padding:20px 24px;border-radius:10px}
+.toc a{color:#9a4816;text-decoration:none}
+footer{margin-top:60px;padding-top:24px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+@media print{main{max-width:none;padding:28px 34px}.cover{padding-top:25px}h2{break-after:avoid}pre,table{break-inside:avoid}}
+@media(max-width:700px){main{padding:28px 20px}h1{font-size:32px}h2{font-size:23px}}
+</style>
+</head>
+<body>
+<main>
+<section class="cover">
+<span class="badge">PRODUCT REQUIREMENTS DOCUMENT</span>
+<h1>LeadsMind CRM<br>WhatsApp Broadcasting &amp; Campaign Management</h1>
+<p class="meta"><strong>Version:</strong> 1.0 &nbsp; | &nbsp; <strong>Status:</strong> Product &amp; Engineering Specification &nbsp; | &nbsp; <strong>Market:</strong> South Africa</p>
+<p class="meta"><strong>Integration:</strong> WhatsApp Business Platform / WhatsApp Cloud API</p>
+<div class="callout"><strong>Developer objective:</strong> Build WhatsApp communication as a native, multi-tenant LeadsMind CRM module using the official WhatsApp Business Platform/API. Do not automate the normal WhatsApp or WhatsApp Business mobile application.</div>
+</section>
+
+<div class="toc">
+<strong>Contents</strong>
+<ol>
+<li><a href="#executive">Executive Summary &amp; Vision</a></li>
+<li><a href="#objectives">Objectives, Users &amp; Scope</a></li>
+<li><a href="#onboarding">WhatsApp Connection &amp; Onboarding</a></li>
+<li><a href="#contacts">Contacts, Consent &amp; Segmentation</a></li>
+<li><a href="#campaigns">Campaigns, Templates &amp; Personalisation</a></li>
+<li><a href="#messaging">Scheduling, Queues, Webhooks &amp; Messaging</a></li>
+<li><a href="#analytics">Reporting &amp; Analytics</a></li>
+<li><a href="#automation">Inbox, CRM Automation &amp; AI</a></li>
+<li><a href="#security">Security, RBAC, Audit &amp; Multi-Tenancy</a></li>
+<li><a href="#architecture">Database, API &amp; Architecture</a></li>
+<li><a href="#mvp">MVP, Phases &amp; Acceptance Criteria</a></li>
+</ol>
+</div>
+
+<h2 id="executive">1. Executive Summary</h2>
+<p>LeadsMind will provide an integrated WhatsApp Broadcasting and Campaign Management system directly inside the LeadsMind CRM. Businesses will manage contacts, consent, audiences, approved WhatsApp message templates, personalised campaigns, scheduling, delivery status, conversations, reporting and CRM activities from one platform.</p>
+<p>The product must be built around the official WhatsApp Business Platform/API rather than automating the normal WhatsApp mobile application. WhatsApp communication should become a native CRM capability connected to contacts, leads, customers, deals, appointments, invoices, payments, LMS events, support and automations.</p>
+
+<h2>2. Product Vision</h2>
+<div class="callout"><strong>Core workflow:</strong> Import/manage contacts → record consent → segment audience → create campaign → select approved template → personalise → preview → validate → schedule/send → process through queue → receive webhook statuses → report results → update CRM.</div>
+
+<h2 id="objectives">3. Objectives, Users &amp; Scope</h2>
+<h3>Primary Objectives</h3>
+<ul>
+<li>Connect an eligible WhatsApp Business number.</li>
+<li>Manage WhatsApp contacts and consent.</li>
+<li>Create segmented broadcast campaigns.</li>
+<li>Use approved WhatsApp templates.</li>
+<li>Personalise messages with CRM fields.</li>
+<li>Schedule or send campaigns.</li>
+<li>Track sent, delivered, read and failed states.</li>
+<li>Handle inbound messages and opt-outs where supported.</li>
+<li>Connect WhatsApp activity to CRM records.</li>
+</ul>
+<h3>Target Users</h3>
+<ul>
+<li><strong>Business Owner:</strong> campaigns, contacts, reporting, permissions.</li>
+<li><strong>Marketing Manager:</strong> audiences, templates, campaigns, scheduling.</li>
+<li><strong>Salesperson:</strong> conversations, lead history and follow-up.</li>
+<li><strong>Support Agent:</strong> inbound conversations and customer history.</li>
+<li><strong>LeadsMind Administrator:</strong> integration, account and platform health.</li>
+</ul>
+<h3>Non-Goals</h3>
+<ul>
+<li>No automation of the consumer WhatsApp application.</li>
+<li>No scraping of WhatsApp contacts.</li>
+<li>No unofficial bulk-sending mechanisms.</li>
+<li>No bypassing of WhatsApp template, account, messaging or enforcement requirements.</li>
+</ul>
+
+<h2 id="onboarding">4. WhatsApp Connection &amp; Onboarding</h2>
+<p>Provide a guided onboarding wizard that lets a customer connect an eligible WhatsApp Business account and business number.</p>
+<pre>LeadsMind Account
+      ↓
+WhatsApp Setup
+      ↓
+Connect WhatsApp Business Platform
+      ↓
+Select Business Account / Number
+      ↓
+Configure Permissions
+      ↓
+Synchronise Templates &amp; Account Data
+      ↓
+Connected / Ready</pre>
+<h3>Data to Store Securely</h3>
+<ul>
+<li>WhatsApp Business Account ID</li>
+<li>Phone Number ID</li>
+<li>Business ID</li>
+<li>Phone number and display name</li>
+<li>Connection status</li>
+<li>Required access credentials/tokens, stored securely</li>
+<li>Template metadata</li>
+</ul>
+<p>Never expose access tokens or other secrets to normal CRM users or browser clients.</p>
+
+<h2 id="contacts">5. Contacts, Consent &amp; Segmentation</h2>
+<h3>Contact Fields</h3>
+<table><tr><th>Field</th><th>Purpose</th></tr>
+<tr><td>Contact ID</td><td>Internal CRM identity</td></tr>
+<tr><td>Name / Company</td><td>Personalisation and CRM</td></tr>
+<tr><td>WhatsApp Number</td><td>Messaging destination</td></tr>
+<tr><td>Tags</td><td>Segmentation</td></tr>
+<tr><td>Lead / Customer Status</td><td>Audience filtering</td></tr>
+<tr><td>Custom Fields</td><td>Dynamic variables</td></tr>
+<tr><td>Consent Status</td><td>Marketing eligibility</td></tr>
+<tr><td>Consent Date / Source</td><td>Auditability</td></tr>
+<tr><td>Opt-Out Status</td><td>Messaging suppression</td></tr>
+</table>
+<h3>WhatsApp Contact States</h3>
+<pre>OPTED_IN
+OPTED_OUT
+UNKNOWN
+BLOCKED
+INVALID_NUMBER
+UNDELIVERABLE</pre>
+<p>An unknown consent state must not be treated as confirmed marketing consent.</p>
+<h3>Consent Record</h3>
+<pre>contact_id
+status
+consent_type
+source
+source_reference
+consent_timestamp
+withdrawal_timestamp
+evidence
+created_at
+updated_at</pre>
+<h3>Opt-Out</h3>
+<p>Support an opt-out workflow such as detecting configured opt-out keywords, updating the contact to <code>OPTED_OUT</code>, recording the event and excluding the contact from eligible marketing audiences.</p>
+<h3>Segmentation</h3>
+<p>Support dynamic rules based on tags, lead/customer status, location, industry, owner, source, dates, custom fields, activity, purchases, appointments, course information and consent status.</p>
+<pre>Location = Johannesburg
+AND Tag = Accounting
+AND Lead Status = Qualified
+AND WhatsApp Consent = OPTED_IN</pre>
+
+<h2 id="campaigns">6. Campaigns, Templates &amp; Personalisation</h2>
+<h3>Campaign Navigation</h3>
+<pre>Marketing
+ ├── Campaigns
+ │    ├── All Campaigns
+ │    ├── Create Campaign
+ │    └── Scheduled
+ ├── WhatsApp
+ │    ├── Inbox
+ │    ├── Broadcasts
+ │    ├── Templates
+ │    ├── Contacts
+ │    └── Analytics
+ └── Automations</pre>
+<h3>Campaign Builder</h3>
+<pre>1. Campaign Details
+2. Audience
+3. Template
+4. Personalisation
+5. Preview
+6. Validation
+7. Schedule
+8. Confirmation</pre>
+<h3>Campaign Fields</h3>
+<ul><li>Name</li><li>Description</li><li>Internal notes</li><li>Audience/segment</li><li>Template</li><li>Timezone</li><li>Schedule</li></ul>
+<h3>Templates</h3>
+<p>Synchronise approved/available WhatsApp templates and expose their name, category, language, status, header, body, footer, buttons and variables. Do not allow a campaign to use a template that is unavailable for the intended use.</p>
+<h3>Personalisation</h3>
+<p>Support CRM variables such as:</p>
+<pre>{{first_name}}
+{{last_name}}
+{{company}}
+{{phone}}
+{{email}}
+{{appointment_date}}
+{{appointment_time}}
+{{deal_value}}
+{{custom_field}}</pre>
+<p>Before sending, validate that every recipient has the required variables. Users should be able to exclude invalid recipients or correct their data.</p>
+<h3>Preview</h3>
+<p>Show a WhatsApp-style preview using real CRM data from sample recipients before sending.</p>
+<h3>Media</h3>
+<p>Where supported by the WhatsApp API/template configuration, support text, images, documents, videos and buttons/CTAs. Validate media before queueing.</p>
+
+<h2 id="messaging">7. Scheduling, Queues, Webhooks &amp; Messaging</h2>
+<h3>Campaign States</h3>
+<pre>DRAFT
+VALIDATING
+SCHEDULED
+QUEUED
+SENDING
+PAUSED
+COMPLETED
+PARTIALLY_COMPLETED
+FAILED
+CANCELLED</pre>
+<h3>Message States</h3>
+<pre>CREATED
+QUEUED
+SENT
+DELIVERED
+READ
+FAILED
+CANCELLED</pre>
+<h3>Asynchronous Queue</h3>
+<p>Never send a large campaign synchronously from a browser request. Use a durable queue and background workers.</p>
+<pre>Campaign
+   ↓
+Audience Generator
+   ↓
+Message Generator
+   ↓
+Message Queue
+   ↓
+WhatsApp API Worker
+   ↓
+WhatsApp
+   ↓
+Webhook
+   ↓
+Message Status / CRM Event</pre>
+<h3>Idempotency</h3>
+<p>Every outbound message needs an internal unique ID and idempotency key. Retries, worker restarts and network failures must not create duplicate sends.</p>
+<h3>Retries</h3>
+<p>Retry temporary failures according to a controlled policy. Permanent failures must stop retrying and retain error information.</p>
+<h3>Pause / Cancel</h3>
+<p>Allow scheduled campaigns to be cancelled. For active campaigns, provide a “Stop Remaining Messages” action. Messages already submitted externally may not be reversible and must remain accurately recorded.</p>
+<h3>Webhook</h3>
+<pre>POST /webhooks/whatsapp</pre>
+<p>Webhook processing must verify authenticity according to the integration requirements, identify the tenant/account/number, store the event, update the relevant message/conversation, trigger CRM automation where applicable, and respond correctly.</p>
+<p>Webhook processing must be idempotent and should store an external event ID where available.</p>
+<h3>Conversation Window Logic</h3>
+<p>Distinguish between customer-initiated conversations, business-initiated messages, template messages and replies within the applicable customer-service window. The backend must determine whether the requested message type is permitted before sending.</p>
+
+<h2 id="analytics">8. Reporting &amp; Analytics</h2>
+<h3>Campaign Dashboard</h3>
+<table><tr><th>Metric</th><th>Description</th></tr>
+<tr><td>Total Contacts</td><td>Selected audience size</td></tr>
+<tr><td>Eligible</td><td>Contacts that pass validation</td></tr>
+<tr><td>Excluded</td><td>Contacts removed before sending</td></tr>
+<tr><td>Sent</td><td>Messages submitted successfully</td></tr>
+<tr><td>Delivered</td><td>Delivery status received</td></tr>
+<tr><td>Read</td><td>Read status received where available</td></tr>
+<tr><td>Failed</td><td>Failed messages</td></tr>
+<tr><td>Replies</td><td>Inbound replies where available</td></tr>
+<tr><td>Appointments / Deals / Revenue</td><td>CRM-derived outcomes where configured</td></tr>
+</table>
+<h3>Derived Metrics</h3>
+<pre>Delivery Rate = Delivered / Sent × 100
+Read Rate = Read / Delivered × 100
+Reply Rate = Replies / Delivered × 100
+Conversion Rate = Conversions / Delivered × 100</pre>
+<p>Clearly label CRM-derived attribution and do not imply causation simply because a message preceded a sale.</p>
+<h3>Campaign List</h3>
+<table><tr><th>Campaign</th><th>Audience</th><th>Status</th><th>Sent</th><th>Delivered</th><th>Read</th><th>Replies</th><th>Scheduled</th></tr>
+<tr><td>October Promotion</td><td>1,250</td><td>Completed</td><td>1,210</td><td>1,170</td><td>890</td><td>126</td><td>10 Oct</td></tr>
+<tr><td>Appointment Reminder</td><td>320</td><td>Scheduled</td><td>—</td><td>—</td><td>—</td><td>—</td><td>12 Oct</td></tr>
+</table>
+<h3>Exports</h3>
+<p>Allow authorised users to export campaign reports to CSV/Excel and optionally PDF.</p>
+
+<h2 id="automation">9. Inbox, CRM Automation &amp; AI</h2>
+<h3>Unified WhatsApp Inbox</h3>
+<p>Phase 2 should provide an inbox for inbound conversations with assignment, replies, tags, notes, tasks, deals and customer history.</p>
+<pre>Customer
+  ↓
+WhatsApp
+  ↓
+WhatsApp API
+  ↓
+LeadsMind Webhook
+  ↓
+Find/Create Contact
+  ↓
+Create Conversation
+  ↓
+Assign User / Notify</pre>
+<h3>Automation Triggers</h3>
+<ul>
+<li>New lead created</li><li>Lead status changed</li><li>Deal created/stage changed</li><li>Appointment booked/approaching</li><li>Invoice created</li><li>Payment received/overdue</li><li>Course enrolled/completed</li><li>Form submitted</li><li>Tag added</li><li>Customer replied</li>
+</ul>
+<h3>Automation Actions</h3>
+<ul><li>Send WhatsApp template</li><li>Add tag</li><li>Assign conversation</li><li>Create task</li><li>Update lead status</li><li>Create deal</li><li>Notify internal user</li></ul>
+<h3>Future AI Assistant</h3>
+<p>A future LeadsMind AI assistant may create a campaign draft from natural language, propose an audience, draft message content and prepare a template. The user must explicitly approve before sending.</p>
+
+<h2 id="security">10. Security, RBAC, Audit &amp; Multi-Tenancy</h2>
+<h3>Tenant Isolation</h3>
+<p>Every WhatsApp account, number, contact, campaign, template, message, conversation and event must belong to a tenant. Cross-tenant access must be impossible at the application and data-access layers.</p>
+<h3>Roles</h3>
+<table><tr><th>Role</th><th>Typical Permissions</th></tr>
+<tr><td>Owner</td><td>Full access</td></tr>
+<tr><td>Admin</td><td>WhatsApp configuration and campaigns</td></tr>
+<tr><td>Marketing Manager</td><td>Campaigns, audiences, templates</td></tr>
+<tr><td>Salesperson</td><td>Assigned conversations and permitted messaging</td></tr>
+<tr><td>Support Agent</td><td>Conversations and support actions</td></tr>
+<tr><td>Viewer</td><td>Read-only reporting</td></tr>
+</table>
+<h3>Security Requirements</h3>
+<ul>
+<li>Encrypt sensitive credentials at rest.</li>
+<li>Never expose tokens to frontend clients.</li>
+<li>Use HTTPS.</li>
+<li>Verify webhook requests.</li>
+<li>Apply tenant-level authorisation on every protected resource.</li>
+<li>Apply role-based permissions.</li>
+<li>Log security-sensitive actions.</li>
+<li>Rotate credentials where supported.</li>
+<li>Store only necessary sensitive information.</li>
+</ul>
+<h3>Audit Log</h3>
+<p>Record connection changes, campaign creation/editing/scheduling/cancellation, template changes, consent changes, exports and other security-sensitive actions with user, tenant, resource, timestamp and relevant before/after values.</p>
+
+<h2 id="architecture">11. Database, API &amp; Architecture</h2>
+<h3>Suggested Tables</h3>
+<pre>whatsapp_accounts
+whatsapp_phone_numbers
+whatsapp_contacts
+whatsapp_consent_records
+whatsapp_templates
+whatsapp_campaigns
+whatsapp_campaign_recipients
+whatsapp_messages
+whatsapp_conversations
+whatsapp_webhook_events
+whatsapp_media
+whatsapp_usage
+whatsapp_audit_logs</pre>
+<h3>Campaign Table</h3>
+<pre>id
+tenant_id
+name
+description
+template_id
+audience_id
+status
+scheduled_at
+started_at
+completed_at
+timezone
+created_by
+created_at
+updated_at</pre>
+<h3>Message Table</h3>
+<pre>id
+tenant_id
+campaign_id
+contact_id
+phone_number_id
+template_id
+external_message_id
+message_type
+status
+error_code
+error_message
+queued_at
+sent_at
+delivered_at
+read_at
+created_at
+updated_at</pre>
+<h3>Internal API</h3>
+<pre>/api/v1/whatsapp/accounts
+/api/v1/whatsapp/phone-numbers
+/api/v1/whatsapp/contacts
+/api/v1/whatsapp/templates
+/api/v1/whatsapp/campaigns
+/api/v1/whatsapp/campaigns/:id
+/api/v1/whatsapp/campaigns/:id/preview
+/api/v1/whatsapp/campaigns/:id/send
+/api/v1/whatsapp/campaigns/:id/pause
+/api/v1/whatsapp/campaigns/:id/cancel
+/api/v1/whatsapp/messages
+/api/v1/whatsapp/conversations
+/api/v1/whatsapp/consent
+/api/v1/whatsapp/analytics</pre>
+<h3>Customer API — Future</h3>
+<pre>POST /api/v1/whatsapp/send-template</pre>
+<p>External customer API requests must use authentication and enforce the same consent, template, permission, validation and tenant rules as the LeadsMind UI.</p>
+<h3>Customer Webhooks — Future</h3>
+<pre>whatsapp.message.sent
+whatsapp.message.delivered
+whatsapp.message.read
+whatsapp.message.failed
+whatsapp.message.received
+whatsapp.contact.opted_out</pre>
+<h3>Recommended Architecture</h3>
+<pre>                    LEADSMIND FRONTEND
+                           |
+                           v
+                    API GATEWAY
+                           |
+          +----------------+----------------+
+          |                |                |
+          v                v                v
+     CRM SERVICE      CAMPAIGN SERVICE   AUTH/RBAC
+          |                |
+          |                v
+          |          CAMPAIGN QUEUE
+          |                |
+          |        +-------+-------+
+          |        |       |       |
+          |      Worker  Worker  Worker
+          |        |       |       |
+          |        +-------+-------+
+          |                |
+          |                v
+          |        WHATSAPP API
+          |                |
+          |                v
+          |            WHATSAPP
+          |                |
+          |                v
+          |             WEBHOOK
+          |                |
+          +-------<--------+
+                   |
+                   v
+              EVENT PROCESSOR
+                   |
+          +--------+--------+
+          |        |        |
+          v        v        v
+       CRM DB   Analytics  Notifications</pre>
+
+<h3>Scalability</h3>
+<p>Use horizontally scalable workers and a durable queue so the system can grow from a small number of tenants to thousands without a fundamental redesign.</p>
+<h3>Observability</h3>
+<p>Track structured logs, queue depth, worker health, API latency/errors, webhook failures, sent/delivered/failed counts and integration health.</p>
+
+<h2 id="mvp">12. MVP, Phases &amp; Acceptance Criteria</h2>
+<h3>MVP</h3>
+<ul>
+<li>WhatsApp account connection</li>
+<li>CRM contact integration</li>
+<li>Consent management</li>
+<li>Template synchronisation</li>
+<li>Campaign creation</li>
+<li>Audience selection</li>
+<li>Personalisation and validation</li>
+<li>Preview</li>
+<li>Send now</li>
+<li>Scheduling</li>
+<li>Queue and workers</li>
+<li>Webhooks</li>
+<li>Message status</li>
+<li>Campaign analytics</li>
+<li>Opt-out handling</li>
+<li>CRM timeline</li>
+<li>RBAC</li>
+<li>Audit logs</li>
+</ul>
+<h3>Phase 2</h3>
+<ul><li>Unified WhatsApp inbox</li><li>Advanced automation</li><li>Conversation assignment</li><li>Advanced segmentation</li><li>Campaign duplication</li><li>Revenue attribution</li><li>Advanced reporting</li><li>Customer API and webhooks</li></ul>
+<h3>Phase 3</h3>
+<ul><li>AI campaign assistant</li><li>AI conversation summaries</li><li>AI lead qualification</li><li>Intelligent follow-up</li><li>Omnichannel campaigns</li><li>WhatsApp + Email + SMS journeys</li></ul>
+
+<h3>Acceptance Criteria</h3>
+<table><tr><th>Area</th><th>Acceptance Test</th></tr>
+<tr><td>Connection</td><td>User can connect an eligible WhatsApp Business account and see connection status.</td></tr>
+<tr><td>Contacts</td><td>CRM contacts can be used as recipients, with validation and consent status.</td></tr>
+<tr><td>Campaigns</td><td>User can create, preview, validate, send and schedule campaigns.</td></tr>
+<tr><td>Templates</td><td>Only eligible/available templates can be selected.</td></tr>
+<tr><td>Messaging</td><td>Messages process asynchronously with duplicate-send protection.</td></tr>
+<tr><td>Webhooks</td><td>Webhook events update statuses and do not create duplicates.</td></tr>
+<tr><td>Opt-Out</td><td>Opted-out contacts are excluded from marketing sends.</td></tr>
+<tr><td>Analytics</td><td>Sent, delivered, read and failed counts are accurately reported where data is available.</td></tr>
+<tr><td>Security</td><td>Tenant isolation, RBAC, secret protection and audit logging are enforced.</td></tr>
+</table>
+
+<h2>13. Example End-to-End Campaign</h2>
+<p><strong>Campaign:</strong> October Business Promotion</p>
+<p><strong>Audience:</strong> Johannesburg + SME + WhatsApp Consent = OPTED_IN</p>
+<pre>Total CRM Contacts: 10,000
+Johannesburg: 4,000
+SME: 2,500
+Opted In: 2,100
+Valid Numbers: 2,050
+
+Eligible: 2,050
+
+10 Oct 2026 — 10:00 Africa/Johannesburg
+        ↓
+Campaign Queue
+        ↓
+WhatsApp API
+        ↓
+Webhook Status Updates
+        ↓
+CRM Analytics</pre>
+<p>Example completed report:</p>
+<pre>Recipients: 2,050
+Sent: 2,040
+Delivered: 1,970
+Read: 1,420
+Failed: 70
+Replies: 180</pre>
+
+<h2>14. Engineering Principles</h2>
+<ol>
+<li><strong>Official API first:</strong> use the WhatsApp Business Platform/API.</li>
+<li><strong>Backend enforcement:</strong> consent, permissions and messaging rules must not rely only on frontend checks.</li>
+<li><strong>Asynchronous messaging:</strong> campaigns use queues and workers.</li>
+<li><strong>Idempotency:</strong> retries must not cause duplicate messages.</li>
+<li><strong>Multi-tenancy:</strong> tenant isolation is mandatory.</li>
+<li><strong>Auditability:</strong> important actions and message states must be traceable.</li>
+<li><strong>Extensibility:</strong> design WhatsApp as a messaging infrastructure layer that can later support Email, SMS and other channels.</li>
+<li><strong>Human approval:</strong> AI may prepare content and campaigns, but the user remains responsible for approving outbound campaigns.</li>
+</ol>
+
+<div class="callout">
+<strong>Final Product Definition:</strong><br>
+LeadsMind WhatsApp Broadcasting should become a complete WhatsApp CRM communication system allowing businesses to manage contacts, consent, campaigns, templates, conversations, automation, scheduling, reporting and customer communication from one platform.
+</div>
+
+<footer>
+<strong>LeadsMind CRM — WhatsApp Broadcasting PRD</strong><br>
+Prepared as an implementation specification for the LeadsMind engineering team and Antigravity development workflow.<br>
+Version 1.0
+</footer>
+</main>
+</body>
+</html>
