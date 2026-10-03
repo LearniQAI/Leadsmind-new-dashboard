@@ -20,7 +20,21 @@ vi.mock('@/app/actions/whatsapp_broadcast', () => ({
 }));
 
 import BroadcastsView from './BroadcastsView';
-import { buildAudienceInput, EMPTY_AUDIENCE, describeExclusions } from './AudiencePicker';
+import { buildAudienceInput, EMPTY_AUDIENCE, describeExclusions, evaluateWindowGate } from './AudiencePicker';
+
+const prev = (open: number, closed: number) => ({ success: true, counts: { matched: open + closed, eligible: open + closed }, exclusions: { no_phone: 0, invalid_number: 0, opted_out: 0, suppressed: 0, duplicate_phone: 0 }, sample: [{ name: 'Ann', phone: '***123' }], window: { open, closed } });
+async function openFormAndPreview(open: number, closed: number) {
+  h.preview.mockResolvedValue(prev(open, closed));
+  render(<BroadcastsView campaigns={[]} setCampaigns={() => {}} />);
+  fireEvent.click(screen.getAllByRole('button', { name: /New WhatsApp Campaign/i })[0]);
+  await waitFor(() => screen.getByPlaceholderText(/Spring Sale Blast/));
+  fireEvent.change(screen.getByPlaceholderText(/Spring Sale Blast/), { target: { value: 'Blast' } });
+  fireEvent.change(screen.getByPlaceholderText(/Hi \{\{contact.first_name\}\}/), { target: { value: 'hello' } });
+  fireEvent.click(screen.getByRole('button', { name: /Preview audience/i }));
+  await waitFor(() => expect(h.preview).toHaveBeenCalledTimes(1));
+  await waitFor(() => screen.getByText(/can receive this campaign/));
+}
+const createBtn = () => screen.getByRole('button', { name: /Schedule campaign/i }) as HTMLButtonElement;
 
 beforeEach(() => {
   h.create.mockReset(); h.preview.mockReset(); h.options.mockReset(); h.toastError.mockReset();
@@ -42,28 +56,52 @@ describe('BroadcastsView with 0 saved segments', () => {
   });
 
   it('does not create without the attestation, and never calls the server', async () => {
-    render(<BroadcastsView campaigns={[]} setCampaigns={() => {}} />);
-    fireEvent.click(screen.getAllByRole('button', { name: /New WhatsApp Campaign/i })[0]);
-    await waitFor(() => screen.getByPlaceholderText(/Spring Sale Blast/));
-    fireEvent.change(screen.getByPlaceholderText(/Spring Sale Blast/), { target: { value: 'Blast' } });
-    fireEvent.change(screen.getByPlaceholderText(/Hi \{\{contact.first_name\}\}/), { target: { value: 'hello' } });
-    fireEvent.click(screen.getByRole('button', { name: /Schedule campaign/i }));
+    await openFormAndPreview(2, 0);
+    expect(createBtn().disabled).toBe(false);
+    fireEvent.click(createBtn());
     expect(h.create).not.toHaveBeenCalled();
     expect(h.toastError).toHaveBeenCalledWith(expect.stringMatching(/agreed to receive WhatsApp marketing/));
   });
 
   it('submits an audience object and consentAttested:true once attested', async () => {
     h.create.mockResolvedValue({ success: true, data: { id: 'c1', name: 'Blast', status: 'scheduled', total_recipients: 1, total_sent: 0, total_failed: 0, total_skipped_opt_out: 0, total_skipped_no_template: 0, created_at: '', scheduled_at: null, message_body: 'hello', template_name: null, template_language: null }, recipientCount: 1, excludedOptOut: 0 });
-    render(<BroadcastsView campaigns={[]} setCampaigns={() => {}} />);
-    fireEvent.click(screen.getAllByRole('button', { name: /New WhatsApp Campaign/i })[0]);
-    await waitFor(() => screen.getByPlaceholderText(/Spring Sale Blast/));
-    fireEvent.change(screen.getByPlaceholderText(/Spring Sale Blast/), { target: { value: 'Blast' } });
-    fireEvent.change(screen.getByPlaceholderText(/Hi \{\{contact.first_name\}\}/), { target: { value: 'hello' } });
+    await openFormAndPreview(2, 0);
     fireEvent.click(screen.getByRole('checkbox', { name: /agreed to receive WhatsApp marketing/i }));
-    fireEvent.click(screen.getByRole('button', { name: /Schedule campaign/i }));
+    fireEvent.click(createBtn());
     await waitFor(() => expect(h.create).toHaveBeenCalledTimes(1));
     expect(h.create.mock.calls[0][0]).toMatchObject({ name: 'Blast', audience: { type: 'all_contacts' }, consentAttested: true });
     expect(h.create.mock.calls[0][0].segmentId).toBeUndefined();
+  });
+
+  it('24h window, state 1: everyone in-window -> no warning, Create enabled, counts shown', async () => {
+    await openFormAndPreview(3, 0);
+    expect(screen.queryByTestId('window-warning')).toBeNull();
+    expect(createBtn().disabled).toBe(false);
+    expect(document.body.textContent).toMatch(/3 have an open 24-hour window/);
+    expect(document.body.textContent).toMatch(/0 do not/);
+  });
+
+  it('24h window, state 2: some outside the window and no template -> amber warning, Create disabled and inert', async () => {
+    await openFormAndPreview(1, 4);
+    const w = screen.getByTestId('window-warning');
+    expect(w.textContent).toMatch(/4 recipients have no open 24-hour window and would be skipped without an approved template/);
+    expect(w.className).toMatch(/amber/);
+    expect(createBtn().disabled).toBe(true);
+    fireEvent.click(screen.getByRole('checkbox', { name: /agreed to receive WhatsApp marketing/i }));
+    fireEvent.click(createBtn());
+    expect(h.create).not.toHaveBeenCalled();
+  });
+
+  it('singular wording for exactly one recipient outside the window', async () => {
+    await openFormAndPreview(2, 1);
+    expect(screen.getByTestId('window-warning').textContent).toMatch(/^1 recipient has no open 24-hour window/);
+  });
+
+  it('before any preview, Create is disabled with a hint to preview (no template)', async () => {
+    render(<BroadcastsView campaigns={[]} setCampaigns={() => {}} />);
+    fireEvent.click(screen.getAllByRole('button', { name: /New WhatsApp Campaign/i })[0]);
+    await waitFor(() => screen.getByTestId('window-needs-preview'));
+    expect(createBtn().disabled).toBe(true);
   });
 
   it('only offers "Saved segment" when options exist', async () => {
@@ -72,6 +110,18 @@ describe('BroadcastsView with 0 saved segments', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /New WhatsApp Campaign/i })[0]);
     await waitFor(() => expect(h.options).toHaveBeenCalledTimes(1));
     expect(document.body.textContent).not.toMatch(/Saved segment/);
+  });
+});
+
+describe('evaluateWindowGate', () => {
+  it('a chosen template unblocks Create whatever the window counts say', () => {
+    expect(evaluateWindowGate(true, { open: 0, closed: 9 })).toEqual({ closed: 0, needsPreview: false, blocked: false });
+    expect(evaluateWindowGate(true, null)).toEqual({ closed: 0, needsPreview: false, blocked: false });
+  });
+  it('no template: blocked until previewed, then only while someone is outside the window', () => {
+    expect(evaluateWindowGate(false, null)).toEqual({ closed: 0, needsPreview: true, blocked: true });
+    expect(evaluateWindowGate(false, { open: 5, closed: 0 }).blocked).toBe(false);
+    expect(evaluateWindowGate(false, { open: 5, closed: 2 })).toEqual({ closed: 2, needsPreview: false, blocked: true });
   });
 });
 

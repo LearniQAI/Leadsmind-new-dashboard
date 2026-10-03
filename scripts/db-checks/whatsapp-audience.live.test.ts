@@ -191,9 +191,41 @@ describe('(a) a workspace with 0 segments creates and dispatches a campaign for 
     expect(p.exclusions).toEqual({ no_phone: 1, invalid_number: 1, opted_out: 1, suppressed: 0, duplicate_phone: 1 });
     const json = JSON.stringify(p);
     expect(json).not.toMatch(/\+1555|15550/);
+    expect(p.window).toEqual({ open: 0, closed: 3 }); // fixtures have no WhatsApp conversation yet
     expect(p.sample.length).toBeLessThanOrEqual(5);
     for (const s of p.sample) expect(s.phone).toMatch(/^\*\*\*\d{3}$/);
     expect(await campaignCount(wsA)).toBe(before);
+  });
+
+  it('preview: an open 24-hour window is counted from conversations.last_customer_message_at (WhatsApp only), read-only', async () => {
+    as('a');
+    const c1 = (await admin.from('contacts').select('id').eq('workspace_id', wsA).eq('email', `wa-aud-${runId}-c1@example.com`).single()).data;
+    const { error } = await admin.from('conversations').insert({ workspace_id: wsA, contact_id: c1.id, platform: 'whatsapp', external_thread_id: num(1), last_customer_message_at: new Date().toISOString() });
+    expect(error).toBeNull();
+    const p: any = await M.previewWhatsAppBroadcastAudience({ type: 'all_contacts' });
+    expect(p.window).toEqual({ open: 1, closed: 2 });
+    await admin.from('conversations').delete().eq('workspace_id', wsA).eq('contact_id', c1.id);
+    const again: any = await M.previewWhatsAppBroadcastAudience({ type: 'all_contacts' });
+    expect(again.window).toEqual({ open: 0, closed: 3 });
+  });
+
+  it('a contact filter for "no phone number" is rejected with a clear error (never an always-empty audience)', async () => {
+    as('a');
+    const p: any = await M.previewWhatsAppBroadcastAudience({ type: 'contact_fields', filters: [{ field: 'has_phone', value: false }] });
+    expect(p.success).toBe(false);
+    expect(p.error).toMatch(/no phone number is not supported/);
+  });
+
+  it('a number shared with an opted-out contact is excluded even when the clean duplicate is older', async () => {
+    as('a');
+    const dup = num(55);
+    await mkContact(wsA, 'd1', dup, { source: 'dupcheck' });
+    await new Promise((r) => setTimeout(r, 1100));
+    await mkContact(wsA, 'd2', dup, { source: 'dupcheck', opted_out: true, opted_in: false });
+    const p: any = await M.previewWhatsAppBroadcastAudience({ type: 'contact_fields', filters: [{ field: 'source', value: 'dupcheck' }] });
+    expect(p.counts).toEqual({ matched: 2, eligible: 0 });
+    expect(p.exclusions.opted_out).toBe(2);
+    await admin.from('contacts').delete().eq('workspace_id', wsA).eq('source', 'dupcheck');
   });
 
   it('all_contacts', async () => {

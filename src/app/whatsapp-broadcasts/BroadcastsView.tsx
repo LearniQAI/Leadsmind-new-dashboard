@@ -24,7 +24,7 @@ import {
   listApprovedWhatsAppTemplates,
 } from '@/app/actions/whatsapp_broadcast';
 import { COMPLIANCE_TEXT } from '@/lib/whatsapp/audience/types';
-import AudiencePicker, { EMPTY_AUDIENCE, buildAudienceInput, type AudienceFormState } from './AudiencePicker';
+import AudiencePicker, { EMPTY_AUDIENCE, buildAudienceInput, evaluateWindowGate, type AudienceFormState, type Preview } from './AudiencePicker';
 
 export interface CampaignRow {
   id: string;
@@ -68,6 +68,7 @@ export default function BroadcastsView({ campaigns, setCampaigns }: {
   const [formMessage, setFormMessage] = useState('');
   const [audience, setAudience] = useState<AudienceFormState>(EMPTY_AUDIENCE);
   const [attested, setAttested] = useState(false);
+  const [preview, setPreview] = useState<Preview | null>(null);
   const [formScheduledAt, setFormScheduledAt] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -84,7 +85,7 @@ export default function BroadcastsView({ campaigns, setCampaigns }: {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const openCreate = () => {
-    setFormName(''); setFormMessage(''); setAudience(EMPTY_AUDIENCE); setAttested(false); setFormScheduledAt('');
+    setFormName(''); setFormMessage(''); setAudience(EMPTY_AUDIENCE); setAttested(false); setPreview(null); setFormScheduledAt('');
     setUseTemplate(false); setSelectedTemplate(null); setTemplateParams([]);
     setFormOpen(true);
   };
@@ -106,7 +107,15 @@ export default function BroadcastsView({ campaigns, setCampaigns }: {
     setTemplateParams(t ? Array(countTemplateVars(t.bodyText)).fill('') : []);
   };
 
+  // UI-level guard for now (server enforcement belongs to the later wizard batch): without an approved template, anyone
+  // outside the 24-hour window would be skipped, so require a template or an all-in-window audience.
+  const gate = evaluateWindowGate(!!selectedTemplate, preview ? preview.window : null);
+  const closedWindow = gate.closed;
+  const needsPreviewForWindow = gate.needsPreview;
+  const createBlocked = gate.blocked;
+
   const handleSave = async () => {
+    if (createBlocked) return;
     if (!formName.trim()) { toast.error('Please enter a campaign name'); return; }
     if (!formMessage.trim() && !selectedTemplate) { toast.error('Add a free-text message, an approved template, or both'); return; }
     const built = buildAudienceInput(audience);
@@ -233,7 +242,7 @@ export default function BroadcastsView({ campaigns, setCampaigns }: {
             <DashFormField label="Campaign name">
               <DashInput value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="e.g. Spring Sale Blast" />
             </DashFormField>
-            <AudiencePicker value={audience} onChange={setAudience} />
+            <AudiencePicker value={audience} onChange={setAudience} onPreview={setPreview} />
 
             <label className="flex items-start gap-2 text-[12px] font-bold !text-dash-text cursor-pointer">
               <input type="checkbox" checked={attested} onChange={(e) => setAttested(e.target.checked)} className="rounded mt-0.5" />
@@ -286,13 +295,24 @@ export default function BroadcastsView({ campaigns, setCampaigns }: {
               )}
             </div>
 
+            {closedWindow > 0 && (
+              <p className="text-[12px] text-amber font-semibold" data-testid="window-warning">
+                {closedWindow} {closedWindow === 1 ? 'recipient has' : 'recipients have'} no open 24-hour window and would be skipped without an approved template. Add a template above, or choose an audience where everyone has messaged you in the last 24 hours.
+              </p>
+            )}
+            {needsPreviewForWindow && (
+              <p className="text-[12px] !text-dash-textMuted" data-testid="window-needs-preview">
+                Preview the audience first, so we can check who has an open 24-hour window. Without an approved template, only those people can receive your message.
+              </p>
+            )}
+
             <DashFormField label="Schedule for" hint="Leave blank to send as soon as possible">
               <DashInput type="datetime-local" value={formScheduledAt} onChange={(e) => setFormScheduledAt(e.target.value)} />
             </DashFormField>
           </div>
           <DashModalFooter>
             <DashButton variant="secondary" onClick={() => setFormOpen(false)}>Cancel</DashButton>
-            <DashButton onClick={handleSave} disabled={saving}>{saving ? 'Scheduling…' : 'Schedule campaign'}</DashButton>
+            <DashButton onClick={handleSave} disabled={saving || createBlocked}>{saving ? 'Scheduling…' : 'Schedule campaign'}</DashButton>
           </DashModalFooter>
         </DashModalContent>
       </DashModal>

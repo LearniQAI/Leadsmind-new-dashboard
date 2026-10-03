@@ -51,13 +51,21 @@ export function buildAudienceInput(s: AudienceFormState): { ok: true; audience: 
   }
 }
 
-interface Preview {
+export interface Preview {
   counts: { matched: number; eligible: number };
+  window: { open: number; closed: number };
   exclusions: { no_phone: number; invalid_number: number; opted_out: number; suppressed: number; duplicate_phone: number };
   sample: { name: string; phone: string }[];
 }
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** The create-form rule: no approved template + anyone outside the 24h window (or an unchecked audience) blocks Create. */
+export function evaluateWindowGate(hasTemplate: boolean, window: { open: number; closed: number } | null): { closed: number; needsPreview: boolean; blocked: boolean } {
+  if (hasTemplate) return { closed: 0, needsPreview: false, blocked: false };
+  if (!window) return { closed: 0, needsPreview: true, blocked: true };
+  return { closed: window.closed, needsPreview: false, blocked: window.closed > 0 };
+}
 
 export function describeExclusions(ex: Preview['exclusions']): string[] {
   const lines: string[] = [];
@@ -69,9 +77,11 @@ export function describeExclusions(ex: Preview['exclusions']): string[] {
   return lines;
 }
 
-export default function AudiencePicker({ value, onChange }: {
+export default function AudiencePicker({ value, onChange, onPreview }: {
   value: AudienceFormState;
   onChange: (next: AudienceFormState) => void;
+  /** Reports the latest preview (or null when the audience changed), so the form can react to the 24h-window counts. */
+  onPreview?: (preview: Preview | null) => void;
 }) {
   // Saved segments are loaded lazily when the form opens (this component only mounts inside the open form), and only
   // an id + name list. The "Saved segment" option appears only if the workspace has any.
@@ -87,18 +97,20 @@ export default function AudiencePicker({ value, onChange }: {
   }, []);
 
   const set = (patch: Partial<AudienceFormState>) => {
-    setPreview(null); setPreviewError(null);
+    setPreview(null); setPreviewError(null); onPreview?.(null);
     onChange({ ...value, ...patch });
   };
 
   const runPreview = async () => {
     const built = buildAudienceInput(value);
-    if (!built.ok) { setPreview(null); setPreviewError((built as { error: string }).error); return; }
+    if (!built.ok) { setPreview(null); onPreview?.(null); setPreviewError((built as { error: string }).error); return; }
     setPreviewing(true); setPreviewError(null);
     try {
       const res = await previewWhatsAppBroadcastAudience(built.audience);
-      if (res.success) setPreview({ counts: res.counts, exclusions: res.exclusions, sample: res.sample });
-      else { setPreview(null); setPreviewError((res as { error: string }).error); }
+      if (res.success) {
+        const p = { counts: res.counts, exclusions: res.exclusions, sample: res.sample, window: res.window };
+        setPreview(p); onPreview?.(p);
+      } else { setPreview(null); onPreview?.(null); setPreviewError((res as { error: string }).error); }
     } finally { setPreviewing(false); }
   };
 
@@ -180,6 +192,9 @@ export default function AudiencePicker({ value, onChange }: {
           <p className="font-bold !text-dash-text">
             {plural(preview.counts.eligible, 'contact', 'contacts')} can receive this campaign
             <span className="font-medium !text-dash-textMuted"> ({preview.counts.matched} matched)</span>
+          </p>
+          <p className="!text-dash-textMuted">
+            {preview.window.open} {preview.window.open === 1 ? 'has' : 'have'} an open 24-hour window (can get your free-text message); {preview.window.closed} {preview.window.closed === 1 ? 'does' : 'do'} not (need an approved template).
           </p>
           {lines.length > 0 && (
             <div className="!text-dash-textMuted">

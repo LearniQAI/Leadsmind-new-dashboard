@@ -198,6 +198,19 @@ describe('previewWhatsAppBroadcastAudience and listAudienceSegmentOptions', () =
     expect(wrote()).toBe(0);
   });
 
+  it('preview reports how many eligible recipients have an open 24-hour window (read-only)', async () => {
+    tables.conversations = [
+      { id: 'cv1', workspace_id: 'w1', platform: 'whatsapp', contact_id: '1', last_customer_message_at: new Date(Date.now() - 3600_000).toISOString() },
+      { id: 'cv2', workspace_id: 'w1', platform: 'whatsapp', contact_id: '2', last_customer_message_at: new Date(Date.now() - 30 * 3600_000).toISOString() },
+      { id: 'cv3', workspace_id: 'w1', platform: 'sms', contact_id: '2', last_customer_message_at: new Date(Date.now() - 1000).toISOString() },
+    ];
+    const r: any = await previewWhatsAppBroadcastAudience({ type: 'all_contacts' });
+    expect(r.success).toBe(true);
+    expect(r.counts.eligible).toBe(2);
+    expect(r.window).toEqual({ open: 1, closed: 1 }); // contact 2's recent SMS conversation does not open the WhatsApp window
+    expect(wrote()).toBe(0);
+  });
+
   it('preview of a foreign segment id fails closed', async () => {
     const r: any = await previewWhatsAppBroadcastAudience({ type: 'saved_segment', segmentId: 'sx' });
     expect(r.success).toBe(false);

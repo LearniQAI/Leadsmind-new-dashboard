@@ -27,6 +27,7 @@ import {
   resolveBroadcastAudience, audienceFromLegacy, audienceFromInput, topExclusionReason,
 } from '@/lib/whatsapp/audience/resolveBroadcastAudience';
 import { COMPLIANCE_TEXT_VERSION, type BroadcastAudienceInput } from '@/lib/whatsapp/audience/types';
+import { countWindowStatus } from '@/lib/whatsapp/audience/windowCounts';
 
 const QUEUE_INSERT_CHUNK = 500;
 
@@ -141,6 +142,8 @@ export type WhatsAppPreviewResult =
       counts: { matched: number; eligible: number };
       exclusions: { no_phone: number; invalid_number: number; opted_out: number; suppressed: number; duplicate_phone: number };
       sample: { name: string; phone: string }[];
+      /** Eligible recipients with / without an open 24-hour window right now (read-only; same clock as the worker). */
+      window: { open: number; closed: number };
     }
   | { success: false; error: string };
 
@@ -152,7 +155,8 @@ export async function previewWhatsAppBroadcastAudience(audience: BroadcastAudien
     const { workspaceId } = await requireWorkspaceAccess();
     const supabase = await createServerClient();
     const resolved = await resolveBroadcastAudience(supabase, workspaceId, audienceFromInput(audience));
-    return { success: true, counts: resolved.counts, exclusions: resolved.exclusions, sample: resolved.sample };
+    const window = await countWindowStatus(supabase, workspaceId, resolved.contactIds);
+    return { success: true, counts: resolved.counts, exclusions: resolved.exclusions, sample: resolved.sample, window };
   } catch (error: any) {
     logger.error({ err: error }, 'preview.whatsapp_broadcast_audience.failed');
     return { success: false, error: userSafeMessage(error, 'Failed to preview this audience') };
