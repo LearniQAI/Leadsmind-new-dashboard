@@ -245,28 +245,64 @@ $$;
 --   accepted terms version, and the global marketing kill switch.
 create or replace function public.wa_marketing_eligible(p_workspace uuid, p_contact_ids uuid[] default null)
 returns table (contact_id uuid, phone_e164 text, consent_id uuid)
-language sql
+language plpgsql
 stable
 security definer
 set search_path = public, pg_temp
 as $$
-  select c.id, c.phone_e164, cr.id
-    from public.contacts c
-    join public.whatsapp_consent_records cr
-      on cr.workspace_id = c.workspace_id
-     and cr.phone_e164   = c.phone_e164
-     and cr.consent_type = 'MARKETING_WHATSAPP'
-     and cr.status       = 'ACTIVE'
-   where c.workspace_id = p_workspace
-     and c.phone_e164 is not null
-     and (p_contact_ids is null or c.id = any (p_contact_ids))
-     and not exists (select 1 from public.whatsapp_suppressions s
-                      where s.workspace_id = c.workspace_id and s.phone_e164 = c.phone_e164)
-     and not exists (select 1 from public.sms_suppression_list l
-                      where l.workspace_id = c.workspace_id and l.phone_e164 = c.phone_e164)
-     and not exists (select 1 from public.contacts d
-                      where d.workspace_id = c.workspace_id and d.phone_e164 = c.phone_e164
-                        and (d.opted_out is true or d.sms_opt_out is true));
+begin
+  -- The query shapes below are deliberate. A plain multi-way join let the planner choose a nested loop that re-scanned the whole
+  -- workspace once per consent row when table statistics were missing (a freshly bulk-imported workspace: 7 s for 5,000 contacts).
+  -- LATERAL joins with an OFFSET 0 fence and correlated scalar subqueries cannot be flattened into unparameterised scans, so every lookup below is a
+  -- parameterised index probe (consent by workspace+phone, contacts by workspace+phone, suppression by workspace+phone) whatever
+  -- the statistics say.
+  if p_contact_ids is null then
+    return query
+    select c.id, c.phone_e164, cr.id
+      from public.whatsapp_consent_records cr
+      cross join lateral (
+        select c0.id, c0.phone_e164
+          from public.contacts c0
+         where c0.workspace_id = cr.workspace_id
+           and c0.phone_e164 = cr.phone_e164
+         offset 0  -- optimisation fence: keeps this a parameterised probe instead of letting the planner flatten it into a join
+      ) c
+     where cr.workspace_id = p_workspace
+       and cr.consent_type = 'MARKETING_WHATSAPP'
+       and cr.status = 'ACTIVE'
+       and (select 1 from public.whatsapp_suppressions s
+             where s.workspace_id = cr.workspace_id and s.phone_e164 = cr.phone_e164 limit 1) is null
+       and (select 1 from public.sms_suppression_list l
+             where l.workspace_id = cr.workspace_id and l.phone_e164 = cr.phone_e164 limit 1) is null
+       and (select 1 from public.contacts d
+             where d.workspace_id = cr.workspace_id and d.phone_e164 = cr.phone_e164
+               and (d.opted_out is true or d.sms_opt_out is true) limit 1) is null;
+  else
+    return query
+    select c.id, c.phone_e164, cr.id
+      from (select distinct u.id from unnest(p_contact_ids) as u(id)) ids
+      join public.contacts c
+        on c.id = ids.id
+       and c.workspace_id = p_workspace
+       and c.phone_e164 is not null
+      cross join lateral (
+        select r.id
+          from public.whatsapp_consent_records r
+         where r.workspace_id = c.workspace_id
+           and r.phone_e164 = c.phone_e164
+           and r.consent_type = 'MARKETING_WHATSAPP'
+           and r.status = 'ACTIVE'
+         limit 1
+      ) cr
+     where (select 1 from public.whatsapp_suppressions s
+             where s.workspace_id = c.workspace_id and s.phone_e164 = c.phone_e164 limit 1) is null
+       and (select 1 from public.sms_suppression_list l
+             where l.workspace_id = c.workspace_id and l.phone_e164 = c.phone_e164 limit 1) is null
+       and (select 1 from public.contacts d
+             where d.workspace_id = c.workspace_id and d.phone_e164 = c.phone_e164
+               and (d.opted_out is true or d.sms_opt_out is true) limit 1) is null;
+  end if;
+end;
 $$;
 
 -- 6. Function ACLs: service_role only -----------------------------------------------------------------------------------
