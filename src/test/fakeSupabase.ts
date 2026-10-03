@@ -35,6 +35,12 @@ export function makeFakeDb(initial: Record<string, Row[]> = {}): FakeDb {
         in: (c: string, vs: any[]) => (preds.push((r) => vs.includes(r[c])), q),
         not: (c: string, o: string, v: any) => (preds.push((r) => (o === 'is' ? r[c] !== v : true)), q),
         is: (c: string, v: any) => (preds.push((r) => r[c] === v), q),
+        // PostgREST JSON path filter, e.g. filter('credentials->>phone_number_id', 'eq', 'x')
+        filter: (c: string, _o: string, v: any) => {
+          const [col, key] = c.split('->>');
+          preds.push((r) => (key ? r[col]?.[key] : r[col]) === v);
+          return q;
+        },
         order: () => q,
         limit: (n: number) => ((limit = n), q),
         range: (a: number, b: number) => ((limit = b - a + 1), q),
